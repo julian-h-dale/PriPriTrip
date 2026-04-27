@@ -1,14 +1,29 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import client from '../api/client';
+import { cacheTrip, getCachedTrip } from '../utils/tripCache';
 
 export const fetchTrip = createAsyncThunk('trip/fetch', async () => {
-  const { data } = await client.get('/api/trip');
-  return data;
+  try {
+    const { data } = await client.get('/api/trip');
+    // Persist to IndexedDB so the trip is available offline next time
+    await cacheTrip(data).catch(() => {});
+    return data;
+  } catch {
+    // Network failed — try to serve the last cached version
+    const cached = await getCachedTrip();
+    if (cached) return cached;
+    throw new Error('No network and no cached trip available.');
+  }
 });
 
 export const saveTrip = createAsyncThunk('trip/save', async (_, { getState }) => {
+  if (!navigator.onLine) {
+    throw new Error('You are offline. Connect to the internet to save.');
+  }
   const trip = getState().trip.data;
   await client.put('/api/trip', trip);
+  // Keep the cache in sync after a successful save
+  await cacheTrip(trip).catch(() => {});
 });
 
 const tripSlice = createSlice({

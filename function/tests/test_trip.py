@@ -29,9 +29,6 @@ SAMPLE_TRIP = {
     "tripName": "Test Trip",
     "startDate": "2026-05-10",
     "endDate": "2026-05-20",
-    "documents": [
-        {"url": "flight-confirmation.pdf", "name": "Flight Confirmation"},
-    ],
     "items": [
         {
             "itemId": "leg_001",
@@ -140,12 +137,9 @@ class TestResolveDocumentSasUrls:
 
         result = resolve_document_sas_urls(SAMPLE_TRIP, mock_service)
 
-        trip_doc_url = result["documents"][0]["url"]
-        assert trip_doc_url.startswith("https://mystorageaccount.blob.core.windows.net/documents/")
-        assert "sig=token123" in trip_doc_url
-
         item_doc_url = result["items"][0]["documents"][0]["url"]
         assert item_doc_url.startswith("https://mystorageaccount.blob.core.windows.net/documents/")
+        assert "sig=token123" in item_doc_url
 
     @patch.dict("os.environ", {"STORAGE_DOCS_CONTAINER": "documents"})
     def test_does_not_modify_http_urls(self, *_):
@@ -154,11 +148,10 @@ class TestResolveDocumentSasUrls:
         mock_service.credential.account_key = "dGVzdGtleQ=="
 
         trip = {
-            "documents": [{"url": "https://external.example.com/doc.pdf", "name": "External"}],
-            "items": [],
+            "items": [{"documents": [{"url": "https://external.example.com/doc.pdf", "name": "External"}]}],
         }
         result = resolve_document_sas_urls(trip, mock_service)
-        assert result["documents"][0]["url"] == "https://external.example.com/doc.pdf"
+        assert result["items"][0]["documents"][0]["url"] == "https://external.example.com/doc.pdf"
 
     @patch.dict("os.environ", {"STORAGE_DOCS_CONTAINER": "documents"})
     def test_does_not_mutate_original_trip(self, *_):
@@ -170,7 +163,7 @@ class TestResolveDocumentSasUrls:
             _ = resolve_document_sas_urls(SAMPLE_TRIP, mock_service)
 
         # Original should be unchanged
-        assert SAMPLE_TRIP["documents"][0]["url"] == "flight-confirmation.pdf"
+        assert SAMPLE_TRIP["items"][0]["documents"][0]["url"] == "booking.pdf"
 
 
 # ---------------------------------------------------------------------------

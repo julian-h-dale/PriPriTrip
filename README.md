@@ -229,6 +229,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Log in with the password from `local.settings.json` (default: `honeymoon`). The trip is loaded live from Azurite on every page load. The **Save** button in the app bar writes the current trip JSON back to blob storage.
 
+> **Note — PWA / service worker in dev:** The service worker is only active in production builds (`npm run build && npm run preview`). In `npm run dev` mode the app still uses IndexedDB for offline caching, but the service worker precaching of the app shell is not active. To test the full PWA install flow locally, run `npm run build && npm run preview`.
+
 ---
 
 ## Section 2 — Running Tests
@@ -408,7 +410,7 @@ curl -s "$FUNC_URL/trip" \
 | 2 | UI POC — Vite + React + MUI timeline with fixture data | ✅ Done |
 | 3 | Auth integration — LoginPage, Axios interceptor, 401 redirect | ✅ Done |
 | 4 | Read/write from blob — wire API calls, Save button | ✅ Done |
-| 5 | PWA / offline support — service worker, IndexedDB cache | Not started |
+| 5 | PWA / offline support — service worker, IndexedDB cache | ✅ Done |
 | 6 | Input forms — GroupForm, LegForm | Not started |
 | 7 | Documents page — SAS URL links | Not started |
 | 8 | Maps — Google Maps embed, location pins | Not started |

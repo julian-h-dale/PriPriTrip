@@ -28,14 +28,6 @@
       "format": "date",
       "description": "Trip end date in ISO 8601 date format."
     },
-    "documents": {
-      "type": "array",
-      "description": "Trip-level documents such as flight confirmations, hotel bookings, or travel insurance.",
-      "items": {
-        "$ref": "#/$defs/document"
-      },
-      "default": []
-    },
     "items": {
       "type": "array",
       "description": "Flat list of groups and itinerary legs. Hierarchy is represented with parentItemId.",
@@ -156,6 +148,7 @@
         },
         "documents": {
           "type": "array",
+          "description": "Confirmation documents for this leg (e.g. booking PDFs, e-tickets). Only used on leg items.",
           "items": {
             "$ref": "#/$defs/document"
           },

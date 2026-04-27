@@ -55,7 +55,6 @@ class TripDocument(BaseModel):
     tripName: str
     startDate: str
     endDate: str
-    documents: List[dict] = []
     items: List[TripItemModel] = []
 
 
@@ -169,8 +168,6 @@ def resolve_document_sas_urls(trip: dict, blob_service: BlobServiceClient) -> di
         )
 
     trip = copy.deepcopy(trip)
-    for doc in trip.get("documents", []):
-        doc["url"] = make_sas_url(doc.get("url", ""))
     for item in trip.get("items", []):
         for doc in item.get("documents", []):
             doc["url"] = make_sas_url(doc.get("url", ""))

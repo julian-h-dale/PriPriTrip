@@ -39,14 +39,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "format": "date",
       "description": "Trip end date in ISO 8601 date format."
     },
-    "documents": {
-      "type": "array",
-      "description": "Trip-level documents such as flight confirmations, hotel bookings, or travel insurance.",
-      "items": {
-        "$ref": "#/$defs/document"
-      },
-      "default": []
-    },
     "items": {
       "type": "array",
       "description": "Flat list of groups and itinerary legs. Hierarchy is represented with parentItemId.",
@@ -167,6 +159,7 @@ The main modeling choice is to keep the trip items in a flat array while using `
         },
         "documents": {
           "type": "array",
+          "description": "Confirmation documents for this leg (e.g. booking PDFs, e-tickets). Only used on leg items.",
           "items": {
             "$ref": "#/$defs/document"
           },
@@ -250,18 +243,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
   "tripName": "Switzerland and Croatia Honeymoon",
   "startDate": "2026-05-10",
   "endDate": "2026-05-20",
-  "documents": [
-    {
-      "url": "https://example.com/flight-confirmation",
-      "name": "Flight Confirmation",
-      "description": "Round-trip flight details between Chicago and Zurich."
-    },
-    {
-      "url": "https://example.com/travel-insurance",
-      "name": "Travel Insurance",
-      "description": "Trip insurance policy and emergency contact information."
-    }
-  ],
   "items": [
     {
       "itemId": "bern",
