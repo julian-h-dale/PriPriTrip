@@ -24,6 +24,7 @@
       "type": "travel",
       "subtype": "flight",
       "confirmationNumber": "ACVSKB",
+      "description": null,
       "locations": [
         { "name": "Chicago O'Hare (ORD)" },
         { "name": "Zurich Airport (ZRH)" }
@@ -41,6 +42,7 @@
       "type": "travel",
       "subtype": "train",
       "confirmationNumber": null,
+      "description": null,
       "locations": [
         { "name": "Zurich HB" },
         { "name": "Bern" }
@@ -58,6 +60,7 @@
       "type": "stay",
       "subtype": "hotel",
       "confirmationNumber": "58204SG008394",
+      "description": null,
       "locations": [
         {
           "name": "Hotel Goldener Schlüssel",
@@ -77,6 +80,7 @@
       "type": "activity",
       "subtype": "day_trip",
       "confirmationNumber": null,
+      "description": null,
       "locations": [
         { "name": "La Chaux-de-Fonds" }
       ],
@@ -93,6 +97,7 @@
       "type": "travel",
       "subtype": "train",
       "confirmationNumber": null,
+      "description": null,
       "locations": [
         { "name": "Bern" },
         { "name": "Wengen" }
@@ -110,6 +115,7 @@
       "type": "stay",
       "subtype": "hotel",
       "confirmationNumber": "56059SG016579",
+      "description": null,
       "locations": [
         {
           "name": "Beausite Park Hotel Wengen",
@@ -138,6 +144,7 @@
       "type": "travel",
       "subtype": "flight",
       "confirmationNumber": "CRFG3B",
+      "description": null,
       "locations": [
         { "name": "Zurich Airport (ZRH)" },
         { "name": "Split Airport (SPU)" }
@@ -155,6 +162,7 @@
       "type": "travel",
       "subtype": "ferry",
       "confirmationNumber": "BW5012160",
+      "description": null,
       "locations": [
         { "name": "Split Ferry Port" },
         { "name": "Hvar Harbour" }
@@ -172,6 +180,7 @@
       "type": "stay",
       "subtype": "hotel",
       "confirmationNumber": "PH27312096",
+      "description": null,
       "locations": [
         {
           "name": "Riva Marina Hvar Hotel",
@@ -191,6 +200,7 @@
       "type": "travel",
       "subtype": "ferry",
       "confirmationNumber": "BW5012167",
+      "description": null,
       "locations": [
         { "name": "Hvar Harbour" },
         { "name": "Split Ferry Port" }
@@ -208,6 +218,7 @@
       "type": "stay",
       "subtype": "hotel",
       "confirmationNumber": "MIRAY0KBYT",
+      "description": null,
       "locations": [
         {
           "name": "Heritage Hotel Slavija",
@@ -227,6 +238,7 @@
       "type": "activity",
       "subtype": "day_trip",
       "confirmationNumber": null,
+      "description": null,
       "locations": [
         { "name": "Plitvice Lakes National Park" }
       ],
@@ -252,6 +264,7 @@
       "type": "travel",
       "subtype": "flight",
       "confirmationNumber": null,
+      "description": null,
       "locations": [
         { "name": "Split Airport" },
         { "name": "Zurich Airport" }
@@ -269,6 +282,7 @@
       "type": "stay",
       "subtype": "hotel",
       "confirmationNumber": "1HHDZLG7",
+      "description": null,
       "locations": [
         {
           "name": "Radisson Hotel Zurich Airport",
@@ -288,6 +302,7 @@
       "type": "travel",
       "subtype": "flight",
       "confirmationNumber": "ACVSKB",
+      "description": null,
       "locations": [
         { "name": "Zurich Airport" },
         { "name": "Chicago O'Hare (ORD)" }

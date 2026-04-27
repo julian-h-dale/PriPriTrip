@@ -41,6 +41,7 @@ SAMPLE_TRIP = {
             "confirmationNumber": None,
             "type": "travel",
             "subtype": "flight",
+            "description": None,
             "locations": [],
             "documents": [{"url": "booking.pdf", "name": "Booking"}],
             "completed": False,
