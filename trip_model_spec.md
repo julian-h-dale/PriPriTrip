@@ -13,7 +13,13 @@ The main modeling choice is to keep the trip items in a flat array while using `
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Trip Timeline Model",
   "type": "object",
-  "required": ["tripId", "tripName", "startDate", "endDate", "items"],
+  "required": [
+    "tripId",
+    "tripName",
+    "startDate",
+    "endDate",
+    "items"
+  ],
   "properties": {
     "tripId": {
       "type": "string",
@@ -52,7 +58,10 @@ The main modeling choice is to keep the trip items in a flat array while using `
   "$defs": {
     "document": {
       "type": "object",
-      "required": ["url", "name"],
+      "required": [
+        "url",
+        "name"
+      ],
       "properties": {
         "url": {
           "type": "string",
@@ -83,12 +92,18 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "description": "Unique identifier for this timeline item."
         },
         "parentItemId": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "The parent timeline item. Null means this item is top-level."
         },
         "kind": {
           "type": "string",
-          "enum": ["group", "leg"],
+          "enum": [
+            "group",
+            "leg"
+          ],
           "description": "Whether this item is a UI grouping container or an actual itinerary leg."
         },
         "title": {
@@ -108,13 +123,31 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "description": "Manual ordering value within a parent group."
         },
         "type": {
-          "type": ["string", "null"],
-          "enum": ["travel", "stay", "activity", null],
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "travel",
+            "stay",
+            "activity",
+            null
+          ],
           "description": "Travel meaning of the item. Usually null for groups."
         },
         "subtype": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "More specific classification of the item."
+        },
+        "confirmationNumber": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reservation or booking confirmation number. Used by leg items for flights, hotels, and other reservations."
         },
         "description": {
           "type": "string"
@@ -144,7 +177,10 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "default": false
         },
         "completedDateTime": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "format": "date-time"
         }
       },
@@ -158,26 +194,33 @@ The main modeling choice is to keep the trip items in a flat array while using `
             }
           },
           "then": {
-            "required": ["type", "subtype", "locations", "completed"],
-            "properties": {
-              "confirmationNumber": {
-                "type": ["string", "null"],
-                "description": "Reservation or booking confirmation number for flights, hotels, etc."
-              }
-            }
+            "required": [
+              "type",
+              "subtype",
+              "locations",
+              "completed"
+            ]
           }
         }
       ]
     },
     "location": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "lat": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "long": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "fullAddress": {
           "type": "string"
@@ -248,26 +291,8 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "completedDateTime": null
     },
     {
-      "itemId": "bern_day_1",
-      "parentItemId": "bern",
-      "kind": "group",
-      "title": "May 11 — Arrival in Bern",
-      "startDateTime": "2026-05-11T14:00:00+02:00",
-      "endDateTime": "2026-05-11T22:00:00+02:00",
-      "sortOrder": 1,
-      "type": null,
-      "subtype": null,
-      "description": "Arrival day with check-in, snacks, old town wandering, and casual dinner.",
-      "imageUrl": "",
-      "logoUrl": "",
-      "locations": [],
-      "documents": [],
-      "completed": false,
-      "completedDateTime": null
-    },
-    {
       "itemId": "zurich_to_bern_train",
-      "parentItemId": "bern_day_1",
+      "parentItemId": "bern",
       "kind": "leg",
       "title": "Train from Zurich Airport to Bern",
       "startDateTime": "2026-05-11T12:15:00+02:00",
@@ -275,16 +300,16 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "sortOrder": 1,
       "type": "travel",
       "subtype": "train",
-      "description": "Rail connection from Zurich Airport to Bern after arrival in Switzerland.",
+      "description": "Rail connection from Zurich Airport to Bern after arrival.",
       "imageUrl": "",
       "logoUrl": "",
       "locations": [
         {
           "lat": 47.4581,
           "long": 8.5555,
-          "fullAddress": "Zurich Airport, 8058 Zürich-Flughafen, Switzerland",
+          "fullAddress": "Zurich Airport, Switzerland",
           "name": "Zurich Airport Station",
-          "description": "Starting point for the train journey.",
+          "description": "",
           "link": ""
         },
         {
@@ -292,7 +317,7 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "long": 7.4391,
           "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland",
           "name": "Bern Station",
-          "description": "Arrival station in Bern.",
+          "description": "",
           "link": ""
         }
       ],
@@ -303,9 +328,9 @@ The main modeling choice is to keep the trip items in a flat array while using `
     },
     {
       "itemId": "bern_hotel_checkin",
-      "parentItemId": "bern_day_1",
+      "parentItemId": "bern",
       "kind": "leg",
-      "title": "Check in at hotel",
+      "title": "Check in at Goldener Hotel",
       "startDateTime": "2026-05-11T14:00:00+02:00",
       "endDateTime": "2026-05-11T15:00:00+02:00",
       "sortOrder": 2,
@@ -337,7 +362,7 @@ The main modeling choice is to keep the trip items in a flat array while using `
     },
     {
       "itemId": "bern_old_town_walk",
-      "parentItemId": "bern_day_1",
+      "parentItemId": "bern",
       "kind": "leg",
       "title": "Bern Old Town walk",
       "startDateTime": "2026-05-11T17:00:00+02:00",
@@ -354,7 +379,7 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "long": 7.4474,
           "fullAddress": "Old City, Bern, Switzerland",
           "name": "Bern Old Town",
-          "description": "Historic center for an easy first-night walk.",
+          "description": "",
           "link": ""
         }
       ],
@@ -364,31 +389,13 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "confirmationNumber": null
     },
     {
-      "itemId": "bern_day_2",
-      "parentItemId": "bern",
-      "kind": "group",
-      "title": "May 12 — La Chaux-de-Fonds day trip",
-      "startDateTime": "2026-05-12T08:00:00+02:00",
-      "endDateTime": "2026-05-12T22:00:00+02:00",
-      "sortOrder": 2,
-      "type": null,
-      "subtype": null,
-      "description": "Watchmaking day trip followed by birthday dinner in Bern.",
-      "imageUrl": "",
-      "logoUrl": "",
-      "locations": [],
-      "documents": [],
-      "completed": false,
-      "completedDateTime": null
-    },
-    {
       "itemId": "watch_museum_visit",
-      "parentItemId": "bern_day_2",
+      "parentItemId": "bern",
       "kind": "leg",
       "title": "International Watch Museum",
       "startDateTime": "2026-05-12T11:00:00+02:00",
       "endDateTime": "2026-05-12T13:00:00+02:00",
-      "sortOrder": 1,
+      "sortOrder": 4,
       "type": "activity",
       "subtype": "museum",
       "description": "Visit the watch museum in La Chaux-de-Fonds.",
@@ -400,7 +407,7 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "long": 6.8328,
           "fullAddress": "La Chaux-de-Fonds, Switzerland",
           "name": "International Watch Museum",
-          "description": "Museum stop focused on horology and watchmaking history.",
+          "description": "",
           "link": ""
         }
       ],
@@ -428,13 +435,105 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "long": 7.9203,
           "fullAddress": "Wengen, Switzerland",
           "name": "Wengen",
-          "description": "Mountain village base for the Alps portion of the trip.",
+          "description": "Mountain village base.",
           "link": ""
         }
       ],
       "documents": [],
       "completed": false,
       "completedDateTime": null
+    },
+    {
+      "itemId": "bern_to_wengen_train",
+      "parentItemId": "wengen",
+      "kind": "leg",
+      "title": "Train to Wengen",
+      "startDateTime": "2026-05-13T12:00:00+02:00",
+      "endDateTime": "2026-05-13T13:45:00+02:00",
+      "sortOrder": 1,
+      "type": "travel",
+      "subtype": "train",
+      "description": "Train from Bern to Lauterbrunnen, then cog railway up to Wengen.",
+      "imageUrl": "",
+      "logoUrl": "",
+      "locations": [
+        {
+          "lat": 46.9489,
+          "long": 7.4391,
+          "fullAddress": "Bern Station",
+          "name": "Bern Station",
+          "description": "",
+          "link": ""
+        },
+        {
+          "lat": 46.6056,
+          "long": 7.9203,
+          "fullAddress": "Wengen, Switzerland",
+          "name": "Wengen Station",
+          "description": "",
+          "link": ""
+        }
+      ],
+      "documents": [],
+      "completed": false,
+      "completedDateTime": null,
+      "confirmationNumber": null
+    },
+    {
+      "itemId": "wengen_hotel_checkin",
+      "parentItemId": "wengen",
+      "kind": "leg",
+      "title": "Check in at Hotel Beausite",
+      "startDateTime": "2026-05-13T14:00:00+02:00",
+      "endDateTime": "2026-05-13T15:00:00+02:00",
+      "sortOrder": 2,
+      "type": "stay",
+      "subtype": "hotel",
+      "description": "Alpine hotel with Jungfrau views.",
+      "imageUrl": "",
+      "logoUrl": "",
+      "locations": [
+        {
+          "lat": 46.6056,
+          "long": 7.9203,
+          "fullAddress": "Hotel Beausite, Wengen, Switzerland",
+          "name": "Hotel Beausite",
+          "description": "",
+          "link": ""
+        }
+      ],
+      "documents": [],
+      "completed": false,
+      "completedDateTime": null,
+      "confirmationNumber": null
+    },
+    {
+      "itemId": "jungfraujoch",
+      "parentItemId": "wengen",
+      "kind": "leg",
+      "title": "Jungfraujoch day trip",
+      "startDateTime": "2026-05-14T08:30:00+02:00",
+      "endDateTime": "2026-05-14T16:00:00+02:00",
+      "sortOrder": 3,
+      "type": "activity",
+      "subtype": "tour",
+      "description": "Day trip to the Top of Europe at 3,454 m.",
+      "imageUrl": "",
+      "logoUrl": "",
+      "locations": [
+        {
+          "lat": 46.5475,
+          "long": 7.9852,
+          "fullAddress": "Jungfraujoch, Switzerland",
+          "name": "Jungfraujoch",
+          "description": "Highest railway station in Europe.",
+          "link": ""
+        }
+      ],
+      "documents": [],
+      "completed": false,
+      "completedDateTime": null,
+      "confirmationNumber": null
     }
   ]
 }
@@ -474,12 +573,12 @@ For example:
 
 ```json
 {
-  "itemId": "bern_day_1",
+  "itemId": "zurich_to_bern_train",
   "parentItemId": "bern"
 }
 ```
 
-This means `bern_day_1` is a child of `bern`.
+This means `zurich_to_bern_train` is a child of `bern`.
 
 This is easier to:
 

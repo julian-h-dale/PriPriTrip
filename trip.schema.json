@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trip Timeline Model",
+  "type": "object",
+  "required": [
+    "tripId",
+    "tripName",
+    "startDate",
+    "endDate",
+    "items"
+  ],
+  "properties": {
+    "tripId": {
+      "type": "string",
+      "description": "Unique identifier for the trip."
+    },
+    "tripName": {
+      "type": "string",
+      "description": "Human-readable name of the trip."
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Trip start date in ISO 8601 date format."
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Trip end date in ISO 8601 date format."
+    },
+    "documents": {
+      "type": "array",
+      "description": "Trip-level documents such as flight confirmations, hotel bookings, or travel insurance.",
+      "items": {
+        "$ref": "#/$defs/document"
+      },
+      "default": []
+    },
+    "items": {
+      "type": "array",
+      "description": "Flat list of groups and itinerary legs. Hierarchy is represented with parentItemId.",
+      "items": {
+        "$ref": "#/$defs/tripItem"
+      }
+    }
+  },
+  "$defs": {
+    "document": {
+      "type": "object",
+      "required": [
+        "url",
+        "name"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "tripItem": {
+      "type": "object",
+      "required": [
+        "itemId",
+        "kind",
+        "title",
+        "startDateTime",
+        "endDateTime",
+        "parentItemId",
+        "sortOrder"
+      ],
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "description": "Unique identifier for this timeline item."
+        },
+        "parentItemId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The parent timeline item. Null means this item is top-level."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "group",
+            "leg"
+          ],
+          "description": "Whether this item is a UI grouping container or an actual itinerary leg."
+        },
+        "title": {
+          "type": "string"
+        },
+        "startDateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Manual ordering value within a parent group."
+        },
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "travel",
+            "stay",
+            "activity",
+            null
+          ],
+          "description": "Travel meaning of the item. Usually null for groups."
+        },
+        "subtype": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "More specific classification of the item."
+        },
+        "confirmationNumber": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reservation or booking confirmation number. Used by leg items for flights, hotels, and other reservations."
+        },
+        "description": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string"
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/location"
+          },
+          "default": []
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/document"
+          },
+          "default": []
+        },
+        "completed": {
+          "type": "boolean",
+          "default": false
+        },
+        "completedDateTime": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "leg"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "type",
+              "subtype",
+              "locations",
+              "completed"
+            ]
+          }
+        }
+      ]
+    },
+    "location": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "lat": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "long": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "fullAddress": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
