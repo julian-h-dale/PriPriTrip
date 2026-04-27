@@ -6,9 +6,10 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
-import { Box, Chip, Collapse, Typography } from '@mui/material';
+import { Box, Chip, Collapse, IconButton, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 
+import EditIcon from '@mui/icons-material/Edit';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
@@ -51,7 +52,7 @@ function getSubtypeIcon(subtype) {
   return SUBTYPE_ICON_MAP[subtype?.toLowerCase()] ?? PlaceIcon;
 }
 
-export default function LegTimelineItem({ item, isFirst, isLast }) {
+export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
   const [open, setOpen] = useState(false);
   const SubtypeIcon = getSubtypeIcon(item.subtype);
 
@@ -82,9 +83,20 @@ export default function LegTimelineItem({ item, isFirst, isLast }) {
       </TimelineSeparator>
 
       <TimelineContent sx={{ py: '10px', px: 2 }}>
-        <Typography variant="body2" fontWeight={500}>
-          {item.title}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="body2" fontWeight={500}>
+            {item.title}
+          </Typography>
+          {onEdit && (
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+              sx={{ ml: 0.5, opacity: 0.45, '&:hover': { opacity: 1 } }}
+            >
+              <EditIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+        </Box>
 
         <Collapse in={open} unmountOnExit>
           <Box

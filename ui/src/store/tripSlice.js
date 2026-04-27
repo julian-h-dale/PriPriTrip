@@ -43,6 +43,16 @@ const tripSlice = createSlice({
       state.error = null;
       if (state.status === 'error') state.status = 'idle';
     },
+    upsertItem(state, action) {
+      if (!state.data) return;
+      const item = action.payload;
+      const idx = state.data.items.findIndex((i) => i.itemId === item.itemId);
+      if (idx >= 0) {
+        state.data.items[idx] = item;
+      } else {
+        state.data.items.push(item);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -72,7 +82,7 @@ const tripSlice = createSlice({
   },
 });
 
-export const { setTrip, clearError } = tripSlice.actions;
+export const { setTrip, clearError, upsertItem } = tripSlice.actions;
 
 export const selectTrip = (state) => state.trip.data;
 export const selectTripStatus = (state) => state.trip.status;

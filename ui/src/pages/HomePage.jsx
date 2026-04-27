@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Alert,
@@ -9,13 +9,20 @@ import {
   CircularProgress,
   Container,
   Snackbar,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
   Toolbar,
   Typography,
 } from '@mui/material';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import ExploreIcon from '@mui/icons-material/Explore';
 import SaveIcon from '@mui/icons-material/Save';
+import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import Timeline from '../components/Timeline/Timeline';
+import GroupForm from '../components/Forms/GroupForm';
+import LegForm from '../components/Forms/LegForm';
 import {
   fetchTrip,
   saveTrip,
@@ -32,6 +39,12 @@ export default function HomePage() {
   const status = useSelector(selectTripStatus);
   const error = useSelector(selectTripError);
   const isOnline = useOnlineStatus();
+
+  const [groupFormOpen, setGroupFormOpen] = useState(false);
+  const [groupFormItem, setGroupFormItem] = useState(null);
+  const [legFormOpen, setLegFormOpen] = useState(false);
+  const [legFormItem, setLegFormItem] = useState(null);
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchTrip());
@@ -94,7 +107,14 @@ export default function HomePage() {
             </Alert>
           </Box>
         )}
-        {trip && <Timeline />}
+        {trip && (
+          <Timeline
+            onEditGroup={(item) => { setGroupFormItem(item); setGroupFormOpen(true); }}
+            onEditLeg={(item) => { setLegFormItem(item); setLegFormOpen(true); }}
+            expandedGroupId={expandedGroupId}
+            onExpandedGroupChange={setExpandedGroupId}
+          />
+        )}
       </Container>
 
       <Snackbar
@@ -111,6 +131,42 @@ export default function HomePage() {
           {error ?? 'Failed to save trip.'}
         </Alert>
       </Snackbar>
+
+      {trip && (
+        <SpeedDial
+          ariaLabel="Add itinerary item"
+          sx={{ position: 'fixed', bottom: 24, right: 16 }}
+          icon={<SpeedDialIcon />}
+        >
+          <SpeedDialAction
+            icon={<AddLocationAltIcon />}
+            tooltipTitle="Add Leg"
+            onClick={() => { setLegFormItem(null); setLegFormOpen(true); }}
+          />
+          <SpeedDialAction
+            icon={<CreateNewFolderIcon />}
+            tooltipTitle="Add Group"
+            onClick={() => { setGroupFormItem(null); setGroupFormOpen(true); }}
+          />
+        </SpeedDial>
+      )}
+
+      <GroupForm
+        open={groupFormOpen}
+        item={groupFormItem}
+        onClose={(saved) => {
+          setGroupFormOpen(false);
+          if (saved) setExpandedGroupId(saved.itemId);
+        }}
+      />
+      <LegForm
+        open={legFormOpen}
+        item={legFormItem}
+        onClose={(saved) => {
+          setLegFormOpen(false);
+          if (saved?.parentItemId) setExpandedGroupId(saved.parentItemId);
+        }}
+      />
     </Box>
   );
 }

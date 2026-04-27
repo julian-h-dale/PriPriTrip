@@ -411,6 +411,6 @@ curl -s "$FUNC_URL/trip" \
 | 3 | Auth integration — LoginPage, Axios interceptor, 401 redirect | ✅ Done |
 | 4 | Read/write from blob — wire API calls, Save button | ✅ Done |
 | 5 | PWA / offline support — service worker, IndexedDB cache | ✅ Done |
-| 6 | Input forms — GroupForm, LegForm | Not started |
+| 6 | Input forms — GroupForm, LegForm | ✅ Done |
 | 7 | Documents page — SAS URL links | Not started |
 | 8 | Maps — Google Maps embed, location pins | Not started |

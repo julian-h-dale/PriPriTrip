@@ -5,13 +5,14 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
-import { Typography } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
 import CircleIcon from '@mui/icons-material/Circle';
+import EditIcon from '@mui/icons-material/Edit';
 import dayjs from 'dayjs';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
-export default function GroupTimelineItem({ item, isFirst, isLast, onToggle }) {
+export default function GroupTimelineItem({ item, isFirst, isLast, onToggle, onEdit }) {
   return (
     <MotionTimelineItem
       layout
@@ -39,14 +40,27 @@ export default function GroupTimelineItem({ item, isFirst, isLast, onToggle }) {
       </TimelineSeparator>
 
       <TimelineContent sx={{ py: '10px', px: 2 }}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          {item.title}
-        </Typography>
-        {item.description && (
-          <Typography variant="body2" color="text.secondary">
-            {item.description}
-          </Typography>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {item.title}
+            </Typography>
+            {item.description && (
+              <Typography variant="body2" color="text.secondary">
+                {item.description}
+              </Typography>
+            )}
+          </Box>
+          {onEdit && (
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+              sx={{ ml: 0.5, mt: -0.25, opacity: 0.45, '&:hover': { opacity: 1 } }}
+            >
+              <EditIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+        </Box>
       </TimelineContent>
     </MotionTimelineItem>
   );

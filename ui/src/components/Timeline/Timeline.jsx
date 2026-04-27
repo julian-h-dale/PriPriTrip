@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence } from 'framer-motion';
 import MuiTimeline from '@mui/lab/Timeline';
@@ -9,20 +8,19 @@ import { selectTrip } from '../../store/tripSlice';
 import GroupTimelineItem from './GroupTimelineItem';
 import LegTimelineItem from './LegTimelineItem';
 
-export default function Timeline() {
+export default function Timeline({ onEditGroup, onEditLeg, expandedGroupId, onExpandedGroupChange }) {
   const trip = useSelector(selectTrip);
-  const [expandedGroupId, setExpandedGroupId] = useState(null);
 
   if (!trip) return null;
 
   const topGroups = trip.items
     .filter((i) => i.parentItemId === null && i.kind === 'group')
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+    .sort((a, b) => dayjs(a.startDateTime) - dayjs(b.startDateTime));
 
   const getChildren = (groupId) =>
     trip.items
       .filter((i) => i.parentItemId === groupId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .sort((a, b) => dayjs(a.startDateTime) - dayjs(b.startDateTime));
 
   // Flat render list: groups always present, legs spliced in after their parent when expanded
   const renderItems = [];
@@ -66,8 +64,9 @@ export default function Timeline() {
                 isFirst={isFirst}
                 isLast={isLast}
                 onToggle={() =>
-                  setExpandedGroupId((prev) => (prev === item.itemId ? null : item.itemId))
+                  onExpandedGroupChange(expandedGroupId === item.itemId ? null : item.itemId)
                 }
+                onEdit={onEditGroup}
               />
             ) : (
               <LegTimelineItem
@@ -75,6 +74,7 @@ export default function Timeline() {
                 item={item}
                 isFirst={isFirst}
                 isLast={isLast}
+                onEdit={onEditLeg}
               />
             );
           })}
