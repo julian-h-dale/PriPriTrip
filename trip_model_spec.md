@@ -107,11 +107,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
           "minimum": 1,
           "description": "Manual ordering value within a parent group."
         },
-        "collapsedByDefault": {
-          "type": "boolean",
-          "description": "Whether this item should initially render collapsed in the UI.",
-          "default": false
-        },
         "type": {
           "type": ["string", "null"],
           "enum": ["travel", "stay", "activity", null],
@@ -163,7 +158,13 @@ The main modeling choice is to keep the trip items in a flat array while using `
             }
           },
           "then": {
-            "required": ["type", "subtype", "locations", "completed"]
+            "required": ["type", "subtype", "locations", "completed"],
+            "properties": {
+              "confirmationNumber": {
+                "type": ["string", "null"],
+                "description": "Reservation or booking confirmation number for flights, hotels, etc."
+              }
+            }
           }
         }
       ]
@@ -227,7 +228,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-11T14:00:00+02:00",
       "endDateTime": "2026-05-13T10:00:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": null,
       "subtype": null,
       "description": "First stop in Switzerland before heading into the Alps.",
@@ -255,7 +255,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-11T14:00:00+02:00",
       "endDateTime": "2026-05-11T22:00:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": null,
       "subtype": null,
       "description": "Arrival day with check-in, snacks, old town wandering, and casual dinner.",
@@ -274,7 +273,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-11T12:15:00+02:00",
       "endDateTime": "2026-05-11T13:45:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": "travel",
       "subtype": "train",
       "description": "Rail connection from Zurich Airport to Bern after arrival in Switzerland.",
@@ -300,7 +298,8 @@ The main modeling choice is to keep the trip items in a flat array while using `
       ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "bern_hotel_checkin",
@@ -310,7 +309,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-11T14:00:00+02:00",
       "endDateTime": "2026-05-11T15:00:00+02:00",
       "sortOrder": 2,
-      "collapsedByDefault": false,
       "type": "stay",
       "subtype": "hotel",
       "description": "Drop bags and settle in before exploring Bern.",
@@ -334,7 +332,8 @@ The main modeling choice is to keep the trip items in a flat array while using `
         }
       ],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "bern_old_town_walk",
@@ -344,7 +343,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-11T17:00:00+02:00",
       "endDateTime": "2026-05-11T19:00:00+02:00",
       "sortOrder": 3,
-      "collapsedByDefault": false,
       "type": "activity",
       "subtype": "walk",
       "description": "Casual evening stroll through Bern Old Town before dinner.",
@@ -362,7 +360,8 @@ The main modeling choice is to keep the trip items in a flat array while using `
       ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "bern_day_2",
@@ -372,7 +371,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-12T08:00:00+02:00",
       "endDateTime": "2026-05-12T22:00:00+02:00",
       "sortOrder": 2,
-      "collapsedByDefault": false,
       "type": null,
       "subtype": null,
       "description": "Watchmaking day trip followed by birthday dinner in Bern.",
@@ -391,7 +389,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-12T11:00:00+02:00",
       "endDateTime": "2026-05-12T13:00:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": "activity",
       "subtype": "museum",
       "description": "Visit the watch museum in La Chaux-de-Fonds.",
@@ -409,7 +406,8 @@ The main modeling choice is to keep the trip items in a flat array while using `
       ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "wengen",
@@ -419,7 +417,6 @@ The main modeling choice is to keep the trip items in a flat array while using `
       "startDateTime": "2026-05-13T14:00:00+02:00",
       "endDateTime": "2026-05-15T10:00:00+02:00",
       "sortOrder": 2,
-      "collapsedByDefault": false,
       "type": null,
       "subtype": null,
       "description": "Alpine stay in the Jungfrau region.",

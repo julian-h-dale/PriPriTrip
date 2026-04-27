@@ -112,6 +112,13 @@ export default function LegTimelineItem({ item, isFirst, isLast }) {
               />
             )}
 
+            {/* Confirmation number */}
+            {item.confirmationNumber && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+                Confirmation: <Box component="span" sx={{ color: 'text.primary', fontWeight: 500 }}>{item.confirmationNumber}</Box>
+              </Typography>
+            )}
+
             {/* Description */}
             {item.description && (
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>

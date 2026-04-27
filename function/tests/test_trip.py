@@ -41,7 +41,7 @@ SAMPLE_TRIP = {
             "startDateTime": "2026-05-10T10:00:00Z",
             "endDateTime": "2026-05-10T18:00:00Z",
             "sortOrder": 1,
-            "collapsedByDefault": False,
+            "confirmationNumber": None,
             "type": "travel",
             "subtype": "flight",
             "locations": [],

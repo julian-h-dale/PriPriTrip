@@ -24,13 +24,21 @@
       "startDateTime": "2026-05-11T14:00:00+02:00",
       "endDateTime": "2026-05-13T10:00:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": null,
       "subtype": null,
       "description": "First stop in Switzerland before heading into the Alps.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": 46.948, "long": 7.4474, "fullAddress": "Bern, Switzerland", "name": "Bern", "description": "Swiss capital and old town base.", "link": ""}],
+      "locations": [
+        {
+          "lat": 46.948,
+          "long": 7.4474,
+          "fullAddress": "Bern, Switzerland",
+          "name": "Bern",
+          "description": "Swiss capital and old town base.",
+          "link": ""
+        }
+      ],
       "documents": [],
       "completed": false,
       "completedDateTime": null
@@ -43,19 +51,33 @@
       "startDateTime": "2026-05-11T12:15:00+02:00",
       "endDateTime": "2026-05-11T13:45:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": "travel",
       "subtype": "train",
       "description": "Rail connection from Zurich Airport to Bern after arrival.",
       "imageUrl": "",
       "logoUrl": "",
       "locations": [
-        {"lat": 47.4581, "long": 8.5555, "fullAddress": "Zurich Airport, Switzerland", "name": "Zurich Airport Station", "description": "", "link": ""},
-        {"lat": 46.9489, "long": 7.4391, "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland", "name": "Bern Station", "description": "", "link": ""}
+        {
+          "lat": 47.4581,
+          "long": 8.5555,
+          "fullAddress": "Zurich Airport, Switzerland",
+          "name": "Zurich Airport Station",
+          "description": "",
+          "link": ""
+        },
+        {
+          "lat": 46.9489,
+          "long": 7.4391,
+          "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland",
+          "name": "Bern Station",
+          "description": "",
+          "link": ""
+        }
       ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "bern_hotel_checkin",
@@ -65,16 +87,31 @@
       "startDateTime": "2026-05-11T14:00:00+02:00",
       "endDateTime": "2026-05-11T15:00:00+02:00",
       "sortOrder": 2,
-      "collapsedByDefault": false,
       "type": "stay",
       "subtype": "hotel",
       "description": "Drop bags and settle in before exploring Bern.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": null, "long": null, "fullAddress": "", "name": "Goldener Hotel", "description": "Bern hotel stay.", "link": ""}],
-      "documents": [{"url": "https://example.com/bern-hotel-booking", "name": "Bern Hotel Booking", "description": "Hotel reservation details for Bern."}],
+      "locations": [
+        {
+          "lat": null,
+          "long": null,
+          "fullAddress": "",
+          "name": "Goldener Hotel",
+          "description": "Bern hotel stay.",
+          "link": ""
+        }
+      ],
+      "documents": [
+        {
+          "url": "https://example.com/bern-hotel-booking",
+          "name": "Bern Hotel Booking",
+          "description": "Hotel reservation details for Bern."
+        }
+      ],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "bern_old_town_walk",
@@ -84,16 +121,25 @@
       "startDateTime": "2026-05-11T17:00:00+02:00",
       "endDateTime": "2026-05-11T19:00:00+02:00",
       "sortOrder": 3,
-      "collapsedByDefault": false,
       "type": "activity",
       "subtype": "walk",
       "description": "Casual evening stroll through Bern Old Town before dinner.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": 46.948, "long": 7.4474, "fullAddress": "Old City, Bern, Switzerland", "name": "Bern Old Town", "description": "", "link": ""}],
+      "locations": [
+        {
+          "lat": 46.948,
+          "long": 7.4474,
+          "fullAddress": "Old City, Bern, Switzerland",
+          "name": "Bern Old Town",
+          "description": "",
+          "link": ""
+        }
+      ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "watch_museum_visit",
@@ -103,16 +149,25 @@
       "startDateTime": "2026-05-12T11:00:00+02:00",
       "endDateTime": "2026-05-12T13:00:00+02:00",
       "sortOrder": 4,
-      "collapsedByDefault": false,
       "type": "activity",
       "subtype": "museum",
       "description": "Visit the watch museum in La Chaux-de-Fonds.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": 47.1035, "long": 6.8328, "fullAddress": "La Chaux-de-Fonds, Switzerland", "name": "International Watch Museum", "description": "", "link": ""}],
+      "locations": [
+        {
+          "lat": 47.1035,
+          "long": 6.8328,
+          "fullAddress": "La Chaux-de-Fonds, Switzerland",
+          "name": "International Watch Museum",
+          "description": "",
+          "link": ""
+        }
+      ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "wengen",
@@ -122,13 +177,21 @@
       "startDateTime": "2026-05-13T14:00:00+02:00",
       "endDateTime": "2026-05-15T10:00:00+02:00",
       "sortOrder": 2,
-      "collapsedByDefault": false,
       "type": null,
       "subtype": null,
       "description": "Alpine stay in the Jungfrau region.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": 46.6056, "long": 7.9203, "fullAddress": "Wengen, Switzerland", "name": "Wengen", "description": "Mountain village base.", "link": ""}],
+      "locations": [
+        {
+          "lat": 46.6056,
+          "long": 7.9203,
+          "fullAddress": "Wengen, Switzerland",
+          "name": "Wengen",
+          "description": "Mountain village base.",
+          "link": ""
+        }
+      ],
       "documents": [],
       "completed": false,
       "completedDateTime": null
@@ -141,19 +204,33 @@
       "startDateTime": "2026-05-13T12:00:00+02:00",
       "endDateTime": "2026-05-13T13:45:00+02:00",
       "sortOrder": 1,
-      "collapsedByDefault": false,
       "type": "travel",
       "subtype": "train",
       "description": "Train from Bern to Lauterbrunnen, then cog railway up to Wengen.",
       "imageUrl": "",
       "logoUrl": "",
       "locations": [
-        {"lat": 46.9489, "long": 7.4391, "fullAddress": "Bern Station", "name": "Bern Station", "description": "", "link": ""},
-        {"lat": 46.6056, "long": 7.9203, "fullAddress": "Wengen, Switzerland", "name": "Wengen Station", "description": "", "link": ""}
+        {
+          "lat": 46.9489,
+          "long": 7.4391,
+          "fullAddress": "Bern Station",
+          "name": "Bern Station",
+          "description": "",
+          "link": ""
+        },
+        {
+          "lat": 46.6056,
+          "long": 7.9203,
+          "fullAddress": "Wengen, Switzerland",
+          "name": "Wengen Station",
+          "description": "",
+          "link": ""
+        }
       ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "wengen_hotel_checkin",
@@ -163,16 +240,25 @@
       "startDateTime": "2026-05-13T14:00:00+02:00",
       "endDateTime": "2026-05-13T15:00:00+02:00",
       "sortOrder": 2,
-      "collapsedByDefault": false,
       "type": "stay",
       "subtype": "hotel",
       "description": "Alpine hotel with Jungfrau views.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": 46.6056, "long": 7.9203, "fullAddress": "Hotel Beausite, Wengen, Switzerland", "name": "Hotel Beausite", "description": "", "link": ""}],
+      "locations": [
+        {
+          "lat": 46.6056,
+          "long": 7.9203,
+          "fullAddress": "Hotel Beausite, Wengen, Switzerland",
+          "name": "Hotel Beausite",
+          "description": "",
+          "link": ""
+        }
+      ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     },
     {
       "itemId": "jungfraujoch",
@@ -182,16 +268,25 @@
       "startDateTime": "2026-05-14T08:30:00+02:00",
       "endDateTime": "2026-05-14T16:00:00+02:00",
       "sortOrder": 3,
-      "collapsedByDefault": false,
       "type": "activity",
       "subtype": "tour",
       "description": "Day trip to the Top of Europe at 3,454 m.",
       "imageUrl": "",
       "logoUrl": "",
-      "locations": [{"lat": 46.5475, "long": 7.9852, "fullAddress": "Jungfraujoch, Switzerland", "name": "Jungfraujoch", "description": "Highest railway station in Europe.", "link": ""}],
+      "locations": [
+        {
+          "lat": 46.5475,
+          "long": 7.9852,
+          "fullAddress": "Jungfraujoch, Switzerland",
+          "name": "Jungfraujoch",
+          "description": "Highest railway station in Europe.",
+          "link": ""
+        }
+      ],
       "documents": [],
       "completed": false,
-      "completedDateTime": null
+      "completedDateTime": null,
+      "confirmationNumber": null
     }
   ]
 }

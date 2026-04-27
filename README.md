@@ -199,6 +199,38 @@ curl -s -X PUT http://localhost:7071/api/trip \
 
 ---
 
+## Running the UI Locally (Phase 4+)
+
+The UI dev server and the function must run simultaneously. Vite proxies all `/api` requests to the function — no environment variables are needed for local dev.
+
+### Step 1 — Install UI dependencies (first time only)
+
+```bash
+cd ui
+npm ci
+```
+
+### Step 2 — Start both servers
+
+Terminal 1 — function backend (Azurite must already be running per Section 1):
+
+```bash
+cd function
+source .venv/bin/activate
+func start
+```
+
+Terminal 2 — Vite dev server:
+
+```bash
+cd ui
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Log in with the password from `local.settings.json` (default: `honeymoon`). The trip is loaded live from Azurite on every page load. The **Save** button in the app bar writes the current trip JSON back to blob storage.
+
+---
+
 ## Section 2 — Running Tests
 
 No live Azure or Azurite connection required — all tests use mocks.
@@ -336,7 +368,7 @@ TOKEN="<paste token>"
 
 # Read trip
 curl -s "$FUNC_URL/trip" \
-  -H "Authorization: Bearer $TOKEN" | jq .keys
+  -H "Authorization: Bearer $TOKEN" | jq 'keys'
 ```
 
 ---
@@ -373,9 +405,9 @@ curl -s "$FUNC_URL/trip" \
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Function backend (auth, trip read/write, blob, tests) | ✅ Done |
-| 2 | UI POC — Vite + React + MUI timeline with fixture data | Not started |
-| 3 | Auth integration — LoginPage, Axios interceptor, 401 redirect | Not started |
-| 4 | Read/write from blob — wire API calls, Save button | Not started |
+| 2 | UI POC — Vite + React + MUI timeline with fixture data | ✅ Done |
+| 3 | Auth integration — LoginPage, Axios interceptor, 401 redirect | ✅ Done |
+| 4 | Read/write from blob — wire API calls, Save button | ✅ Done |
 | 5 | PWA / offline support — service worker, IndexedDB cache | Not started |
 | 6 | Input forms — GroupForm, LegForm | Not started |
 | 7 | Documents page — SAS URL links | Not started |

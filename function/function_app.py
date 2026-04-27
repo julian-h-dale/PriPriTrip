@@ -38,7 +38,7 @@ class TripItemModel(BaseModel):
     startDateTime: str
     endDateTime: str
     sortOrder: int
-    collapsedByDefault: bool = False
+    confirmationNumber: Optional[str] = None
     type: Optional[Literal["travel", "stay", "activity"]] = None
     subtype: Optional[str] = None
     description: Optional[str] = None
