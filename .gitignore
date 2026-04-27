@@ -1,0 +1,45 @@
+# Terraform
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+
+# Azure Functions local config
+function/local.settings.json
+function/.python_packages/
+function/__pycache__/
+function/**/__pycache__/
+function/.venv/
+function/tests/__pycache__/
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend (Phase 2+)
+ui/node_modules/
+ui/dist/
+ui/.env.local
+ui/.env
+
+# Azurite local emulator data
+__azurite_db_blob__.json
+__azurite_db_blob_extent__.json
+__azurite_db_queue__.json
+__azurite_db_queue_extent__.json
+__azurite_db_table__.json
+__azurite_db_table_extent__.json
+.azurite/
+AzuriteConfig
+**/__blobstorage__/**
+# OS
+.DS_Store
+Thumbs.db

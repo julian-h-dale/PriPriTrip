@@ -1,0 +1,4 @@
+azure-functions
+azure-storage-blob
+azure-identity
+pydantic>=2.0

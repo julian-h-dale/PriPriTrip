@@ -1,0 +1,12 @@
+### POST - Authentication
+POST http://localhost:7071/api/auth
+Content-Type: application/json
+
+{
+    "password": "honeymoon"
+}
+
+### GET - Retrieve Trip
+GET http://localhost:7071/api/trip
+Content-Type: application/json
+Authorization: Bearer 521e0c41c02bbd0808dbc0c633d86652a0e6efaed5faf39535b8b6197ca63a9d
