@@ -413,4 +413,4 @@ curl -s "$FUNC_URL/trip" \
 | 5 | PWA / offline support — service worker, IndexedDB cache | ✅ Done |
 | 6 | Input forms — GroupForm, LegForm | ✅ Done |
 | 7 | Documents page — SAS URL links | Not started |
-| 8 | Maps — Google Maps embed, location pins | Not started |
+| 8 | Maps — native Google Maps deep-links from location rows | ✅ Done |

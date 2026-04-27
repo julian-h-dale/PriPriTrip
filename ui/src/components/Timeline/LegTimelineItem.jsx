@@ -10,6 +10,7 @@ import { Box, Chip, Collapse, IconButton, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 
 import EditIcon from '@mui/icons-material/Edit';
+import MapIcon from '@mui/icons-material/Map';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
@@ -50,6 +51,41 @@ const SUBTYPE_ICON_MAP = {
 
 function getSubtypeIcon(subtype) {
   return SUBTYPE_ICON_MAP[subtype?.toLowerCase()] ?? PlaceIcon;
+}
+
+function mapsUrl(loc) {
+  if (loc.lat != null && loc.long != null) {
+    return `https://maps.google.com/?q=${loc.lat},${loc.long}`;
+  }
+  const query = loc.fullAddress || loc.name;
+  return query ? `https://maps.google.com/?q=${encodeURIComponent(query)}` : null;
+}
+
+function LocationRow({ label, loc }) {
+  const url = mapsUrl(loc);
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+      <Typography variant="caption" display="block">
+        {label && (
+          <Box component="span" sx={{ color: 'text.secondary', mr: 0.5 }}>{label}</Box>
+        )}
+        {loc.name}
+      </Typography>
+      {url && (
+        <IconButton
+          size="small"
+          component="a"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1 } }}
+        >
+          <MapIcon sx={{ fontSize: 13 }} />
+        </IconButton>
+      )}
+    </Box>
+  );
 }
 
 export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
@@ -143,19 +179,11 @@ export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
               <Box>
                 {item.type === 'travel' && item.locations.length >= 2 ? (
                   <>
-                    <Typography variant="caption" display="block">
-                      <Box component="span" sx={{ color: 'text.secondary', mr: 0.5 }}>From</Box>
-                      {item.locations[0].name}
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                      <Box component="span" sx={{ color: 'text.secondary', mr: 0.5 }}>To</Box>
-                      {item.locations[item.locations.length - 1].name}
-                    </Typography>
+                    <LocationRow label="From" loc={item.locations[0]} />
+                    <LocationRow label="To" loc={item.locations[item.locations.length - 1]} />
                   </>
                 ) : (
-                  <Typography variant="caption" display="block">
-                    {item.locations[0].name}
-                  </Typography>
+                  <LocationRow loc={item.locations[0]} />
                 )}
               </Box>
             )}
