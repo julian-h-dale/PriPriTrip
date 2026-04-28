@@ -398,7 +398,77 @@ curl -s "$FUNC_URL/trip" \
 | Terraform remote state backend | Manual `az` commands (Section 3a above) |
 | Initial `trip.json` blob | Manual upload (Section 3f above) |
 | Document files in `documents` container | Upload manually via Azure Portal or `az storage blob upload` |
-| GitHub Actions secrets | Set in repo Settings → Secrets: `AZURE_STATIC_WEB_APPS_API_TOKEN`, `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` |
+| GitHub Actions secrets | Set in repo Settings → Secrets and variables → Actions (see Section 4 below) |
+
+---
+
+## Section 4 — CI/CD (GitHub Actions)
+
+Two workflows live in `.github/workflows/`.
+
+| Workflow | File | Trigger |
+|----------|------|---------|
+| Deploy Static Web App | `deploy-swa.yml` | Push to `main` touching `ui/**`, or manually |
+| Upload trip.json | `upload-trip-json.yml` | Push to `main` touching `data/trip.json`, or manually |
+
+### Required secrets
+
+Set these in **repo Settings → Secrets and variables → Actions**.
+
+| Secret | Used by | How to get it |
+|--------|---------|---------------|
+| `SWA_DEPLOYMENT_TOKEN` | `deploy-swa.yml` | `az staticwebapp secrets list --name swa-pripritrip-prod --resource-group rsg-pripritrip-prod --query "properties.apiKey" -o tsv` |
+| `VITE_API_URL` | `deploy-swa.yml` | `https://func-pripritrip-prod.azurewebsites.net/api` (or `terraform output -raw function_app_url`) |
+| `AZURE_CLIENT_ID` | `upload-trip-json.yml` | Client ID of the Entra app registration used for federated OIDC |
+| `AZURE_TENANT_ID` | `upload-trip-json.yml` | `az account show --query tenantId -o tsv` |
+| `AZURE_SUBSCRIPTION_ID` | `upload-trip-json.yml` | `az account show --query id -o tsv` |
+| `AZURE_STORAGE_ACCOUNT_NAME` | `upload-trip-json.yml` | `stpripritripprod` (or `terraform output -raw storage_account_name`) |
+
+### RBAC — grant the OIDC identity access to blob storage
+
+The federated app registration needs Storage Blob Data Contributor on the storage account so `upload-trip-json.yml` can write blobs without a connection string.
+
+```bash
+# Get the service principal object ID for the app registration
+OBJECT_ID=$(az ad sp show --id "<AZURE_CLIENT_ID>" --query id -o tsv)
+
+STORAGE_ID=$(az storage account show \
+  --name stpripritripprod \
+  --resource-group rsg-pripritrip-prod \
+  --query id -o tsv)
+
+az role assignment create \
+  --assignee-object-id "$OBJECT_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Storage Blob Data Contributor" \
+  --scope "$STORAGE_ID"
+```
+
+### Adding this repository to the federated Entra app
+
+GitHub OIDC works by GitHub minting a short-lived JWT for the running workflow and Azure validating it against a federated credential record on the app registration. You need one credential record per repo + entity (branch, environment, tag, or PR).
+
+**Steps in the Azure Portal:**
+
+1. Open **Microsoft Entra ID** → **App registrations** → find and click the existing shared app.
+2. In the left nav click **Certificates & secrets**, then the **Federated credentials** tab.
+3. Click **+ Add credential**.
+4. Under *Federated credential scenario* select **GitHub Actions deploying Azure resources**.
+5. Fill in the fields:
+
+   | Field | Value |
+   |-------|-------|
+   | Organization | Your GitHub org or username (e.g. `juliangregg`) |
+   | Repository | `PriPriTrip` |
+   | Entity type | `Branch` |
+   | GitHub branch name | `main` |
+   | Name | Any unique label, e.g. `PriPriTrip-main` |
+
+6. Click **Add**.
+
+The credential is active immediately — no restart needed. If you want `workflow_dispatch` runs from non-`main` branches to also authenticate, add a second credential for that branch, or switch the entity type to **Environment** and use GitHub Environments for tighter control.
+
+> **Why one record per repo?** The OIDC subject claim includes the repository name (`repo:org/PriPriTrip:ref:refs/heads/main`). Azure rejects tokens whose subject doesn't match any credential on the app registration, so each repo needs its own entry even when sharing the same app registration.
 
 ---
 
