@@ -1,26 +1,30 @@
+import { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence } from 'framer-motion';
 import MuiTimeline from '@mui/lab/Timeline';
 import { timelineOppositeContentClasses } from '@mui/lab/TimelineOppositeContent';
 import { useSelector } from 'react-redux';
-import dayjs from 'dayjs';
+import dayjs from '../../utils/dayjs';
+import { TRIP_TZ } from '../../utils/dayjs';
 import { selectTrip } from '../../store/tripSlice';
 import GroupTimelineItem from './GroupTimelineItem';
 import LegTimelineItem from './LegTimelineItem';
+import LegDetailSheet from './LegDetailSheet';
 
 export default function Timeline({ onEditGroup, onEditLeg, expandedGroupId, onExpandedGroupChange }) {
   const trip = useSelector(selectTrip);
+  const [selectedLeg, setSelectedLeg] = useState(null);
 
   if (!trip) return null;
 
   const topGroups = trip.items
     .filter((i) => i.parentItemId === null && i.kind === 'group')
-    .sort((a, b) => dayjs(a.startDateTime) - dayjs(b.startDateTime));
+    .sort((a, b) => dayjs(a.startDateTime).tz(TRIP_TZ) - dayjs(b.startDateTime).tz(TRIP_TZ));
 
   const getChildren = (groupId) =>
     trip.items
       .filter((i) => i.parentItemId === groupId)
-      .sort((a, b) => dayjs(a.startDateTime) - dayjs(b.startDateTime));
+      .sort((a, b) => dayjs(a.startDateTime).tz(TRIP_TZ) - dayjs(b.startDateTime).tz(TRIP_TZ));
 
   // Flat render list: groups always present, legs spliced in after their parent when expanded
   const renderItems = [];
@@ -74,12 +78,19 @@ export default function Timeline({ onEditGroup, onEditLeg, expandedGroupId, onEx
                 item={item}
                 isFirst={isFirst}
                 isLast={isLast}
+                onSelect={setSelectedLeg}
                 onEdit={onEditLeg}
               />
             );
           })}
         </AnimatePresence>
       </MuiTimeline>
+
+      <LegDetailSheet
+        item={selectedLeg}
+        onClose={() => setSelectedLeg(null)}
+        onEdit={onEditLeg}
+      />
     </Box>
   );
 }

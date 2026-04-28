@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import TimelineItem from '@mui/lab/TimelineItem';
 import TimelineSeparator from '@mui/lab/TimelineSeparator';
@@ -6,11 +5,11 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
-import { Box, Chip, Collapse, IconButton, Typography } from '@mui/material';
-import dayjs from 'dayjs';
+import { Box, IconButton, Typography } from '@mui/material';
+import dayjs from '../../utils/dayjs';
+import { TRIP_TZ } from '../../utils/dayjs';
 
 import EditIcon from '@mui/icons-material/Edit';
-import MapIcon from '@mui/icons-material/Map';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
@@ -53,43 +52,7 @@ function getSubtypeIcon(subtype) {
   return SUBTYPE_ICON_MAP[subtype?.toLowerCase()] ?? PlaceIcon;
 }
 
-function mapsUrl(loc) {
-  if (loc.lat != null && loc.long != null) {
-    return `https://maps.google.com/?q=${loc.lat},${loc.long}`;
-  }
-  const query = loc.fullAddress || loc.name;
-  return query ? `https://maps.google.com/?q=${encodeURIComponent(query)}` : null;
-}
-
-function LocationRow({ label, loc }) {
-  const url = mapsUrl(loc);
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-      <Typography variant="caption" display="block">
-        {label && (
-          <Box component="span" sx={{ color: 'text.secondary', mr: 0.5 }}>{label}</Box>
-        )}
-        {loc.name}
-      </Typography>
-      {url && (
-        <IconButton
-          size="small"
-          component="a"
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          sx={{ p: 0.25, opacity: 0.5, '&:hover': { opacity: 1 } }}
-        >
-          <MapIcon sx={{ fontSize: 13 }} />
-        </IconButton>
-      )}
-    </Box>
-  );
-}
-
-export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
-  const [open, setOpen] = useState(false);
+export default function LegTimelineItem({ item, isFirst, isLast, onSelect, onEdit }) {
   const SubtypeIcon = getSubtypeIcon(item.subtype);
 
   return (
@@ -99,7 +62,7 @@ export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      onClick={() => setOpen((p) => !p)}
+      onClick={() => onSelect?.(item)}
       sx={{ cursor: 'pointer' }}
     >
       <TimelineOppositeContent
@@ -107,7 +70,7 @@ export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
         variant="body2"
         color="text.secondary"
       >
-        {dayjs(item.startDateTime).format('h:mm A')}
+        {dayjs(item.startDateTime).tz(TRIP_TZ).format('h:mm A')}
       </TimelineOppositeContent>
 
       <TimelineSeparator>
@@ -133,62 +96,6 @@ export default function LegTimelineItem({ item, isFirst, isLast, onEdit }) {
             </IconButton>
           )}
         </Box>
-
-        <Collapse in={open} unmountOnExit>
-          <Box
-            sx={{
-              mt: 1,
-              mb: 0.5,
-              pl: 1.5,
-              borderLeft: `3px solid ${ROYAL_BLUE}44`,
-            }}
-          >
-            {/* Time range */}
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
-              {dayjs(item.startDateTime).format('h:mm A')}
-              {' — '}
-              {dayjs(item.endDateTime).format('h:mm A')}
-            </Typography>
-
-            {/* Subtype chip */}
-            {item.subtype && (
-              <Chip
-                label={item.subtype}
-                size="small"
-                variant="outlined"
-                sx={{ mb: 1, height: 20, fontSize: '0.7rem', textTransform: 'capitalize' }}
-              />
-            )}
-
-            {/* Confirmation number */}
-            {item.confirmationNumber && (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
-                Confirmation: <Box component="span" sx={{ color: 'text.primary', fontWeight: 500 }}>{item.confirmationNumber}</Box>
-              </Typography>
-            )}
-
-            {/* Description */}
-            {item.description && (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
-                {item.description}
-              </Typography>
-            )}
-
-            {/* Locations */}
-            {item.locations?.length > 0 && (
-              <Box>
-                {item.type === 'travel' && item.locations.length >= 2 ? (
-                  <>
-                    <LocationRow label="From" loc={item.locations[0]} />
-                    <LocationRow label="To" loc={item.locations[item.locations.length - 1]} />
-                  </>
-                ) : (
-                  <LocationRow loc={item.locations[0]} />
-                )}
-              </Box>
-            )}
-          </Box>
-        </Collapse>
       </TimelineContent>
     </MotionTimelineItem>
   );

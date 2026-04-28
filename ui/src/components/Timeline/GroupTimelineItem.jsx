@@ -8,7 +8,8 @@ import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
 import { Box, IconButton, Typography } from '@mui/material';
 import CircleIcon from '@mui/icons-material/Circle';
 import EditIcon from '@mui/icons-material/Edit';
-import dayjs from 'dayjs';
+import dayjs from '../../utils/dayjs';
+import { TRIP_TZ } from '../../utils/dayjs';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
@@ -28,7 +29,7 @@ export default function GroupTimelineItem({ item, isFirst, isLast, onToggle, onE
         variant="body2"
         color="text.secondary"
       >
-        {dayjs(item.startDateTime).format('MMM D')}
+        {dayjs(item.startDateTime).tz(TRIP_TZ).format('MMM D')}
       </TimelineOppositeContent>
 
       <TimelineSeparator>

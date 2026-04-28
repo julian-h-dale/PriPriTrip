@@ -9,12 +9,13 @@ import {
   Stack,
   TextField,
 } from '@mui/material';
-import dayjs from 'dayjs';
+import dayjs from '../../utils/dayjs';
+import { TRIP_TZ } from '../../utils/dayjs';
 import { upsertItem, selectTrip } from '../../store/tripSlice';
 
 function toDateTimeLocal(iso) {
   if (!iso) return '';
-  return dayjs(iso).format('YYYY-MM-DDTHH:mm');
+  return dayjs(iso).tz(TRIP_TZ).format('YYYY-MM-DDTHH:mm');
 }
 
 const EMPTY = { title: '', startDateTime: '', endDateTime: '', description: '' };
