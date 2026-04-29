@@ -28,6 +28,7 @@ resource "azurerm_linux_function_app" "application" {
     cors {
       allowed_origins = [
         "https://${azurerm_static_web_app.application.default_host_name}",
+        "https://trip.pripri.juliandale.cloud",
         "http://localhost:3000",
       ]
     }
