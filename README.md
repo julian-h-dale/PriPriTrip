@@ -322,10 +322,28 @@ terraform output storage_account_name
 
 ### 3d — Deploy the function
 
+The function app is deployed by pushing code to `main` (the `deploy-function.yml` workflow handles it automatically). To deploy manually from your local machine:
+
 ```bash
+# Ensure you are logged in to Azure CLI
+az login
+az account set --subscription "<your-subscription-id>"
+
 cd function
-pip install -r requirements.txt --target .python_packages/lib/site-packages
+source .venv/bin/activate
+
+# Deploy — Kudu/Oryx on Azure installs dependencies during deployment
 func azure functionapp publish func-pripritrip-prod
+```
+
+> The `SCM_DO_BUILD_DURING_DEPLOYMENT=true` app setting (set by Terraform) tells Azure to run `pip install` on the server side, so the local `--target .python_packages/...` step is not required when using `func azure functionapp publish`.
+
+After the command completes, verify by hitting the auth endpoint:
+
+```bash
+curl -s -X POST https://func-pripritrip-prod.azurewebsites.net/api/auth \
+  -H "Content-Type: application/json" \
+  -d '{"password":"<your-app-password>"}' | jq .
 ```
 
 ### 3e — Deploy the frontend (Phase 2+)
