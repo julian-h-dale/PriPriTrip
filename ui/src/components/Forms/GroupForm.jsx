@@ -18,6 +18,11 @@ function toDateTimeLocal(iso) {
   return dayjs(iso).tz(TRIP_TZ).format('YYYY-MM-DDTHH:mm');
 }
 
+function fromDateTimeLocal(local) {
+  if (!local) return null;
+  return dayjs.tz(local, TRIP_TZ).format();
+}
+
 const EMPTY = { title: '', startDateTime: '', endDateTime: '', description: '' };
 
 export default function GroupForm({ open, item, onClose }) {
@@ -49,8 +54,8 @@ export default function GroupForm({ open, item, onClose }) {
     const maxOrder = groups.reduce((m, i) => Math.max(m, i.sortOrder ?? 0), 0);
     const payload = {
       title: form.title.trim(),
-      startDateTime: form.startDateTime,
-      endDateTime: form.endDateTime,
+      startDateTime: fromDateTimeLocal(form.startDateTime),
+      endDateTime: fromDateTimeLocal(form.endDateTime),
       description: form.description.trim() || null,
     };
     const next = item

@@ -30,6 +30,11 @@ function toDateTimeLocal(iso) {
   return dayjs(iso).tz(TRIP_TZ).format('YYYY-MM-DDTHH:mm');
 }
 
+function fromDateTimeLocal(local) {
+  if (!local) return null;
+  return dayjs.tz(local, TRIP_TZ).format();
+}
+
 const EMPTY = {
   title: '',
   parentItemId: '',
@@ -91,8 +96,8 @@ export default function LegForm({ open, item, onClose }) {
       parentItemId: form.parentItemId || null,
       type: form.type,
       subtype: form.subtype,
-      startDateTime: form.startDateTime,
-      endDateTime: form.endDateTime,
+      startDateTime: fromDateTimeLocal(form.startDateTime),
+      endDateTime: fromDateTimeLocal(form.endDateTime),
       confirmationNumber: form.confirmationNumber.trim() || null,
       description: form.description.trim() || null,
       completed: form.completed,
