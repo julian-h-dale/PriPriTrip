@@ -1,0 +1,46 @@
+name: Snapshot trip.json
+
+on:
+  workflow_dispatch:       # run on-demand from the Actions tab
+  schedule:
+    - cron: '0 2 * * *'   # nightly at 02:00 UTC as a safety net
+
+permissions:
+  contents: write          # needed to commit & push
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Download trip.json from blob storage
+        run: |
+          az storage blob download \
+            --account-name "${{ vars.STORAGE_ACCOUNT }}" \
+            --container-name trip \
+            --name trip.json \
+            --file data/trip.json \
+            --auth-mode login \
+            --overwrite \
+            --output none
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/trip.json; then
+            echo "No changes to trip.json — nothing to commit."
+          else
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+            git add data/trip.json
+            git commit -m "chore: snapshot trip.json ($TIMESTAMP)"
+            git push
+          fi
