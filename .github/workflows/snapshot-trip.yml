@@ -8,6 +8,8 @@ on:
 permissions:
   contents: write          # needed to commit & push
   id-token: write
+
+
 jobs:
   snapshot:
     runs-on: ubuntu-latest
@@ -26,7 +28,7 @@ jobs:
       - name: Download trip.json from blob storage
         run: |
           az storage blob download \
-            --account-name "${{ vars.STORAGE_ACCOUNT }}" \
+            --account-name "stpripritripprod" \
             --container-name trip \
             --name trip.json \
             --file data/trip.json \
