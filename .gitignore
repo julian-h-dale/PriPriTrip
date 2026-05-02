@@ -30,6 +30,8 @@ ui/dist/
 ui/.env.local
 ui/.env
 
+docs/
+
 # Azurite local emulator data
 __azurite_db_blob__.json
 __azurite_db_blob_extent__.json
