@@ -55,10 +55,7 @@ function getSubtypeIcon(subtype) {
 }
 
 function mapsUrl(loc) {
-  if (loc.lat != null && loc.long != null) {
-    return `https://maps.google.com/?q=${loc.lat},${loc.long}`;
-  }
-  const query = loc.fullAddress || loc.name;
+  const query = loc.name;
   return query ? `https://maps.google.com/?q=${encodeURIComponent(query)}` : null;
 }
 
