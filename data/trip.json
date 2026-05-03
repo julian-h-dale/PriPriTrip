@@ -15,7 +15,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "Recovery day. Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, eat something easy, and see Bern Old Town without forcing a full tourist day. You will be jet-lagged — treat this as a soft landing and aim to be asleep at a reasonable hour. Do not over-schedule.",
+            "description":  "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
             "locations": [],
             "completed": false
         },
@@ -189,7 +189,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "Themed day: watchmaking, Swiss culture, UNESCO architecture, and Julian's birthday dinner. Leave Bern for La Chaux-de-Fonds, visit the International Museum of Horology, walk the UNESCO city grid, and return in time for the Kornhauskeller dinner reservation at 7:30 PM. Intentional but not rushed.",
+            "description": "Themed day: watchmaking, Swiss culture, UNESCO architecture,  La Chaux-de-Fonds, visit the International Museum of Horology, BIRTHDAY",
             "locations": [],
             "completed": false
         },
@@ -430,7 +430,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "Travel day that still feels scenic and relaxed. Leave Bern, brief lunch stop in Interlaken, then the Lauterbrunnen → Wengen mountain railway. Arrive with time to enjoy the hotel balcony and Jungfrau views before an easy first Wengen dinner.",
+            "description": " Leave Bern, brief lunch stop in Interlaken, then the Lauterbrunnen → Wengen mountain railway. Arrive with time to enjoy the hotel balcony and Jungfrau views.",
             "locations": [],
             "completed": false
         },
@@ -596,7 +596,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "One of the peak days of the trip — the Alps highlight reel. Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903 dinner reservation at 8:15 PM.",
+            "description":  "Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903",
             "locations": [],
             "completed": false
         },
@@ -747,8 +747,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "Big travel chain day. Goal: protect every connection and arrive in Hvar with enough energy for a simple dinner and harbor walk. Critical chain: Wengen → Zurich Airport train, Zurich → Split flight at 3:00 PM (Croatia Airlines CRFG3B), taxi to Split ferry port, Split → Hvar ferry at 6:00 PM (last of the day), hotel check-in, easy dinner.",
-            "locations": [],
+            "description": "Big travel chain day. Critical chain: Wengen → Zurich Airport train, Zurich → Split flight at 3:00 PM (Croatia Airlines CRFG3B), taxi to Split ferry port, Split → Hvar ferry at 6:00 PM (last of the day)",
             "completed": false
         },
         {
@@ -1244,7 +1243,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "Transition day — shift from island/boat energy to cultural city wandering. Ferry to Split mid-morning, check into Heritage Hotel Slavija inside Diocletian's Palace, afternoon exploring the Old Town, and a casual local dinner best organized via hotel concierge.",
+            "description": "Ferry to Split mid-morning, check into Heritage Hotel Slavija inside Diocletian's Palace, afternoon exploring the Old Town",
             "locations": [],
             "completed": false
         },
@@ -1435,7 +1434,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "The most logistics-heavy day of the trip — confidence and buffers matter. Pick up rental car at 8:00 AM (Sixt, reservation 9733419998), drive A1 north to Plitvice Lakes National Park (Entrance 1), explore the park, optional Rastoke stop on return. Car must be back by 8:00 PM.",
+            "description": "Pick up rental car at 8:00 AM (Sixt, reservation 9733419998), drive A1 north to Plitvice Lakes National Park (Entrance 1), explore the park, optional Rastoke stop on return. Car must be back by 8:00 PM.",
             "locations": [],
             "completed": false
         },
@@ -1612,7 +1611,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description": "Final Split day. Key anchors: hotel breakfast and checkout by 10:30 AM, Bell Tower + Diocletian's Palace exploration, Dvor lunch reservation at 1:30 PM, collect bags, taxi to Split Airport, flight Split → Munich → Zurich (CRFG3B), taxi to Radisson Zurich Airport hotel.",
+            "description": "Final Split day. Key anchors: hotel breakfast and checkout by 10:30 AM, Bell Tower + Diocletian's Palace exploration, Dvor lunch reservation at 1:30 PM, collect bags, taxi to Split Airport, flight Split → Munich → Zurich (CRFG3B)",
             "locations": [],
             "completed": false
         },
