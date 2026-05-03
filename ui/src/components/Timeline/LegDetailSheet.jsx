@@ -6,6 +6,8 @@ import {
   IconButton,
   Typography,
 } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import MapIcon from '@mui/icons-material/Map';
@@ -194,9 +196,20 @@ export default function LegDetailSheet({ item, onClose, onEdit }) {
 
         {item.description && (
           <Section label="Notes">
-            <Typography variant="body2" color="text.secondary">
-              {item.description}
-            </Typography>
+            <Box
+              sx={{
+                typography: 'body2',
+                color: 'text.secondary',
+                '& p': { m: 0, mb: 1 },
+                '& p:last-child': { mb: 0 },
+                '& ul, & ol': { pl: 2.5, mt: 0, mb: 1 },
+                '& li': { mb: 0.25 },
+                '& strong': { color: 'text.primary' },
+                '& code': { fontFamily: 'monospace', fontSize: '0.85em', bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5 },
+              }}
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.description}</ReactMarkdown>
+            </Box>
           </Section>
         )}
 
