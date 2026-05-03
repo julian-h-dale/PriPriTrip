@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
+  Box,
   Button,
   Checkbox,
   Dialog,
@@ -14,7 +15,10 @@ import {
   Select,
   Stack,
   TextField,
+  Typography,
 } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import dayjs from '../../utils/dayjs';
 import { TRIP_TZ } from '../../utils/dayjs';
 import { upsertItem, selectTrip } from '../../store/tripSlice';
@@ -51,6 +55,7 @@ export default function LegForm({ open, item, onClose }) {
   const dispatch = useDispatch();
   const trip = useSelector(selectTrip);
   const [form, setForm] = useState(EMPTY);
+  const [previewDesc, setPreviewDesc] = useState(false);
 
   const groups = (trip?.items ?? [])
     .filter((i) => i.kind === 'group' && i.parentItemId === null)
@@ -58,6 +63,7 @@ export default function LegForm({ open, item, onClose }) {
 
   useEffect(() => {
     if (!open) return;
+    setPreviewDesc(false);
     if (item) {
       setForm({
         title: item.title ?? '',
@@ -188,15 +194,52 @@ export default function LegForm({ open, item, onClose }) {
             fullWidth
             size="small"
           />
-          <TextField
-            label="Description"
-            value={form.description}
-            onChange={set('description')}
-            multiline
-            minRows={2}
-            fullWidth
-            size="small"
-          />
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">Description</Typography>
+              <Button size="small" onClick={() => setPreviewDesc((p) => !p)}>
+                {previewDesc ? 'Edit' : 'Preview'}
+              </Button>
+            </Box>
+            {previewDesc ? (
+              <Box
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  px: 1.5,
+                  py: 1,
+                  minHeight: 80,
+                  typography: 'body2',
+                  color: 'text.secondary',
+                  '& p': { m: 0, mb: 1 },
+                  '& p:last-child': { mb: 0 },
+                  '& ul, & ol': { pl: 2.5, mt: 0, mb: 1 },
+                  '& li': { mb: 0.25 },
+                  '& strong': { color: 'text.primary' },
+                  '& code': { fontFamily: 'monospace', fontSize: '0.85em', bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5 },
+                }}
+              >
+                {form.description.trim() ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.description}</ReactMarkdown>
+                ) : (
+                  <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+                    Nothing to preview
+                  </Typography>
+                )}
+              </Box>
+            ) : (
+              <TextField
+                label="Description"
+                value={form.description}
+                onChange={set('description')}
+                multiline
+                minRows={2}
+                fullWidth
+                size="small"
+              />
+            )}
+          </Box>
           <FormControlLabel
             control={
               <Checkbox checked={form.completed} onChange={set('completed')} size="small" />
