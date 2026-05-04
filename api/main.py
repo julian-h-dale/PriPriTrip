@@ -40,6 +40,15 @@ class DocumentModel(BaseModel):
     description: Optional[str] = None
 
 
+class LocationModel(BaseModel):
+    name: str
+    lat: Optional[float] = None
+    long: Optional[float] = None
+    fullAddress: Optional[str] = None
+    description: Optional[str] = None
+    link: Optional[str] = None
+
+
 class TripItemModel(BaseModel):
     itemId: str
     parentItemId: Optional[str] = None
@@ -54,8 +63,8 @@ class TripItemModel(BaseModel):
     description: Optional[str] = None
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
-    locations: List[dict] = []
-    documents: List[dict] = []
+    locations: List[LocationModel] = []
+    documents: List[DocumentModel] = []
     completed: bool = False
     completedDateTime: Optional[str] = None
 
