@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   AppBar,
@@ -17,6 +18,7 @@ import {
 } from '@mui/material';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import ExploreIcon from '@mui/icons-material/Explore';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import SaveIcon from '@mui/icons-material/Save';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
@@ -35,6 +37,7 @@ import { useOnlineStatus } from '../utils/useOnlineStatus';
 
 export default function HomePage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const trip = useSelector(selectTrip);
   const status = useSelector(selectTripStatus);
   const error = useSelector(selectTripError);
@@ -77,6 +80,15 @@ export default function HomePage() {
               }}
             />
           )}
+          <Button
+            size="small"
+            color="inherit"
+            startIcon={<FavoriteIcon sx={{ fontSize: 16 }} />}
+            onClick={() => navigate('/memories')}
+            sx={{ textTransform: 'none', minWidth: 80, mr: 0.5 }}
+          >
+            Memories
+          </Button>
           <Button
             size="small"
             color="inherit"

@@ -49,6 +49,7 @@ wait_for_port "Azurite" "$AZURITE_PORT"
 echo ">> Ensuring blob containers exist..."
 az storage container create --name trip      --connection-string "$CONN" --output none 2>/dev/null || true
 az storage container create --name documents --connection-string "$CONN" --output none 2>/dev/null || true
+az storage container create --name memories  --connection-string "$CONN" --output none 2>/dev/null || true
 
 # ── 3. Upload trip.json ───────────────────────────────────────────────────────
 echo ">> Uploading data/trip.json..."

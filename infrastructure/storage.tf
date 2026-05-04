@@ -19,3 +19,9 @@ resource "azurerm_storage_container" "documents" {
   storage_account_name  = azurerm_storage_account.application.name
   container_access_type = "private"
 }
+
+resource "azurerm_storage_container" "memories" {
+  name                  = "memories"
+  storage_account_name  = azurerm_storage_account.application.name
+  container_access_type = "private"
+}

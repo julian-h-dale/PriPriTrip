@@ -43,6 +43,7 @@ resource "azurerm_linux_function_app" "application" {
     STORAGE_ACCOUNT                = azurerm_storage_account.application.name
     STORAGE_TRIP_CONTAINER         = "trip"
     STORAGE_DOCS_CONTAINER         = "documents"
+    STORAGE_MEMORIES_CONTAINER     = "memories"
   }
 }
 

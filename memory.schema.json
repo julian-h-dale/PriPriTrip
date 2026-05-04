@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Memories Document",
+  "type": "object",
+  "required": ["memories"],
+  "properties": {
+    "memories": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/memory"
+      }
+    }
+  },
+  "$defs": {
+    "memory": {
+      "type": "object",
+      "required": ["memoryId", "title", "date", "createdAt", "updatedAt"],
+      "properties": {
+        "memoryId": {
+          "type": "string",
+          "description": "UUID — unique identifier for this memory."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short label for the memory."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date the memory happened (ISO 8601)."
+        },
+        "time": {
+          "type": ["string", "null"],
+          "description": "Optional time the memory happened (HH:MM, 24-hour)."
+        },
+        "location": {
+          "type": ["string", "null"],
+          "description": "Free-text location label."
+        },
+        "notes": {
+          "type": ["string", "null"],
+          "description": "Markdown-supported body text."
+        },
+        "linkedItemId": {
+          "type": ["string", "null"],
+          "description": "Optional reference to a tripItem itemId this memory is associated with."
+        },
+        "photos": {
+          "type": "array",
+          "description": "Photo attachments. Stored as blob names in the documents container, resolved to SAS URLs on read.",
+          "items": {
+            "$ref": "#/$defs/photo"
+          },
+          "default": []
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "photo": {
+      "type": "object",
+      "required": ["blobName"],
+      "properties": {
+        "blobName": {
+          "type": "string",
+          "description": "Blob name within the documents container."
+        },
+        "caption": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

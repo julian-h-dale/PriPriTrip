@@ -244,3 +244,151 @@ def api_trip_put(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as exc:
         logging.error("PUT /api/trip error: %s", exc)
         return json_response({"error": "Failed to write trip"}, 500)
+
+
+# ---------------------------------------------------------------------------
+# Memories helpers
+# ---------------------------------------------------------------------------
+
+
+def read_memories(blob_service: BlobServiceClient) -> dict:
+    container = os.environ.get("STORAGE_MEMORIES_CONTAINER", "memories")
+    blob = blob_service.get_blob_client(container=container, blob="memories.json")
+    try:
+        data = blob.download_blob().readall()
+        return json.loads(data)
+    except Exception:
+        # File doesn't exist yet — return an empty document
+        return {"memories": []}
+
+
+def write_memories(memories_doc: dict, blob_service: BlobServiceClient) -> None:
+    container = os.environ.get("STORAGE_MEMORIES_CONTAINER", "memories")
+    blob = blob_service.get_blob_client(container=container, blob="memories.json")
+    blob.upload_blob(json.dumps(memories_doc, ensure_ascii=False), overwrite=True)
+
+
+# ---------------------------------------------------------------------------
+# Memories routes
+# ---------------------------------------------------------------------------
+
+
+def _auth_check(req: func.HttpRequest) -> bool:
+    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
+    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
+    token = get_bearer_token(req)
+    return bool(token and verify_token(token, app_password, token_secret))
+
+
+@app.route(route="memories", methods=["GET"])
+def api_memories_get(req: func.HttpRequest) -> func.HttpResponse:
+    if not _auth_check(req):
+        return json_response({"error": "Unauthorized"}, 401)
+    try:
+        blob_service = get_blob_service_client()
+        doc = read_memories(blob_service)
+        return json_response(doc)
+    except Exception as exc:
+        logging.error("GET /api/memories error: %s", exc)
+        return json_response({"error": "Failed to read memories"}, 500)
+
+
+@app.route(route="memories", methods=["POST"])
+def api_memories_post(req: func.HttpRequest) -> func.HttpResponse:
+    if not _auth_check(req):
+        return json_response({"error": "Unauthorized"}, 401)
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return json_response({"error": "Invalid JSON"}, 400)
+
+    if not body.get("title") or not body.get("date"):
+        return json_response({"error": "title and date are required"}, 422)
+
+    now = datetime.now(timezone.utc).isoformat()
+    memory = {
+        "memoryId": body.get("memoryId") or __import__("uuid").uuid4().hex,
+        "title": body["title"],
+        "date": body["date"],
+        "time": body.get("time") or None,
+        "location": body.get("location") or None,
+        "notes": body.get("notes") or None,
+        "linkedItemId": body.get("linkedItemId") or None,
+        "photos": body.get("photos") or [],
+        "createdAt": now,
+        "updatedAt": now,
+    }
+
+    try:
+        blob_service = get_blob_service_client()
+        doc = read_memories(blob_service)
+        doc["memories"].append(memory)
+        write_memories(doc, blob_service)
+        return json_response(memory, 201)
+    except Exception as exc:
+        logging.error("POST /api/memories error: %s", exc)
+        return json_response({"error": "Failed to save memory"}, 500)
+
+
+@app.route(route="memories/{memory_id}", methods=["PUT"])
+def api_memories_put(req: func.HttpRequest) -> func.HttpResponse:
+    if not _auth_check(req):
+        return json_response({"error": "Unauthorized"}, 401)
+
+    memory_id = req.route_params.get("memory_id")
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return json_response({"error": "Invalid JSON"}, 400)
+
+    if not body.get("title") or not body.get("date"):
+        return json_response({"error": "title and date are required"}, 422)
+
+    try:
+        blob_service = get_blob_service_client()
+        doc = read_memories(blob_service)
+        memories = doc["memories"]
+        idx = next((i for i, m in enumerate(memories) if m["memoryId"] == memory_id), None)
+        if idx is None:
+            return json_response({"error": "Memory not found"}, 404)
+
+        updated = {
+            **memories[idx],
+            "title": body["title"],
+            "date": body["date"],
+            "time": body.get("time") or None,
+            "location": body.get("location") or None,
+            "notes": body.get("notes") or None,
+            "linkedItemId": body.get("linkedItemId") or None,
+            "photos": body.get("photos", memories[idx].get("photos", [])),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
+        memories[idx] = updated
+        write_memories(doc, blob_service)
+        return json_response(updated)
+    except Exception as exc:
+        logging.error("PUT /api/memories/%s error: %s", memory_id, exc)
+        return json_response({"error": "Failed to update memory"}, 500)
+
+
+@app.route(route="memories/{memory_id}", methods=["DELETE"])
+def api_memories_delete(req: func.HttpRequest) -> func.HttpResponse:
+    if not _auth_check(req):
+        return json_response({"error": "Unauthorized"}, 401)
+
+    memory_id = req.route_params.get("memory_id")
+
+    try:
+        blob_service = get_blob_service_client()
+        doc = read_memories(blob_service)
+        before = len(doc["memories"])
+        doc["memories"] = [m for m in doc["memories"] if m["memoryId"] != memory_id]
+        if len(doc["memories"]) == before:
+            return json_response({"error": "Memory not found"}, 404)
+        write_memories(doc, blob_service)
+        return json_response({"status": "ok"})
+    except Exception as exc:
+        logging.error("DELETE /api/memories/%s error: %s", memory_id, exc)
+        return json_response({"error": "Failed to delete memory"}, 500)
