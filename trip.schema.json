@@ -192,28 +192,36 @@
         "name"
       ],
       "properties": {
-        "lat": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "long": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "fullAddress": {
-          "type": "string"
-        },
         "name": {
           "type": "string"
         },
-        "description": {
-          "type": "string"
+        "fullAddress": {
+          "type": "string",
+          "description": "Formatted address string, replaced with Google Places formattedAddress after enrichment."
         },
-        "link": {
+        "location": {
+          "type": "object",
+          "description": "Lat/long coordinates from Google Places API.",
+          "required": ["latitude", "longitude"],
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          }
+        },
+        "googlePlaceId": {
+          "type": "string",
+          "description": "Google Places API place ID."
+        },
+        "googleMapsUri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Google Maps URI for this place."
+        },
+        "description": {
           "type": "string"
         }
       }
