@@ -15,7 +15,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description":  "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
+            "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
             "locations": [],
             "completed": false
         },
@@ -34,13 +34,25 @@
             "locations": [
                 {
                     "name": "Zurich Airport Railway Station",
-                    "fullAddress": "Zurich Airport, 8058 Zürich-Flughafen, Switzerland",
-                    "description": "Also shown as Zürich Flughafen. Located inside Zurich Airport; follow signs for Train / Bahn / SBB."
+                    "fullAddress": "Switzerland",
+                    "description": "Also shown as Zürich Flughafen. Located inside Zurich Airport; follow signs for Train / Bahn / SBB.",
+                    "location": {
+                        "latitude": 47.461714199999996,
+                        "longitude": 8.550859899999999
+                    },
+                    "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+                    "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Bern Railway Station",
-                    "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland",
-                    "description": "Main railway station for Bern; walking distance to Bern Old Town and Hotel Goldener Schlüssel."
+                    "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+                    "description": "Main railway station for Bern; walking distance to Bern Old Town and Hotel Goldener Schlüssel.",
+                    "location": {
+                        "latitude": 46.9485269,
+                        "longitude": 7.439914
+                    },
+                    "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+                    "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -60,22 +72,46 @@
             "locations": [
                 {
                     "name": "Hotel Goldener Schlüssel",
-                    "fullAddress": "Rathausgasse 72, 3011 Bern, Switzerland"
+                    "fullAddress": "Hotel Goldener Schlüssel, Rathausgasse 72, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9486227,
+                        "longitude": 7.4487269
+                    },
+                    "googlePlaceId": "ChIJFz1_5sM5jkcRQ9nMjH27cXI",
+                    "googleMapsUri": "https://maps.google.com/?cid=8246578540599630147&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Zytglogge",
-                    "fullAddress": "Bim Zytglogge 3, 3011 Bern, Switzerland",
-                    "description": "Historic medieval clock tower near the hotel."
+                    "fullAddress": "Zytglogge, Bim Zytglogge 3, 3011 Bern, Switzerland",
+                    "description": "Historic medieval clock tower near the hotel.",
+                    "location": {
+                        "latitude": 46.9479581,
+                        "longitude": 7.447792400000001
+                    },
+                    "googlePlaceId": "ChIJtYNMVME5jkcRVk2Y_GIJan0",
+                    "googleMapsUri": "https://maps.google.com/?cid=9037045923021606230&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Kramgasse",
                     "fullAddress": "Kramgasse, 3011 Bern, Switzerland",
-                    "description": "Main historic street in Bern Old Town."
+                    "description": "Main historic street in Bern Old Town.",
+                    "location": {
+                        "latitude": 46.9479785,
+                        "longitude": 7.4505088
+                    },
+                    "googlePlaceId": "ChIJT8mAhcM5jkcRdfWIbdAr-lI",
+                    "googleMapsUri": "https://maps.google.com/?cid=5979139629478638965&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Aare River Viewpoints",
-                    "fullAddress": "Bern Old Town, 3011 Bern, Switzerland",
-                    "description": "Area-based location; exact viewpoint can vary."
+                    "fullAddress": "Grosser Muristalden 6, 3006 Bern, Switzerland",
+                    "description": "Area-based location; exact viewpoint can vary.",
+                    "location": {
+                        "latitude": 46.9471898,
+                        "longitude": 7.459508899999999
+                    },
+                    "googlePlaceId": "ChIJ1yUzp1Y5jkcRQcYS67CbmNc",
+                    "googleMapsUri": "https://maps.google.com/?cid=15535338098774951489&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -95,18 +131,36 @@
             "locations": [
                 {
                     "name": "Kornhauskeller",
-                    "fullAddress": "Kornhausplatz 18, 3011 Bern, Switzerland",
-                    "description": "Historic restaurant setting; good for a memorable but still easy first lunch."
+                    "fullAddress": "Kornhauspl. 18, 3011 Bern, Switzerland",
+                    "description": "Historic restaurant setting; good for a memorable but still easy first lunch.",
+                    "location": {
+                        "latitude": 46.948730399999995,
+                        "longitude": 7.4472694
+                    },
+                    "googlePlaceId": "ChIJt52vQ8E5jkcR5sQbczMLN38",
+                    "googleMapsUri": "https://maps.google.com/?cid=9166807882138371302&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Café Einstein",
                     "fullAddress": "Kramgasse 49, 3011 Bern, Switzerland",
-                    "description": "Relaxed café option near the hotel and Old Town walk."
+                    "description": "Relaxed café option near the hotel and Old Town walk.",
+                    "location": {
+                        "latitude": 46.9478097,
+                        "longitude": 7.4499341999999995
+                    },
+                    "googlePlaceId": "ChIJDe4EicM5jkcRYIXq2P0LA4E",
+                    "googleMapsUri": "https://maps.google.com/?cid=9296287240716715360&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Beaulieu Bistro Bar",
                     "fullAddress": "Erlachstrasse 3, 3012 Bern, Switzerland",
-                    "description": "More local-feeling bistro option; a bit farther from the hotel than the Old Town options."
+                    "description": "More local-feeling bistro option; a bit farther from the hotel than the Old Town options.",
+                    "location": {
+                        "latitude": 46.9513135,
+                        "longitude": 7.4344627
+                    },
+                    "googlePlaceId": "ChIJKfztq705jkcRqUKP91pqWU8",
+                    "googleMapsUri": "https://maps.google.com/?cid=5717718140856517289&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -127,22 +181,46 @@
                 {
                     "name": "Kramgasse",
                     "fullAddress": "Kramgasse, 3011 Bern, Switzerland",
-                    "description": "Easy Old Town stroll near the hotel."
+                    "description": "Easy Old Town stroll near the hotel.",
+                    "location": {
+                        "latitude": 46.9479785,
+                        "longitude": 7.4505088
+                    },
+                    "googlePlaceId": "ChIJT8mAhcM5jkcRdfWIbdAr-lI",
+                    "googleMapsUri": "https://maps.google.com/?cid=5979139629478638965&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Zytglogge",
-                    "fullAddress": "Bim Zytglogge 3, 3011 Bern, Switzerland",
-                    "description": "Iconic medieval clock tower."
+                    "fullAddress": "Zytglogge, Bim Zytglogge 3, 3011 Bern, Switzerland",
+                    "description": "Iconic medieval clock tower.",
+                    "location": {
+                        "latitude": 46.9479581,
+                        "longitude": 7.447792400000001
+                    },
+                    "googlePlaceId": "ChIJtYNMVME5jkcRVk2Y_GIJan0",
+                    "googleMapsUri": "https://maps.google.com/?cid=9037045923021606230&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Aare River",
-                    "fullAddress": "Aare River, Bern, Switzerland",
-                    "description": "Area-based scenic walk/viewpoint; no single exact address."
+                    "fullAddress": "Aare, Switzerland",
+                    "description": "Area-based scenic walk/viewpoint; no single exact address.",
+                    "location": {
+                        "latitude": 47.2269325,
+                        "longitude": 7.7303504
+                    },
+                    "googlePlaceId": "ChIJUUfYCswvkEcRCu2iCzk-Rok",
+                    "googleMapsUri": "https://maps.google.com/?cid=9891662046295158026&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Kunstmuseum Bern",
-                    "fullAddress": "Hodlerstrasse 8-12, 3011 Bern, Switzerland",
-                    "description": "Optional light museum stop if you want an indoor activity."
+                    "fullAddress": "Hodlerstrasse 8/12, 3011 Bern, Switzerland",
+                    "description": "Optional light museum stop if you want an indoor activity.",
+                    "location": {
+                        "latitude": 46.951194699999995,
+                        "longitude": 7.4431506
+                    },
+                    "googlePlaceId": "EipIb2RsZXJzdHJhc3NlIDgvMTIsIDMwMTEgQmVybiwgU3dpdHplcmxhbmQiHhocChYKFAoSCScnC3fAOY5HEWtbFLZ4xWQEEgIxMg",
+                    "googleMapsUri": "https://maps.google.com/?q=Hodlerstrasse+8/12,+3011+Bern,+Schweiz&ftid=0x478e39c0770b2727:0x1f345df2192d05f2&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -163,17 +241,35 @@
                 {
                     "name": "Altes Tramdepot",
                     "fullAddress": "Grosser Muristalden 6, 3006 Bern, Switzerland",
-                    "description": "Brewery and restaurant near the Bear Park with city views."
+                    "description": "Brewery and restaurant near the Bear Park with city views.",
+                    "location": {
+                        "latitude": 46.9470185,
+                        "longitude": 7.459470199999999
+                    },
+                    "googlePlaceId": "ChIJCZQBANw5jkcR4leC43SPQnc",
+                    "googleMapsUri": "https://maps.google.com/?cid=8593588771172276194&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Lötschberg",
                     "fullAddress": "Zeughausgasse 16, 3011 Bern, Switzerland",
-                    "description": "Casual Swiss food near the Old Town core."
+                    "description": "Casual Swiss food near the Old Town core.",
+                    "location": {
+                        "latitude": 46.9491102,
+                        "longitude": 7.4454687999999996
+                    },
+                    "googlePlaceId": "ChIJHT8kIME5jkcRqFf5qyJU804",
+                    "googleMapsUri": "https://maps.google.com/?cid=5688983262189934504&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Restaurant Rosengarten",
-                    "fullAddress": "Alter Aargauerstalden 31B, 3006 Bern, Switzerland",
-                    "description": "Scenic overlook restaurant above Bern Old Town."
+                    "fullAddress": "Alter Aargauerstalden 31b, 3006 Bern, Switzerland",
+                    "description": "Scenic overlook restaurant above Bern Old Town.",
+                    "location": {
+                        "latitude": 46.950891,
+                        "longitude": 7.4605980999999995
+                    },
+                    "googlePlaceId": "ChIJiU8eCt45jkcRFBNzcoAjQNs",
+                    "googleMapsUri": "https://maps.google.com/?cid=15798666527398630164&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": true
@@ -208,16 +304,34 @@
             "locations": [
                 {
                     "name": "Adriano's Bar & Café",
-                    "fullAddress": "Theaterplatz 2, 3011 Bern, Switzerland"
+                    "fullAddress": "Theaterpl. 2, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9478076,
+                        "longitude": 7.4472638999999985
+                    },
+                    "googlePlaceId": "ChIJ5VqyUsE5jkcR64whZd7zzaA",
+                    "googleMapsUri": "https://maps.google.com/?cid=11587185552799141099&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Café Marta",
-                    "fullAddress": "Kramgasse 83, 3011 Bern, Switzerland"
+                    "fullAddress": "Kramgasse 83, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.947862199999996,
+                        "longitude": 7.4484052
+                    },
+                    "googlePlaceId": "ChIJVffe-MM5jkcRbMRYkKxBywE",
+                    "googleMapsUri": "https://maps.google.com/?cid=129269223722108012&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Bakery Bakery Bern",
-                    "fullAddress": "Spitalgasse area, 3011 Bern, Switzerland",
-                    "description": "Multiple locations; nearest depends on route"
+                    "fullAddress": "Spitalgasse 33, 3011 Bern, Switzerland",
+                    "description": "Multiple locations; nearest depends on route",
+                    "location": {
+                        "latitude": 46.947790499999996,
+                        "longitude": 7.4418769000000005
+                    },
+                    "googlePlaceId": "ChIJMSN2qbg5jkcRHE6Pe5oLQD0",
+                    "googleMapsUri": "https://maps.google.com/?cid=4413540392948944412&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -236,7 +350,14 @@
             "description": "Full day trip to La Chaux-de-Fonds — one of the world's great watchmaking cities and a UNESCO urban landscape. Train from Bern via Neuchâtel (~1h 15m each way, no reservation needed).\n\n**Plan:** International Museum of Horology in the morning, then the UNESCO city grid walk — Avenue Léopold-Robert, Villa Fallet (early Le Corbusier), Espacité Tower — in the afternoon. Optional vintage watch shop browsing along the main boulevard.\n\nLeave by ~4:30 PM train to protect the **7:30 PM Kornhauskeller birthday dinner** reservation back in Bern.",
             "locations": [
                 {
-                    "name": "La Chaux-de-Fonds"
+                    "name": "La Chaux-de-Fonds",
+                    "fullAddress": "La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.1034892,
+                        "longitude": 6.8327838000000005
+                    },
+                    "googlePlaceId": "ChIJBVcKvSKhj0cRTjeCh6tilkI",
+                    "googleMapsUri": "https://maps.google.com/?cid=4798130941862229838&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -256,15 +377,33 @@
             "locations": [
                 {
                     "name": "Bern Railway Station",
-                    "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland"
+                    "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9485269,
+                        "longitude": 7.439914
+                    },
+                    "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+                    "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Neuchâtel Railway Station",
-                    "fullAddress": "Place de la Gare 1, 2000 Neuchâtel, Switzerland"
+                    "fullAddress": "Place de La Gare 1, 2000 Neuenburg, Switzerland",
+                    "location": {
+                        "latitude": 46.99650450000001,
+                        "longitude": 6.9358911999999995
+                    },
+                    "googlePlaceId": "ChIJGdHvrxkKjkcRMrUVa5Q3WAo",
+                    "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "La Chaux-de-Fonds Railway Station",
-                    "fullAddress": "Place de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland"
+                    "fullAddress": "Pl. de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.099207400000004,
+                        "longitude": 6.8250723
+                    },
+                    "googlePlaceId": "EjVQbC4gZGUgbGEgR2FyZSAxLCAyMzAwIExhIENoYXV4LWRlLUZvbmRzLCBTd2l0emVybGFuZCIwEi4KFAoSCQ_7p_1H-41HEYDhcb48KCijEAEqFAoSCbk8ggdI-41HEbBdqCt-Lx1P",
+                    "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -284,7 +423,13 @@
             "locations": [
                 {
                     "name": "International Museum of Horology",
-                    "fullAddress": "Rue des Musées 29, 2300 La Chaux-de-Fonds, Switzerland"
+                    "fullAddress": "Rue des Musées 29, 2300 La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.100635200000006,
+                        "longitude": 6.8305877
+                    },
+                    "googlePlaceId": "ChIJiThueEb7jUcR1KDOeGCvGJY",
+                    "googleMapsUri": "https://maps.google.com/?cid=10815587334008774868&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -304,15 +449,33 @@
             "locations": [
                 {
                     "name": "Avenue Léopold-Robert",
-                    "fullAddress": "Avenue Léopold-Robert, 2300 La Chaux-de-Fonds, Switzerland"
+                    "fullAddress": "Av. Léopold-Robert, 2300 La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.0986803,
+                        "longitude": 6.823153
+                    },
+                    "googlePlaceId": "ChIJh3BM7jf7jUcRkmMwSJxWDt0",
+                    "googleMapsUri": "https://maps.google.com/?cid=15928764161282040722&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Villa Fallet",
-                    "fullAddress": "Rue de la Serre 15, 2300 La Chaux-de-Fonds, Switzerland"
+                    "fullAddress": "Rue de la Serre 15, 2300 La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.103404,
+                        "longitude": 6.8292722999999995
+                    },
+                    "googlePlaceId": "ChIJQ44Kzkb7jUcRSadY4HRsiyk",
+                    "googleMapsUri": "https://maps.google.com/?cid=2993605626553739081&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Espacité Tower",
-                    "fullAddress": "Espacité 1, 2300 La Chaux-de-Fonds, Switzerland"
+                    "fullAddress": "Tour Espacité, Espacité 1, 2300 La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.1023612,
+                        "longitude": 6.8287451
+                    },
+                    "googlePlaceId": "ChIJd1C450b7jUcRM0NRuk0D1AY",
+                    "googleMapsUri": "https://maps.google.com/?cid=492021891663479603&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -332,13 +495,25 @@
             "locations": [
                 {
                     "name": "Café du Marché",
-                    "fullAddress": "Place du Marché 2, 2300 La Chaux-de-Fonds, Switzerland",
-                    "description": "Easy go-to for a quick snack or drink before the train."
+                    "fullAddress": "Pl. du Marché 2, 2300 La Chaux-de-Fonds, Switzerland",
+                    "description": "Easy go-to for a quick snack or drink before the train.",
+                    "location": {
+                        "latitude": 47.1043021,
+                        "longitude": 6.831559800000001
+                    },
+                    "googlePlaceId": "ChIJ83aZWEH7jUcRi4p4OBG4S8k",
+                    "googleMapsUri": "https://maps.google.com/?cid=14504889408978193035&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Crêperie Bretonne",
                     "fullAddress": "La Chaux-de-Fonds, Switzerland",
-                    "description": "Sweet or savory crêpe option if open. Verify location locally."
+                    "description": "Sweet or savory crêpe option if open. Verify location locally.",
+                    "location": {
+                        "latitude": 47.1034892,
+                        "longitude": 6.8327838000000005
+                    },
+                    "googlePlaceId": "ChIJBVcKvSKhj0cRTjeCh6tilkI",
+                    "googleMapsUri": "https://maps.google.com/?cid=4798130941862229838&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -358,15 +533,33 @@
             "locations": [
                 {
                     "name": "La Chaux-de-Fonds Railway Station",
-                    "fullAddress": "Place de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland"
+                    "fullAddress": "Pl. de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland",
+                    "location": {
+                        "latitude": 47.099207400000004,
+                        "longitude": 6.8250723
+                    },
+                    "googlePlaceId": "EjVQbC4gZGUgbGEgR2FyZSAxLCAyMzAwIExhIENoYXV4LWRlLUZvbmRzLCBTd2l0emVybGFuZCIwEi4KFAoSCQ_7p_1H-41HEYDhcb48KCijEAEqFAoSCbk8ggdI-41HEbBdqCt-Lx1P",
+                    "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Neuchâtel Railway Station",
-                    "fullAddress": "Place de la Gare 1, 2000 Neuchâtel, Switzerland"
+                    "fullAddress": "Place de La Gare 1, 2000 Neuenburg, Switzerland",
+                    "location": {
+                        "latitude": 46.99650450000001,
+                        "longitude": 6.9358911999999995
+                    },
+                    "googlePlaceId": "ChIJGdHvrxkKjkcRMrUVa5Q3WAo",
+                    "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Bern Railway Station",
-                    "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland"
+                    "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9485269,
+                        "longitude": 7.439914
+                    },
+                    "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+                    "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -386,7 +579,13 @@
             "locations": [
                 {
                     "name": "Kornhauskeller",
-                    "fullAddress": "Kornhausplatz 18, 3011 Bern, Switzerland"
+                    "fullAddress": "Kornhauspl. 18, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.948730399999995,
+                        "longitude": 7.4472694
+                    },
+                    "googlePlaceId": "ChIJt52vQ8E5jkcR5sQbczMLN38",
+                    "googleMapsUri": "https://maps.google.com/?cid=9166807882138371302&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -406,15 +605,33 @@
             "locations": [
                 {
                     "name": "Kornhausplatz",
-                    "fullAddress": "Kornhausplatz, 3011 Bern, Switzerland"
+                    "fullAddress": "Kornhauspl., 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9484888,
+                        "longitude": 7.4475799
+                    },
+                    "googlePlaceId": "ChIJ4z2rW8E5jkcRPdDguOkBULo",
+                    "googleMapsUri": "https://maps.google.com/?cid=13425232592532197437&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Gerechtigkeitsgasse",
-                    "fullAddress": "Gerechtigkeitsgasse, 3011 Bern, Switzerland"
+                    "fullAddress": "Gerechtigkeitsgasse, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9483617,
+                        "longitude": 7.4544585
+                    },
+                    "googlePlaceId": "ChIJ8YTYtdw5jkcRuZ5TTOMfA2w",
+                    "googleMapsUri": "https://maps.google.com/?cid=7783099642124934841&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Nydegg Bridge",
-                    "fullAddress": "Nydeggbrücke, 3011 Bern, Switzerland"
+                    "fullAddress": "Nydeggbrücke, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9485077,
+                        "longitude": 7.4578806
+                    },
+                    "googlePlaceId": "EiVOeWRlZ2dicsO8Y2tlLCAzMDExIEJlcm4sIFN3aXR6ZXJsYW5kIi4qLAoUChIJUaL9QNw5jkcRwvYGTHLbQUsSFAoSCTmM1ty7OY5HEWfXSojOtc-7",
+                    "googleMapsUri": "https://maps.google.com/?q=Nydeggbr%C3%BCcke,+3011+Bern,+Schweiz&ftid=0x478e39dc40fda251:0x4b41db724c06f6c2&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -449,18 +666,36 @@
             "locations": [
                 {
                     "name": "Adriano's Bar & Café",
-                    "fullAddress": "Theaterplatz 2, 3011 Bern, Switzerland",
-                    "description": "Lively local coffee spot. Good for coffee and a pastry."
+                    "fullAddress": "Theaterpl. 2, 3011 Bern, Switzerland",
+                    "description": "Lively local coffee spot. Good for coffee and a pastry.",
+                    "location": {
+                        "latitude": 46.9478076,
+                        "longitude": 7.4472638999999985
+                    },
+                    "googlePlaceId": "ChIJ5VqyUsE5jkcR64whZd7zzaA",
+                    "googleMapsUri": "https://maps.google.com/?cid=11587185552799141099&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Café Einstein",
                     "fullAddress": "Kramgasse 49, 3011 Bern, Switzerland",
-                    "description": "Classic relaxed café near the hotel and Old Town."
+                    "description": "Classic relaxed café near the hotel and Old Town.",
+                    "location": {
+                        "latitude": 46.9478097,
+                        "longitude": 7.4499341999999995
+                    },
+                    "googlePlaceId": "ChIJDe4EicM5jkcRYIXq2P0LA4E",
+                    "googleMapsUri": "https://maps.google.com/?cid=9296287240716715360&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Confiserie Tschirren",
                     "fullAddress": "Marktgasse 73, 3011 Bern, Switzerland",
-                    "description": "Swiss pastries; lighter grab-and-go option."
+                    "description": "Swiss pastries; lighter grab-and-go option.",
+                    "location": {
+                        "latitude": 46.9481501,
+                        "longitude": 7.443967799999999
+                    },
+                    "googlePlaceId": "EiVNYXJrdGdhc3NlIDczLCAzMDExIEJlcm4sIFN3aXR6ZXJsYW5kIjASLgoUChIJPUyGy8A5jkcR089s4exVKSUQSSoUChIJ-xplLME5jkcRllhGSITQBMM",
+                    "googleMapsUri": "https://maps.google.com/?q=Marktgasse+73,+3011+Bern,+Schweiz&ftid=0x478e39c0cb864c3d:0x5a3ad467d01a57f&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -480,11 +715,23 @@
             "locations": [
                 {
                     "name": "Bern Railway Station",
-                    "fullAddress": "Bahnhofplatz 10A, 3011 Bern, Switzerland"
+                    "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+                    "location": {
+                        "latitude": 46.9485269,
+                        "longitude": 7.439914
+                    },
+                    "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+                    "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Interlaken Ost Station",
-                    "fullAddress": "Bahnhofplatz 7, 3800 Interlaken, Switzerland"
+                    "fullAddress": "Höheweg 7, 3800 Interlaken, Switzerland",
+                    "location": {
+                        "latitude": 46.685314299999995,
+                        "longitude": 7.8548944
+                    },
+                    "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
+                    "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -504,15 +751,33 @@
             "locations": [
                 {
                     "name": "Restaurant Taverne",
-                    "fullAddress": "Höheweg 74, 3800 Interlaken, Switzerland"
+                    "fullAddress": "Höheweg 74, 3800 Interlaken, Switzerland",
+                    "location": {
+                        "latitude": 46.6884769,
+                        "longitude": 7.863434400000001
+                    },
+                    "googlePlaceId": "ChIJ6fenVJ6kj0cR_BpA8AG9KTw",
+                    "googleMapsUri": "https://maps.google.com/?cid=4335203932344163068&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Hüsi Bierhaus",
-                    "fullAddress": "Postgasse 3, 3800 Interlaken, Switzerland"
+                    "fullAddress": "Postgasse 3, 3800 Interlaken, Switzerland",
+                    "location": {
+                        "latitude": 46.6861007,
+                        "longitude": 7.854629
+                    },
+                    "googlePlaceId": "ChIJA3G7EJqkj0cROAAFZmoR7kU",
+                    "googleMapsUri": "https://maps.google.com/?cid=5038984181749973048&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Velo Cafe",
-                    "fullAddress": "Marktgasse 41, 3800 Interlaken, Switzerland"
+                    "fullAddress": "Marktgasse 41, 3800 Interlaken, Switzerland",
+                    "location": {
+                        "latitude": 46.68593260000001,
+                        "longitude": 7.8530077
+                    },
+                    "googlePlaceId": "EitNYXJrdGdhc3NlIDQxLCAzODAwIEludGVybGFrZW4sIFN3aXR6ZXJsYW5kIjASLgoUChIJ7csEpJCkj0cRAwkEX9fMahUQKSoUChIJ3TkWC5qkj0cR-veL90RlFWE",
+                    "googleMapsUri": "https://maps.google.com/?q=Marktgasse+41,+3800+Interlaken,+Schweiz&ftid=0x478fa490a404cbed:0xaa404b0444484dc7&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -532,15 +797,33 @@
             "locations": [
                 {
                     "name": "Interlaken Ost Station",
-                    "fullAddress": "Bahnhofplatz 7, 3800 Interlaken, Switzerland"
+                    "fullAddress": "Höheweg 7, 3800 Interlaken, Switzerland",
+                    "location": {
+                        "latitude": 46.685314299999995,
+                        "longitude": 7.8548944
+                    },
+                    "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
+                    "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Lauterbrunnen Station",
-                    "fullAddress": "3822 Lauterbrunnen, Switzerland"
+                    "fullAddress": "3822 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.5960688,
+                        "longitude": 7.9082575
+                    },
+                    "googlePlaceId": "ChIJzQeHBx2hj0cR4dVU3d9jMes",
+                    "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Wengen Railway Station",
-                    "fullAddress": "3823 Wengen, Switzerland"
+                    "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.6054335,
+                        "longitude": 7.921539900000001
+                    },
+                    "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+                    "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -560,7 +843,13 @@
             "locations": [
                 {
                     "name": "Beausite Park Hotel Wengen",
-                    "fullAddress": "Am Wengi, 3823 Wengen, Switzerland"
+                    "fullAddress": "Am Wengi, 3823 Wengen BE, Switzerland",
+                    "location": {
+                        "latitude": 46.60852,
+                        "longitude": 7.923196299999999
+                    },
+                    "googlePlaceId": "ChIJ01gOiMKhj0cRerUO3mLunpw",
+                    "googleMapsUri": "https://maps.google.com/?cid=11285719824636753274&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -580,7 +869,13 @@
             "locations": [
                 {
                     "name": "Restaurant Eiger",
-                    "fullAddress": "Am Acher, 3823 Wengen, Switzerland"
+                    "fullAddress": "Am Acher, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.6039136,
+                        "longitude": 7.921267
+                    },
+                    "googlePlaceId": "ChIJG9ybesShj0cRgToPIp7NX90",
+                    "googleMapsUri": "https://maps.google.com/?cid=15951694484229536385&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -596,7 +891,7 @@
             "type": null,
             "subtype": null,
             "confirmationNumber": null,
-            "description":  "Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903",
+            "description": "Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903",
             "locations": [],
             "completed": false
         },
@@ -615,7 +910,13 @@
             "locations": [
                 {
                     "name": "Beausite Park Hotel Wengen",
-                    "fullAddress": "Am Wengi, 3823 Wengen, Switzerland"
+                    "fullAddress": "Am Wengi, 3823 Wengen BE, Switzerland",
+                    "location": {
+                        "latitude": 46.60852,
+                        "longitude": 7.923196299999999
+                    },
+                    "googlePlaceId": "ChIJ01gOiMKhj0cRerUO3mLunpw",
+                    "googleMapsUri": "https://maps.google.com/?cid=11285719824636753274&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -635,11 +936,23 @@
             "locations": [
                 {
                     "name": "Wengen Cable Car Station",
-                    "fullAddress": "3823 Wengen, Switzerland"
+                    "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.6054335,
+                        "longitude": 7.921539900000001
+                    },
+                    "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+                    "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Männlichen Summit",
-                    "fullAddress": "Männlichen, 3823 Wengen, Switzerland"
+                    "fullAddress": "Männlichen, 3823 Kleine Scheidegg, Switzerland",
+                    "location": {
+                        "latitude": 46.6136349,
+                        "longitude": 7.9411866
+                    },
+                    "googlePlaceId": "Ei9Nw6RubmxpY2hlbiwgMzgyMyBLbGVpbmUgU2NoZWlkZWdnLCBTd2l0emVybGFuZCIuKiwKFAoSCZH-KulYn49HEVhcbqKtq0M6EhQKEgnp2o6XpZ-PRxEtv3D5JO2vUg",
+                    "googleMapsUri": "https://maps.google.com/?q=M%C3%A4nnlichen,+3823+Kleine+Scheidegg,+Schweiz&ftid=0x478f9f58e92afe91:0x3a43abada26e5c58&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -659,11 +972,23 @@
             "locations": [
                 {
                     "name": "Männlichen",
-                    "fullAddress": "Männlichen, Switzerland"
+                    "fullAddress": "Männlichen, 3818 Grindelwald, Switzerland",
+                    "location": {
+                        "latitude": 46.6181443,
+                        "longitude": 7.938064700000001
+                    },
+                    "googlePlaceId": "ChIJdYycLv2hj0cRXlvQtgRBJG0",
+                    "googleMapsUri": "https://maps.google.com/?cid=7864482337798511454&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Kleine Scheidegg",
-                    "fullAddress": "3823 Lauterbrunnen, Switzerland"
+                    "fullAddress": "3823 Wengen, Switzerland",
+                    "location": {
+                        "latitude": 46.605407799999995,
+                        "longitude": 7.9215207
+                    },
+                    "googlePlaceId": "ChIJ6dqOl6Wfj0cRLb9w-STtr1I",
+                    "googleMapsUri": "https://maps.google.com/?cid=5958241575093976877&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -683,11 +1008,23 @@
             "locations": [
                 {
                     "name": "Restaurant Grindelwaldblick",
-                    "fullAddress": "3823 Kleine Scheidegg, Switzerland"
+                    "fullAddress": "Kleine Scheidegg, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.5850153,
+                        "longitude": 7.9612251999999994
+                    },
+                    "googlePlaceId": "ChIJB5zNLqefj0cRehFWQtvhUUw",
+                    "googleMapsUri": "https://maps.google.com/?cid=5499424951823110522&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Restaurant Bellevue des Alpes",
-                    "fullAddress": "3823 Kleine Scheidegg, Switzerland"
+                    "fullAddress": "Kleine Scheidegg, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.5850153,
+                        "longitude": 7.9612251999999994
+                    },
+                    "googlePlaceId": "ChIJB5zNLqefj0cRehFWQtvhUUw",
+                    "googleMapsUri": "https://maps.google.com/?cid=5499424951823110522&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -707,11 +1044,23 @@
             "locations": [
                 {
                     "name": "Kleine Scheidegg Railway Station",
-                    "fullAddress": "3823 Lauterbrunnen, Switzerland"
+                    "fullAddress": "3823 Wengen, Switzerland",
+                    "location": {
+                        "latitude": 46.605407799999995,
+                        "longitude": 7.9215207
+                    },
+                    "googlePlaceId": "ChIJ6dqOl6Wfj0cRLb9w-STtr1I",
+                    "googleMapsUri": "https://maps.google.com/?cid=5958241575093976877&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Wengen Railway Station",
-                    "fullAddress": "3823 Wengen, Switzerland"
+                    "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.6054335,
+                        "longitude": 7.921539900000001
+                    },
+                    "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+                    "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -731,7 +1080,13 @@
             "locations": [
                 {
                     "name": "Schönegg 1903",
-                    "fullAddress": "1401c Auf der Burg, 3823 Lauterbrunnen, Switzerland"
+                    "fullAddress": "Auf der Burg 1401c, 3823 Wengen BE, Switzerland",
+                    "location": {
+                        "latitude": 46.607306,
+                        "longitude": 7.920952000000001
+                    },
+                    "googlePlaceId": "ChIJrfl94OOhj0cRBONKt0d7jV4",
+                    "googleMapsUri": "https://maps.google.com/?cid=6813237359229461252&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -765,19 +1120,43 @@
             "locations": [
                 {
                     "name": "Wengen Railway Station",
-                    "fullAddress": "3823 Wengen, Switzerland"
+                    "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.6054335,
+                        "longitude": 7.921539900000001
+                    },
+                    "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+                    "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Lauterbrunnen Station",
-                    "fullAddress": "3822 Lauterbrunnen, Switzerland"
+                    "fullAddress": "3822 Lauterbrunnen, Switzerland",
+                    "location": {
+                        "latitude": 46.5960688,
+                        "longitude": 7.9082575
+                    },
+                    "googlePlaceId": "ChIJzQeHBx2hj0cR4dVU3d9jMes",
+                    "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Interlaken Ost Station",
-                    "fullAddress": "Bahnhofplatz 7, 3800 Interlaken, Switzerland"
+                    "fullAddress": "Höheweg 7, 3800 Interlaken, Switzerland",
+                    "location": {
+                        "latitude": 46.685314299999995,
+                        "longitude": 7.8548944
+                    },
+                    "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
+                    "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Zurich Airport Railway Station",
-                    "fullAddress": "8058 Zürich-Flughafen, Switzerland"
+                    "fullAddress": "8058 Kloten, Switzerland",
+                    "location": {
+                        "latitude": 47.4516643,
+                        "longitude": 8.5625171
+                    },
+                    "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
+                    "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -797,15 +1176,33 @@
             "locations": [
                 {
                     "name": "HITZBERGER Zurich Airport",
-                    "fullAddress": "Zurich Airport, 8058 Zürich-Flughafen, Switzerland"
+                    "fullAddress": "Switzerland",
+                    "location": {
+                        "latitude": 47.461714199999996,
+                        "longitude": 8.550859899999999
+                    },
+                    "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+                    "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Air Restaurant Zurich Airport",
-                    "fullAddress": "Zurich Airport, 8058 Zürich-Flughafen, Switzerland"
+                    "fullAddress": "Switzerland",
+                    "location": {
+                        "latitude": 47.461714199999996,
+                        "longitude": 8.550859899999999
+                    },
+                    "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+                    "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Sprüngli Zurich Airport",
-                    "fullAddress": "Zurich Airport, 8058 Zürich-Flughafen, Switzerland"
+                    "fullAddress": "Switzerland",
+                    "location": {
+                        "latitude": 47.461714199999996,
+                        "longitude": 8.550859899999999
+                    },
+                    "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+                    "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -825,11 +1222,23 @@
             "locations": [
                 {
                     "name": "Zurich Airport",
-                    "fullAddress": "8058 Zürich-Flughafen, Switzerland"
+                    "fullAddress": "8058 Kloten, Switzerland",
+                    "location": {
+                        "latitude": 47.4516643,
+                        "longitude": 8.5625171
+                    },
+                    "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
+                    "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Split Airport",
-                    "fullAddress": "21217 Kaštela, Croatia"
+                    "fullAddress": "21217, Kaštel Štafilić, Croatia",
+                    "location": {
+                        "latitude": 43.5518128,
+                        "longitude": 16.331662899999998
+                    },
+                    "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
+                    "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -849,11 +1258,23 @@
             "locations": [
                 {
                     "name": "Gat Sv. Petra Ferry Port",
-                    "fullAddress": "Gat Sv. Petra, 21000 Split, Croatia"
+                    "fullAddress": "Gat Sv. Petra, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5048453,
+                        "longitude": 16.4411201
+                    },
+                    "googlePlaceId": "EiRHYXQgU3YuIFBldHJhLCAyMTAwMCwgU3BsaXQsIENyb2F0aWEiLiosChQKEgljFtBMVWc1ExGSJDH6L1FGfxIUChIJv1MSzf9dNRMRslcdNVCtABM",
+                    "googleMapsUri": "https://maps.google.com/?q=Gat+Sv.+Petra,+21000,+Split,+Hrvatska&ftid=0x133567554cd01663:0x7f46512ffa312492&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Hvar Harbour",
-                    "fullAddress": "Riva, 21450 Hvar, Croatia"
+                    "fullAddress": "Riva, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1719882,
+                        "longitude": 16.4412412
+                    },
+                    "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+                    "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -873,7 +1294,13 @@
             "locations": [
                 {
                     "name": "Riva Marina Hvar Hotel",
-                    "fullAddress": "Obala Riva 27, 21450 Hvar, Croatia"
+                    "fullAddress": "Obala, Riva 27, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1703364,
+                        "longitude": 16.4412654
+                    },
+                    "googlePlaceId": "ChIJE5FokICBNRMRminfeZDsEwo",
+                    "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -893,18 +1320,36 @@
             "locations": [
                 {
                     "name": "Fig Hvar",
-                    "fullAddress": "Španjola 4, 21450 Hvar, Croatia",
-                    "description": "Casual, modern, popular. Good for a lively first-night feel."
+                    "fullAddress": "Ul. Biskupa Jurja Dubokovica 80, 21450, Hvar, Croatia",
+                    "description": "Casual, modern, popular. Good for a lively first-night feel.",
+                    "location": {
+                        "latitude": 43.174984099999996,
+                        "longitude": 16.4418705
+                    },
+                    "googlePlaceId": "ChIJJyGav4eBNRMRUb5Lp50KWEA",
+                    "googleMapsUri": "https://maps.google.com/?cid=4636467488610827857&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Dalmatino",
-                    "fullAddress": "Sveti Marak 1, 21450 Hvar, Croatia",
-                    "description": "Friendly Croatian food, local favorite."
+                    "fullAddress": "Ul. Sveti Marak 1, 21450, Hvar, Croatia",
+                    "description": "Friendly Croatian food, local favorite.",
+                    "location": {
+                        "latitude": 43.172800599999995,
+                        "longitude": 16.4408513
+                    },
+                    "googlePlaceId": "ChIJZ7MZYYeBNRMRdFCqhXyJA4k",
+                    "googleMapsUri": "https://maps.google.com/?cid=9872885976037740660&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Konoba Bonaca",
                     "fullAddress": "Hvar, Croatia",
-                    "description": "Traditional, quieter option."
+                    "description": "Traditional, quieter option.",
+                    "location": {
+                        "latitude": 43.1726228,
+                        "longitude": 16.4445931
+                    },
+                    "googlePlaceId": "ChIJ5_8jTRSBNRMRoM8rhlCtAAQ",
+                    "googleMapsUri": "https://maps.google.com/?cid=288420937511718816&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -924,11 +1369,23 @@
             "locations": [
                 {
                     "name": "Hvar Riva",
-                    "fullAddress": "Riva, 21450 Hvar, Croatia"
+                    "fullAddress": "Riva, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1719882,
+                        "longitude": 16.4412412
+                    },
+                    "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+                    "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "St. Stephen's Square",
-                    "fullAddress": "Trg Sv. Stjepana, 21450 Hvar, Croatia"
+                    "fullAddress": "Trg Sv. Stjepana, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172561,
+                        "longitude": 16.44117
+                    },
+                    "googlePlaceId": "ChIJF1JFQIeBNRMRaS_u1arZdnc",
+                    "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -963,12 +1420,24 @@
             "locations": [
                 {
                     "name": "Hvar Riva",
-                    "fullAddress": "Riva, 21450 Hvar, Croatia",
-                    "description": "Main waterfront promenade and common private boat departure area."
+                    "fullAddress": "Riva, 21450, Hvar, Croatia",
+                    "description": "Main waterfront promenade and common private boat departure area.",
+                    "location": {
+                        "latitude": 43.1719882,
+                        "longitude": 16.4412412
+                    },
+                    "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+                    "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Pakleni Islands",
-                    "fullAddress": "Pakleni Islands, Hvar, Croatia"
+                    "fullAddress": "Pakleni Islands, Croatia",
+                    "location": {
+                        "latitude": 43.1620214,
+                        "longitude": 16.3684552
+                    },
+                    "googlePlaceId": "ChIJiWc2NTyDNRMR7HrergOjDjU",
+                    "googleMapsUri": "https://maps.google.com/?cid=3823172369898175212&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -988,23 +1457,47 @@
             "locations": [
                 {
                     "name": "Zori Restaurant",
-                    "fullAddress": "Palmižana, Pakleni Islands, 21450 Hvar, Croatia",
-                    "description": "Primary Pakleni Islands lunch option; reservation recommended."
+                    "fullAddress": "Palmižana, Croatia",
+                    "description": "Primary Pakleni Islands lunch option; reservation recommended.",
+                    "location": {
+                        "latitude": 43.1629321,
+                        "longitude": 16.3924059
+                    },
+                    "googlePlaceId": "ChIJmTHiTgiDNRMRPhzOXXpXAjg",
+                    "googleMapsUri": "https://maps.google.com/?cid=4035884399148801086&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Meneghello Restaurant",
-                    "fullAddress": "Palmižana, Pakleni Islands, 21450 Hvar, Croatia",
-                    "description": "Artistic/upscale Pakleni Islands option; reservation recommended."
+                    "fullAddress": "Palmižana, Croatia",
+                    "description": "Artistic/upscale Pakleni Islands option; reservation recommended.",
+                    "location": {
+                        "latitude": 43.1629321,
+                        "longitude": 16.3924059
+                    },
+                    "googlePlaceId": "ChIJmTHiTgiDNRMRPhzOXXpXAjg",
+                    "googleMapsUri": "https://maps.google.com/?cid=4035884399148801086&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Laganini Lounge Bar & Fish House",
-                    "fullAddress": "Palmižana, Pakleni Islands, 21450 Hvar, Croatia",
-                    "description": "Famous beach-club lunch option; mid-May availability uncertain, reservation strongly recommended if open."
+                    "fullAddress": "Palmižana, Croatia",
+                    "description": "Famous beach-club lunch option; mid-May availability uncertain, reservation strongly recommended if open.",
+                    "location": {
+                        "latitude": 43.1629321,
+                        "longitude": 16.3924059
+                    },
+                    "googlePlaceId": "ChIJmTHiTgiDNRMRPhzOXXpXAjg",
+                    "googleMapsUri": "https://maps.google.com/?cid=4035884399148801086&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Konoba Dubovica",
-                    "fullAddress": "Dubovica Bay, 21450 Hvar, Croatia",
-                    "description": "Rustic fallback on Hvar island; reservation usually not required."
+                    "fullAddress": "21450, Lesina, Croatia",
+                    "description": "Rustic fallback on Hvar island; reservation usually not required.",
+                    "location": {
+                        "latitude": 43.145986199999996,
+                        "longitude": 16.5344875
+                    },
+                    "googlePlaceId": "ChIJY6iNdzeBNRMRTFUh5ZZR52Y",
+                    "googleMapsUri": "https://maps.google.com/?cid=7414985020019922252&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1024,7 +1517,13 @@
             "locations": [
                 {
                     "name": "Riva Marina Hvar Hotel",
-                    "fullAddress": "Obala Riva 27, 21450 Hvar, Croatia"
+                    "fullAddress": "Obala, Riva 27, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1703364,
+                        "longitude": 16.4412654
+                    },
+                    "googlePlaceId": "ChIJE5FokICBNRMRminfeZDsEwo",
+                    "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1044,7 +1543,13 @@
             "locations": [
                 {
                     "name": "Giaxa",
-                    "fullAddress": "Petra Hektorovića 3, 21450 Hvar, Croatia"
+                    "fullAddress": "Petra Hektorovića 3, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1726715,
+                        "longitude": 16.4427086
+                    },
+                    "googlePlaceId": "ChIJI8u3EIeBNRMRwzlPHcFU2iE",
+                    "googleMapsUri": "https://maps.google.com/?cid=2439355336571697603&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1064,23 +1569,53 @@
             "locations": [
                 {
                     "name": "Hvar Riva",
-                    "fullAddress": "Riva, 21450 Hvar, Croatia"
+                    "fullAddress": "Riva, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1719882,
+                        "longitude": 16.4412412
+                    },
+                    "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+                    "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "St. Stephen's Square",
-                    "fullAddress": "Trg Sv. Stjepana, 21450 Hvar, Croatia"
+                    "fullAddress": "Trg Sv. Stjepana, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172561,
+                        "longitude": 16.44117
+                    },
+                    "googlePlaceId": "ChIJF1JFQIeBNRMRaS_u1arZdnc",
+                    "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Hvar Fortress / Fortica",
-                    "fullAddress": "Ul. Biskupa Jurja Dubokovića 80, 21450 Hvar, Croatia"
+                    "fullAddress": "Fortica, Ul. Biskupa Jurja Dubokovica 80, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1748905,
+                        "longitude": 16.4419675
+                    },
+                    "googlePlaceId": "ChIJQ4jq6oeBNRMROSk47SDeQmU",
+                    "googleMapsUri": "https://maps.google.com/?cid=7296638579293825337&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Ka'lavanda Music Bar",
-                    "fullAddress": "Dr. Mate Miličića 7, 21450 Hvar, Croatia"
+                    "fullAddress": "Trg Marka, Dr. Mate Miličića 7, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1724886,
+                        "longitude": 16.443164799999998
+                    },
+                    "googlePlaceId": "ChIJa0rLHoeBNRMRND9LABuf1VI",
+                    "googleMapsUri": "https://maps.google.com/?cid=5968851819467325236&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Central Park Club",
-                    "fullAddress": "Sveti Marak 2, 21450 Hvar, Croatia"
+                    "fullAddress": "Ul. Sveti Marak 2, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172909999999995,
+                        "longitude": 16.4411304
+                    },
+                    "googlePlaceId": "ChIJNXAtZIeBNRMRUonEEAiVnsE",
+                    "googleMapsUri": "https://maps.google.com/?cid=13951752557513967954&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1115,11 +1650,23 @@
             "locations": [
                 {
                     "name": "Central Park Club",
-                    "fullAddress": "Sveti Marak 2, 21450 Hvar, Croatia"
+                    "fullAddress": "Ul. Sveti Marak 2, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172909999999995,
+                        "longitude": 16.4411304
+                    },
+                    "googlePlaceId": "ChIJNXAtZIeBNRMRUonEEAiVnsE",
+                    "googleMapsUri": "https://maps.google.com/?cid=13951752557513967954&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Kava37",
-                    "fullAddress": "Ulica Kroz Burak 37, 21450 Hvar, Croatia"
+                    "fullAddress": "Kroz Burak 37, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1708797,
+                        "longitude": 16.441847
+                    },
+                    "googlePlaceId": "ChIJy8n7toCBNRMR_14kjjj9fcY",
+                    "googleMapsUri": "https://maps.google.com/?cid=14302866410943307519&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1139,11 +1686,23 @@
             "locations": [
                 {
                     "name": "St. Stephen's Square",
-                    "fullAddress": "Trg Sv. Stjepana, 21450 Hvar, Croatia"
+                    "fullAddress": "Trg Sv. Stjepana, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172561,
+                        "longitude": 16.44117
+                    },
+                    "googlePlaceId": "ChIJF1JFQIeBNRMRaS_u1arZdnc",
+                    "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "St. Stephen's Cathedral",
-                    "fullAddress": "Trg Sv. Stjepana, 21450 Hvar, Croatia"
+                    "fullAddress": "Trg Sv. Stjepana, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172561,
+                        "longitude": 16.44117
+                    },
+                    "googlePlaceId": "ChIJF1JFQIeBNRMRaS_u1arZdnc",
+                    "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1163,7 +1722,13 @@
             "locations": [
                 {
                     "name": "Hvar Heritage Museum",
-                    "fullAddress": "Hanibala Lucića 8, 21450 Hvar, Croatia"
+                    "fullAddress": "Hanibala Lucića 8, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172221,
+                        "longitude": 16.4453894
+                    },
+                    "googlePlaceId": "ChIJA-ColoaBNRMR_Ls3a_2XiRA",
+                    "googleMapsUri": "https://maps.google.com/?cid=1191650691097541628&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1183,11 +1748,23 @@
             "locations": [
                 {
                     "name": "Black Pepper Hvar",
-                    "fullAddress": "Jurja Novaka 8, 21450 Hvar, Croatia"
+                    "fullAddress": "Jurja Novaka 8, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.171697099999996,
+                        "longitude": 16.443566399999998
+                    },
+                    "googlePlaceId": "ChIJLw0N2IaBNRMRyggmo8vOvsk",
+                    "googleMapsUri": "https://maps.google.com/?cid=14537284021209401546&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Dalmatino",
-                    "fullAddress": "Sveti Marak 1, 21450 Hvar, Croatia"
+                    "fullAddress": "Ul. Sveti Marak 1, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172800599999995,
+                        "longitude": 16.4408513
+                    },
+                    "googlePlaceId": "ChIJZ7MZYYeBNRMRdFCqhXyJA4k",
+                    "googleMapsUri": "https://maps.google.com/?cid=9872885976037740660&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1207,7 +1784,13 @@
             "locations": [
                 {
                     "name": "Riva Marina Hvar Hotel",
-                    "fullAddress": "Obala Riva 27, 21450 Hvar, Croatia"
+                    "fullAddress": "Obala, Riva 27, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1703364,
+                        "longitude": 16.4412654
+                    },
+                    "googlePlaceId": "ChIJE5FokICBNRMRminfeZDsEwo",
+                    "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1227,7 +1810,13 @@
             "locations": [
                 {
                     "name": "Giaxa",
-                    "fullAddress": "Petra Hektorovića 3, 21450 Hvar, Croatia"
+                    "fullAddress": "Petra Hektorovića 3, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1726715,
+                        "longitude": 16.4427086
+                    },
+                    "googlePlaceId": "ChIJI8u3EIeBNRMRwzlPHcFU2iE",
+                    "googleMapsUri": "https://maps.google.com/?cid=2439355336571697603&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1262,15 +1851,33 @@
             "locations": [
                 {
                     "name": "Kava37",
-                    "fullAddress": "Ulica Kroz Burak 37, 21450 Hvar, Croatia"
+                    "fullAddress": "Kroz Burak 37, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1708797,
+                        "longitude": 16.441847
+                    },
+                    "googlePlaceId": "ChIJy8n7toCBNRMR_14kjjj9fcY",
+                    "googleMapsUri": "https://maps.google.com/?cid=14302866410943307519&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Fig Hvar",
-                    "fullAddress": "Španjola 4, 21450 Hvar, Croatia"
+                    "fullAddress": "Ul. Biskupa Jurja Dubokovica 80, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.174984099999996,
+                        "longitude": 16.4418705
+                    },
+                    "googlePlaceId": "ChIJJyGav4eBNRMRUb5Lp50KWEA",
+                    "googleMapsUri": "https://maps.google.com/?cid=4636467488610827857&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Central Park Club",
-                    "fullAddress": "Sveti Marak 2, 21450 Hvar, Croatia"
+                    "fullAddress": "Ul. Sveti Marak 2, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.172909999999995,
+                        "longitude": 16.4411304
+                    },
+                    "googlePlaceId": "ChIJNXAtZIeBNRMRUonEEAiVnsE",
+                    "googleMapsUri": "https://maps.google.com/?cid=13951752557513967954&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1290,11 +1897,23 @@
             "locations": [
                 {
                     "name": "Hvar Harbour",
-                    "fullAddress": "Riva, 21450 Hvar, Croatia"
+                    "fullAddress": "Riva, 21450, Hvar, Croatia",
+                    "location": {
+                        "latitude": 43.1719882,
+                        "longitude": 16.4412412
+                    },
+                    "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+                    "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Split Ferry Port",
-                    "fullAddress": "Obala kneza Domagoja, 21000 Split, Croatia"
+                    "fullAddress": "Obala kneza Domagoja, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5038827,
+                        "longitude": 16.4426669
+                    },
+                    "googlePlaceId": "EitPYmFsYSBrbmV6YSBEb21hZ29qYSwgMjEwMDAsIFNwbGl0LCBDcm9hdGlhIi4qLAoUChIJcwaHzKpgNRMRzzhS6XazxakSFAoSCRf1vGv8XTUTEZiftDH2j3mh",
+                    "googleMapsUri": "https://maps.google.com/?q=Obala+kneza+Domagoja,+21000,+Split,+Hrvatska&ftid=0x133560aacc870673:0xa9c5b376e95238cf&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1314,7 +1933,13 @@
             "locations": [
                 {
                     "name": "Heritage Hotel Slavija Split",
-                    "fullAddress": "Buvinina 2, 21000 Split, Croatia"
+                    "fullAddress": "Dosud 1, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5080822,
+                        "longitude": 16.4391636
+                    },
+                    "googlePlaceId": "ChIJ9ahhNv5dNRMR9Z9yTnniC94",
+                    "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1334,23 +1959,53 @@
             "locations": [
                 {
                     "name": "Diocletian's Palace",
-                    "fullAddress": "Dioklecijanova 1, 21000 Split, Croatia"
+                    "fullAddress": "Dioklecijanova 1, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5083203,
+                        "longitude": 16.4401454
+                    },
+                    "googlePlaceId": "ChIJT_xcU_5dNRMRmf983bWaxVg",
+                    "googleMapsUri": "https://maps.google.com/?cid=6396688951645372313&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Peristyle Square",
-                    "fullAddress": "21000 Split, Croatia"
+                    "fullAddress": "21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5150785,
+                        "longitude": 16.470036
+                    },
+                    "googlePlaceId": "ChIJv1MSzf9dNRMRslcdNVCtABM",
+                    "googleMapsUri": "https://maps.google.com/?cid=1369284846720735154&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Cathedral of Saint Domnius",
-                    "fullAddress": "Kraj Sv. Duje 5, 21000 Split, Croatia"
+                    "fullAddress": "Ul. Kraj Svetog Duje 5, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.507908799999996,
+                        "longitude": 16.440317099999998
+                    },
+                    "googlePlaceId": "ChIJcf6oK_5dNRMRdy8CKcpLKmc",
+                    "googleMapsUri": "https://maps.google.com/?cid=7433837466571911031&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Riva Promenade",
-                    "fullAddress": "Obala Hrvatskog narodnog preporoda, 21000 Split, Croatia"
+                    "fullAddress": "Obala Hrvatskog narodnog preporoda, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5077507,
+                        "longitude": 16.4384962
+                    },
+                    "googlePlaceId": "ChIJ_bWBtv9dNRMRnG5VvEMfaxU",
+                    "googleMapsUri": "https://maps.google.com/?cid=1543361673087512220&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Marjan Hill",
-                    "fullAddress": "21000 Split, Croatia"
+                    "fullAddress": "21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5150785,
+                        "longitude": 16.470036
+                    },
+                    "googlePlaceId": "ChIJv1MSzf9dNRMRslcdNVCtABM",
+                    "googleMapsUri": "https://maps.google.com/?cid=1369284846720735154&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1370,19 +2025,43 @@
             "locations": [
                 {
                     "name": "Konoba Fetivi",
-                    "fullAddress": "Tomića stine 4, 21000 Split, Croatia"
+                    "fullAddress": "Ul. Tomića stine 4, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5083282,
+                        "longitude": 16.434444499999998
+                    },
+                    "googlePlaceId": "ChIJz_ir1vhdNRMRMoe3K7TXzmc",
+                    "googleMapsUri": "https://maps.google.com/?cid=7480153199936505650&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Villa Spiza",
-                    "fullAddress": "Kružićeva 3, 21000 Split, Croatia"
+                    "fullAddress": "Ul. Petra Kružića 6, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5095688,
+                        "longitude": 16.4391911
+                    },
+                    "googlePlaceId": "ChIJZYxSEv5dNRMRGgE5meAlnhk",
+                    "googleMapsUri": "https://maps.google.com/?cid=1845954543842033946&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Konoba Matejuska",
-                    "fullAddress": "Tomića stine 3, 21000 Split, Croatia"
+                    "fullAddress": "Ul. Tomića stine 3, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5083158,
+                        "longitude": 16.434418
+                    },
+                    "googlePlaceId": "ChIJDzv10_hdNRMR-snSQ6dYfNc",
+                    "googleMapsUri": "https://maps.google.com/?cid=15527383090687298042&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Bokeria Kitchen & Wine Bar",
-                    "fullAddress": "Domaldova ul. 8, 21000 Split, Croatia"
+                    "fullAddress": "Domaldova ul. 8, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5095222,
+                        "longitude": 16.4383583
+                    },
+                    "googlePlaceId": "ChIJ92f5Zf5dNRMRU8ybOzA5zls",
+                    "googleMapsUri": "https://maps.google.com/?cid=6615287781975116883&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1402,23 +2081,53 @@
             "locations": [
                 {
                     "name": "Diocletian's Palace",
-                    "fullAddress": "Dioklecijanova 1, 21000 Split, Croatia"
+                    "fullAddress": "Dioklecijanova 1, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5083203,
+                        "longitude": 16.4401454
+                    },
+                    "googlePlaceId": "ChIJT_xcU_5dNRMRmf983bWaxVg",
+                    "googleMapsUri": "https://maps.google.com/?cid=6396688951645372313&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Riva Promenade",
-                    "fullAddress": "Obala Hrvatskog narodnog preporoda, 21000 Split, Croatia"
+                    "fullAddress": "Obala Hrvatskog narodnog preporoda, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5077507,
+                        "longitude": 16.4384962
+                    },
+                    "googlePlaceId": "ChIJ_bWBtv9dNRMRnG5VvEMfaxU",
+                    "googleMapsUri": "https://maps.google.com/?cid=1543361673087512220&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Fabrique Pub",
-                    "fullAddress": "Trg Franje Tuđmana 3, 21000 Split, Croatia"
+                    "fullAddress": "Trg Franje Tuđmana 3, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.508237699999995,
+                        "longitude": 16.4359862
+                    },
+                    "googlePlaceId": "ChIJo8RCIP9dNRMRVMBwCgdSRcE",
+                    "googleMapsUri": "https://maps.google.com/?cid=13926627612906537044&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Noor Bar",
-                    "fullAddress": "Bajamontijeva ul. 2, 21000 Split, Croatia"
+                    "fullAddress": "Bajamontijeva ul. 2, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5086733,
+                        "longitude": 16.439661
+                    },
+                    "googlePlaceId": "ChIJW72dO_5dNRMRshgArdmIRsc",
+                    "googleMapsUri": "https://maps.google.com/?cid=14359314930409150642&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Roof 68",
-                    "fullAddress": "Ulica kralja Petra Krešimira IV, 21000 Split, Croatia"
+                    "fullAddress": "Ul. Kralja Petra Krešimira IV 5, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5084978,
+                        "longitude": 16.440032
+                    },
+                    "googlePlaceId": "ChIJwYMvm1NeNRMReMJidC0A5Vk",
+                    "googleMapsUri": "https://maps.google.com/?cid=6477583834268484216&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1452,7 +2161,13 @@
             "locations": [
                 {
                     "name": "Heritage Hotel Slavija Split",
-                    "fullAddress": "Buvinina 2, 21000 Split, Croatia"
+                    "fullAddress": "Dosud 1, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5080822,
+                        "longitude": 16.4391636
+                    },
+                    "googlePlaceId": "ChIJ9ahhNv5dNRMR9Z9yTnniC94",
+                    "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1471,7 +2186,13 @@
             "locations": [
                 {
                     "name": "Sixt Split",
-                    "fullAddress": "Poljicka ulica 28b, 21000 Split, Croatia"
+                    "fullAddress": "Poljička cesta 28B, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.506201,
+                        "longitude": 16.4642808
+                    },
+                    "googlePlaceId": "ChIJETDG_SFeNRMRVye5Z59XSLA",
+                    "googleMapsUri": "https://maps.google.com/?cid=12702499091150088023&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1532,13 +2253,25 @@
             "locations": [
                 {
                     "name": "Lička kuća",
-                    "fullAddress": "Near Entrance 1, Plitvička Jezera, Croatia",
-                    "description": "Best practical Croatian meal near Entrance 1."
+                    "fullAddress": "Josipa Jovića, 53231, Rastovača, Croatia",
+                    "description": "Best practical Croatian meal near Entrance 1.",
+                    "location": {
+                        "latitude": 44.9050696,
+                        "longitude": 15.611275200000001
+                    },
+                    "googlePlaceId": "ChIJi8ts-7xZYUcReJ3vjoK0YXU",
+                    "googleMapsUri": "https://maps.google.com/?cid=8458240048015318392&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Bistro Vučnica",
-                    "fullAddress": "Near Entrance 2, Mukinje, Croatia",
-                    "description": "Better option if routing toward Entrance 2."
+                    "fullAddress": "Mukinje 2, 53231, Plitvička Jezera, Croatia",
+                    "description": "Better option if routing toward Entrance 2.",
+                    "location": {
+                        "latitude": 44.8751319,
+                        "longitude": 15.627691299999999
+                    },
+                    "googlePlaceId": "EixNdWtpbmplIDIsIDUzMjMxLCBQbGl0dmnEjWthIEplemVyYSwgQ3JvYXRpYSIwEi4KFAoSCS0lh_g6XGFHERU196nptARpEAIqFAoSCZsTA0A6XGFHEVdRwJDBWwki",
+                    "googleMapsUri": "https://maps.google.com/?q=Mukinje+2,+53231,+Plitvi%C4%8Dka+Jezera,+Hrvatska&ftid=0x47615c3af887252d:0xfec00109ce987c2d&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1557,7 +2290,13 @@
             "locations": [
                 {
                     "name": "Plitvice Lakes National Park",
-                    "fullAddress": "Plitvička Jezera, Croatia"
+                    "fullAddress": "53231, Plitvička Jezera, Croatia",
+                    "location": {
+                        "latitude": 44.8820957,
+                        "longitude": 15.6233311
+                    },
+                    "googlePlaceId": "ChIJqX7IpYRnYUcRsMMrhlCtAAQ",
+                    "googleMapsUri": "https://maps.google.com/?cid=288420937511715760&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1576,7 +2315,13 @@
             "locations": [
                 {
                     "name": "Rastoke",
-                    "fullAddress": "Slunj, Croatia"
+                    "fullAddress": "47240, Slunj, Croatia",
+                    "location": {
+                        "latitude": 45.1149355,
+                        "longitude": 15.5857945
+                    },
+                    "googlePlaceId": "ChIJTc-7RQz_Y0cRuel3KAMeiKc",
+                    "googleMapsUri": "https://maps.google.com/?cid=12071931800079296953&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1595,7 +2340,13 @@
             "locations": [
                 {
                     "name": "Sixt Split",
-                    "fullAddress": "Poljicka ulica 28b, 21000 Split, Croatia"
+                    "fullAddress": "Poljička cesta 28B, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.506201,
+                        "longitude": 16.4642808
+                    },
+                    "googlePlaceId": "ChIJETDG_SFeNRMRVye5Z59XSLA",
+                    "googleMapsUri": "https://maps.google.com/?cid=12702499091150088023&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1629,7 +2380,13 @@
             "locations": [
                 {
                     "name": "Heritage Hotel Slavija Split",
-                    "fullAddress": "Buvinina 2, 21000 Split, Croatia"
+                    "fullAddress": "Dosud 1, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5080822,
+                        "longitude": 16.4391636
+                    },
+                    "googlePlaceId": "ChIJ9ahhNv5dNRMR9Z9yTnniC94",
+                    "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1648,13 +2405,25 @@
             "locations": [
                 {
                     "name": "Cathedral of Saint Domnius Bell Tower",
-                    "fullAddress": "Kraj Sv. Duje 5, 21000 Split, Croatia",
-                    "description": "Buy ticket on-site. Panoramic rooftop view of Split."
+                    "fullAddress": "Ul. Kraj Svetog Duje 5, 21000, Split, Croatia",
+                    "description": "Buy ticket on-site. Panoramic rooftop view of Split.",
+                    "location": {
+                        "latitude": 43.507908799999996,
+                        "longitude": 16.440317099999998
+                    },
+                    "googlePlaceId": "ChIJcf6oK_5dNRMRdy8CKcpLKmc",
+                    "googleMapsUri": "https://maps.google.com/?cid=7433837466571911031&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Diocletian's Palace",
-                    "fullAddress": "Dioklecijanova 1, 21000 Split, Croatia",
-                    "description": "Wander the ancient palace streets as a final Split memory."
+                    "fullAddress": "Dioklecijanova 1, 21000, Split, Croatia",
+                    "description": "Wander the ancient palace streets as a final Split memory.",
+                    "location": {
+                        "latitude": 43.5083203,
+                        "longitude": 16.4401454
+                    },
+                    "googlePlaceId": "ChIJT_xcU_5dNRMRmf983bWaxVg",
+                    "googleMapsUri": "https://maps.google.com/?cid=6396688951645372313&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1673,7 +2442,13 @@
             "locations": [
                 {
                     "name": "Dvor",
-                    "fullAddress": "Put Firula 14, 21000 Split, Croatia"
+                    "fullAddress": "Put Firula 14, 21000, Split, Croatia",
+                    "location": {
+                        "latitude": 43.5011447,
+                        "longitude": 16.453942599999998
+                    },
+                    "googlePlaceId": "ChIJNbNstadgNRMRjff04TBqRhQ",
+                    "googleMapsUri": "https://maps.google.com/?cid=1460971887310206861&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1692,7 +2467,13 @@
             "locations": [
                 {
                     "name": "Split Airport",
-                    "fullAddress": "21217 Kaštela, Croatia"
+                    "fullAddress": "21217, Kaštel Štafilić, Croatia",
+                    "location": {
+                        "latitude": 43.5518128,
+                        "longitude": 16.331662899999998
+                    },
+                    "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
+                    "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1712,11 +2493,23 @@
             "locations": [
                 {
                     "name": "Split Airport",
-                    "fullAddress": "21217 Kaštela, Croatia"
+                    "fullAddress": "21217, Kaštel Štafilić, Croatia",
+                    "location": {
+                        "latitude": 43.5518128,
+                        "longitude": 16.331662899999998
+                    },
+                    "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
+                    "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Munich Airport",
-                    "fullAddress": "Munich Airport (MUC), 85356 Munich, Germany"
+                    "fullAddress": "Nordallee 25, 85356 Oberding, Germany",
+                    "location": {
+                        "latitude": 48.3536407,
+                        "longitude": 11.7831852
+                    },
+                    "googlePlaceId": "ChIJRW3aI1kTnkcRS89WOoV6xeM",
+                    "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1736,11 +2529,23 @@
             "locations": [
                 {
                     "name": "Munich Airport",
-                    "fullAddress": "Munich Airport (MUC), 85356 Munich, Germany"
+                    "fullAddress": "Nordallee 25, 85356 Oberding, Germany",
+                    "location": {
+                        "latitude": 48.3536407,
+                        "longitude": 11.7831852
+                    },
+                    "googlePlaceId": "ChIJRW3aI1kTnkcRS89WOoV6xeM",
+                    "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 },
                 {
                     "name": "Zurich Airport",
-                    "fullAddress": "8058 Zürich-Flughafen, Switzerland"
+                    "fullAddress": "8058 Kloten, Switzerland",
+                    "location": {
+                        "latitude": 47.4516643,
+                        "longitude": 8.5625171
+                    },
+                    "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
+                    "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
@@ -1759,7 +2564,13 @@
             "locations": [
                 {
                     "name": "Radisson Hotel Zurich Airport",
-                    "fullAddress": "Flughofstrasse 75, Rümlang, Zurich"
+                    "fullAddress": "Flughofstrasse 75, 8153 Rümlang, Switzerland",
+                    "location": {
+                        "latitude": 47.4509985,
+                        "longitude": 8.540113999999999
+                    },
+                    "googlePlaceId": "ChIJ87eMDDZ1kEcRSOwKPJqpo3U",
+                    "googleMapsUri": "https://maps.google.com/?cid=8476805403538811976&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
                 }
             ],
             "completed": false
