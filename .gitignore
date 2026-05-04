@@ -13,6 +13,13 @@ function/**/__pycache__/
 function/.venv/
 function/tests/__pycache__/
 
+# FastAPI / api
+api/.venv/
+api/__pycache__/
+api/**/__pycache__/
+api/tests/__pycache__/
+api/.env
+
 # Python
 *.pyc
 *.pyo
