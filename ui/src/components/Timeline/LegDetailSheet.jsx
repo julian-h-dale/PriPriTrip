@@ -55,7 +55,7 @@ function getSubtypeIcon(subtype) {
 }
 
 function mapsUrl(loc) {
-  const query = loc.name;
+  const query = loc.name + " " + loc.fullAddress;
   return query ? `https://maps.google.com/?q=${encodeURIComponent(query)}` : null;
 }
 
