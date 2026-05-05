@@ -2,8 +2,8 @@ name: Snapshot trip.json
 
 on:
   workflow_dispatch:       # run on-demand from the Actions tab
-  schedule:
-    - cron: '0 2 * * *'   # nightly at 02:00 UTC as a safety net
+  # schedule:
+  #   - cron: '0 2 * * *'   # nightly at 02:00 UTC as a safety net
 
 permissions:
   contents: write          # needed to commit & push
