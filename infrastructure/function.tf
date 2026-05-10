@@ -35,15 +35,16 @@ resource "azurerm_linux_function_app" "application" {
   }
 
   app_settings = {
-    FUNCTIONS_WORKER_RUNTIME       = "python"
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    APP_PASSWORD                   = var.app_password
-    TOKEN_SECRET                   = var.token_secret
-    MAPS_API_KEY                   = var.maps_api_key
-    STORAGE_ACCOUNT                = azurerm_storage_account.application.name
-    STORAGE_TRIP_CONTAINER         = "trip"
-    STORAGE_DOCS_CONTAINER         = "documents"
-    STORAGE_MEMORIES_CONTAINER     = "memories"
+    FUNCTIONS_WORKER_RUNTIME              = "python"
+    SCM_DO_BUILD_DURING_DEPLOYMENT        = "true"
+    APP_PASSWORD                          = var.app_password
+    TOKEN_SECRET                          = var.token_secret
+    MAPS_API_KEY                          = var.maps_api_key
+    STORAGE_ACCOUNT                       = azurerm_storage_account.application.name
+    STORAGE_TRIP_CONTAINER                = "trip"
+    STORAGE_DOCS_CONTAINER                = "documents"
+    STORAGE_MEMORIES_CONTAINER            = "memories"
+    APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.application.connection_string
   }
 }
 

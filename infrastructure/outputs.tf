@@ -17,3 +17,9 @@ output "storage_account_name" {
   description = "Storage account name — used to pre-populate local.settings.json"
   value       = azurerm_storage_account.application.name
 }
+
+output "app_insights_connection_string" {
+  description = "Application Insights connection string — paste into local.settings.json for local tracing"
+  value       = azurerm_application_insights.application.connection_string
+  sensitive   = true
+}
