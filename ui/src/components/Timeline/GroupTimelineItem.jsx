@@ -5,15 +5,13 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, Chip, Typography } from '@mui/material';
 import CircleIcon from '@mui/icons-material/Circle';
-import EditIcon from '@mui/icons-material/Edit';
 import dayjs from '../../utils/dayjs';
-import { TRIP_TZ } from '../../utils/dayjs';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
-export default function GroupTimelineItem({ item, isFirst, isLast, onToggle, onEdit }) {
+export default function GroupTimelineItem({ item, isFirst, isLast, onToggle }) {
   return (
     <MotionTimelineItem
       layout
@@ -29,7 +27,7 @@ export default function GroupTimelineItem({ item, isFirst, isLast, onToggle, onE
         variant="body2"
         color="text.secondary"
       >
-        {dayjs(item.startDateTime).tz(TRIP_TZ).format('MMM D')}
+        {dayjs(item.date).format('MMM D')}
       </TimelineOppositeContent>
 
       <TimelineSeparator>
@@ -41,8 +39,8 @@ export default function GroupTimelineItem({ item, isFirst, isLast, onToggle, onE
       </TimelineSeparator>
 
       <TimelineContent sx={{ py: '10px', px: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Box>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle1" fontWeight={600}>
               {item.title}
             </Typography>
@@ -52,14 +50,13 @@ export default function GroupTimelineItem({ item, isFirst, isLast, onToggle, onE
               </Typography>
             )}
           </Box>
-          {onEdit && (
-            <IconButton
+          {item.isAlternate && (
+            <Chip
+              label="alt"
               size="small"
-              onClick={(e) => { e.stopPropagation(); onEdit(item); }}
-              sx={{ ml: 0.5, mt: -0.25, opacity: 0.45, '&:hover': { opacity: 1 } }}
-            >
-              <EditIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+              variant="outlined"
+              sx={{ height: 18, fontSize: '0.65rem', mt: 0.25, flexShrink: 0 }}
+            />
           )}
         </Box>
       </TimelineContent>

@@ -31,7 +31,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await client.post('/api/auth', { password });
+      const { data } = await client.post('/auth', { password });
       dispatch(login(data.token));
       navigate('/', { replace: true });
     } catch (err) {

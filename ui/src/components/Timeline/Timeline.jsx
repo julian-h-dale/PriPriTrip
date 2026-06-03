@@ -5,34 +5,26 @@ import MuiTimeline from '@mui/lab/Timeline';
 import { timelineOppositeContentClasses } from '@mui/lab/TimelineOppositeContent';
 import { useSelector } from 'react-redux';
 import dayjs from '../../utils/dayjs';
-import { TRIP_TZ } from '../../utils/dayjs';
 import { selectTrip } from '../../store/tripSlice';
 import GroupTimelineItem from './GroupTimelineItem';
 import LegTimelineItem from './LegTimelineItem';
 import LegDetailSheet from './LegDetailSheet';
 
-export default function Timeline({ onEditGroup, onEditLeg, expandedGroupId, onExpandedGroupChange }) {
+export default function Timeline({ expandedDayId, onExpandedDayChange }) {
   const trip = useSelector(selectTrip);
-  const [selectedLeg, setSelectedLeg] = useState(null);
+  const [selectedPoint, setSelectedPoint] = useState(null);
 
   if (!trip) return null;
 
-  const topGroups = trip.items
-    .filter((i) => i.parentItemId === null && i.kind === 'group')
-    .sort((a, b) => dayjs(a.startDateTime).tz(TRIP_TZ) - dayjs(b.startDateTime).tz(TRIP_TZ));
+  const sortedDays = [...trip.days].sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const getChildren = (groupId) =>
-    trip.items
-      .filter((i) => i.parentItemId === groupId)
-      .sort((a, b) => dayjs(a.startDateTime).tz(TRIP_TZ) - dayjs(b.startDateTime).tz(TRIP_TZ));
-
-  // Flat render list: groups always present, legs spliced in after their parent when expanded
   const renderItems = [];
-  topGroups.forEach((group) => {
-    renderItems.push({ item: group, isGroup: true });
-    if (expandedGroupId === group.itemId) {
-      getChildren(group.itemId).forEach((child) => {
-        renderItems.push({ item: child, isGroup: false });
+  sortedDays.forEach((day) => {
+    renderItems.push({ item: day, isDay: true });
+    if (expandedDayId === day.dayId) {
+      const sortedPoints = [...day.points].sort((a, b) => a.sortOrder - b.sortOrder);
+      sortedPoints.forEach((point) => {
+        renderItems.push({ item: point, isDay: false });
       });
     }
   });
@@ -57,29 +49,27 @@ export default function Timeline({ onEditGroup, onEditLeg, expandedGroupId, onEx
         }}
       >
         <AnimatePresence initial={false}>
-          {renderItems.map(({ item, isGroup }, index) => {
+          {renderItems.map(({ item, isDay }, index) => {
             const isFirst = index === 0;
             const isLast = index === renderItems.length - 1;
 
-            return isGroup ? (
+            return isDay ? (
               <GroupTimelineItem
-                key={item.itemId}
+                key={item.dayId}
                 item={item}
                 isFirst={isFirst}
                 isLast={isLast}
                 onToggle={() =>
-                  onExpandedGroupChange(expandedGroupId === item.itemId ? null : item.itemId)
+                  onExpandedDayChange(expandedDayId === item.dayId ? null : item.dayId)
                 }
-                onEdit={onEditGroup}
               />
             ) : (
               <LegTimelineItem
-                key={item.itemId}
+                key={item.pointId}
                 item={item}
                 isFirst={isFirst}
                 isLast={isLast}
-                onSelect={setSelectedLeg}
-                onEdit={onEditLeg}
+                onSelect={setSelectedPoint}
               />
             );
           })}
@@ -87,11 +77,9 @@ export default function Timeline({ onEditGroup, onEditLeg, expandedGroupId, onEx
       </MuiTimeline>
 
       <LegDetailSheet
-        item={selectedLeg}
-        onClose={() => setSelectedLeg(null)}
-        onEdit={onEditLeg}
+        item={selectedPoint}
+        onClose={() => setSelectedPoint(null)}
       />
     </Box>
   );
 }
-

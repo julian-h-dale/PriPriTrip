@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
-import MemoriesPage from './pages/MemoriesPage';
 import { selectIsAuthenticated } from './store/authSlice';
 
 function ProtectedRoute({ children }) {
@@ -19,14 +18,6 @@ export default function App() {
         element={
           <ProtectedRoute>
             <HomePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/memories"
-        element={
-          <ProtectedRoute>
-            <MemoriesPage />
           </ProtectedRoute>
         }
       />

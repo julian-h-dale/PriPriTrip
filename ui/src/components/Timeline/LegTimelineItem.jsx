@@ -5,55 +5,44 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
-import { Box, IconButton, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import dayjs from '../../utils/dayjs';
 import { TRIP_TZ } from '../../utils/dayjs';
 
-import EditIcon from '@mui/icons-material/Edit';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';
 import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import HotelIcon from '@mui/icons-material/Hotel';
-import HomeIcon from '@mui/icons-material/Home';
-import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
-import HikingIcon from '@mui/icons-material/Hiking';
-import MuseumIcon from '@mui/icons-material/Museum';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import ExploreIcon from '@mui/icons-material/Explore';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
+import ExploreIcon from '@mui/icons-material/Explore';
 import PlaceIcon from '@mui/icons-material/Place';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
 const ROYAL_BLUE = '#4169e1';
 
-const SUBTYPE_ICON_MAP = {
+const TRAVEL_MODE_ICON = {
   flight: FlightTakeoffIcon,
   train: TrainIcon,
   bus: DirectionsBusIcon,
   car: DirectionsCarIcon,
   ferry: DirectionsBoatIcon,
-  boat: DirectionsBoatIcon,
-  hotel: HotelIcon,
-  hostel: HotelIcon,
-  airbnb: HomeIcon,
-  rental: HomeIcon,
-  walk: DirectionsWalkIcon,
-  hike: HikingIcon,
-  museum: MuseumIcon,
-  restaurant: RestaurantIcon,
-  tour: ExploreIcon,
-  activity: LocalActivityIcon,
+  other: ExploreIcon,
 };
 
-function getSubtypeIcon(subtype) {
-  return SUBTYPE_ICON_MAP[subtype?.toLowerCase()] ?? PlaceIcon;
+function getPointIcon(point) {
+  if (point.travelDetail?.mode) {
+    return TRAVEL_MODE_ICON[point.travelDetail.mode] ?? PlaceIcon;
+  }
+  if (point.type === 'stay') return HotelIcon;
+  if (point.type === 'activity') return LocalActivityIcon;
+  return PlaceIcon;
 }
 
-export default function LegTimelineItem({ item, isFirst, isLast, onSelect, onEdit }) {
-  const SubtypeIcon = getSubtypeIcon(item.subtype);
+export default function LegTimelineItem({ item, isFirst, isLast, onSelect }) {
+  const Icon = getPointIcon(item);
 
   return (
     <MotionTimelineItem
@@ -70,31 +59,24 @@ export default function LegTimelineItem({ item, isFirst, isLast, onSelect, onEdi
         variant="body2"
         color="text.secondary"
       >
-        {dayjs(item.startDateTime).tz(TRIP_TZ).format('h:mm A')}
+        {item.startDateTime
+          ? dayjs(item.startDateTime).tz(TRIP_TZ).format('h:mm A')
+          : null}
       </TimelineOppositeContent>
 
       <TimelineSeparator>
         <TimelineConnector sx={{ bgcolor: isFirst ? 'transparent' : 'grey.400' }} />
         <TimelineDot sx={{ bgcolor: ROYAL_BLUE, p: 0.5 }}>
-          <SubtypeIcon sx={{ fontSize: 14, color: 'white' }} />
+          <Icon sx={{ fontSize: 14, color: 'white' }} />
         </TimelineDot>
         <TimelineConnector sx={{ bgcolor: isLast ? 'transparent' : 'grey.400' }} />
       </TimelineSeparator>
 
       <TimelineContent sx={{ py: '10px', px: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography variant="body2" fontWeight={500}>
             {item.title}
           </Typography>
-          {onEdit && (
-            <IconButton
-              size="small"
-              onClick={(e) => { e.stopPropagation(); onEdit(item); }}
-              sx={{ ml: 0.5, opacity: 0.45, '&:hover': { opacity: 1 } }}
-            >
-              <EditIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          )}
         </Box>
       </TimelineContent>
     </MotionTimelineItem>

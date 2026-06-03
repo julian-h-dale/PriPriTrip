@@ -9,7 +9,6 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@mui/icons-material/Close';
-import EditIcon from '@mui/icons-material/Edit';
 import MapIcon from '@mui/icons-material/Map';
 import dayjs from '../../utils/dayjs';
 import { TRIP_TZ } from '../../utils/dayjs';
@@ -20,43 +19,43 @@ import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import HotelIcon from '@mui/icons-material/Hotel';
-import HomeIcon from '@mui/icons-material/Home';
-import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
-import HikingIcon from '@mui/icons-material/Hiking';
-import MuseumIcon from '@mui/icons-material/Museum';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import ExploreIcon from '@mui/icons-material/Explore';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
+import ExploreIcon from '@mui/icons-material/Explore';
 import PlaceIcon from '@mui/icons-material/Place';
 
 const ROYAL_BLUE = '#4169e1';
 
-const SUBTYPE_ICON_MAP = {
+const TRAVEL_MODE_ICON = {
   flight: FlightTakeoffIcon,
   train: TrainIcon,
   bus: DirectionsBusIcon,
   car: DirectionsCarIcon,
   ferry: DirectionsBoatIcon,
-  boat: DirectionsBoatIcon,
-  hotel: HotelIcon,
-  hostel: HotelIcon,
-  airbnb: HomeIcon,
-  rental: HomeIcon,
-  walk: DirectionsWalkIcon,
-  hike: HikingIcon,
-  museum: MuseumIcon,
-  restaurant: RestaurantIcon,
-  tour: ExploreIcon,
-  activity: LocalActivityIcon,
+  other: ExploreIcon,
 };
 
-function getSubtypeIcon(subtype) {
-  return SUBTYPE_ICON_MAP[subtype?.toLowerCase()] ?? PlaceIcon;
+function getPointIcon(point) {
+  if (point.travelDetail?.mode) {
+    return TRAVEL_MODE_ICON[point.travelDetail.mode] ?? PlaceIcon;
+  }
+  if (point.type === 'stay') return HotelIcon;
+  if (point.type === 'activity') return LocalActivityIcon;
+  return PlaceIcon;
 }
 
+function getChipLabel(point) {
+  if (point.travelDetail?.mode) return point.travelDetail.mode.replace('_', ' ');
+  if (point.stayDetail?.stayType) return point.stayDetail.stayType.replace('_', ' ');
+  return null;
+}
+
+// origin→From, destination→To, waypoint→Via, venue→null (no label)
+const ROLE_LABEL = { origin: 'From', destination: 'To', waypoint: 'Via', venue: null };
+
 function mapsUrl(loc) {
-  const query = loc.name + " " + loc.fullAddress;
-  return query ? `https://maps.google.com/?q=${encodeURIComponent(query)}` : null;
+  if (loc.googleMapsUri) return loc.googleMapsUri;
+  const q = [loc.name, loc.fullAddress].filter(Boolean).join(' ');
+  return q ? `https://maps.google.com/?q=${encodeURIComponent(q)}` : null;
 }
 
 function Section({ label, children }) {
@@ -103,10 +102,11 @@ function LocationRow({ label, loc }) {
   );
 }
 
-export default function LegDetailSheet({ item, onClose, onEdit }) {
+export default function LegDetailSheet({ item, onClose }) {
   if (!item) return null;
 
-  const SubtypeIcon = getSubtypeIcon(item.subtype);
+  const Icon = getPointIcon(item);
+  const chipLabel = getChipLabel(item);
   const isTravel = item.type === 'travel';
 
   return (
@@ -153,27 +153,22 @@ export default function LegDetailSheet({ item, onClose, onEdit }) {
               flexShrink: 0,
             }}
           >
-            <SubtypeIcon sx={{ fontSize: 18, color: 'white' }} />
+            <Icon sx={{ fontSize: 18, color: 'white' }} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="h6" fontWeight={600} sx={{ lineHeight: 1.2 }}>
               {item.title}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-              {dayjs(item.startDateTime).tz(TRIP_TZ).format('MMM D · h:mm A')}
-              {' — '}
-              {dayjs(item.endDateTime).tz(TRIP_TZ).format('h:mm A')}
+              {item.startDateTime && dayjs(item.startDateTime).tz(TRIP_TZ).format('MMM D · h:mm A')}
+              {item.startDateTime && item.endDateTime && ' — '}
+              {item.endDateTime && dayjs(item.endDateTime).tz(TRIP_TZ).format('h:mm A')}
             </Typography>
           </Box>
-          {onEdit && (
-            <IconButton size="small" onClick={() => { onClose(); onEdit(item); }}>
-              <EditIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          )}
         </Box>
-        {item.subtype && (
+        {chipLabel && (
           <Chip
-            label={item.subtype.replace('_', ' ')}
+            label={chipLabel}
             size="small"
             variant="outlined"
             sx={{ mt: 1.5, height: 22, fontSize: '0.72rem', textTransform: 'capitalize' }}
@@ -212,19 +207,9 @@ export default function LegDetailSheet({ item, onClose, onEdit }) {
 
         {item.locations?.length > 0 && (
           <Section label={isTravel ? 'Route' : 'Locations'}>
-            {isTravel ? (
-              item.locations.map((loc, i) => {
-                let label;
-                if (i === 0) label = 'From';
-                else if (i === item.locations.length - 1) label = 'To';
-                else label = 'Via';
-                return <LocationRow key={i} label={label} loc={loc} />;
-              })
-            ) : (
-              item.locations.map((loc, i) => (
-                <LocationRow key={i} loc={loc} />
-              ))
-            )}
+            {item.locations.map((loc, i) => (
+              <LocationRow key={i} label={ROLE_LABEL[loc.role]} loc={loc} />
+            ))}
           </Section>
         )}
       </Box>
