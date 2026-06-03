@@ -80,6 +80,7 @@ class TripDayCreate(BaseModel):
     date: str
     description: Optional[str] = None
     sortOrder: int
+    isAlternate: bool = False
     completed: bool = False
 
 
@@ -88,6 +89,7 @@ class TripDayUpdate(BaseModel):
     date: str
     description: Optional[str] = None
     sortOrder: int
+    isAlternate: bool = False
     completed: bool = False
 
 
@@ -96,6 +98,7 @@ class TripDayPatch(BaseModel):
     date: Optional[str] = None
     description: Optional[str] = None
     sortOrder: Optional[int] = None
+    isAlternate: Optional[bool] = None
     completed: Optional[bool] = None
 
 
@@ -106,6 +109,7 @@ class TripDayResponse(BaseModel):
     date: str
     description: Optional[str] = None
     sortOrder: int
+    isAlternate: bool = False
     completed: bool
     deletedAt: Optional[str] = None
     createdAt: Optional[str] = None
@@ -204,3 +208,30 @@ class TripResponse(BaseModel):
     startDate: str
     endDate: str
     days: List[TripDayWithPoints] = []
+
+
+# ── Import ───────────────────────────────────────────────────────────────────
+
+class TripDayImport(BaseModel):
+    dayId: str
+    title: str
+    date: str
+    description: Optional[str] = None
+    sortOrder: int
+    isAlternate: bool = False
+    completed: bool = False
+    points: List[TripPointCreate] = []
+
+
+class TripImport(BaseModel):
+    tripId: str
+    tripName: str
+    startDate: str
+    endDate: str
+    days: List[TripDayImport] = []
+
+
+class ImportResult(BaseModel):
+    status: str
+    daysImported: int
+    pointsImported: int

@@ -32,6 +32,7 @@ class TripDayRecord(Base):
     date = Column(String, nullable=False)
     description = Column(String, nullable=True)
     sort_order = Column(Integer, nullable=False)
+    is_alternate = Column(Boolean, nullable=False, default=False, server_default="false")
     completed = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))

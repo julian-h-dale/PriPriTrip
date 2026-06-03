@@ -30,6 +30,7 @@ def _day_to_response(r: TripDayRecord) -> TripDayResponse:
         date=r.date,
         description=r.description,
         sortOrder=r.sort_order,
+        isAlternate=r.is_alternate,
         completed=r.completed,
         deletedAt=r.deleted_at.isoformat() if r.deleted_at else None,
         createdAt=r.created_at.isoformat() if r.created_at else None,
@@ -82,6 +83,7 @@ async def create_day(body: TripDayCreate, db: Session = Depends(get_db)):
         date=body.date,
         description=body.description,
         sort_order=body.sortOrder,
+        is_alternate=body.isAlternate,
         completed=body.completed,
     )
     db.add(day)
@@ -99,6 +101,7 @@ async def update_day(day_id: str, body: TripDayUpdate, db: Session = Depends(get
     day.date = body.date
     day.description = body.description
     day.sort_order = body.sortOrder
+    day.is_alternate = body.isAlternate
     day.completed = body.completed
     day.updated_at = datetime.now(timezone.utc)
     db.commit()
@@ -116,6 +119,7 @@ async def patch_day(day_id: str, body: TripDayPatch, db: Session = Depends(get_d
         "date": "date",
         "description": "description",
         "sortOrder": "sort_order",
+        "isAlternate": "is_alternate",
         "completed": "completed",
     }
     for pydantic_field, orm_field in _field_map.items():

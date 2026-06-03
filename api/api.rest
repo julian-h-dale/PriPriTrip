@@ -29,6 +29,384 @@ Content-Type: application/json
 GET {{baseUrl}}/health
 
 # ---------------------------------------------------------------------------
+# Import (bulk load)
+# ---------------------------------------------------------------------------
+
+### POST /trip/import — replace all trip data from trip.json contract
+# Send the full trip.json file content as the body.
+POST {{baseUrl}}/trip/import
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tripId": "honeymoon-2026",
+  "tripName": "Switzerland & Croatia Honeymoon",
+  "startDate": "2026-05-10",
+  "endDate": "2026-05-20",
+  "days": [
+    {
+      "dayId": "day-2026-05-11",
+      "title": "May 11 — Arrival in Bern",
+      "date": "2026-05-11",
+      "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
+      "sortOrder": 2,
+      "isAlternate": false,
+      "completed": false,
+      "points": [
+        {
+          "pointId": "may11-train-zrh-bern",
+          "dayId": "day-2026-05-11",
+          "type": "travel",
+          "title": "Train: Zurich Airport → Bern",
+          "startDateTime": "2026-05-11T12:15:00+02:00",
+          "endDateTime": "2026-05-11T13:30:00+02:00",
+          "sortOrder": 1,
+          "confirmationNumber": null,
+          "description": "Direct InterCity train from Zurich Airport to Bern.",
+          "imageUrl": null,
+          "logoUrl": null,
+          "locations": [
+            {
+              "locationId": "may11-train-zrh-bern-loc-0",
+              "role": "origin",
+              "sortOrder": 0,
+              "name": "Zurich Airport Railway Station",
+              "lat": 47.461714,
+              "lng": 8.550860,
+              "fullAddress": "Switzerland",
+              "description": null,
+              "link": null,
+              "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+              "googleMapsUri": null
+            },
+            {
+              "locationId": "may11-train-zrh-bern-loc-1",
+              "role": "destination",
+              "sortOrder": 1,
+              "name": "Bern Railway Station",
+              "lat": 46.948527,
+              "lng": 7.439914,
+              "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+              "description": null,
+              "link": null,
+              "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+              "googleMapsUri": null
+            }
+          ],
+          "travelDetail": { "mode": "train", "operator": null, "vehicleNumber": null, "cabinClass": null },
+          "stayDetail": null,
+          "completed": false,
+          "completedDateTime": null
+        }
+      ]
+    }
+  ]
+}
+
+# ---------------------------------------------------------------------------
+# Trip header
+# ---------------------------------------------------------------------------
+
+### GET /trip — fetch the full assembled trip (header + all days + points)
+GET {{baseUrl}}/trip
+Authorization: Bearer {{token}}
+
+### POST /trip — create or update the trip header fields only
+POST {{baseUrl}}/trip
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tripId": "honeymoon-2026",
+  "tripName": "Switzerland & Croatia Honeymoon",
+  "startDate": "2026-05-10",
+  "endDate": "2026-05-20"
+}
+
+# ---------------------------------------------------------------------------
+# Trip days — list
+# ---------------------------------------------------------------------------
+
+### GET /trip/days — list all active (non-deleted) days
+GET {{baseUrl}}/trip/days
+Authorization: Bearer {{token}}
+
+### GET /trip/days/deleted — list soft-deleted days
+GET {{baseUrl}}/trip/days/deleted
+Authorization: Bearer {{token}}
+
+# ---------------------------------------------------------------------------
+# Trip days — create
+# ---------------------------------------------------------------------------
+
+### POST /trip/days — create a day
+POST {{baseUrl}}/trip/days
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "dayId": "day-2026-05-11",
+  "title": "May 11 — Arrival in Bern",
+  "date": "2026-05-11",
+  "description": "Arrive Zurich Airport, train to Bern.",
+  "sortOrder": 1,
+  "isAlternate": false,
+  "completed": false
+}
+
+# ---------------------------------------------------------------------------
+# Trip days — update
+# ---------------------------------------------------------------------------
+
+@dayId = day-2026-05-11
+
+### PUT /trip/days/:id — fully replace a day (all fields required)
+PUT {{baseUrl}}/trip/days/{{dayId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "May 11 — Arrival in Bern (updated)",
+  "date": "2026-05-11",
+  "description": "Updated description.",
+  "sortOrder": 1,
+  "isAlternate": false,
+  "completed": false
+}
+
+### PATCH /trip/days/:id — update only the supplied fields
+PATCH {{baseUrl}}/trip/days/{{dayId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "completed": true
+}
+
+### DELETE /trip/days/:id — soft-delete a day (sets deletedAt, returns 204)
+DELETE {{baseUrl}}/trip/days/{{dayId}}
+Authorization: Bearer {{token}}
+
+### POST /trip/days/:id/restore — restore a soft-deleted day
+POST {{baseUrl}}/trip/days/{{dayId}}/restore
+Authorization: Bearer {{token}}
+
+# ---------------------------------------------------------------------------
+# Trip points — list
+# ---------------------------------------------------------------------------
+
+### GET /trip/points — list all active (non-deleted) points
+GET {{baseUrl}}/trip/points
+Authorization: Bearer {{token}}
+
+### GET /trip/points/deleted — list soft-deleted points
+GET {{baseUrl}}/trip/points/deleted
+Authorization: Bearer {{token}}
+
+# ---------------------------------------------------------------------------
+# Trip points — create
+# ---------------------------------------------------------------------------
+
+### POST /trip/points — create a travel point
+POST {{baseUrl}}/trip/points
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "pointId": "may11-train-zrh-bern",
+  "dayId": "day-2026-05-11",
+  "type": "travel",
+  "title": "Train: Zurich Airport → Bern",
+  "startDateTime": "2026-05-11T12:15:00+02:00",
+  "endDateTime": "2026-05-11T13:30:00+02:00",
+  "sortOrder": 1,
+  "confirmationNumber": null,
+  "description": "Direct InterCity train from Zurich Airport to Bern.",
+  "imageUrl": null,
+  "logoUrl": null,
+  "locations": [
+    {
+      "locationId": "may11-train-zrh-bern-loc-0",
+      "role": "origin",
+      "sortOrder": 0,
+      "name": "Zurich Airport Railway Station",
+      "lat": 47.461714,
+      "lng": 8.550860,
+      "fullAddress": "Switzerland",
+      "description": null,
+      "link": null,
+      "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+      "googleMapsUri": null
+    },
+    {
+      "locationId": "may11-train-zrh-bern-loc-1",
+      "role": "destination",
+      "sortOrder": 1,
+      "name": "Bern Railway Station",
+      "lat": 46.948527,
+      "lng": 7.439914,
+      "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+      "description": null,
+      "link": null,
+      "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+      "googleMapsUri": null
+    }
+  ],
+  "travelDetail": { "mode": "train", "operator": null, "vehicleNumber": null, "cabinClass": null },
+  "stayDetail": null,
+  "completed": false,
+  "completedDateTime": null
+}
+
+### POST /trip/points — create a stay point
+POST {{baseUrl}}/trip/points
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "pointId": "may11-hotel-arrival",
+  "dayId": "day-2026-05-11",
+  "type": "stay",
+  "title": "Arrive: Hotel Goldener Schlüssel",
+  "startDateTime": "2026-05-11T13:45:00+02:00",
+  "endDateTime": "2026-05-11T14:15:00+02:00",
+  "sortOrder": 2,
+  "confirmationNumber": "58204SG008394",
+  "description": "Check in. Bern Old Town location.",
+  "imageUrl": null,
+  "logoUrl": null,
+  "locations": [
+    {
+      "locationId": "may11-hotel-arrival-loc-0",
+      "role": "venue",
+      "sortOrder": 0,
+      "name": "Hotel Goldener Schlüssel",
+      "lat": 46.948623,
+      "lng": 7.448727,
+      "fullAddress": "Rathausgasse 72, 3011 Bern, Switzerland",
+      "description": null,
+      "link": null,
+      "googlePlaceId": "ChIJFz1_5sM5jkcRQ9nMjH27cXI",
+      "googleMapsUri": null
+    }
+  ],
+  "travelDetail": null,
+  "stayDetail": { "stayType": "hotel", "checkInTime": null, "checkOutTime": null, "roomType": null },
+  "completed": false,
+  "completedDateTime": null
+}
+
+### POST /trip/points — create an activity point
+POST {{baseUrl}}/trip/points
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "pointId": "may11-lunch",
+  "dayId": "day-2026-05-11",
+  "type": "activity",
+  "title": "Lunch Options in Bern",
+  "startDateTime": "2026-05-11T14:15:00+02:00",
+  "endDateTime": "2026-05-11T15:15:00+02:00",
+  "sortOrder": 3,
+  "confirmationNumber": null,
+  "description": "Casual first lunch after arrival.",
+  "imageUrl": null,
+  "logoUrl": null,
+  "locations": [
+    {
+      "locationId": "may11-lunch-loc-0",
+      "role": "venue",
+      "sortOrder": 0,
+      "name": "Kornhauskeller",
+      "lat": 46.948730,
+      "lng": 7.447269,
+      "fullAddress": "Kornhauspl. 18, 3011 Bern, Switzerland",
+      "description": null,
+      "link": null,
+      "googlePlaceId": "ChIJt52vQ8E5jkcR5sQbczMLN38",
+      "googleMapsUri": null
+    }
+  ],
+  "travelDetail": null,
+  "stayDetail": null,
+  "completed": false,
+  "completedDateTime": null
+}
+
+# ---------------------------------------------------------------------------
+# Trip points — update
+# ---------------------------------------------------------------------------
+
+@pointId = may11-train-zrh-bern
+
+### PUT /trip/points/:id — fully replace a point (all fields required)
+PUT {{baseUrl}}/trip/points/{{pointId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "dayId": "day-2026-05-11",
+  "type": "travel",
+  "title": "Train: Zurich Airport → Bern (updated)",
+  "startDateTime": "2026-05-11T12:30:00+02:00",
+  "endDateTime": "2026-05-11T13:45:00+02:00",
+  "sortOrder": 1,
+  "confirmationNumber": null,
+  "description": "Updated description.",
+  "imageUrl": null,
+  "logoUrl": null,
+  "locations": [],
+  "travelDetail": { "mode": "train", "operator": "SBB", "vehicleNumber": null, "cabinClass": null },
+  "stayDetail": null,
+  "completed": false,
+  "completedDateTime": null
+}
+
+### PATCH /trip/points/:id — update only the supplied fields
+PATCH {{baseUrl}}/trip/points/{{pointId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "completed": true,
+  "completedDateTime": "2026-05-11T13:30:00+02:00"
+}
+
+### DELETE /trip/points/:id — soft-delete a point (sets deletedAt, returns 204)
+DELETE {{baseUrl}}/trip/points/{{pointId}}
+Authorization: Bearer {{token}}
+
+### POST /trip/points/:id/restore — restore a soft-deleted point
+POST {{baseUrl}}/trip/points/{{pointId}}/restore
+Authorization: Bearer {{token}}
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# Run this request first, copy the token from the response, and paste it
+# into the @token variable below.
+# ---------------------------------------------------------------------------
+
+### POST /auth — obtain a bearer token
+POST {{baseUrl}}/auth
+Content-Type: application/json
+
+{
+  "password": "honeymoon"
+}
+
+# After running the request above, set the token here:
+@token = <paste-token-here>
+
+# ---------------------------------------------------------------------------
+# Health
+# ---------------------------------------------------------------------------
+
+### GET /health — liveness check (no auth required)
+GET {{baseUrl}}/health
+
+# ---------------------------------------------------------------------------
 # Trip header
 # ---------------------------------------------------------------------------
 
