@@ -1,4 +1,3 @@
-import copy
 import hashlib
 import hmac
 import json
@@ -11,7 +10,7 @@ import psycopg2.extensions
 
 import psycopg2
 import psycopg2.extras
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 
@@ -19,12 +18,6 @@ from pydantic import BaseModel, ValidationError
 # ---------------------------------------------------------------------------
 # Pydantic models — light validation only
 # ---------------------------------------------------------------------------
-
-
-class DocumentModel(BaseModel):
-    url: str
-    name: str
-    description: Optional[str] = None
 
 
 class LocationModel(BaseModel):
@@ -51,7 +44,6 @@ class TripItemModel(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationModel] = []
-    documents: List[DocumentModel] = []
     completed: bool = False
     completedDateTime: Optional[str] = None
 
@@ -133,17 +125,7 @@ def create_tables() -> None:
                 )
                 """
             )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS documents (
-                    blob_name    TEXT PRIMARY KEY,
-                    content      BYTEA NOT NULL,
-                    content_type TEXT NOT NULL DEFAULT 'application/octet-stream',
-                    original_name TEXT,
-                    created_at   TIMESTAMPTZ DEFAULT NOW()
-                )
-                """
-            )
+
 
 
 # ---------------------------------------------------------------------------
@@ -175,22 +157,6 @@ def write_trip(trip: dict, conn: psycopg2.extensions.connection) -> None:
         )
 
 
-def resolve_document_urls(trip: dict) -> dict:
-    """Replace bare blob names in document URL fields with API document paths.
-
-    Stored document ``url`` values that do not start with ``http`` are treated
-    as blob names and rewritten to ``/documents/{blob_name}`` so the client can
-    fetch them from this API.  Full HTTP(S) URLs are left unchanged.
-    """
-    trip = copy.deepcopy(trip)
-    for item in trip.get("items", []):
-        for doc in item.get("documents", []):
-            url = doc.get("url", "")
-            if url and not url.startswith("http"):
-                doc["url"] = f"/documents/{url}"
-    return trip
-
-
 # ---------------------------------------------------------------------------
 # App lifecycle
 # ---------------------------------------------------------------------------
@@ -206,6 +172,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="PriPriTrip API", lifespan=lifespan)
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+    schema.setdefault("components", {})["securitySchemes"] = {
+        "BearerAuth": {"type": "http", "scheme": "bearer"}
+    }
+    schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
@@ -252,7 +234,6 @@ async def api_trip_get(request: Request):
     try:
         with get_db_connection() as conn:
             trip = read_trip(conn)
-        trip = resolve_document_urls(trip)
         return trip
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
@@ -296,69 +277,4 @@ async def api_trip_post(request: Request):
         )
 
 
-@app.post("/documents/{blob_name:path}", status_code=status.HTTP_201_CREATED)
-async def api_document_upload(blob_name: str, request: Request):
-    """Upload a document binary and store it in the database."""
-    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
-    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
-
-    token = get_bearer_token(request)
-    if not token or not verify_token(token, app_password, token_secret):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-
-    content = await request.body()
-    content_type = request.headers.get("Content-Type", "application/octet-stream")
-
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO documents (blob_name, content, content_type)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (blob_name) DO UPDATE
-                        SET content = EXCLUDED.content,
-                            content_type = EXCLUDED.content_type
-                    """,
-                    (blob_name, psycopg2.Binary(content), content_type),
-                )
-        return {"status": "ok", "blobName": blob_name}
-    except Exception as exc:
-        logging.error("POST /documents/%s error: %s", blob_name, exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to store document"
-        )
-
-
-@app.get("/documents/{blob_name:path}")
-async def api_document_get(blob_name: str, request: Request):
-    """Retrieve a stored document by its blob name."""
-    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
-    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
-
-    token = get_bearer_token(request)
-    if not token or not verify_token(token, app_password, token_secret):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT content, content_type FROM documents WHERE blob_name = %s",
-                    (blob_name,),
-                )
-                row = cur.fetchone()
-        if row is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-            )
-        content, content_type = row
-        return Response(content=bytes(content), media_type=content_type)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logging.error("GET /documents/%s error: %s", blob_name, exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to read document"
-        )
 
