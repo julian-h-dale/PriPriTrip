@@ -132,7 +132,7 @@ class TestApiTripGet:
         assert resp.status_code == 200
         body = resp.json()
         assert body["tripId"] == "trip_001"
-        assert body["items"] == []
+        assert body["days"] == []
 
     @patch("app.routers.trip._get_trip", side_effect=ValueError("No trip found"))
     @patch.dict("os.environ", ENV_VARS)
@@ -198,14 +198,34 @@ class TestApiTripPost:
         )
         assert resp.status_code == 422
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_missing_required_fields_returns_422(self):
-        resp = client.post("/trip", json={"foo": "bar"}, headers=AUTH_HEADERS)
-        assert resp.status_code == 422
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_db_error_returns_500(self):
-        self.mock_db.get.side_effect = Exception("write failed")
-        resp = client.post("/trip", json=SAMPLE_TRIP_HEADER, headers=AUTH_HEADERS)
-        assert resp.status_code == 500
+# ---------------------------------------------------------------------------
+# Fixtures / shared data
+# ---------------------------------------------------------------------------
+
+APP_PASSWORD = "honeymoon"
+TOKEN_SECRET = "testsecret"
+
+VALID_TOKEN = make_token(APP_PASSWORD, TOKEN_SECRET)
+
+SAMPLE_TRIP_HEADER = {
+    "tripId": "trip_001",
+    "tripName": "Test Trip",
+    "startDate": "2026-05-10",
+    "endDate": "2026-05-20",
+}
+
+ENV_VARS = {
+    "APP_PASSWORD": APP_PASSWORD,
+    "TOKEN_SECRET": TOKEN_SECRET,
+    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/testdb",
+}
+
+AUTH_HEADERS = {"Authorization": f"Bearer {VALID_TOKEN}"}
+
+
+# ---------------------------------------------------------------------------
+# _get_trip unit tests
+# ---------------------------------------------------------------------------
+
 

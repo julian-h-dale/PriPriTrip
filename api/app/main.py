@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import make_token
-from app.routers import trip, trip_items
+from app.routers import trip, trip_days, trip_points
 from app.schemas import AuthRequest
 
 
@@ -21,7 +21,8 @@ def create_app() -> FastAPI:
     )
 
     application.include_router(trip.router)
-    application.include_router(trip_items.router)
+    application.include_router(trip_days.router)
+    application.include_router(trip_points.router)
 
     @application.get("/health", tags=["meta"])
     async def health():

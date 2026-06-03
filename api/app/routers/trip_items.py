@@ -1,23 +1,5 @@
-from datetime import datetime, timezone
+# This module has been replaced by trip_days.py and trip_points.py.
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.auth import require_auth
-from app.database import get_db
-from app.models import TripItemRecord, TripRecord
-from app.schemas import (
-    TripItemCreate,
-    TripItemPatch,
-    TripItemResponse,
-    TripItemUpdate,
-)
-
-router = APIRouter(
-    prefix="/trip/items",
-    tags=["trip items"],
-    dependencies=[Depends(require_auth)],
-)
 
 
 def _get_trip(db: Session) -> TripRecord:
