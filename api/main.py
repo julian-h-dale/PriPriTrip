@@ -1,22 +1,22 @@
 import hashlib
 import hmac
-import json
 import logging
 import os
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Generator, List, Literal, Optional
 
-import psycopg2.extensions
-
-import psycopg2
-import psycopg2.extras
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Security, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ValidationError
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
+from sqlalchemy import Column, DateTime, String, create_engine, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
 # ---------------------------------------------------------------------------
-# Pydantic models — light validation only
+# Pydantic models
 # ---------------------------------------------------------------------------
 
 
@@ -66,8 +66,10 @@ class AuthResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Auth helpers
+# Auth
 # ---------------------------------------------------------------------------
+
+_security = HTTPBearer(auto_error=False)
 
 
 def make_token(password: str, secret: str) -> str:
@@ -81,15 +83,19 @@ def verify_token(token: str, app_password: str, secret: str) -> bool:
     return hmac.compare_digest(expected, token)
 
 
-def get_bearer_token(request: Request) -> Optional[str]:
-    auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer "):
-        return auth[7:]
-    return None
+def require_auth(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(_security),
+) -> None:
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
+    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
+    if not verify_token(credentials.credentials, app_password, token_secret):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
 
 # ---------------------------------------------------------------------------
-# Database helpers
+# Database
 # ---------------------------------------------------------------------------
 
 
@@ -99,62 +105,46 @@ def get_database_url() -> str:
     )
 
 
-@contextmanager
-def get_db_connection() -> Generator[psycopg2.extensions.connection, None, None]:
-    """Yield a psycopg2 connection; commit on success, rollback on error."""
-    conn = psycopg2.connect(get_database_url())
+class Base(DeclarativeBase):
+    pass
+
+
+class TripRecord(Base):
+    __tablename__ = "trips"
+
+    trip_id = Column(String, primary_key=True)
+    data = Column(JSONB, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+
+
+engine = create_engine(get_database_url())
+SessionLocal = sessionmaker(bind=engine)
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
     try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+        yield db
     finally:
-        conn.close()
+        db.close()
 
 
-def create_tables() -> None:
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS trips (
-                    trip_id TEXT PRIMARY KEY,
-                    data    JSONB NOT NULL,
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                )
-                """
-            )
+def read_trip(db: Session) -> dict:
+    record = db.query(TripRecord).order_by(TripRecord.updated_at.desc()).first()
+    if record is None:
+        raise ValueError("No trip found")
+    return record.data
 
 
-
-# ---------------------------------------------------------------------------
-# Trip storage helpers
-# ---------------------------------------------------------------------------
-
-
-def read_trip(conn: psycopg2.extensions.connection) -> dict:
-    # Returns the most recently updated trip; this API manages a single trip document.
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-        cur.execute("SELECT data FROM trips ORDER BY updated_at DESC LIMIT 1")
-        row = cur.fetchone()
-        if row is None:
-            raise ValueError("No trip found")
-        return dict(row["data"])
-
-
-def write_trip(trip: dict, conn: psycopg2.extensions.connection) -> None:
+def write_trip(trip: dict, db: Session) -> None:
     trip_id = trip.get("tripId", "default")
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO trips (trip_id, data, updated_at)
-            VALUES (%s, %s::jsonb, NOW())
-            ON CONFLICT (trip_id) DO UPDATE
-                SET data = EXCLUDED.data, updated_at = NOW()
-            """,
-            (trip_id, json.dumps(trip)),
-        )
+    record = db.get(TripRecord, trip_id)
+    if record is None:
+        db.add(TripRecord(trip_id=trip_id, data=trip))
+    else:
+        record.data = trip
+        record.updated_at = datetime.now(timezone.utc)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -165,29 +155,13 @@ def write_trip(trip: dict, conn: psycopg2.extensions.connection) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        create_tables()
+        Base.metadata.create_all(engine)
     except Exception as exc:
         logging.warning("Could not initialize database tables on startup: %s", exc)
     yield
 
 
 app = FastAPI(title="PriPriTrip API", lifespan=lifespan)
-
-
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    from fastapi.openapi.utils import get_openapi
-    schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
-    schema.setdefault("components", {})["securitySchemes"] = {
-        "BearerAuth": {"type": "http", "scheme": "bearer"}
-    }
-    schema["security"] = [{"BearerAuth": []}]
-    app.openapi_schema = schema
-    return app.openapi_schema
-
-
-app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
@@ -222,19 +196,10 @@ async def api_auth(body: AuthRequest):
     return {"token": token, "mapsApiKey": maps_api_key}
 
 
-@app.get("/trip")
-async def api_trip_get(request: Request):
-    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
-    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
-
-    token = get_bearer_token(request)
-    if not token or not verify_token(token, app_password, token_secret):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-
+@app.get("/trip", dependencies=[Depends(require_auth)])
+async def api_trip_get(db: Session = Depends(get_db)):
     try:
-        with get_db_connection() as conn:
-            trip = read_trip(conn)
-        return trip
+        return read_trip(db)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
     except Exception as exc:
@@ -244,31 +209,10 @@ async def api_trip_get(request: Request):
         )
 
 
-@app.post("/trip")
-async def api_trip_post(request: Request):
-    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
-    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
-
-    token = get_bearer_token(request)
-    if not token or not verify_token(token, app_password, token_secret):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-
+@app.post("/trip", dependencies=[Depends(require_auth)])
+async def api_trip_post(body: TripDocument, db: Session = Depends(get_db)):
     try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
-
-    try:
-        TripDocument(**body)
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=422,
-            detail={"error": "Invalid trip document", "details": exc.errors()},
-        )
-
-    try:
-        with get_db_connection() as conn:
-            write_trip(body, conn)
+        write_trip(body.model_dump(), db)
         return {"status": "ok"}
     except Exception as exc:
         logging.error("POST /trip error: %s", exc)

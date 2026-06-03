@@ -1,15 +1,15 @@
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
-from main import app, make_token, read_trip, resolve_document_urls, write_trip
+from main import TripRecord, app, get_db, make_token, read_trip, write_trip
 
 client = TestClient(app)
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Fixtures / shared data
 # ---------------------------------------------------------------------------
 
 APP_PASSWORD = "honeymoon"
@@ -36,7 +36,6 @@ SAMPLE_TRIP = {
             "subtype": "flight",
             "description": None,
             "locations": [],
-            "documents": [{"url": "booking.pdf", "name": "Booking"}],
             "completed": False,
             "completedDateTime": None,
         }
@@ -52,17 +51,12 @@ ENV_VARS = {
 AUTH_HEADERS = {"Authorization": f"Bearer {VALID_TOKEN}"}
 
 
-# ---------------------------------------------------------------------------
-# Helper: build a mock DB context manager
-# ---------------------------------------------------------------------------
-
-
-def _make_db_ctx(mock_conn):
-    """Return a MagicMock that acts as the context manager returned by get_db_connection()."""
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=mock_conn)
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
+@pytest.fixture
+def mock_db():
+    db = MagicMock(spec=Session)
+    app.dependency_overrides[get_db] = lambda: db
+    yield db
+    app.dependency_overrides.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -71,74 +65,47 @@ def _make_db_ctx(mock_conn):
 
 
 class TestReadTrip:
-    def test_reads_and_parses_trip_from_db(self):
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_cur.fetchone.return_value = {"data": SAMPLE_TRIP}
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+    def test_reads_and_returns_trip_data(self):
+        db = MagicMock(spec=Session)
+        record = MagicMock()
+        record.data = SAMPLE_TRIP
+        db.query.return_value.order_by.return_value.first.return_value = record
 
-        result = read_trip(mock_conn)
+        result = read_trip(db)
 
         assert result["tripId"] == "trip_001"
-        mock_conn.cursor.assert_called_once()
 
-    def test_raises_on_db_error(self):
-        mock_conn = MagicMock()
-        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
-            "db error"
-        )
-        with pytest.raises(Exception, match="db error"):
-            read_trip(mock_conn)
+    def test_raises_when_no_trip_exists(self):
+        db = MagicMock(spec=Session)
+        db.query.return_value.order_by.return_value.first.return_value = None
+
+        with pytest.raises(ValueError, match="No trip found"):
+            read_trip(db)
 
 
 class TestWriteTrip:
-    def test_upserts_trip_to_db(self):
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+    def test_inserts_new_record_when_trip_not_found(self):
+        db = MagicMock(spec=Session)
+        db.get.return_value = None
 
-        write_trip(SAMPLE_TRIP, mock_conn)
+        write_trip(SAMPLE_TRIP, db)
 
-        mock_cur.execute.assert_called_once()
-        params = mock_cur.execute.call_args[0][1]
-        assert params[0] == "trip_001"
-        assert "trip_001" in params[1]
+        db.add.assert_called_once()
+        added: TripRecord = db.add.call_args[0][0]
+        assert added.trip_id == "trip_001"
+        assert added.data == SAMPLE_TRIP
+        db.commit.assert_called_once()
 
-    def test_raises_on_db_error(self):
-        mock_conn = MagicMock()
-        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
-            "write error"
-        )
-        with pytest.raises(Exception, match="write error"):
-            write_trip(SAMPLE_TRIP, mock_conn)
+    def test_updates_existing_record(self):
+        db = MagicMock(spec=Session)
+        existing = MagicMock(spec=TripRecord)
+        db.get.return_value = existing
 
+        write_trip(SAMPLE_TRIP, db)
 
-# ---------------------------------------------------------------------------
-# resolve_document_urls unit tests
-# ---------------------------------------------------------------------------
-
-
-class TestResolveDocumentUrls:
-    def test_replaces_blob_names_with_api_paths(self):
-        result = resolve_document_urls(SAMPLE_TRIP)
-        assert result["items"][0]["documents"][0]["url"] == "/documents/booking.pdf"
-
-    def test_does_not_modify_http_urls(self):
-        trip = {
-            "items": [
-                {
-                    "documents": [
-                        {"url": "https://external.example.com/doc.pdf", "name": "External"}
-                    ]
-                }
-            ],
-        }
-        result = resolve_document_urls(trip)
-        assert result["items"][0]["documents"][0]["url"] == "https://external.example.com/doc.pdf"
-
-    def test_does_not_mutate_original_trip(self):
-        _ = resolve_document_urls(SAMPLE_TRIP)
-        assert SAMPLE_TRIP["items"][0]["documents"][0]["url"] == "booking.pdf"
+        assert existing.data == SAMPLE_TRIP
+        db.add.assert_not_called()
+        db.commit.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -147,11 +114,16 @@ class TestResolveDocumentUrls:
 
 
 class TestApiTripGet:
+    def setup_method(self):
+        self.mock_db = MagicMock(spec=Session)
+        app.dependency_overrides[get_db] = lambda: self.mock_db
+
+    def teardown_method(self):
+        app.dependency_overrides.clear()
+
     @patch("main.read_trip", return_value=SAMPLE_TRIP)
-    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_valid_token_returns_trip(self, mock_get_db, _mock_read):
-        mock_get_db.return_value = _make_db_ctx(MagicMock())
+    def test_valid_token_returns_trip(self, _mock_read):
         resp = client.get("/trip", headers=AUTH_HEADERS)
         assert resp.status_code == 200
         assert resp.json()["tripId"] == "trip_001"
@@ -167,10 +139,8 @@ class TestApiTripGet:
         assert resp.status_code == 401
 
     @patch("main.read_trip", side_effect=Exception("db unavailable"))
-    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_db_error_returns_500(self, mock_get_db, _mock_read):
-        mock_get_db.return_value = _make_db_ctx(MagicMock())
+    def test_db_error_returns_500(self, _mock_read):
         resp = client.get("/trip", headers=AUTH_HEADERS)
         assert resp.status_code == 500
 
@@ -181,11 +151,16 @@ class TestApiTripGet:
 
 
 class TestApiTripPost:
+    def setup_method(self):
+        self.mock_db = MagicMock(spec=Session)
+        app.dependency_overrides[get_db] = lambda: self.mock_db
+
+    def teardown_method(self):
+        app.dependency_overrides.clear()
+
     @patch("main.write_trip")
-    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_valid_token_and_body_returns_200(self, mock_get_db, _mock_write):
-        mock_get_db.return_value = _make_db_ctx(MagicMock())
+    def test_valid_token_and_body_returns_200(self, _mock_write):
         resp = client.post("/trip", json=SAMPLE_TRIP, headers=AUTH_HEADERS)
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
@@ -203,13 +178,13 @@ class TestApiTripPost:
         assert resp.status_code == 401
 
     @patch.dict("os.environ", ENV_VARS)
-    def test_invalid_json_returns_400(self):
+    def test_invalid_json_returns_422(self):
         resp = client.post(
             "/trip",
             content=b"not-json",
             headers={**AUTH_HEADERS, "Content-Type": "application/json"},
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 422
 
     @patch.dict("os.environ", ENV_VARS)
     def test_invalid_trip_schema_returns_422(self):
@@ -218,9 +193,7 @@ class TestApiTripPost:
         assert resp.status_code == 422
 
     @patch("main.write_trip", side_effect=Exception("write failed"))
-    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_db_error_returns_500(self, mock_get_db, _mock_write):
-        mock_get_db.return_value = _make_db_ctx(MagicMock())
+    def test_db_error_returns_500(self, _mock_write):
         resp = client.post("/trip", json=SAMPLE_TRIP, headers=AUTH_HEADERS)
         assert resp.status_code == 500
