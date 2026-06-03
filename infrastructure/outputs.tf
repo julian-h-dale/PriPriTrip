@@ -7,19 +7,3 @@ output "swa_url" {
   description = "Default URL of the Static Web App (frontend)"
   value       = "https://${azurerm_static_web_app.application.default_host_name}"
 }
-
-output "function_app_url" {
-  description = "Default hostname of the Function App — use as VITE_API_URL"
-  value       = "https://${azurerm_linux_function_app.application.default_hostname}"
-}
-
-output "storage_account_name" {
-  description = "Storage account name — used to pre-populate local.settings.json"
-  value       = azurerm_storage_account.application.name
-}
-
-output "app_insights_connection_string" {
-  description = "Application Insights connection string — paste into local.settings.json for local tracing"
-  value       = azurerm_application_insights.application.connection_string
-  sensitive   = true
-}

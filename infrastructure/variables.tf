@@ -20,26 +20,6 @@ variable "location" {
   default     = "centralus"
 }
 
-variable "app_password" {
-  description = "Application password checked on POST /api/auth"
-  type        = string
-  sensitive   = true
-  default     = "honeymoon"
-}
-
-variable "token_secret" {
-  description = "HMAC salt used to sign session tokens"
-  type        = string
-  sensitive   = true
-}
-
-variable "maps_api_key" {
-  description = "Google Maps API key returned to the client on successful auth"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "tags" {
   description = "Tags applied to all provisioned resources"
   type        = map(string)
