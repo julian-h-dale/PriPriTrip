@@ -1,53 +1,167 @@
 # PriPriTrip
 
-A Progressive Web App for tracking a single vacation trip as an expand/collapse timeline. Built with React + Vite on the frontend and a Python Azure Functions backend. All trip data lives in a single JSON blob in Azure Blob Storage — no database required.
+A Progressive Web App for tracking a single vacation trip as an expand/collapse timeline. A React + Vite frontend talks to a FastAPI backend backed by PostgreSQL. Trip data is stored relationally — a `trips` header table and a `trip_items` table — giving individual items their own lifecycle including soft deletes.
+
+---
+
+## Architecture
+
+```
+Browser (React + Vite PWA)
+        │  HTTPS / JSON
+        ▼
+  FastAPI (Python)           ← Docker container / Azure Container Apps
+        │  SQLAlchemy ORM
+        ▼
+  PostgreSQL                 ← Azure Database for PostgreSQL / local Docker
+```
+
+Terraform manages all Azure infrastructure. The frontend is deployed as an Azure Static Web App; the API runs as a containerised service.
 
 ---
 
 ## Prerequisites
 
-### Tools
-
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | 3.11+ | Function backend + tests |
-| Node.js | 20+ | Frontend (Phase 2+) |
-| Azure Functions Core Tools | v4 | Local function host (`func start`) |
-| Azurite | latest | Local Azure Blob Storage emulator |
-| Terraform | >= 1.9 | Infrastructure provisioning |
+| Python | 3.11+ | API backend + tests |
+| Node.js | 20+ | Frontend dev server + build |
+| Docker / Docker Compose | latest | Local PostgreSQL + API container |
+| Terraform | ≥ 1.9 | Infrastructure provisioning |
 | Azure CLI | latest | Auth for Terraform + deployment |
 
-Install Azurite globally or run it via Docker:
-```bash
-# npm
-npm install -g azurite
+---
 
-# Docker
-docker run -p 10000:10000 mcr.microsoft.com/azure-storage/azurite
+## Local Development
+
+### 1. Start the database
+
+```bash
+cd api
+docker compose up db -d
 ```
+
+This starts a Postgres 16 container on port `5432` with database `pripritrip`.
+
+### 2. Run database migrations
+
+```bash
+cd api
+pip install -r requirements.txt
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pripritrip \
+  alembic upgrade head
+```
+
+### 3. Start the API
+
+```bash
+cd api
+APP_PASSWORD=honeymoon \
+TOKEN_SECRET=dev-secret-change-me \
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pripritrip \
+  uvicorn main:app --reload --port 8000
+```
+
+The interactive docs are available at `http://localhost:8000/docs`.
+
+### 4. Start the frontend
+
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+The app opens at `http://localhost:5173`.
 
 ### Environment Variables
 
-#### Function (local dev) — `function/local.settings.json`
+#### API
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `APP_PASSWORD` | Yes | Password checked on `POST /api/auth`. Default: `honeymoon` |
-| `TOKEN_SECRET` | Yes | HMAC-SHA256 salt for session tokens. Use any random string locally. |
-| `MAPS_API_KEY` | No | Google Maps API key. Returned to client on auth. Empty string disables maps. |
-| `AZURE_STORAGE_CONNECTION_STRING` | Yes (local) | Set to `UseDevelopmentStorage=true` for Azurite |
-| `STORAGE_ACCOUNT` | Yes (prod) | Azure Storage account name. Not needed when using a connection string. |
-| `STORAGE_TRIP_CONTAINER` | No | Blob container name for trip data. Default: `trip` |
-| `STORAGE_DOCS_CONTAINER` | No | Blob container name for documents. Default: `documents` |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5432/pripritrip` | PostgreSQL connection string |
+| `APP_PASSWORD` | Yes | `honeymoon` | Password for `POST /auth` |
+| `TOKEN_SECRET` | Yes | `dev-secret-change-me` | HMAC-SHA256 salt for bearer tokens |
+| `MAPS_API_KEY` | No | `` | Google Maps API key returned to the client on auth |
 
-`local.settings.json` is gitignored. A template is checked in at `function/local.settings.json` with safe defaults for Azurite — **do not commit real secrets**.
+---
 
-#### Infrastructure (Terraform) — `infrastructure/env/prod.tfvars`
+## API Reference
 
-| Variable | Description |
-|----------|-------------|
-| `subscription_id` | Azure subscription ID |
-| `app_name` | Resource naming prefix. Default: `pripritrip` |
+All endpoints except `/health` and `/auth` require a `Bearer` token obtained from `POST /auth`.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/health` | No | Liveness check |
+| `POST` | `/auth` | No | Exchange password for bearer token |
+| `GET` | `/trip` | Yes | Get trip header + all active items (assembled view) |
+| `POST` | `/trip` | Yes | Create or update the trip header |
+| `GET` | `/trip/items` | Yes | List all active (non-deleted) trip items |
+| `GET` | `/trip/items/deleted` | Yes | List soft-deleted items |
+| `POST` | `/trip/items` | Yes | Create a new trip item |
+| `PUT` | `/trip/items/{item_id}` | Yes | Full replace of a trip item |
+| `PATCH` | `/trip/items/{item_id}` | Yes | Partial update of a trip item |
+| `DELETE` | `/trip/items/{item_id}` | Yes | Soft-delete a trip item |
+| `POST` | `/trip/items/{item_id}/restore` | Yes | Restore a soft-deleted item |
+
+---
+
+## Running Tests
+
+### API
+
+```bash
+cd api
+pip install -r requirements.txt pytest httpx
+pytest tests/ -v
+```
+
+### Frontend
+
+```bash
+cd ui
+npm run test
+```
+
+---
+
+## Database Migrations
+
+Migrations are managed with [Alembic](https://alembic.sqlalchemy.org/).
+
+```bash
+# Apply all pending migrations
+alembic upgrade head
+
+# Roll back one migration
+alembic downgrade -1
+
+# Generate a new migration (auto-detect from ORM models)
+alembic revision --autogenerate -m "describe your change"
+```
+
+Run all Alembic commands from the `api/` directory.
+
+---
+
+## Deployment
+
+Infrastructure is defined in `infrastructure/` using Terraform.
+
+```bash
+cd infrastructure
+terraform init
+terraform apply -var-file=env/prod.tfvars
+```
+
+Key resources provisioned:
+- **Azure Static Web App** — hosts the React frontend
+- **Azure Container Apps** — runs the FastAPI container
+- **Azure Database for PostgreSQL Flexible Server** — managed Postgres
+
+After infrastructure is up, push the API container image to the Azure Container Registry and trigger a new revision on the Container App. The Static Web App is deployed automatically via a GitHub Actions workflow on push to `main`.
+
 | `environment` | Environment suffix (e.g. `prod`). |
 | `location` | Azure region. Default: `centralus` |
 | `app_password` | Deployed app password. Default: `honeymoon` — **change for production** |
