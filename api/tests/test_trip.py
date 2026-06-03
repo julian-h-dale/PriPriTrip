@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app, make_token, read_trip, resolve_document_sas_urls, write_trip
+from main import app, make_token, read_trip, resolve_document_urls, write_trip
 
 client = TestClient(app)
 
@@ -46,12 +46,23 @@ SAMPLE_TRIP = {
 ENV_VARS = {
     "APP_PASSWORD": APP_PASSWORD,
     "TOKEN_SECRET": TOKEN_SECRET,
-    "AZURE_STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
-    "STORAGE_TRIP_CONTAINER": "trip",
-    "STORAGE_DOCS_CONTAINER": "documents",
+    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/testdb",
 }
 
 AUTH_HEADERS = {"Authorization": f"Bearer {VALID_TOKEN}"}
+
+
+# ---------------------------------------------------------------------------
+# Helper: build a mock DB context manager
+# ---------------------------------------------------------------------------
+
+
+def _make_db_ctx(mock_conn):
+    """Return a MagicMock that acts as the context manager returned by get_db_connection()."""
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=mock_conn)
+    cm.__exit__ = MagicMock(return_value=False)
+    return cm
 
 
 # ---------------------------------------------------------------------------
@@ -60,85 +71,73 @@ AUTH_HEADERS = {"Authorization": f"Bearer {VALID_TOKEN}"}
 
 
 class TestReadTrip:
-    @patch.dict("os.environ", {"STORAGE_TRIP_CONTAINER": "trip"})
-    def test_reads_and_parses_json_from_blob(self):
-        mock_service = MagicMock()
-        mock_service.get_blob_client.return_value.download_blob.return_value.readall.return_value = (
-            json.dumps(SAMPLE_TRIP).encode()
-        )
-        result = read_trip(mock_service)
-        assert result["tripId"] == "trip_001"
-        mock_service.get_blob_client.assert_called_once_with(container="trip", blob="trip.json")
+    def test_reads_and_parses_trip_from_db(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.fetchone.return_value = {"data": SAMPLE_TRIP}
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
 
-    @patch.dict("os.environ", {"STORAGE_TRIP_CONTAINER": "trip"})
-    def test_raises_on_blob_error(self):
-        mock_service = MagicMock()
-        mock_service.get_blob_client.return_value.download_blob.side_effect = Exception("not found")
-        with pytest.raises(Exception, match="not found"):
-            read_trip(mock_service)
+        result = read_trip(mock_conn)
+
+        assert result["tripId"] == "trip_001"
+        mock_conn.cursor.assert_called_once()
+
+    def test_raises_on_db_error(self):
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
+            "db error"
+        )
+        with pytest.raises(Exception, match="db error"):
+            read_trip(mock_conn)
 
 
 class TestWriteTrip:
-    @patch.dict("os.environ", {"STORAGE_TRIP_CONTAINER": "trip"})
-    def test_uploads_json_to_blob(self):
-        mock_service = MagicMock()
-        write_trip(SAMPLE_TRIP, mock_service)
-        mock_service.get_blob_client.assert_called_once_with(container="trip", blob="trip.json")
-        call_kwargs = mock_service.get_blob_client.return_value.upload_blob.call_args
-        uploaded_data = call_kwargs[0][0]
-        parsed = json.loads(uploaded_data)
-        assert parsed["tripId"] == "trip_001"
-        assert call_kwargs[1].get("overwrite") is True
+    def test_upserts_trip_to_db(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
 
-    @patch.dict("os.environ", {"STORAGE_TRIP_CONTAINER": "trip"})
-    def test_raises_on_blob_error(self):
-        mock_service = MagicMock()
-        mock_service.get_blob_client.return_value.upload_blob.side_effect = Exception("write error")
+        write_trip(SAMPLE_TRIP, mock_conn)
+
+        mock_cur.execute.assert_called_once()
+        params = mock_cur.execute.call_args[0][1]
+        assert params[0] == "trip_001"
+        assert "trip_001" in params[1]
+
+    def test_raises_on_db_error(self):
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value.__enter__.return_value.execute.side_effect = Exception(
+            "write error"
+        )
         with pytest.raises(Exception, match="write error"):
-            write_trip(SAMPLE_TRIP, mock_service)
+            write_trip(SAMPLE_TRIP, mock_conn)
 
 
 # ---------------------------------------------------------------------------
-# resolve_document_sas_urls unit tests
+# resolve_document_urls unit tests
 # ---------------------------------------------------------------------------
 
 
-class TestResolveDocumentSasUrls:
-    @patch("main.generate_blob_sas", return_value="sig=token123")
-    @patch.dict("os.environ", {"STORAGE_DOCS_CONTAINER": "documents"})
-    def test_replaces_blob_names_with_sas_urls(self, mock_gen_sas):
-        mock_service = MagicMock()
-        mock_service.account_name = "mystorageaccount"
-        mock_service.credential.account_key = "dGVzdGtleQ=="
+class TestResolveDocumentUrls:
+    def test_replaces_blob_names_with_api_paths(self):
+        result = resolve_document_urls(SAMPLE_TRIP)
+        assert result["items"][0]["documents"][0]["url"] == "/documents/booking.pdf"
 
-        result = resolve_document_sas_urls(SAMPLE_TRIP, mock_service)
-
-        item_doc_url = result["items"][0]["documents"][0]["url"]
-        assert item_doc_url.startswith("https://mystorageaccount.blob.core.windows.net/documents/")
-        assert "sig=token123" in item_doc_url
-
-    @patch.dict("os.environ", {"STORAGE_DOCS_CONTAINER": "documents"})
-    def test_does_not_modify_http_urls(self, *_):
-        mock_service = MagicMock()
-        mock_service.account_name = "mystorageaccount"
-        mock_service.credential.account_key = "dGVzdGtleQ=="
-
+    def test_does_not_modify_http_urls(self):
         trip = {
-            "items": [{"documents": [{"url": "https://external.example.com/doc.pdf", "name": "External"}]}],
+            "items": [
+                {
+                    "documents": [
+                        {"url": "https://external.example.com/doc.pdf", "name": "External"}
+                    ]
+                }
+            ],
         }
-        result = resolve_document_sas_urls(trip, mock_service)
+        result = resolve_document_urls(trip)
         assert result["items"][0]["documents"][0]["url"] == "https://external.example.com/doc.pdf"
 
-    @patch.dict("os.environ", {"STORAGE_DOCS_CONTAINER": "documents"})
-    def test_does_not_mutate_original_trip(self, *_):
-        mock_service = MagicMock()
-        mock_service.account_name = "acct"
-        mock_service.credential.account_key = "key"
-
-        with patch("main.generate_blob_sas", return_value="sig=x"):
-            _ = resolve_document_sas_urls(SAMPLE_TRIP, mock_service)
-
-        # Original should be unchanged
+    def test_does_not_mutate_original_trip(self):
+        _ = resolve_document_urls(SAMPLE_TRIP)
         assert SAMPLE_TRIP["items"][0]["documents"][0]["url"] == "booking.pdf"
 
 
@@ -148,17 +147,14 @@ class TestResolveDocumentSasUrls:
 
 
 class TestApiTripGet:
-    @patch("main.get_blob_service_client")
-    @patch("main.resolve_document_sas_urls", side_effect=lambda trip, _: trip)
+    @patch("main.read_trip", return_value=SAMPLE_TRIP)
+    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_valid_token_returns_trip(self, _mock_sas, mock_client):
-        mock_client.return_value.get_blob_client.return_value.download_blob.return_value.readall.return_value = (
-            json.dumps(SAMPLE_TRIP).encode()
-        )
+    def test_valid_token_returns_trip(self, mock_get_db, _mock_read):
+        mock_get_db.return_value = _make_db_ctx(MagicMock())
         resp = client.get("/trip", headers=AUTH_HEADERS)
         assert resp.status_code == 200
-        body = resp.json()
-        assert body["tripId"] == "trip_001"
+        assert resp.json()["tripId"] == "trip_001"
 
     @patch.dict("os.environ", ENV_VARS)
     def test_no_token_returns_401(self):
@@ -170,12 +166,11 @@ class TestApiTripGet:
         resp = client.get("/trip", headers={"Authorization": "Bearer invalidtoken"})
         assert resp.status_code == 401
 
-    @patch("main.get_blob_service_client")
+    @patch("main.read_trip", side_effect=Exception("db unavailable"))
+    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_blob_error_returns_500(self, mock_client):
-        mock_client.return_value.get_blob_client.return_value.download_blob.side_effect = (
-            Exception("blob unavailable")
-        )
+    def test_db_error_returns_500(self, mock_get_db, _mock_read):
+        mock_get_db.return_value = _make_db_ctx(MagicMock())
         resp = client.get("/trip", headers=AUTH_HEADERS)
         assert resp.status_code == 500
 
@@ -186,13 +181,14 @@ class TestApiTripGet:
 
 
 class TestApiTripPost:
-    @patch("main.get_blob_service_client")
+    @patch("main.write_trip")
+    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_valid_token_and_body_returns_200(self, mock_client):
+    def test_valid_token_and_body_returns_200(self, mock_get_db, _mock_write):
+        mock_get_db.return_value = _make_db_ctx(MagicMock())
         resp = client.post("/trip", json=SAMPLE_TRIP, headers=AUTH_HEADERS)
         assert resp.status_code == 200
-        body = resp.json()
-        assert body["status"] == "ok"
+        assert resp.json()["status"] == "ok"
 
     @patch.dict("os.environ", ENV_VARS)
     def test_no_token_returns_401(self):
@@ -201,7 +197,9 @@ class TestApiTripPost:
 
     @patch.dict("os.environ", ENV_VARS)
     def test_invalid_token_returns_401(self):
-        resp = client.post("/trip", json=SAMPLE_TRIP, headers={"Authorization": "Bearer badtoken"})
+        resp = client.post(
+            "/trip", json=SAMPLE_TRIP, headers={"Authorization": "Bearer badtoken"}
+        )
         assert resp.status_code == 401
 
     @patch.dict("os.environ", ENV_VARS)
@@ -219,11 +217,10 @@ class TestApiTripPost:
         resp = client.post("/trip", json=bad_body, headers=AUTH_HEADERS)
         assert resp.status_code == 422
 
-    @patch("main.get_blob_service_client")
+    @patch("main.write_trip", side_effect=Exception("write failed"))
+    @patch("main.get_db_connection")
     @patch.dict("os.environ", ENV_VARS)
-    def test_blob_error_returns_500(self, mock_client):
-        mock_client.return_value.get_blob_client.return_value.upload_blob.side_effect = (
-            Exception("write failed")
-        )
+    def test_db_error_returns_500(self, mock_get_db, _mock_write):
+        mock_get_db.return_value = _make_db_ctx(MagicMock())
         resp = client.post("/trip", json=SAMPLE_TRIP, headers=AUTH_HEADERS)
         assert resp.status_code == 500

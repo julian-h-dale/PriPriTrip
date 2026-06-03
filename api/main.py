@@ -4,29 +4,16 @@ import hmac
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import List, Literal, Optional
+from contextlib import asynccontextmanager, contextmanager
+from typing import Generator, List, Literal, Optional
 
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import (
-    BlobServiceClient,
-    BlobSasPermissions,
-    generate_blob_sas,
-)
-from fastapi import FastAPI, HTTPException, Request, status
+import psycopg2.extensions
+
+import psycopg2
+import psycopg2.extras
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
-
-app = FastAPI(title="PriPriTrip API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +79,8 @@ class AuthResponse(BaseModel):
 
 
 def make_token(password: str, secret: str) -> str:
+    # HMAC-SHA256 is used here to generate a *bearer token*, not to store a password.
+    # The password is verified separately via hmac.compare_digest (see api_auth).
     return hmac.new(secret.encode(), password.encode(), hashlib.sha256).hexdigest()
 
 
@@ -108,95 +97,133 @@ def get_bearer_token(request: Request) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Blob helpers
+# Database helpers
 # ---------------------------------------------------------------------------
 
 
-def get_blob_service_client() -> BlobServiceClient:
-    """Return a BlobServiceClient using connection string (local dev / explicit)
-    or DefaultAzureCredential (managed identity in production)."""
-    conn_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
-    if conn_str:
-        return BlobServiceClient.from_connection_string(conn_str)
-    account = os.environ.get("STORAGE_ACCOUNT", "")
-    account_url = f"https://{account}.blob.core.windows.net"
-    return BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
+def get_database_url() -> str:
+    return os.environ.get(
+        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/pripritrip"
+    )
 
 
-def read_trip(blob_service: BlobServiceClient) -> dict:
-    container = os.environ.get("STORAGE_TRIP_CONTAINER", "trip")
-    blob = blob_service.get_blob_client(container=container, blob="trip.json")
-    data = blob.download_blob().readall()
-    return json.loads(data)
-
-
-def write_trip(trip: dict, blob_service: BlobServiceClient) -> None:
-    container = os.environ.get("STORAGE_TRIP_CONTAINER", "trip")
-    blob = blob_service.get_blob_client(container=container, blob="trip.json")
-    blob.upload_blob(json.dumps(trip, ensure_ascii=False), overwrite=True)
-
-
-def resolve_document_sas_urls(trip: dict, blob_service: BlobServiceClient) -> dict:
-    """Replace blob-name document URL fields with short-lived SAS URLs.
-
-    Stored document `url` values are blob names within the documents container
-    (not pre-signed URLs).  URLs that already begin with 'http' are left as-is.
-    Uses account-key SAS when available; falls back to user delegation SAS
-    (requires Storage Blob Delegator role on the managed identity).
-    """
-    docs_container = os.environ.get("STORAGE_DOCS_CONTAINER", "documents")
-    expiry = datetime.now(timezone.utc) + timedelta(hours=1)
-
-    # Prefer account key (connection string / dev); fall back to delegation key.
-    account_key: Optional[str] = None
+@contextmanager
+def get_db_connection() -> Generator[psycopg2.extensions.connection, None, None]:
+    """Yield a psycopg2 connection; commit on success, rollback on error."""
+    conn = psycopg2.connect(get_database_url())
     try:
-        cred = blob_service.credential
-        if hasattr(cred, "account_key"):
-            account_key = cred.account_key
+        yield conn
+        conn.commit()
     except Exception:
-        pass
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
-    user_delegation_key = None
-    if not account_key:
-        try:
-            user_delegation_key = blob_service.get_user_delegation_key(
-                key_start_time=datetime.now(timezone.utc),
-                key_expiry_time=expiry,
+
+def create_tables() -> None:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS trips (
+                    trip_id TEXT PRIMARY KEY,
+                    data    JSONB NOT NULL,
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
             )
-        except Exception as exc:
-            logging.warning("Could not obtain user delegation key for SAS: %s", exc)
-            return trip
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS documents (
+                    blob_name    TEXT PRIMARY KEY,
+                    content      BYTEA NOT NULL,
+                    content_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+                    original_name TEXT,
+                    created_at   TIMESTAMPTZ DEFAULT NOW()
+                )
+                """
+            )
 
-    def make_sas_url(blob_name: str) -> str:
-        if not blob_name or blob_name.startswith("http"):
-            return blob_name
-        kwargs = dict(
-            account_name=blob_service.account_name,
-            container_name=docs_container,
-            blob_name=blob_name,
-            permission=BlobSasPermissions(read=True),
-            expiry=expiry,
-        )
-        if account_key:
-            kwargs["account_key"] = account_key
-        else:
-            kwargs["user_delegation_key"] = user_delegation_key
-        token = generate_blob_sas(**kwargs)
-        return (
-            f"https://{blob_service.account_name}.blob.core.windows.net"
-            f"/{docs_container}/{blob_name}?{token}"
+
+# ---------------------------------------------------------------------------
+# Trip storage helpers
+# ---------------------------------------------------------------------------
+
+
+def read_trip(conn: psycopg2.extensions.connection) -> dict:
+    # Returns the most recently updated trip; this API manages a single trip document.
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("SELECT data FROM trips ORDER BY updated_at DESC LIMIT 1")
+        row = cur.fetchone()
+        if row is None:
+            raise ValueError("No trip found")
+        return dict(row["data"])
+
+
+def write_trip(trip: dict, conn: psycopg2.extensions.connection) -> None:
+    trip_id = trip.get("tripId", "default")
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO trips (trip_id, data, updated_at)
+            VALUES (%s, %s::jsonb, NOW())
+            ON CONFLICT (trip_id) DO UPDATE
+                SET data = EXCLUDED.data, updated_at = NOW()
+            """,
+            (trip_id, json.dumps(trip)),
         )
 
+
+def resolve_document_urls(trip: dict) -> dict:
+    """Replace bare blob names in document URL fields with API document paths.
+
+    Stored document ``url`` values that do not start with ``http`` are treated
+    as blob names and rewritten to ``/documents/{blob_name}`` so the client can
+    fetch them from this API.  Full HTTP(S) URLs are left unchanged.
+    """
     trip = copy.deepcopy(trip)
     for item in trip.get("items", []):
         for doc in item.get("documents", []):
-            doc["url"] = make_sas_url(doc.get("url", ""))
+            url = doc.get("url", "")
+            if url and not url.startswith("http"):
+                doc["url"] = f"/documents/{url}"
     return trip
+
+
+# ---------------------------------------------------------------------------
+# App lifecycle
+# ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        create_tables()
+    except Exception as exc:
+        logging.warning("Could not initialize database tables on startup: %s", exc)
+    yield
+
+
+app = FastAPI(title="PriPriTrip API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------
 # Route handlers
 # ---------------------------------------------------------------------------
+
+
+@app.get("/health")
+async def api_health():
+    return {"status": "ok"}
 
 
 @app.post("/auth")
@@ -223,13 +250,17 @@ async def api_trip_get(request: Request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     try:
-        blob_service = get_blob_service_client()
-        trip = read_trip(blob_service)
-        trip = resolve_document_sas_urls(trip, blob_service)
+        with get_db_connection() as conn:
+            trip = read_trip(conn)
+        trip = resolve_document_urls(trip)
         return trip
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
     except Exception as exc:
         logging.error("GET /trip error: %s", exc)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to read trip")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to read trip"
+        )
 
 
 @app.post("/trip")
@@ -255,9 +286,79 @@ async def api_trip_post(request: Request):
         )
 
     try:
-        blob_service = get_blob_service_client()
-        write_trip(body, blob_service)
+        with get_db_connection() as conn:
+            write_trip(body, conn)
         return {"status": "ok"}
     except Exception as exc:
         logging.error("POST /trip error: %s", exc)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to write trip")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to write trip"
+        )
+
+
+@app.post("/documents/{blob_name:path}", status_code=status.HTTP_201_CREATED)
+async def api_document_upload(blob_name: str, request: Request):
+    """Upload a document binary and store it in the database."""
+    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
+    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
+
+    token = get_bearer_token(request)
+    if not token or not verify_token(token, app_password, token_secret):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    content = await request.body()
+    content_type = request.headers.get("Content-Type", "application/octet-stream")
+
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO documents (blob_name, content, content_type)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (blob_name) DO UPDATE
+                        SET content = EXCLUDED.content,
+                            content_type = EXCLUDED.content_type
+                    """,
+                    (blob_name, psycopg2.Binary(content), content_type),
+                )
+        return {"status": "ok", "blobName": blob_name}
+    except Exception as exc:
+        logging.error("POST /documents/%s error: %s", blob_name, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to store document"
+        )
+
+
+@app.get("/documents/{blob_name:path}")
+async def api_document_get(blob_name: str, request: Request):
+    """Retrieve a stored document by its blob name."""
+    app_password = os.environ.get("APP_PASSWORD", "honeymoon")
+    token_secret = os.environ.get("TOKEN_SECRET", "dev-secret-change-me")
+
+    token = get_bearer_token(request)
+    if not token or not verify_token(token, app_password, token_secret):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT content, content_type FROM documents WHERE blob_name = %s",
+                    (blob_name,),
+                )
+                row = cur.fetchone()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+            )
+        content, content_type = row
+        return Response(content=bytes(content), media_type=content_type)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.error("GET /documents/%s error: %s", blob_name, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to read document"
+        )
+
