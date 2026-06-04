@@ -9,17 +9,10 @@ from app.models import TripDayRecord, TripRecord
 from app.schemas import TripDayCreate, TripDayPatch, TripDayResponse, TripDayUpdate
 
 router = APIRouter(
-    prefix="/trip/days",
+    prefix="/trips/{trip_id}/days",
     tags=["trip days"],
     dependencies=[Depends(require_auth)],
 )
-
-
-def _get_trip(db: Session) -> TripRecord:
-    record = db.query(TripRecord).order_by(TripRecord.updated_at.desc()).first()
-    if record is None:
-        raise ValueError("No trip found")
-    return record
 
 
 def _day_to_response(r: TripDayRecord) -> TripDayResponse:
@@ -38,15 +31,19 @@ def _day_to_response(r: TripDayRecord) -> TripDayResponse:
     )
 
 
+def _require_trip(trip_id: str, db: Session) -> TripRecord:
+    record = db.get(TripRecord, trip_id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    return record
+
+
 @router.get("", response_model=list[TripDayResponse])
-async def list_days(db: Session = Depends(get_db)):
-    try:
-        record = _get_trip(db)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
+async def list_days(trip_id: str, db: Session = Depends(get_db)):
+    _require_trip(trip_id, db)
     days = (
         db.query(TripDayRecord)
-        .filter(TripDayRecord.trip_id == record.trip_id, TripDayRecord.deleted_at.is_(None))
+        .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
         .order_by(TripDayRecord.sort_order)
         .all()
     )
@@ -54,14 +51,11 @@ async def list_days(db: Session = Depends(get_db)):
 
 
 @router.get("/deleted", response_model=list[TripDayResponse])
-async def list_deleted_days(db: Session = Depends(get_db)):
-    try:
-        record = _get_trip(db)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
+async def list_deleted_days(trip_id: str, db: Session = Depends(get_db)):
+    _require_trip(trip_id, db)
     days = (
         db.query(TripDayRecord)
-        .filter(TripDayRecord.trip_id == record.trip_id, TripDayRecord.deleted_at.isnot(None))
+        .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.isnot(None))
         .order_by(TripDayRecord.sort_order)
         .all()
     )
@@ -69,16 +63,13 @@ async def list_deleted_days(db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=TripDayResponse, status_code=status.HTTP_201_CREATED)
-async def create_day(body: TripDayCreate, db: Session = Depends(get_db)):
-    try:
-        record = _get_trip(db)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
+async def create_day(trip_id: str, body: TripDayCreate, db: Session = Depends(get_db)):
+    _require_trip(trip_id, db)
     if db.get(TripDayRecord, body.dayId) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day already exists")
     day = TripDayRecord(
         day_id=body.dayId,
-        trip_id=record.trip_id,
+        trip_id=trip_id,
         title=body.title,
         date=body.date,
         description=body.description,
@@ -93,9 +84,9 @@ async def create_day(body: TripDayCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{day_id}", response_model=TripDayResponse)
-async def update_day(day_id: str, body: TripDayUpdate, db: Session = Depends(get_db)):
+async def update_day(trip_id: str, day_id: str, body: TripDayUpdate, db: Session = Depends(get_db)):
     day = db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is not None:
+    if day is None or day.deleted_at is not None or day.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     day.title = body.title
     day.date = body.date
@@ -110,9 +101,9 @@ async def update_day(day_id: str, body: TripDayUpdate, db: Session = Depends(get
 
 
 @router.patch("/{day_id}", response_model=TripDayResponse)
-async def patch_day(day_id: str, body: TripDayPatch, db: Session = Depends(get_db)):
+async def patch_day(trip_id: str, day_id: str, body: TripDayPatch, db: Session = Depends(get_db)):
     day = db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is not None:
+    if day is None or day.deleted_at is not None or day.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     _field_map = {
         "title": "title",
@@ -132,9 +123,9 @@ async def patch_day(day_id: str, body: TripDayPatch, db: Session = Depends(get_d
 
 
 @router.delete("/{day_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_day(day_id: str, db: Session = Depends(get_db)):
+async def delete_day(trip_id: str, day_id: str, db: Session = Depends(get_db)):
     day = db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is not None:
+    if day is None or day.deleted_at is not None or day.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     day.deleted_at = datetime.now(timezone.utc)
     day.updated_at = datetime.now(timezone.utc)
@@ -142,9 +133,11 @@ async def delete_day(day_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{day_id}/restore", response_model=TripDayResponse)
-async def restore_day(day_id: str, db: Session = Depends(get_db)):
+async def restore_day(trip_id: str, day_id: str, db: Session = Depends(get_db)):
     day = db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is None:
+    if day is None or day.trip_id != trip_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
+    if day.deleted_at is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day is not deleted")
     day.deleted_at = None
     day.updated_at = datetime.now(timezone.utc)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useParams } from 'react-router-dom';
 import {
   Alert,
   AppBar,
@@ -24,6 +25,7 @@ import {
 import { useOnlineStatus } from '../utils/useOnlineStatus';
 
 export default function HomePage() {
+  const { tripId } = useParams();
   const dispatch = useDispatch();
   const trip = useSelector(selectTrip);
   const status = useSelector(selectTripStatus);
@@ -33,8 +35,8 @@ export default function HomePage() {
   const [expandedDayId, setExpandedDayId] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchTrip());
-  }, [dispatch]);
+    if (tripId) dispatch(fetchTrip(tripId));
+  }, [dispatch, tripId]);
 
   const isLoading = status === 'loading';
   const isError = status === 'error';
@@ -45,7 +47,7 @@ export default function HomePage() {
         <Toolbar variant="dense" sx={{ minHeight: 48 }}>
           <ExploreIcon sx={{ mr: 1, fontSize: 20 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            PriPriTrip
+            {trip?.tripName ?? 'PriPriTrip'}
           </Typography>
           {!isOnline && (
             <Chip

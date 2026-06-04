@@ -2,14 +2,19 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import client from '../api/client';
 import { cacheTrip, getCachedTrip } from '../utils/tripCache';
 
-export const fetchTrip = createAsyncThunk('trip/fetch', async () => {
+export const fetchTrips = createAsyncThunk('trip/fetchAll', async () => {
+  const { data } = await client.get('/trips');
+  return data;
+});
+
+export const fetchTrip = createAsyncThunk('trip/fetch', async (tripId) => {
   try {
-    const { data } = await client.get('/trip');
+    const { data } = await client.get(`/trips/${tripId}`);
     await cacheTrip(data).catch(() => {});
     return data;
   } catch {
     const cached = await getCachedTrip();
-    if (cached) return cached;
+    if (cached && cached.tripId === tripId) return cached;
     throw new Error('No network and no cached trip available.');
   }
 });
@@ -17,8 +22,10 @@ export const fetchTrip = createAsyncThunk('trip/fetch', async () => {
 const tripSlice = createSlice({
   name: 'trip',
   initialState: {
+    trips: [],
+    tripsStatus: 'idle',
     data: null,
-    status: 'idle', // 'idle' | 'loading' | 'error'
+    status: 'idle',
     error: null,
   },
   reducers: {
@@ -34,6 +41,16 @@ const tripSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchTrips.pending, (state) => {
+        state.tripsStatus = 'loading';
+      })
+      .addCase(fetchTrips.fulfilled, (state, action) => {
+        state.trips = action.payload;
+        state.tripsStatus = 'idle';
+      })
+      .addCase(fetchTrips.rejected, (state) => {
+        state.tripsStatus = 'error';
+      })
       .addCase(fetchTrip.pending, (state) => {
         state.status = 'loading';
         state.error = null;
@@ -51,6 +68,8 @@ const tripSlice = createSlice({
 
 export const { setTrip, clearError } = tripSlice.actions;
 
+export const selectTrips = (state) => state.trip.trips;
+export const selectTripsStatus = (state) => state.trip.tripsStatus;
 export const selectTrip = (state) => state.trip.data;
 export const selectTripStatus = (state) => state.trip.status;
 export const selectTripError = (state) => state.trip.error;

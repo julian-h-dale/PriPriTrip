@@ -1,16 +1,16 @@
-Now i want to update our models a little bit.  
+We are going to build out the feature for adding a new trip
 
-I want to break out locations into its own type/table and not just keep it as json on the trip item.
+Basic rules:
+- always follow best patterns and newest standards for react and python fast api.
+- ui views need to mobile optimized.  Use the established patterns as much as possible. Always favor using material ui components where possible.
 
-i also want to create the tables for the different types.  I want to what would be the recommended way of doing this. I dont want to track redundant information but I also don't want a lot of repeated models. 
+- new trip button available at the top right of the trip list
+- clicking it takes user to "carousel" of card elements
+    - first card: Trip name, start date, end date
+    - second card: Travel (first leg of the trip ie the first flight)
+    - third card: return travel (final leg)
+- after filling out the form in the carouself of cards, make a request to create a new trip
+    - initial trip state should have days nodes for each day between and including the start and end date. initial title can just be the day in format "May 12th"
+    - make a travel point for the departing and returning travel. 
 
-Give me a plan on how we would track the following types
-travel - include things like start & end locations and times.  Mode such as train, plane, car etc
-Stay - needs to have a begginging and an end date for stay.  Check in-out times. Location and confirmation number.
-
-
-
-break out the activity into new types.  I want activity to be museum, site, or restaurant for now. 
-
-
-Give me a plan for all of that please. 
+- after the succesful post call to create the trip, navigate the user to the that trip view. 

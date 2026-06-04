@@ -22,9 +22,12 @@ ENV_VARS = {
     "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/testdb",
 }
 
+TRIP_ID = "trip_001"
+BASE = f"/trips/{TRIP_ID}/days"
+
 SAMPLE_DAY_PAYLOAD = {
     "dayId": "day_001",
-    "title": "May 11 — Arrival in Bern",
+    "title": "May 11 - Arrival in Bern",
     "date": "2026-05-11",
     "description": "Arrive and settle in.",
     "sortOrder": 1,
@@ -32,7 +35,7 @@ SAMPLE_DAY_PAYLOAD = {
 }
 
 FULL_UPDATE_PAYLOAD = {
-    "title": "May 11 — Updated",
+    "title": "May 11 - Updated",
     "date": "2026-05-11",
     "description": "Updated description.",
     "sortOrder": 2,
@@ -40,12 +43,7 @@ FULL_UPDATE_PAYLOAD = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def make_mock_trip(trip_id: str = "trip_001") -> MagicMock:
+def make_mock_trip(trip_id: str = TRIP_ID) -> MagicMock:
     record = MagicMock(spec=TripRecord)
     record.trip_id = trip_id
     return record
@@ -54,11 +52,12 @@ def make_mock_trip(trip_id: str = "trip_001") -> MagicMock:
 def make_mock_day(day_id: str = "day_001", deleted: bool = False) -> MagicMock:
     day = MagicMock(spec=TripDayRecord)
     day.day_id = day_id
-    day.trip_id = "trip_001"
-    day.title = "May 11 — Arrival in Bern"
+    day.trip_id = TRIP_ID
+    day.title = "May 11 - Arrival in Bern"
     day.date = "2026-05-11"
     day.description = "Arrive and settle in."
     day.sort_order = 1
+    day.is_alternate = False
     day.completed = False
     day.deleted_at = datetime(2026, 5, 2, tzinfo=timezone.utc) if deleted else None
     day.created_at = datetime(2026, 5, 1, tzinfo=timezone.utc)
@@ -67,7 +66,7 @@ def make_mock_day(day_id: str = "day_001", deleted: bool = False) -> MagicMock:
 
 
 # ---------------------------------------------------------------------------
-# GET /trip/days
+# GET /trips/{trip_id}/days
 # ---------------------------------------------------------------------------
 
 
@@ -79,15 +78,14 @@ class TestApiTripDaysList:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @patch("app.routers.trip_days._get_trip")
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_active_days(self, mock_get_trip):
-        mock_get_trip.return_value = make_mock_trip()
+    def test_returns_active_days(self):
+        self.mock_db.get.return_value = make_mock_trip()
         self.mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [
             make_mock_day()
         ]
 
-        resp = client.get("/trip/days", headers=AUTH_HEADERS)
+        resp = client.get(BASE, headers=AUTH_HEADERS)
 
         assert resp.status_code == 200
         data = resp.json()
@@ -95,20 +93,21 @@ class TestApiTripDaysList:
         assert data[0]["dayId"] == "day_001"
         assert data[0]["deletedAt"] is None
 
-    @patch("app.routers.trip_days._get_trip", side_effect=ValueError("No trip found"))
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_404_when_no_trip(self, _mock):
-        resp = client.get("/trip/days", headers=AUTH_HEADERS)
+    def test_returns_404_when_no_trip(self):
+        self.mock_db.get.return_value = None
+
+        resp = client.get(BASE, headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.get("/trip/days")
+        resp = client.get(BASE)
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# GET /trip/days/deleted
+# GET /trips/{trip_id}/days/deleted
 # ---------------------------------------------------------------------------
 
 
@@ -120,35 +119,35 @@ class TestApiTripDaysDeleted:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @patch("app.routers.trip_days._get_trip")
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_only_deleted_days(self, mock_get_trip):
-        mock_get_trip.return_value = make_mock_trip()
+    def test_returns_only_deleted_days(self):
+        self.mock_db.get.return_value = make_mock_trip()
         self.mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [
             make_mock_day(deleted=True)
         ]
 
-        resp = client.get("/trip/days/deleted", headers=AUTH_HEADERS)
+        resp = client.get(f"{BASE}/deleted", headers=AUTH_HEADERS)
 
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
         assert data[0]["deletedAt"] is not None
 
-    @patch("app.routers.trip_days._get_trip", side_effect=ValueError("No trip found"))
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_404_when_no_trip(self, _mock):
-        resp = client.get("/trip/days/deleted", headers=AUTH_HEADERS)
+    def test_returns_404_when_no_trip(self):
+        self.mock_db.get.return_value = None
+
+        resp = client.get(f"{BASE}/deleted", headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.get("/trip/days/deleted")
+        resp = client.get(f"{BASE}/deleted")
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# POST /trip/days
+# POST /trips/{trip_id}/days
 # ---------------------------------------------------------------------------
 
 
@@ -160,47 +159,54 @@ class TestApiTripDayCreate:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @patch("app.routers.trip_days._get_trip")
     @patch.dict("os.environ", ENV_VARS)
-    def test_creates_day_returns_201(self, mock_get_trip):
-        mock_get_trip.return_value = make_mock_trip()
-        self.mock_db.get.return_value = None  # day does not exist yet
+    def test_creates_day_returns_201(self):
+        def get_side_effect(model, key):
+            if model is TripRecord:
+                return make_mock_trip()
+            return None  # day does not exist yet
 
-        resp = client.post("/trip/days", json=SAMPLE_DAY_PAYLOAD, headers=AUTH_HEADERS)
+        self.mock_db.get.side_effect = get_side_effect
+
+        resp = client.post(BASE, json=SAMPLE_DAY_PAYLOAD, headers=AUTH_HEADERS)
 
         assert resp.status_code == 201
         self.mock_db.add.assert_called_once()
         self.mock_db.commit.assert_called_once()
 
-    @patch("app.routers.trip_days._get_trip")
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_409_when_day_already_exists(self, mock_get_trip):
-        mock_get_trip.return_value = make_mock_trip()
-        self.mock_db.get.return_value = make_mock_day()
+    def test_returns_409_when_day_already_exists(self):
+        def get_side_effect(model, key):
+            if model is TripRecord:
+                return make_mock_trip()
+            return make_mock_day()
 
-        resp = client.post("/trip/days", json=SAMPLE_DAY_PAYLOAD, headers=AUTH_HEADERS)
+        self.mock_db.get.side_effect = get_side_effect
+
+        resp = client.post(BASE, json=SAMPLE_DAY_PAYLOAD, headers=AUTH_HEADERS)
 
         assert resp.status_code == 409
 
-    @patch("app.routers.trip_days._get_trip", side_effect=ValueError("No trip found"))
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_404_when_no_trip(self, _mock):
-        resp = client.post("/trip/days", json=SAMPLE_DAY_PAYLOAD, headers=AUTH_HEADERS)
+    def test_returns_404_when_no_trip(self):
+        self.mock_db.get.return_value = None
+
+        resp = client.post(BASE, json=SAMPLE_DAY_PAYLOAD, headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.post("/trip/days", json=SAMPLE_DAY_PAYLOAD)
+        resp = client.post(BASE, json=SAMPLE_DAY_PAYLOAD)
         assert resp.status_code == 401
 
     @patch.dict("os.environ", ENV_VARS)
     def test_invalid_body_returns_422(self):
-        resp = client.post("/trip/days", json={"foo": "bar"}, headers=AUTH_HEADERS)
+        resp = client.post(BASE, json={"foo": "bar"}, headers=AUTH_HEADERS)
         assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------
-# PUT /trip/days/{day_id}
+# PUT /trips/{trip_id}/days/{day_id}
 # ---------------------------------------------------------------------------
 
 
@@ -217,10 +223,10 @@ class TestApiTripDayUpdate:
         day = make_mock_day()
         self.mock_db.get.return_value = day
 
-        resp = client.put("/trip/days/day_001", json=FULL_UPDATE_PAYLOAD, headers=AUTH_HEADERS)
+        resp = client.put(f"{BASE}/day_001", json=FULL_UPDATE_PAYLOAD, headers=AUTH_HEADERS)
 
         assert resp.status_code == 200
-        assert day.title == "May 11 — Updated"
+        assert day.title == "May 11 - Updated"
         assert day.sort_order == 2
         self.mock_db.commit.assert_called_once()
 
@@ -228,26 +234,24 @@ class TestApiTripDayUpdate:
     def test_returns_404_when_not_found(self):
         self.mock_db.get.return_value = None
 
-        resp = client.put("/trip/days/day_001", json=FULL_UPDATE_PAYLOAD, headers=AUTH_HEADERS)
-
+        resp = client.put(f"{BASE}/day_001", json=FULL_UPDATE_PAYLOAD, headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_returns_404_for_soft_deleted_day(self):
         self.mock_db.get.return_value = make_mock_day(deleted=True)
 
-        resp = client.put("/trip/days/day_001", json=FULL_UPDATE_PAYLOAD, headers=AUTH_HEADERS)
-
+        resp = client.put(f"{BASE}/day_001", json=FULL_UPDATE_PAYLOAD, headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.put("/trip/days/day_001", json=FULL_UPDATE_PAYLOAD)
+        resp = client.put(f"{BASE}/day_001", json=FULL_UPDATE_PAYLOAD)
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# PATCH /trip/days/{day_id}
+# PATCH /trips/{trip_id}/days/{day_id}
 # ---------------------------------------------------------------------------
 
 
@@ -264,7 +268,7 @@ class TestApiTripDayPatch:
         day = make_mock_day()
         self.mock_db.get.return_value = day
 
-        resp = client.patch("/trip/days/day_001", json={"completed": True}, headers=AUTH_HEADERS)
+        resp = client.patch(f"{BASE}/day_001", json={"completed": True}, headers=AUTH_HEADERS)
 
         assert resp.status_code == 200
         assert day.completed is True
@@ -276,7 +280,7 @@ class TestApiTripDayPatch:
         original_title = day.title
         self.mock_db.get.return_value = day
 
-        client.patch("/trip/days/day_001", json={"sortOrder": 99}, headers=AUTH_HEADERS)
+        client.patch(f"{BASE}/day_001", json={"sortOrder": 99}, headers=AUTH_HEADERS)
 
         assert day.sort_order == 99
         assert day.title == original_title
@@ -285,28 +289,24 @@ class TestApiTripDayPatch:
     def test_returns_404_when_not_found(self):
         self.mock_db.get.return_value = None
 
-        resp = client.patch(
-            "/trip/days/day_001", json={"completed": True}, headers=AUTH_HEADERS
-        )
+        resp = client.patch(f"{BASE}/day_001", json={"completed": True}, headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_returns_404_for_soft_deleted_day(self):
         self.mock_db.get.return_value = make_mock_day(deleted=True)
 
-        resp = client.patch(
-            "/trip/days/day_001", json={"completed": True}, headers=AUTH_HEADERS
-        )
+        resp = client.patch(f"{BASE}/day_001", json={"completed": True}, headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.patch("/trip/days/day_001", json={"completed": True})
+        resp = client.patch(f"{BASE}/day_001", json={"completed": True})
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# DELETE /trip/days/{day_id}  (soft delete)
+# DELETE /trips/{trip_id}/days/{day_id}
 # ---------------------------------------------------------------------------
 
 
@@ -324,7 +324,7 @@ class TestApiTripDayDelete:
         assert day.deleted_at is None
         self.mock_db.get.return_value = day
 
-        resp = client.delete("/trip/days/day_001", headers=AUTH_HEADERS)
+        resp = client.delete(f"{BASE}/day_001", headers=AUTH_HEADERS)
 
         assert resp.status_code == 204
         assert day.deleted_at is not None
@@ -334,24 +334,24 @@ class TestApiTripDayDelete:
     def test_returns_404_when_not_found(self):
         self.mock_db.get.return_value = None
 
-        resp = client.delete("/trip/days/day_001", headers=AUTH_HEADERS)
+        resp = client.delete(f"{BASE}/day_001", headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_returns_404_when_already_deleted(self):
         self.mock_db.get.return_value = make_mock_day(deleted=True)
 
-        resp = client.delete("/trip/days/day_001", headers=AUTH_HEADERS)
+        resp = client.delete(f"{BASE}/day_001", headers=AUTH_HEADERS)
         assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.delete("/trip/days/day_001")
+        resp = client.delete(f"{BASE}/day_001")
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# POST /trip/days/{day_id}/restore
+# POST /trips/{trip_id}/days/{day_id}/restore
 # ---------------------------------------------------------------------------
 
 
@@ -368,7 +368,7 @@ class TestApiTripDayRestore:
         day = make_mock_day(deleted=True)
         self.mock_db.get.return_value = day
 
-        resp = client.post("/trip/days/day_001/restore", headers=AUTH_HEADERS)
+        resp = client.post(f"{BASE}/day_001/restore", headers=AUTH_HEADERS)
 
         assert resp.status_code == 200
         assert day.deleted_at is None
@@ -378,17 +378,17 @@ class TestApiTripDayRestore:
     def test_returns_409_when_not_deleted(self):
         self.mock_db.get.return_value = make_mock_day(deleted=False)
 
-        resp = client.post("/trip/days/day_001/restore", headers=AUTH_HEADERS)
+        resp = client.post(f"{BASE}/day_001/restore", headers=AUTH_HEADERS)
         assert resp.status_code == 409
 
     @patch.dict("os.environ", ENV_VARS)
-    def test_returns_409_when_not_found(self):
+    def test_returns_404_when_not_found(self):
         self.mock_db.get.return_value = None
 
-        resp = client.post("/trip/days/day_001/restore", headers=AUTH_HEADERS)
-        assert resp.status_code == 409
+        resp = client.post(f"{BASE}/day_001/restore", headers=AUTH_HEADERS)
+        assert resp.status_code == 404
 
     @patch.dict("os.environ", ENV_VARS)
     def test_requires_auth(self):
-        resp = client.post("/trip/days/day_001/restore")
+        resp = client.post(f"{BASE}/day_001/restore")
         assert resp.status_code == 401

@@ -20,18 +20,12 @@ from app.schemas import (
     TravelDetail,
     TripDayWithPoints,
     TripHeader,
+    TripListItem,
     TripPointResponse,
     TripResponse,
 )
 
-router = APIRouter(prefix="/trip", tags=["trip"])
-
-
-def _get_trip(db: Session) -> TripRecord:
-    record = db.query(TripRecord).order_by(TripRecord.updated_at.desc()).first()
-    if record is None:
-        raise ValueError("No trip found")
-    return record
+router = APIRouter(prefix="/trips", tags=["trips"], dependencies=[Depends(require_auth)])
 
 
 def _point_to_response(
@@ -96,21 +90,29 @@ def _point_to_response(
     )
 
 
-@router.get("", dependencies=[Depends(require_auth)], response_model=TripResponse)
-async def get_trip(db: Session = Depends(get_db)):
-    try:
-        record = _get_trip(db)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No trip found")
-    except Exception as exc:
-        logging.error("GET /trip error: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to read trip"
+@router.get("", response_model=list[TripListItem])
+async def list_trips(db: Session = Depends(get_db)):
+    records = db.query(TripRecord).order_by(TripRecord.start_date).all()
+    return [
+        TripListItem(
+            tripId=r.trip_id,
+            tripName=r.trip_name,
+            startDate=r.start_date,
+            endDate=r.end_date,
         )
+        for r in records
+    ]
+
+
+@router.get("/{trip_id}", response_model=TripResponse)
+async def get_trip(trip_id: str, db: Session = Depends(get_db)):
+    record = db.get(TripRecord, trip_id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
     days = (
         db.query(TripDayRecord)
-        .filter(TripDayRecord.trip_id == record.trip_id, TripDayRecord.deleted_at.is_(None))
+        .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
         .order_by(TripDayRecord.sort_order)
         .all()
     )
@@ -135,17 +137,9 @@ async def get_trip(db: Session = Depends(get_db)):
     if point_ids:
         for loc in db.query(LocationRecord).filter(LocationRecord.point_id.in_(point_ids)).all():
             locs_by_point.setdefault(loc.point_id, []).append(loc)
-        for t in (
-            db.query(TravelDetailRecord)
-            .filter(TravelDetailRecord.point_id.in_(point_ids))
-            .all()
-        ):
+        for t in db.query(TravelDetailRecord).filter(TravelDetailRecord.point_id.in_(point_ids)).all():
             travel_by_point[t.point_id] = t
-        for s in (
-            db.query(StayDetailRecord)
-            .filter(StayDetailRecord.point_id.in_(point_ids))
-            .all()
-        ):
+        for s in db.query(StayDetailRecord).filter(StayDetailRecord.point_id.in_(point_ids)).all():
             stay_by_point[s.point_id] = s
 
     points_by_day: dict = {}
@@ -160,6 +154,7 @@ async def get_trip(db: Session = Depends(get_db)):
             date=d.date,
             description=d.description,
             sortOrder=d.sort_order,
+            isAlternate=d.is_alternate,
             completed=d.completed,
             deletedAt=d.deleted_at.isoformat() if d.deleted_at else None,
             createdAt=d.created_at.isoformat() if d.created_at else None,
@@ -186,7 +181,7 @@ async def get_trip(db: Session = Depends(get_db)):
     )
 
 
-@router.post("", dependencies=[Depends(require_auth)])
+@router.post("", status_code=status.HTTP_200_OK)
 async def upsert_trip(body: TripHeader, db: Session = Depends(get_db)):
     try:
         record = db.get(TripRecord, body.tripId)
@@ -207,7 +202,7 @@ async def upsert_trip(body: TripHeader, db: Session = Depends(get_db)):
         db.commit()
         return {"status": "ok"}
     except Exception as exc:
-        logging.error("POST /trip error: %s", exc)
+        logging.error("POST /trips error: %s", exc)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to write trip"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save trip"
         )

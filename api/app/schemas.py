@@ -202,6 +202,13 @@ class TripDayWithPoints(TripDayResponse):
     points: List[TripPointResponse] = []
 
 
+class TripListItem(BaseModel):
+    tripId: str
+    tripName: str
+    startDate: str
+    endDate: str
+
+
 class TripResponse(BaseModel):
     tripId: str
     tripName: str
