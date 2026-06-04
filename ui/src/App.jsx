@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import NewTripPage from './pages/NewTripPage';
 import TripsPage from './pages/TripsPage';
 import { selectIsAuthenticated } from './store/authSlice';
 
@@ -27,6 +28,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/new-trip"
+        element={
+          <ProtectedRoute>
+            <NewTripPage />
           </ProtectedRoute>
         }
       />

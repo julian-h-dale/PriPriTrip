@@ -9,9 +9,11 @@ import {
   CardContent,
   CircularProgress,
   Container,
+  IconButton,
   Toolbar,
   Typography,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import ExploreIcon from '@mui/icons-material/Explore';
 import {
   fetchTrips,
@@ -34,9 +36,12 @@ export default function TripsPage() {
       <AppBar position="sticky" elevation={1}>
         <Toolbar variant="dense" sx={{ minHeight: 48 }}>
           <ExploreIcon sx={{ mr: 1, fontSize: 20 }} />
-          <Typography variant="h6" component="div">
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             PriPriTrip
           </Typography>
+          <IconButton color="inherit" edge="end" onClick={() => navigate('/new-trip')} aria-label="New trip">
+            <AddIcon />
+          </IconButton>
         </Toolbar>
       </AppBar>
 
