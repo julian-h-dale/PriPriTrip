@@ -4,14 +4,20 @@ import {
   Chip,
   Drawer,
   IconButton,
+  Stack,
   Typography,
 } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
 import MapIcon from '@mui/icons-material/Map';
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import dayjs from '../../utils/dayjs';
 import { TRIP_TZ } from '../../utils/dayjs';
+import { fetchTrip, selectTrip } from '../../store/tripSlice';
+import PointForm from '../Forms/PointForm';
 
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';
@@ -103,6 +109,10 @@ function LocationRow({ label, loc }) {
 }
 
 export default function PointDetailSheet({ item, onClose }) {
+  const trip = useSelector(selectTrip);
+  const dispatch = useDispatch();
+  const [editOpen, setEditOpen] = useState(false);
+
   if (!item) return null;
 
   const Icon = getPointIcon(item);
@@ -165,6 +175,14 @@ export default function PointDetailSheet({ item, onClose }) {
               {item.endDateTime && dayjs(item.endDateTime).tz(TRIP_TZ).format('h:mm A')}
             </Typography>
           </Box>
+          <IconButton
+            size="small"
+            onClick={() => setEditOpen(true)}
+            aria-label="Edit point"
+            sx={{ flexShrink: 0 }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
         </Box>
         {chipLabel && (
           <Chip
@@ -227,6 +245,18 @@ export default function PointDetailSheet({ item, onClose }) {
           Close
         </Button>
       </Box>
+
+      {/* Edit form */}
+      {trip && (
+        <PointForm
+          tripId={trip.tripId}
+          dayId={item.dayId}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => dispatch(fetchTrip(trip.tripId))}
+          initialValues={item}
+        />
+      )}
     </Drawer>
   );
 }
