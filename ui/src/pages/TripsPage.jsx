@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  AppBar,
   Box,
   Card,
   CardActionArea,
@@ -10,17 +9,16 @@ import {
   CircularProgress,
   Container,
   IconButton,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import ExploreIcon from '@mui/icons-material/Explore';
 import dayjs from 'dayjs';
 import {
   fetchTrips,
   selectTrips,
   selectTripsStatus,
 } from '../store/tripSlice';
+import AppLayout from '../components/AppLayout';
 
 function fmtDate(dateStr) {
   const d = dayjs(dateStr);
@@ -42,19 +40,14 @@ export default function TripsPage() {
   }, [dispatch]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="sticky" elevation={1}>
-        <Toolbar variant="dense" sx={{ minHeight: 48 }}>
-          <ExploreIcon sx={{ mr: 1, fontSize: 20 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            PriPriTrip
-          </Typography>
-          <IconButton color="inherit" edge="end" onClick={() => navigate('/new-trip')} aria-label="New trip">
-            <AddIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
-
+    <AppLayout
+      title="PriPriTrip"
+      actions={
+        <IconButton color="inherit" edge="end" onClick={() => navigate('/new-trip')} aria-label="New trip">
+          <AddIcon />
+        </IconButton>
+      }
+    >
       <Container maxWidth="sm" sx={{ pt: 3, pb: 4 }}>
         <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
           Your Trips
@@ -85,6 +78,6 @@ export default function TripsPage() {
           </Card>
         ))}
       </Container>
-    </Box>
+    </AppLayout>
   );
 }

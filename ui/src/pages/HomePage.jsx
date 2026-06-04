@@ -3,17 +3,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import {
   Alert,
-  AppBar,
   Box,
   Chip,
   CircularProgress,
   Container,
   Snackbar,
-  Toolbar,
-  Typography,
 } from '@mui/material';
-import ExploreIcon from '@mui/icons-material/Explore';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
+import AppLayout from '../components/AppLayout';
 import Timeline from '../components/Timeline/Timeline';
 import {
   fetchTrip,
@@ -42,30 +39,25 @@ export default function HomePage() {
   const isError = status === 'error';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="sticky" elevation={1}>
-        <Toolbar variant="dense" sx={{ minHeight: 48 }}>
-          <ExploreIcon sx={{ mr: 1, fontSize: 20 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {trip?.tripName ?? 'PriPriTrip'}
-          </Typography>
-          {!isOnline && (
-            <Chip
-              icon={<WifiOffIcon sx={{ fontSize: 14 }} />}
-              label="Offline"
-              size="small"
-              sx={{
-                height: 22,
-                fontSize: '0.7rem',
-                bgcolor: 'rgba(255,255,255,0.15)',
-                color: 'inherit',
-                '& .MuiChip-icon': { color: 'inherit' },
-              }}
-            />
-          )}
-        </Toolbar>
-      </AppBar>
-
+    <AppLayout
+      title={trip?.tripName ?? 'PriPriTrip'}
+      actions={
+        !isOnline && (
+          <Chip
+            icon={<WifiOffIcon sx={{ fontSize: 14 }} />}
+            label="Offline"
+            size="small"
+            sx={{
+              height: 22,
+              fontSize: '0.7rem',
+              bgcolor: 'rgba(255,255,255,0.15)',
+              color: 'inherit',
+              '& .MuiChip-icon': { color: 'inherit' },
+            }}
+          />
+        )
+      }
+    >
       <Container maxWidth="sm" disableGutters>
         {isLoading && !trip && (
           <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
@@ -102,6 +94,6 @@ export default function HomePage() {
           {error ?? 'Failed to load trip.'}
         </Alert>
       </Snackbar>
-    </Box>
+    </AppLayout>
   );
 }
