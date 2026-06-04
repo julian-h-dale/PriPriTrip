@@ -176,7 +176,7 @@ function TripDetailsCard({ values, onChange, errors }) {
 
 // ── Step 2 / 3: Travel Card ─────────────────────────────────────────────────
 
-function TravelCard({ label, values, onChange }) {
+function TravelCard({ label, values, onChange, errors = {}, tripStart, tripEnd }) {
   if (values.skipped) {
     return (
       <Stack spacing={2} alignItems="center" sx={{ pt: 4 }}>
@@ -232,16 +232,32 @@ function TravelCard({ label, values, onChange }) {
         type="datetime-local"
         value={values.departureDateTime}
         onChange={(e) => onChange('departureDateTime', e.target.value)}
+        error={!!errors.departureDateTime}
+        helperText={errors.departureDateTime}
         fullWidth
-        slotProps={{ inputLabel: { shrink: true } }}
+        slotProps={{
+          inputLabel: { shrink: true },
+          htmlInput: {
+            min: tripStart ? `${tripStart}T00:00` : undefined,
+            max: tripEnd ? `${tripEnd}T23:59` : undefined,
+          },
+        }}
       />
       <TextField
         label="Arrival"
         type="datetime-local"
         value={values.arrivalDateTime}
         onChange={(e) => onChange('arrivalDateTime', e.target.value)}
+        error={!!errors.arrivalDateTime}
+        helperText={errors.arrivalDateTime}
         fullWidth
-        slotProps={{ inputLabel: { shrink: true } }}
+        slotProps={{
+          inputLabel: { shrink: true },
+          htmlInput: {
+            min: tripStart ? `${tripStart}T00:00` : undefined,
+            max: tripEnd ? `${tripEnd}T23:59` : undefined,
+          },
+        }}
       />
       <TextField
         label="Operator"
@@ -291,6 +307,8 @@ export default function NewTripPage() {
 
   const [outbound, setOutbound] = useState(emptyLeg());
   const [returnLeg, setReturnLeg] = useState(emptyLeg());
+  const [outboundErrors, setOutboundErrors] = useState({});
+  const [returnErrors, setReturnErrors] = useState({});
 
   function updateDetail(field, value) {
     setTripDetails((prev) => ({ ...prev, [field]: value }));
@@ -313,8 +331,47 @@ export default function NewTripPage() {
     return Object.keys(errs).length === 0;
   }
 
+  function validateLeg(leg, setErrors) {
+    if (leg.skipped) { setErrors({}); return true; }
+    const errs = {};
+    const { startDate, endDate } = tripDetails;
+    if (leg.departureDateTime) {
+      const depDate = leg.departureDateTime.slice(0, 10);
+      if (depDate < startDate || depDate > endDate)
+        errs.departureDateTime = `Must be within ${startDate} – ${endDate}`;
+    }
+    if (leg.arrivalDateTime) {
+      if (leg.departureDateTime && leg.arrivalDateTime < leg.departureDateTime) {
+        errs.arrivalDateTime = 'Arrival must be after departure';
+      } else {
+        const arrDate = leg.arrivalDateTime.slice(0, 10);
+        if (arrDate < startDate || arrDate > endDate)
+          errs.arrivalDateTime = `Must be within ${startDate} – ${endDate}`;
+      }
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
   function handleNext() {
-    if (step === 0 && !validateDetails()) return;
+    if (step === 0) {
+      if (!validateDetails()) return;
+      // seed outbound defaults on first advance
+      setOutbound((prev) => ({
+        ...prev,
+        departureDateTime: prev.departureDateTime || `${tripDetails.startDate}T00:00`,
+        arrivalDateTime: prev.arrivalDateTime || `${tripDetails.startDate}T23:00`,
+      }));
+    }
+    if (step === 1) {
+      if (!validateLeg(outbound, setOutboundErrors)) return;
+      // seed return defaults on first advance
+      setReturnLeg((prev) => ({
+        ...prev,
+        departureDateTime: prev.departureDateTime || `${tripDetails.endDate}T00:00`,
+        arrivalDateTime: prev.arrivalDateTime || `${tripDetails.endDate}T23:00`,
+      }));
+    }
     setStep((s) => s + 1);
   }
 
@@ -324,6 +381,7 @@ export default function NewTripPage() {
   }
 
   async function handleSubmit() {
+    if (!validateLeg(returnLeg, setReturnErrors)) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -351,6 +409,9 @@ export default function NewTripPage() {
           label="Outbound Travel"
           values={outbound}
           onChange={(f, v) => updateLeg(setOutbound, f, v)}
+          errors={outboundErrors}
+          tripStart={tripDetails.startDate}
+          tripEnd={tripDetails.endDate}
         />
       ),
     },
@@ -361,6 +422,9 @@ export default function NewTripPage() {
           label="Return Travel"
           values={returnLeg}
           onChange={(f, v) => updateLeg(setReturnLeg, f, v)}
+          errors={returnErrors}
+          tripStart={tripDetails.startDate}
+          tripEnd={tripDetails.endDate}
         />
       ),
     },

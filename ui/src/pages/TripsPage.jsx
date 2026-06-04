@@ -15,11 +15,21 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ExploreIcon from '@mui/icons-material/Explore';
+import dayjs from 'dayjs';
 import {
   fetchTrips,
   selectTrips,
   selectTripsStatus,
 } from '../store/tripSlice';
+
+function fmtDate(dateStr) {
+  const d = dayjs(dateStr);
+  const day = d.date();
+  const suffix = ['th', 'st', 'nd', 'rd'][
+    day % 10 < 4 && (day < 11 || day > 13) ? day % 10 : 0
+  ];
+  return d.format('MMMM') + ' ' + day + suffix;
+}
 
 export default function TripsPage() {
   const dispatch = useDispatch();
@@ -68,7 +78,7 @@ export default function TripsPage() {
                   {trip.tripName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {trip.startDate} – {trip.endDate}
+                  {fmtDate(trip.startDate)} – {fmtDate(trip.endDate)}
                 </Typography>
               </CardContent>
             </CardActionArea>

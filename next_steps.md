@@ -14,3 +14,22 @@ Basic rules:
     - make a travel point for the departing and returning travel. 
 
 - after the succesful post call to create the trip, navigate the user to the that trip view. 
+
+Give me the plan for this feature.  We should really only need to change the front end.  But tell me you best option and ask any quesitons you need to 
+
+Fix some UI issues, ask any questions you have before you start
+
+UI Updates:
+- on trip list screen; format the dates to be readable in format "June 1st" for example.
+- for the new trip flow, we need to default values
+    - date for the outbound flight should default to trip start.  default end of outbound to 11pm start date. 
+    - date for the return flight should default to trip end date. default end of return to 11pm end date. 
+    - end dates need to be after start dates.
+    - all dates need to fall within the trip start and end dates.
+
+    
+Break down into components:
+- look at the models.py file.  Create sub components for Location, TravelDetails, and StayDetails. These will be included in the larger trip point form
+- create trip point form.  
+- For now let's expose ui elements based on the endpoint schemas.  
+- parent context is going to feed the form the day id and trip id. 
