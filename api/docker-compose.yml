@@ -12,11 +12,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  api:
-    env_file: .env
-    ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
