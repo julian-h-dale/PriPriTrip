@@ -30,7 +30,6 @@ SAMPLE_DAY_PAYLOAD = {
     "title": "May 11 - Arrival in Bern",
     "date": "2026-05-11",
     "description": "Arrive and settle in.",
-    "sortOrder": 1,
     "completed": False,
 }
 
@@ -38,7 +37,6 @@ FULL_UPDATE_PAYLOAD = {
     "title": "May 11 - Updated",
     "date": "2026-05-11",
     "description": "Updated description.",
-    "sortOrder": 2,
     "completed": True,
 }
 
@@ -56,7 +54,6 @@ def make_mock_day(day_id: str = "day_001", deleted: bool = False) -> MagicMock:
     day.title = "May 11 - Arrival in Bern"
     day.date = "2026-05-11"
     day.description = "Arrive and settle in."
-    day.sort_order = 1
     day.is_alternate = False
     day.completed = False
     day.deleted_at = datetime(2026, 5, 2, tzinfo=timezone.utc) if deleted else None
@@ -227,7 +224,6 @@ class TestApiTripDayUpdate:
 
         assert resp.status_code == 200
         assert day.title == "May 11 - Updated"
-        assert day.sort_order == 2
         self.mock_db.commit.assert_called_once()
 
     @patch.dict("os.environ", ENV_VARS)
@@ -280,9 +276,9 @@ class TestApiTripDayPatch:
         original_title = day.title
         self.mock_db.get.return_value = day
 
-        client.patch(f"{BASE}/day_001", json={"sortOrder": 99}, headers=AUTH_HEADERS)
+        client.patch(f"{BASE}/day_001", json={"completed": True}, headers=AUTH_HEADERS)
 
-        assert day.sort_order == 99
+        assert day.completed is True
         assert day.title == original_title
 
     @patch.dict("os.environ", ENV_VARS)

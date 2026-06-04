@@ -22,7 +22,6 @@ def _day_to_response(r: TripDayRecord) -> TripDayResponse:
         title=r.title,
         date=r.date,
         description=r.description,
-        sortOrder=r.sort_order,
         isAlternate=r.is_alternate,
         completed=r.completed,
         deletedAt=r.deleted_at.isoformat() if r.deleted_at else None,
@@ -44,7 +43,7 @@ async def list_days(trip_id: str, db: Session = Depends(get_db)):
     days = (
         db.query(TripDayRecord)
         .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
-        .order_by(TripDayRecord.sort_order)
+        .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
         .all()
     )
     return [_day_to_response(d) for d in days]
@@ -56,7 +55,7 @@ async def list_deleted_days(trip_id: str, db: Session = Depends(get_db)):
     days = (
         db.query(TripDayRecord)
         .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.isnot(None))
-        .order_by(TripDayRecord.sort_order)
+        .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
         .all()
     )
     return [_day_to_response(d) for d in days]
@@ -73,7 +72,6 @@ async def create_day(trip_id: str, body: TripDayCreate, db: Session = Depends(ge
         title=body.title,
         date=body.date,
         description=body.description,
-        sort_order=body.sortOrder,
         is_alternate=body.isAlternate,
         completed=body.completed,
     )
@@ -91,7 +89,6 @@ async def update_day(trip_id: str, day_id: str, body: TripDayUpdate, db: Session
     day.title = body.title
     day.date = body.date
     day.description = body.description
-    day.sort_order = body.sortOrder
     day.is_alternate = body.isAlternate
     day.completed = body.completed
     day.updated_at = datetime.now(timezone.utc)
@@ -109,7 +106,6 @@ async def patch_day(trip_id: str, day_id: str, body: TripDayPatch, db: Session =
         "title": "title",
         "date": "date",
         "description": "description",
-        "sortOrder": "sort_order",
         "isAlternate": "is_alternate",
         "completed": "completed",
     }

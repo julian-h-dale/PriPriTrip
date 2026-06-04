@@ -14,21 +14,18 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useCallback, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 
 import client from '../../api/client';
-import { selectTrip } from '../../store/tripSlice';
 import LocationForm from './LocationForm';
 import StayDetailForm from './StayDetailForm';
 import TravelDetailForm from './TravelDetailForm';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function makeLocation(index) {
+function makeLocation() {
   return {
     locationId: crypto.randomUUID(),
     role: 'venue',
-    sortOrder: index,
     name: '',
     lat: null,
     lng: null,
@@ -82,21 +79,19 @@ function buildInitialState(initialValues) {
   };
 }
 
-function buildPayload(form, dayId, sortOrder) {
+function buildPayload(form, dayId) {
   const payload = {
     dayId,
     type: form.type,
     title: form.title.trim(),
     startDateTime: form.startDateTime || null,
     endDateTime: form.endDateTime || null,
-    sortOrder,
     confirmationNumber: form.confirmationNumber.trim() || null,
     description: form.description.trim() || null,
     imageUrl: form.imageUrl.trim() || null,
     logoUrl: form.logoUrl.trim() || null,
     locations: form.locations.map((loc, i) => ({
       ...loc,
-      sortOrder: i,
       name: loc.name.trim(),
       fullAddress: loc.fullAddress?.trim() || null,
       description: loc.description?.trim() || null,
@@ -125,8 +120,6 @@ function buildPayload(form, dayId, sortOrder) {
  *   initialValues — TripPointResponse | null  (null = create mode)
  */
 export default function PointForm({ tripId, dayId, open, onClose, onSaved, initialValues = null }) {
-  const trip = useSelector(selectTrip);
-
   const [form, setForm] = useState(() => buildInitialState(initialValues));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -157,7 +150,7 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, initi
   const addLocation = useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      locations: [...prev.locations, makeLocation(prev.locations.length)],
+      locations: [...prev.locations, makeLocation()],
     }));
   }, []);
 
@@ -193,14 +186,7 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, initi
   async function handleSave() {
     if (!validate()) return;
 
-    // Calculate next sortOrder from existing day points
-    const day = trip?.days?.find((d) => d.dayId === dayId);
-    const existingCount = day?.points?.length ?? 0;
-    const sortOrder = initialValues
-      ? initialValues.sortOrder
-      : existingCount;
-
-    const payload = buildPayload(form, dayId, sortOrder);
+    const payload = buildPayload(form, dayId);
 
     try {
       setSaving(true);

@@ -44,7 +44,7 @@ function ordinalDay(dateStr) {
   return d.format('MMMM') + ' ' + day + suffix;
 }
 
-function buildTravelPoint({ leg, dayId, sortOrder }) {
+function buildTravelPoint({ leg, dayId }) {
   if (!leg || leg.skipped) return null;
   const pointId = crypto.randomUUID();
   return {
@@ -54,7 +54,6 @@ function buildTravelPoint({ leg, dayId, sortOrder }) {
     title: leg.title || leg.route || 'Travel',
     startDateTime: leg.departureDateTime,
     endDateTime: leg.arrivalDateTime,
-    sortOrder,
     confirmationNumber: null,
     description: null,
     imageUrl: null,
@@ -64,7 +63,6 @@ function buildTravelPoint({ leg, dayId, sortOrder }) {
           locationId: crypto.randomUUID(),
           name: part.trim(),
           role: i === 0 ? 'origin' : i === arr.length - 1 ? 'destination' : 'waypoint',
-          sortOrder: i + 1,
           lat: null,
           lng: null,
           fullAddress: null,
@@ -93,7 +91,6 @@ function buildImportPayload({ tripDetails, outbound, returnLeg }) {
 
   const days = [];
   let current = start;
-  let sortOrder = 1;
   while (!current.isAfter(end)) {
     const dateStr = current.format('YYYY-MM-DD');
     days.push({
@@ -101,26 +98,22 @@ function buildImportPayload({ tripDetails, outbound, returnLeg }) {
       title: ordinalDay(dateStr),
       date: dateStr,
       description: null,
-      sortOrder,
       isAlternate: false,
       completed: false,
       points: [],
     });
     current = current.add(1, 'day');
-    sortOrder++;
   }
 
   const outboundPoint = buildTravelPoint({
     leg: outbound,
     dayId: days[0].dayId,
-    sortOrder: 1,
   });
   if (outboundPoint) days[0].points.push(outboundPoint);
 
   const returnPoint = buildTravelPoint({
     leg: returnLeg,
     dayId: days[days.length - 1].dayId,
-    sortOrder: 1,
   });
   if (returnPoint) days[days.length - 1].points.push(returnPoint);
 

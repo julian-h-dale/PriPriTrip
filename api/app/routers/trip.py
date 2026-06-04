@@ -58,7 +58,6 @@ def _point_to_response(
         title=point.title,
         startDateTime=point.start_date_time,
         endDateTime=point.end_date_time,
-        sortOrder=point.sort_order,
         confirmationNumber=point.confirmation_number,
         description=point.description,
         imageUrl=point.image_url,
@@ -68,7 +67,6 @@ def _point_to_response(
                 locationId=loc.location_id,
                 pointId=loc.point_id,
                 role=loc.role,
-                sortOrder=loc.sort_order,
                 name=loc.name,
                 lat=loc.lat,
                 lng=loc.lng,
@@ -113,7 +111,7 @@ async def get_trip(trip_id: str, db: Session = Depends(get_db)):
     days = (
         db.query(TripDayRecord)
         .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
-        .order_by(TripDayRecord.sort_order)
+        .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
         .all()
     )
 
@@ -122,7 +120,7 @@ async def get_trip(trip_id: str, db: Session = Depends(get_db)):
     points = (
         db.query(TripPointRecord)
         .filter(TripPointRecord.day_id.in_(day_ids), TripPointRecord.deleted_at.is_(None))
-        .order_by(TripPointRecord.sort_order)
+        .order_by(TripPointRecord.start_date_time)
         .all()
         if day_ids
         else []
@@ -153,7 +151,6 @@ async def get_trip(trip_id: str, db: Session = Depends(get_db)):
             title=d.title,
             date=d.date,
             description=d.description,
-            sortOrder=d.sort_order,
             isAlternate=d.is_alternate,
             completed=d.completed,
             deletedAt=d.deleted_at.isoformat() if d.deleted_at else None,

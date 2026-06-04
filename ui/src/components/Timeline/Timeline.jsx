@@ -16,13 +16,13 @@ export default function Timeline({ expandedDayId, onExpandedDayChange }) {
 
   if (!trip) return null;
 
-  const sortedDays = [...trip.days].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sortedDays = trip.days;
 
   const renderItems = [];
   sortedDays.forEach((day) => {
     renderItems.push({ item: day, isDay: true });
     if (expandedDayId === day.dayId) {
-      const sortedPoints = [...day.points].sort((a, b) => a.sortOrder - b.sortOrder);
+      const sortedPoints = day.points;
       sortedPoints.forEach((point) => {
         renderItems.push({ item: point, isDay: false });
       });

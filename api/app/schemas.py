@@ -30,7 +30,6 @@ class TripHeader(BaseModel):
 class LocationCreate(BaseModel):
     locationId: str
     role: LocationRole
-    sortOrder: int = 0
     name: str
     lat: Optional[float] = None
     lng: Optional[float] = None
@@ -45,7 +44,6 @@ class LocationResponse(BaseModel):
     locationId: str
     pointId: str
     role: LocationRole
-    sortOrder: int
     name: str
     lat: Optional[float] = None
     lng: Optional[float] = None
@@ -79,7 +77,6 @@ class TripDayCreate(BaseModel):
     title: str
     date: str
     description: Optional[str] = None
-    sortOrder: int
     isAlternate: bool = False
     completed: bool = False
 
@@ -88,7 +85,6 @@ class TripDayUpdate(BaseModel):
     title: str
     date: str
     description: Optional[str] = None
-    sortOrder: int
     isAlternate: bool = False
     completed: bool = False
 
@@ -97,7 +93,6 @@ class TripDayPatch(BaseModel):
     title: Optional[str] = None
     date: Optional[str] = None
     description: Optional[str] = None
-    sortOrder: Optional[int] = None
     isAlternate: Optional[bool] = None
     completed: Optional[bool] = None
 
@@ -108,7 +103,6 @@ class TripDayResponse(BaseModel):
     title: str
     date: str
     description: Optional[str] = None
-    sortOrder: int
     isAlternate: bool = False
     completed: bool
     deletedAt: Optional[str] = None
@@ -125,7 +119,6 @@ class TripPointCreate(BaseModel):
     title: str
     startDateTime: str
     endDateTime: str
-    sortOrder: int
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -143,7 +136,6 @@ class TripPointUpdate(BaseModel):
     title: str
     startDateTime: str
     endDateTime: str
-    sortOrder: int
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -161,7 +153,6 @@ class TripPointPatch(BaseModel):
     title: Optional[str] = None
     startDateTime: Optional[str] = None
     endDateTime: Optional[str] = None
-    sortOrder: Optional[int] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -181,7 +172,6 @@ class TripPointResponse(BaseModel):
     title: str
     startDateTime: str
     endDateTime: str
-    sortOrder: int
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -224,7 +214,6 @@ class TripDayImport(BaseModel):
     title: str
     date: str
     description: Optional[str] = None
-    sortOrder: int
     isAlternate: bool = False
     completed: bool = False
     points: List[TripPointCreate] = []

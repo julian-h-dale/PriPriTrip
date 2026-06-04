@@ -76,7 +76,6 @@ def _load_point_response(point: TripPointRecord, db: Session) -> TripPointRespon
         title=point.title,
         startDateTime=point.start_date_time,
         endDateTime=point.end_date_time,
-        sortOrder=point.sort_order,
         confirmationNumber=point.confirmation_number,
         description=point.description,
         imageUrl=point.image_url,
@@ -86,7 +85,6 @@ def _load_point_response(point: TripPointRecord, db: Session) -> TripPointRespon
                 locationId=loc.location_id,
                 pointId=loc.point_id,
                 role=loc.role,
-                sortOrder=loc.sort_order,
                 name=loc.name,
                 lat=loc.lat,
                 lng=loc.lng,
@@ -110,13 +108,13 @@ def _load_point_response(point: TripPointRecord, db: Session) -> TripPointRespon
 
 def _replace_locations(point_id: str, locations_payload: list, db: Session) -> None:
     db.query(LocationRecord).filter(LocationRecord.point_id == point_id).delete()
-    for loc in locations_payload:
+    for i, loc in enumerate(locations_payload):
         db.add(
             LocationRecord(
                 location_id=loc.locationId,
                 point_id=point_id,
                 role=loc.role,
-                sort_order=loc.sortOrder,
+                sort_order=i,
                 name=loc.name,
                 lat=loc.lat,
                 lng=loc.lng,
@@ -170,7 +168,7 @@ async def list_points(trip_id: str, db: Session = Depends(get_db)):
     points = (
         db.query(TripPointRecord)
         .filter(TripPointRecord.trip_id == trip_id, TripPointRecord.deleted_at.is_(None))
-        .order_by(TripPointRecord.sort_order)
+        .order_by(TripPointRecord.start_date_time)
         .all()
     )
     return [_load_point_response(p, db) for p in points]
@@ -185,7 +183,7 @@ async def list_deleted_points(trip_id: str, db: Session = Depends(get_db)):
             TripPointRecord.trip_id == trip_id,
             TripPointRecord.deleted_at.isnot(None),
         )
-        .order_by(TripPointRecord.sort_order)
+        .order_by(TripPointRecord.start_date_time)
         .all()
     )
     return [_load_point_response(p, db) for p in points]
@@ -208,7 +206,6 @@ async def create_point(trip_id: str, body: TripPointCreate, db: Session = Depend
         title=body.title,
         start_date_time=body.startDateTime,
         end_date_time=body.endDateTime,
-        sort_order=body.sortOrder,
         confirmation_number=body.confirmationNumber,
         description=body.description,
         image_url=body.imageUrl,
@@ -239,7 +236,6 @@ async def update_point(trip_id: str, point_id: str, body: TripPointUpdate, db: S
     point.title = body.title
     point.start_date_time = body.startDateTime
     point.end_date_time = body.endDateTime
-    point.sort_order = body.sortOrder
     point.confirmation_number = body.confirmationNumber
     point.description = body.description
     point.image_url = body.imageUrl
@@ -267,7 +263,6 @@ async def patch_point(trip_id: str, point_id: str, body: TripPointPatch, db: Ses
         "title": "title",
         "startDateTime": "start_date_time",
         "endDateTime": "end_date_time",
-        "sortOrder": "sort_order",
         "confirmationNumber": "confirmation_number",
         "description": "description",
         "imageUrl": "image_url",
