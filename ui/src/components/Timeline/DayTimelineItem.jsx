@@ -5,13 +5,14 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
-import { Box, Chip, Typography } from '@mui/material';
+import { Box, Chip, IconButton, Typography } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CircleIcon from '@mui/icons-material/Circle';
 import dayjs from '../../utils/dayjs';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
-export default function DayTimelineItem({ item, isFirst, isLast, onToggle }) {
+export default function DayTimelineItem({ item, isFirst, isLast, onToggle, onAddPoint }) {
   return (
     <MotionTimelineItem
       layout
@@ -39,7 +40,7 @@ export default function DayTimelineItem({ item, isFirst, isLast, onToggle }) {
       </TimelineSeparator>
 
       <TimelineContent sx={{ py: '10px', px: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle1" fontWeight={600}>
               {item.title}
@@ -55,9 +56,18 @@ export default function DayTimelineItem({ item, isFirst, isLast, onToggle }) {
               label="alt"
               size="small"
               variant="outlined"
-              sx={{ height: 18, fontSize: '0.65rem', mt: 0.25, flexShrink: 0 }}
+              sx={{ height: 18, fontSize: '0.65rem', flexShrink: 0 }}
             />
           )}
+          <IconButton
+            size="small"
+            color="primary"
+            aria-label="Add point"
+            onClick={(e) => { e.stopPropagation(); onAddPoint(item.dayId); }}
+            sx={{ p: 0.25, flexShrink: 0 }}
+          >
+            <AddCircleOutlineIcon sx={{ fontSize: 20 }} />
+          </IconButton>
         </Box>
       </TimelineContent>
     </MotionTimelineItem>

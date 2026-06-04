@@ -3,16 +3,19 @@ import { Box, Typography } from '@mui/material';
 import { AnimatePresence } from 'framer-motion';
 import MuiTimeline from '@mui/lab/Timeline';
 import { timelineOppositeContentClasses } from '@mui/lab/TimelineOppositeContent';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import dayjs from '../../utils/dayjs';
-import { selectTrip } from '../../store/tripSlice';
+import { fetchTrip, selectTrip } from '../../store/tripSlice';
 import DayTimelineItem from './DayTimelineItem';
 import PointTimelineItem from './PointTimelineItem';
 import PointDetailSheet from './PointDetailSheet';
+import PointForm from '../Forms/PointForm';
 
-export default function Timeline({ expandedDayId, onExpandedDayChange }) {
+export default function Timeline({ tripId, expandedDayId, onExpandedDayChange }) {
+  const dispatch = useDispatch();
   const trip = useSelector(selectTrip);
   const [selectedPoint, setSelectedPoint] = useState(null);
+  const [addPointContext, setAddPointContext] = useState(null); // { dayId, initialValues }
 
   if (!trip) return null;
 
@@ -62,6 +65,10 @@ export default function Timeline({ expandedDayId, onExpandedDayChange }) {
                 onToggle={() =>
                   onExpandedDayChange(expandedDayId === item.dayId ? null : item.dayId)
                 }
+                onAddPoint={(dayId) => {
+                  const day = trip.days.find((d) => d.dayId === dayId);
+                  if (day) setAddPointContext({ dayId, initialValues: { startDateTime: dayjs(day.date).format('YYYY-MM-DDTHH:mm') } });
+                }}
               />
             ) : (
               <PointTimelineItem
@@ -79,6 +86,18 @@ export default function Timeline({ expandedDayId, onExpandedDayChange }) {
       <PointDetailSheet
         item={selectedPoint}
         onClose={() => setSelectedPoint(null)}
+      />
+
+      <PointForm
+        tripId={tripId}
+        dayId={addPointContext?.dayId}
+        open={!!addPointContext}
+        initialValues={addPointContext?.initialValues}
+        onClose={() => setAddPointContext(null)}
+        onSaved={() => {
+          dispatch(fetchTrip(tripId));
+          setAddPointContext(null);
+        }}
       />
     </Box>
   );

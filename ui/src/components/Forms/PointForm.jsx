@@ -37,45 +37,29 @@ function makeLocation() {
   };
 }
 
-function buildInitialState(initialValues) {
-  if (initialValues) {
-    return {
-      type: initialValues.type ?? 'activity',
-      title: initialValues.title ?? '',
-      startDateTime: initialValues.startDateTime ?? '',
-      endDateTime: initialValues.endDateTime ?? '',
-      confirmationNumber: initialValues.confirmationNumber ?? '',
-      description: initialValues.description ?? '',
-      imageUrl: initialValues.imageUrl ?? '',
-      logoUrl: initialValues.logoUrl ?? '',
-      locations: initialValues.locations ?? [],
-      travelDetail: initialValues.travelDetail ?? {
-        mode: 'flight',
-        operator: '',
-        vehicleNumber: '',
-        cabinClass: '',
-      },
-      stayDetail: initialValues.stayDetail ?? {
-        stayType: 'hotel',
-        checkInTime: '',
-        checkOutTime: '',
-        roomType: '',
-      },
-    };
-  }
-
+function buildInitialState(values = {}) {
   return {
-    type: 'activity',
-    title: '',
-    startDateTime: '',
-    endDateTime: '',
-    confirmationNumber: '',
-    description: '',
-    imageUrl: '',
-    logoUrl: '',
-    locations: [],
-    travelDetail: { mode: 'flight', operator: '', vehicleNumber: '', cabinClass: '' },
-    stayDetail: { stayType: 'hotel', checkInTime: '', checkOutTime: '', roomType: '' },
+    type: values.type ?? 'activity',
+    title: values.title ?? '',
+    startDateTime: values.startDateTime ?? '',
+    endDateTime: values.endDateTime ?? '',
+    confirmationNumber: values.confirmationNumber ?? '',
+    description: values.description ?? '',
+    imageUrl: values.imageUrl ?? '',
+    logoUrl: values.logoUrl ?? '',
+    locations: values.locations ?? [],
+    travelDetail: values.travelDetail ?? {
+      mode: 'flight',
+      operator: '',
+      vehicleNumber: '',
+      cabinClass: '',
+    },
+    stayDetail: values.stayDetail ?? {
+      stayType: 'hotel',
+      checkInTime: '',
+      checkOutTime: '',
+      roomType: '',
+    },
   };
 }
 
@@ -119,7 +103,7 @@ function buildPayload(form, dayId) {
  *   onSaved       — () => void  (called after successful save, before close)
  *   initialValues — TripPointResponse | null  (null = create mode)
  */
-export default function PointForm({ tripId, dayId, open, onClose, onSaved, initialValues = null }) {
+export default function PointForm({ tripId, dayId, open, onClose, onSaved, initialValues = {} }) {
   const [form, setForm] = useState(() => buildInitialState(initialValues));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -190,7 +174,7 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, initi
 
     try {
       setSaving(true);
-      if (initialValues) {
+      if (initialValues?.pointId) {
         await client.put(`/trips/${tripId}/points/${initialValues.pointId}`, payload);
       } else {
         await client.post(`/trips/${tripId}/points`, {
@@ -210,7 +194,7 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, initi
 
   // ── render ─────────────────────────────────────────────────────────────────
 
-  const isEdit = Boolean(initialValues);
+  const isEdit = Boolean(initialValues?.pointId);
 
   return (
     <Drawer

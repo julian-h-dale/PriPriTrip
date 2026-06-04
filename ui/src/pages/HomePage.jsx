@@ -81,6 +81,7 @@ export default function HomePage() {
         )}
         {trip && (
           <Timeline
+            tripId={tripId}
             expandedDayId={expandedDayId}
             onExpandedDayChange={setExpandedDayId}
           />
