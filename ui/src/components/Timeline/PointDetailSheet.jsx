@@ -102,7 +102,7 @@ function LocationRow({ label, loc }) {
   );
 }
 
-export default function LegDetailSheet({ item, onClose }) {
+export default function PointDetailSheet({ item, onClose }) {
   if (!item) return null;
 
   const Icon = getPointIcon(item);

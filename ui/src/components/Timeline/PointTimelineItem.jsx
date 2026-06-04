@@ -41,7 +41,7 @@ function getPointIcon(point) {
   return PlaceIcon;
 }
 
-export default function LegTimelineItem({ item, isFirst, isLast, onSelect }) {
+export default function PointTimelineItem({ item, isFirst, isLast, onSelect }) {
   const Icon = getPointIcon(item);
 
   return (

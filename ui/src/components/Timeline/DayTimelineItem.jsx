@@ -11,7 +11,7 @@ import dayjs from '../../utils/dayjs';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
-export default function GroupTimelineItem({ item, isFirst, isLast, onToggle }) {
+export default function DayTimelineItem({ item, isFirst, isLast, onToggle }) {
   return (
     <MotionTimelineItem
       layout

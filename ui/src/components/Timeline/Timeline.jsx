@@ -6,9 +6,9 @@ import { timelineOppositeContentClasses } from '@mui/lab/TimelineOppositeContent
 import { useSelector } from 'react-redux';
 import dayjs from '../../utils/dayjs';
 import { selectTrip } from '../../store/tripSlice';
-import GroupTimelineItem from './GroupTimelineItem';
-import LegTimelineItem from './LegTimelineItem';
-import LegDetailSheet from './LegDetailSheet';
+import DayTimelineItem from './DayTimelineItem';
+import PointTimelineItem from './PointTimelineItem';
+import PointDetailSheet from './PointDetailSheet';
 
 export default function Timeline({ expandedDayId, onExpandedDayChange }) {
   const trip = useSelector(selectTrip);
@@ -54,7 +54,7 @@ export default function Timeline({ expandedDayId, onExpandedDayChange }) {
             const isLast = index === renderItems.length - 1;
 
             return isDay ? (
-              <GroupTimelineItem
+              <DayTimelineItem
                 key={item.dayId}
                 item={item}
                 isFirst={isFirst}
@@ -64,7 +64,7 @@ export default function Timeline({ expandedDayId, onExpandedDayChange }) {
                 }
               />
             ) : (
-              <LegTimelineItem
+              <PointTimelineItem
                 key={item.pointId}
                 item={item}
                 isFirst={isFirst}
@@ -76,7 +76,7 @@ export default function Timeline({ expandedDayId, onExpandedDayChange }) {
         </AnimatePresence>
       </MuiTimeline>
 
-      <LegDetailSheet
+      <PointDetailSheet
         item={selectedPoint}
         onClose={() => setSelectedPoint(null)}
       />
