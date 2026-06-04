@@ -9,7 +9,6 @@
       "title": "May 11 — Arrival in Bern",
       "date": "2026-05-11",
       "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
-      "sortOrder": 2,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -20,7 +19,6 @@
           "title": "Train: Zurich Airport → Bern",
           "startDateTime": "2026-05-11T12:15:00+02:00",
           "endDateTime": "2026-05-11T13:30:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Direct InterCity train from Zurich Airport to Bern. The station is inside the airport terminal — follow signs for **Train / Bahn / SBB**. Buy tickets at an SBB machine or use the SBB Mobile app. No seat reservation needed; trains run frequently.\n\n**Step-by-step:** Exit plane → passport control → skip baggage claim (carry-on only) → follow SBB/Bahn signs to underground station → buy ticket or open SBB app → look for direct InterCity to Bern → board.\n\n**Timing:** Flight arrives 10:50 AM. Allow buffer until ~11:45 AM, target ~12:15 PM train, arrive Bern ~1:15 PM. If you miss one, the next train is fine — do not rush.\n\n*If passport control is slow: take the next train. If you feel disoriented: follow SBB/Bahn signage, not taxi signage. If hungry before boarding: grab something quick at the airport.*",
           "imageUrl": null,
@@ -29,7 +27,6 @@
             {
               "locationId": "may11-train-zrh-bern-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Zurich Airport Railway Station",
               "lat": 47.461714199999996,
               "lng": 8.550859899999999,
@@ -42,7 +39,6 @@
             {
               "locationId": "may11-train-zrh-bern-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Bern Railway Station",
               "lat": 46.9485269,
               "lng": 7.439914,
@@ -70,7 +66,6 @@
           "title": "Arrive: Hotel Goldener Schlüssel",
           "startDateTime": "2026-05-11T13:45:00+02:00",
           "endDateTime": "2026-05-11T14:15:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": "58204SG008394",
           "description": "Walk or take a short taxi from Bern station depending on energy. Check in if room is ready — if not, drop bags and keep the afternoon easy. The hotel is in Bern Old Town, exactly where you want to be.\n\n**Confirmation:** 58204SG008394 | **Address:** Rathausgasse 72, 3011 Bern, Switzerland\n\nNearby within easy walking distance: Zytglogge clock tower, Kramgasse (main Old Town street), Bern arcades, Aare River viewpoints.",
           "imageUrl": null,
@@ -79,7 +74,6 @@
             {
               "locationId": "may11-hotel-arrival-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Hotel Goldener Schlüssel",
               "lat": 46.9486227,
               "lng": 7.4487269,
@@ -92,7 +86,6 @@
             {
               "locationId": "may11-hotel-arrival-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Zytglogge",
               "lat": 46.9479581,
               "lng": 7.447792400000001,
@@ -105,7 +98,6 @@
             {
               "locationId": "may11-hotel-arrival-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Kramgasse",
               "lat": 46.9479785,
               "lng": 7.4505088,
@@ -118,7 +110,6 @@
             {
               "locationId": "may11-hotel-arrival-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Aare River Viewpoints",
               "lat": 46.9471898,
               "lng": 7.459508899999999,
@@ -146,7 +137,6 @@
           "title": "Lunch Options in Bern",
           "startDateTime": "2026-05-11T14:15:00+02:00",
           "endDateTime": "2026-05-11T15:15:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "Casual first lunch after arrival. Keep it simple and close — the win is sitting down and resetting after an overnight flight. Pick based on energy:\n\n- **Kornhauskeller** (Kornhausplatz 18) — historic vaulted setting; the 'we made it to Switzerland' choice if you have energy.\n- **Café Einstein** (Kramgasse 49) — classic relaxed café, coffee and light lunch; best if exhausted.\n- **Beaulieu Bistro Bar** (Erlachstrasse 3) — more local and less touristy; worth it if you want to avoid the tourist strip.\n\nNo reservation needed for any of these.",
           "imageUrl": null,
@@ -155,7 +145,6 @@
             {
               "locationId": "may11-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Kornhauskeller",
               "lat": 46.948730399999995,
               "lng": 7.4472694,
@@ -168,7 +157,6 @@
             {
               "locationId": "may11-lunch-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Café Einstein",
               "lat": 46.9478097,
               "lng": 7.4499341999999995,
@@ -181,7 +169,6 @@
             {
               "locationId": "may11-lunch-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Beaulieu Bistro Bar",
               "lat": 46.9513135,
               "lng": 7.4344627,
@@ -204,7 +191,6 @@
           "title": "Afternoon: Easy Bern Exploration",
           "startDateTime": "2026-05-11T15:15:00+02:00",
           "endDateTime": "2026-05-11T17:45:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Jet-lag-friendly afternoon — wander, do not 'do.' Keep it flexible and treat this as a decompression block.\n\n- **Old Town Walk:** Kramgasse, Zytglogge, covered arcades, and Bern's famous fountains — easy, close together, no agenda needed.\n- **Aare River viewpoints:** multiple viewpoints around Old Town; sit, rest, and enjoy the city without forcing much movement.\n- **Kunstmuseum Bern** (Hodlerstrasse 8-12) — use only if weather is bad or you want a quiet indoor option.\n\n*If weather is nice: Old Town + Aare viewpoints. If dragging: pick one street and one viewpoint. If it rains: Kunstmuseum. If the room is ready and you crash: that is fine.*",
           "imageUrl": null,
@@ -213,7 +199,6 @@
             {
               "locationId": "may11-afternoon-sites-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Kramgasse",
               "lat": 46.9479785,
               "lng": 7.4505088,
@@ -226,7 +211,6 @@
             {
               "locationId": "may11-afternoon-sites-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Zytglogge",
               "lat": 46.9479581,
               "lng": 7.447792400000001,
@@ -239,7 +223,6 @@
             {
               "locationId": "may11-afternoon-sites-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Aare River",
               "lat": 47.2269325,
               "lng": 7.7303504,
@@ -252,7 +235,6 @@
             {
               "locationId": "may11-afternoon-sites-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Kunstmuseum Bern",
               "lat": 46.951194699999995,
               "lng": 7.4431506,
@@ -275,7 +257,6 @@
           "title": "Dinner: Rosengarten",
           "startDateTime": "2026-05-11T19:30:00+02:00",
           "endDateTime": "2026-05-11T20:30:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "Easy walk-in dinner for the first night. Choose based on energy.\n\n- **Altes Tramdepot** (Grosser Muristalden 6) — brewery + restaurant near the Bear Park with views over Bern; larger space, easier to get a table.\n- **Lötschberg** (Zeughausgasse 16) — casual Swiss comfort food, local and relaxed in the Old Town core.\n- **Restaurant Rosengarten** (Alter Aargauerstalden 31B) — scenic overlook above Old Town; good if you still have energy.\n\n*Rosengarten reservation made for 7:30 PM. If too tired to go out: eat near the hotel and sleep early.*",
           "imageUrl": null,
@@ -284,7 +265,6 @@
             {
               "locationId": "may11-dinner-options-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Altes Tramdepot",
               "lat": 46.9470185,
               "lng": 7.459470199999999,
@@ -297,7 +277,6 @@
             {
               "locationId": "may11-dinner-options-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Lötschberg",
               "lat": 46.9491102,
               "lng": 7.4454687999999996,
@@ -310,7 +289,6 @@
             {
               "locationId": "may11-dinner-options-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Restaurant Rosengarten",
               "lat": 46.950891,
               "lng": 7.4605980999999995,
@@ -333,7 +311,6 @@
       "title": "May 12 — La Chaux-de-Fonds + Birthday Dinner",
       "date": "2026-05-12",
       "description": "Themed day: watchmaking, Swiss culture, UNESCO architecture,  La Chaux-de-Fonds, visit the International Museum of Horology, BIRTHDAY",
-      "sortOrder": 3,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -344,7 +321,6 @@
           "title": "Breakfast (Coffee + Light Bite)",
           "startDateTime": "2026-05-12T08:30:00+02:00",
           "endDateTime": "2026-05-12T09:30:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Keep it light and efficient — you have a train day and a big dinner tonight. **Adriano's Bar & Café** (Theaterplatz 2) is lively and good for coffee and a pastry. **Café Marta** (Kramgasse 83) is cozy and quieter. **Bakery Bakery Bern** (Spitalgasse area) is the grab-and-go option.",
           "imageUrl": null,
@@ -353,7 +329,6 @@
             {
               "locationId": "may12-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Adriano's Bar & Café",
               "lat": 46.9478076,
               "lng": 7.4472638999999985,
@@ -366,7 +341,6 @@
             {
               "locationId": "may12-breakfast-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Café Marta",
               "lat": 46.947862199999996,
               "lng": 7.4484052,
@@ -379,7 +353,6 @@
             {
               "locationId": "may12-breakfast-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Bakery Bakery Bern",
               "lat": 46.947790499999996,
               "lng": 7.4418769000000005,
@@ -402,7 +375,6 @@
           "title": "Day Trip: La Chaux-de-Fonds",
           "startDateTime": "2026-05-12T09:00:00+02:00",
           "endDateTime": "2026-05-12T18:30:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Full day trip to La Chaux-de-Fonds — one of the world's great watchmaking cities and a UNESCO urban landscape. Train from Bern via Neuchâtel (~1h 15m each way, no reservation needed).\n\n**Plan:** International Museum of Horology in the morning, then the UNESCO city grid walk — Avenue Léopold-Robert, Villa Fallet (early Le Corbusier), Espacité Tower — in the afternoon. Optional vintage watch shop browsing along the main boulevard.\n\nLeave by ~4:30 PM train to protect the **7:30 PM Kornhauskeller birthday dinner** reservation back in Bern.",
           "imageUrl": null,
@@ -411,7 +383,6 @@
             {
               "locationId": "activity-chaux-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "La Chaux-de-Fonds",
               "lat": 47.1034892,
               "lng": 6.8327838000000005,
@@ -434,7 +405,6 @@
           "title": "Train: Bern → La Chaux-de-Fonds",
           "startDateTime": "2026-05-12T10:00:00+02:00",
           "endDateTime": "2026-05-12T11:15:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "IC train from Bern to Neuchâtel, then transfer to regional train to La Chaux-de-Fonds. Total travel ~1h 15m. Use the SBB app for live timing and platform info. No reservation needed.\n\n*If you miss a connection: take the next train — this route runs regularly. Follow SBB app platform info and station signage.*",
           "imageUrl": null,
@@ -443,7 +413,6 @@
             {
               "locationId": "may12-train-bern-lcdf-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Bern Railway Station",
               "lat": 46.9485269,
               "lng": 7.439914,
@@ -456,7 +425,6 @@
             {
               "locationId": "may12-train-bern-lcdf-loc-1",
               "role": "waypoint",
-              "sortOrder": 1,
               "name": "Neuchâtel Railway Station",
               "lat": 46.99650450000001,
               "lng": 6.9358911999999995,
@@ -469,7 +437,6 @@
             {
               "locationId": "may12-train-bern-lcdf-loc-2",
               "role": "destination",
-              "sortOrder": 2,
               "name": "La Chaux-de-Fonds Railway Station",
               "lat": 47.099207400000004,
               "lng": 6.8250723,
@@ -497,7 +464,6 @@
           "title": "Visit: International Museum of Horology",
           "startDateTime": "2026-05-12T11:30:00+02:00",
           "endDateTime": "2026-05-12T13:00:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "One of the world's great watch museums and likely the most personally meaningful cultural stop of the trip given your watch interest. Allow 60–90 minutes.\n\n**Focus on:** early clocks, pocket watches, wristwatch evolution, watchmaking tools and mechanics.\n\n**Tickets:** Check hours before visiting — https://www.mih.ch/en/visit/. Pre-booking is not strictly required, but verify hours ahead of time.\n\n*If loving it: stay longer and shorten the afternoon walk. If tired after 60–75 minutes: do the highlights and move on.*",
           "imageUrl": null,
@@ -506,7 +472,6 @@
             {
               "locationId": "may12-watch-museum-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "International Museum of Horology",
               "lat": 47.100635200000006,
               "lng": 6.8305877,
@@ -529,7 +494,6 @@
           "title": "Afternoon: Architecture + Shopping Walk",
           "startDateTime": "2026-05-12T13:00:00+02:00",
           "endDateTime": "2026-05-12T16:00:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "La Chaux-de-Fonds is not just 'a town with a museum' — it is a UNESCO watchmaking urban landscape. Walk it with that lens: the wide streets and grid layout were designed to give watchmaking workshops maximum natural light.\n\n- **Avenue Léopold-Robert** — main boulevard; shops, cafés, and the city grid feeling.\n- **Villa Fallet** (Rue de la Serre 15) — early Le Corbusier; a worthwhile architecture stop.\n- **Espacité Tower** (Espacité 1) — optional viewpoint and orientation point.\n\n*Expect small local boutiques, not Geneva-style luxury. If you find vintage watch shops, browse casually and do not feel pressured.*",
           "imageUrl": null,
@@ -538,7 +502,6 @@
             {
               "locationId": "may12-afternoon-stroll-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Avenue Léopold-Robert",
               "lat": 47.0986803,
               "lng": 6.823153,
@@ -551,7 +514,6 @@
             {
               "locationId": "may12-afternoon-stroll-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Villa Fallet",
               "lat": 47.103404,
               "lng": 6.8292722999999995,
@@ -564,7 +526,6 @@
             {
               "locationId": "may12-afternoon-stroll-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Espacité Tower",
               "lat": 47.1023612,
               "lng": 6.8287451,
@@ -587,7 +548,6 @@
           "title": "Snack Before Train",
           "startDateTime": "2026-05-12T16:00:00+02:00",
           "endDateTime": "2026-05-12T16:30:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": null,
           "description": "Quick pre-train snack — keep it small since the birthday dinner is tonight. **Café du Marché** (Place du Marché 2) is the easy go-to for a quick snack or drink. **Crêperie Bretonne** is an alternative for a sweet or savory snack if open.\n\n*If running late: skip the sit-down and grab something near the station. Protect dinner appetite.*",
           "imageUrl": null,
@@ -596,7 +556,6 @@
             {
               "locationId": "may12-snack-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Café du Marché",
               "lat": 47.1043021,
               "lng": 6.831559800000001,
@@ -609,7 +568,6 @@
             {
               "locationId": "may12-snack-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Crêperie Bretonne",
               "lat": 47.1034892,
               "lng": 6.8327838000000005,
@@ -632,7 +590,6 @@
           "title": "Train: La Chaux-de-Fonds → Bern",
           "startDateTime": "2026-05-12T16:30:00+02:00",
           "endDateTime": "2026-05-12T17:45:00+02:00",
-          "sortOrder": 7,
           "confirmationNumber": null,
           "description": "Same basic route as outbound — La Chaux-de-Fonds → Neuchâtel → Bern. Transfer at Neuchâtel. Use the SBB app for live timing.\n\n**Protect the 7:30 PM Kornhauskeller reservation.** If you miss the planned train, take the next one — but go straight to hotel, change quickly, and head directly to dinner. Do not add extra stops.",
           "imageUrl": null,
@@ -641,7 +598,6 @@
             {
               "locationId": "may12-train-lcdf-bern-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "La Chaux-de-Fonds Railway Station",
               "lat": 47.099207400000004,
               "lng": 6.8250723,
@@ -654,7 +610,6 @@
             {
               "locationId": "may12-train-lcdf-bern-loc-1",
               "role": "waypoint",
-              "sortOrder": 1,
               "name": "Neuchâtel Railway Station",
               "lat": 46.99650450000001,
               "lng": 6.9358911999999995,
@@ -667,7 +622,6 @@
             {
               "locationId": "may12-train-lcdf-bern-loc-2",
               "role": "destination",
-              "sortOrder": 2,
               "name": "Bern Railway Station",
               "lat": 46.9485269,
               "lng": 7.439914,
@@ -695,7 +649,6 @@
           "title": "Birthday Dinner: Kornhauskeller",
           "startDateTime": "2026-05-12T19:30:00+02:00",
           "endDateTime": "2026-05-12T21:30:00+02:00",
-          "sortOrder": 8,
           "confirmationNumber": null,
           "description": "Iconic vaulted dining room — the anchor of the birthday day. **Reservation:** 7:30 PM, already booked. Arrive by 7:20 PM.\n\nKornhauskeller is a monumental historic space in a converted granary vault. This is the memorable birthday celebration dinner — give it the arrival energy it deserves.",
           "imageUrl": null,
@@ -704,7 +657,6 @@
             {
               "locationId": "may12-dinner-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Kornhauskeller",
               "lat": 46.948730399999995,
               "lng": 7.4472694,
@@ -727,7 +679,6 @@
           "title": "Nighttime Stroll",
           "startDateTime": "2026-05-12T21:30:00+02:00",
           "endDateTime": "2026-05-12T23:00:00+02:00",
-          "sortOrder": 9,
           "confirmationNumber": null,
           "description": "Post-birthday evening stroll through Bern. The goal is an upbeat post-dinner walk and a sense of the city at night — not a club night.\n\n- **Kornhausplatz** — right outside dinner; natural starting point.\n- **Gerechtigkeitsgasse** — Old Town street with bars and evening activity.\n- **Nydegg Bridge** — night views over the Aare River.\n\n*If energy is high: walk Gerechtigkeitsgasse and find a drink. If low: short stroll around Kornhausplatz and back. If weather is bad: find one cozy bar near the hotel.*",
           "imageUrl": null,
@@ -736,7 +687,6 @@
             {
               "locationId": "may12-night-stroll-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Kornhausplatz",
               "lat": 46.9484888,
               "lng": 7.4475799,
@@ -749,7 +699,6 @@
             {
               "locationId": "may12-night-stroll-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Gerechtigkeitsgasse",
               "lat": 46.9483617,
               "lng": 7.4544585,
@@ -762,7 +711,6 @@
             {
               "locationId": "may12-night-stroll-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Nydegg Bridge",
               "lat": 46.9485077,
               "lng": 7.4578806,
@@ -785,7 +733,6 @@
       "title": "May 13 — Travel to Wengen",
       "date": "2026-05-13",
       "description": " Leave Bern, brief lunch stop in Interlaken, then the Lauterbrunnen → Wengen mountain railway. Arrive with time to enjoy the hotel balcony and Jungfrau views.",
-      "sortOrder": 3,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -796,7 +743,6 @@
           "title": "Breakfast Near Hotel",
           "startDateTime": "2026-05-13T08:30:00+02:00",
           "endDateTime": "2026-05-13T09:15:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Efficient breakfast before the travel day — do not make it a long sit-down unless you plan to leave later. **Adriano's Bar & Café** or **Café Einstein** are easy and close. **Confiserie Tschirren** (Marktgasse 73) is a good Swiss pastry option for a lighter, grab-and-go start.",
           "imageUrl": null,
@@ -805,7 +751,6 @@
             {
               "locationId": "may13-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Adriano's Bar & Café",
               "lat": 46.9478076,
               "lng": 7.4472638999999985,
@@ -818,7 +763,6 @@
             {
               "locationId": "may13-breakfast-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Café Einstein",
               "lat": 46.9478097,
               "lng": 7.4499341999999995,
@@ -831,7 +775,6 @@
             {
               "locationId": "may13-breakfast-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Confiserie Tschirren",
               "lat": 46.9481501,
               "lng": 7.443967799999999,
@@ -854,7 +797,6 @@
           "title": "Train: Bern → Interlaken Ost",
           "startDateTime": "2026-05-13T09:30:00+02:00",
           "endDateTime": "2026-05-13T10:30:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Direct InterCity train from Bern to Interlaken Ost. Scenic as you approach the lakes and mountains. No reservation required. Keep luggage manageable for the Lauterbrunnen transfer ahead.",
           "imageUrl": null,
@@ -863,7 +805,6 @@
             {
               "locationId": "may13-train-bern-interlaken-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Bern Railway Station",
               "lat": 46.9485269,
               "lng": 7.439914,
@@ -876,7 +817,6 @@
             {
               "locationId": "may13-train-bern-interlaken-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Interlaken Ost Station",
               "lat": 46.685314299999995,
               "lng": 7.8548944,
@@ -904,7 +844,6 @@
           "title": "Lunch in Interlaken",
           "startDateTime": "2026-05-13T10:30:00+02:00",
           "endDateTime": "2026-05-13T12:00:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "Early lunch or brunch-style stop — Wengen is the real destination so do not overstay.\n\n- **Restaurant Taverne** (Höheweg 74) — traditional Swiss, sit-down; good for a proper meal.\n- **Hüsi Bierhaus** (Postgasse 3) — casual, hearty, beer-hall feel.\n- **Velo Cafe** (Marktgasse 41) — lighter, modern, quick.\n\n*If hungry early: eat a full meal. If not very hungry: coffee/snack and continue. If weather is perfect: keep it short and get up the mountain.*",
           "imageUrl": null,
@@ -913,7 +852,6 @@
             {
               "locationId": "may13-lunch-interlaken-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Restaurant Taverne",
               "lat": 46.6884769,
               "lng": 7.863434400000001,
@@ -926,7 +864,6 @@
             {
               "locationId": "may13-lunch-interlaken-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Hüsi Bierhaus",
               "lat": 46.6861007,
               "lng": 7.854629,
@@ -939,7 +876,6 @@
             {
               "locationId": "may13-lunch-interlaken-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Velo Cafe",
               "lat": 46.68593260000001,
               "lng": 7.8530077,
@@ -962,7 +898,6 @@
           "title": "Train: Interlaken → Wengen",
           "startDateTime": "2026-05-13T12:00:00+02:00",
           "endDateTime": "2026-05-13T13:30:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Transfer at Lauterbrunnen for the mountain cog railway to Wengen. Wengen is car-free — the train is how everyone arrives. **Sit on the right side going up** for the best views of the Lauterbrunnen valley walls and waterfalls. Scenic ascent all the way.",
           "imageUrl": null,
@@ -971,7 +906,6 @@
             {
               "locationId": "may13-train-interlaken-wengen-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Interlaken Ost Station",
               "lat": 46.685314299999995,
               "lng": 7.8548944,
@@ -984,7 +918,6 @@
             {
               "locationId": "may13-train-interlaken-wengen-loc-1",
               "role": "waypoint",
-              "sortOrder": 1,
               "name": "Lauterbrunnen Station",
               "lat": 46.5960688,
               "lng": 7.9082575,
@@ -997,7 +930,6 @@
             {
               "locationId": "may13-train-interlaken-wengen-loc-2",
               "role": "destination",
-              "sortOrder": 2,
               "name": "Wengen Railway Station",
               "lat": 46.6054335,
               "lng": 7.921539900000001,
@@ -1025,7 +957,6 @@
           "title": "Hotel Check-in: Beausite Park Hotel",
           "startDateTime": "2026-05-13T14:00:00+02:00",
           "endDateTime": "2026-05-13T15:00:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": "56059SG016579",
           "description": "Major arrival moment — Beausite Park Hotel Wengen. **Confirmation:** 56059SG016579 | **Room:** Double Room — Jungfrau View with Balcony.\n\nAsk hotel for help if luggage or the walk from the station feels difficult. Get to the balcony as soon as possible — this is the Alpine honeymoon moment.",
           "imageUrl": null,
@@ -1034,7 +965,6 @@
             {
               "locationId": "may13-hotel-wengen-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Beausite Park Hotel Wengen",
               "lat": 46.60852,
               "lng": 7.923196299999999,
@@ -1062,7 +992,6 @@
           "title": "Dinner: Restaurant Eiger Wengen",
           "startDateTime": "2026-05-13T18:30:00+02:00",
           "endDateTime": "2026-05-13T20:30:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": null,
           "description": "First Wengen dinner. **Restaurant Eiger** (Am Acher, 3823 Wengen) is the natural choice — mountain-village feel and views. If unavailable, ask the hotel for a similar scenic or local recommendation.\n\n*If tired: eat at the hotel or closest scenic restaurant. If energy allows: take a short village walk before dinner. If view matters most: ask hotel which restaurant has the best visibility that night.*",
           "imageUrl": null,
@@ -1071,7 +1000,6 @@
             {
               "locationId": "may13-dinner-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Restaurant Eiger",
               "lat": 46.6039136,
               "lng": 7.921267,
@@ -1094,7 +1022,6 @@
       "title": "May 14 — Wengen Hike + Scenic Day",
       "date": "2026-05-14",
       "description": "Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903",
-      "sortOrder": 4,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -1105,7 +1032,6 @@
           "title": "Breakfast at Hotel",
           "startDateTime": "2026-05-14T08:30:00+02:00",
           "endDateTime": "2026-05-14T09:30:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Breakfast at the hotel — the Jungfrau views from here are part of the experience. **Eat enough for the hike ahead**, but do not overdo it. Plan to leave for the cable car around 9:30–10:00 AM.",
           "imageUrl": null,
@@ -1114,7 +1040,6 @@
             {
               "locationId": "may14-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Beausite Park Hotel Wengen",
               "lat": 46.60852,
               "lng": 7.923196299999999,
@@ -1137,7 +1062,6 @@
           "title": "Cable Car: Wengen → Männlichen",
           "startDateTime": "2026-05-14T10:00:00+02:00",
           "endDateTime": "2026-05-14T10:30:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Short cable car ride to Männlichen delivering panoramic alpine views quickly without a full day of climbing.\n\n**Tickets:** Buy at station or via app. No advance reservation needed. **Check weather morning-of** before committing to this plan — if clouds are low, delay start or ask hotel about the best window.\n\n*If visibility is good: proceed as planned. If clouds are persistent: delay or ask hotel for advice. If cable car has an issue: pivot to a lower-elevation walk around Wengen or Lauterbrunnen.*",
           "imageUrl": null,
@@ -1146,7 +1070,6 @@
             {
               "locationId": "may14-cablecar-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Wengen Cable Car Station",
               "lat": 46.6054335,
               "lng": 7.921539900000001,
@@ -1159,7 +1082,6 @@
             {
               "locationId": "may14-cablecar-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Männlichen Summit",
               "lat": 46.6136349,
               "lng": 7.9411866,
@@ -1187,7 +1109,6 @@
           "title": "Hike: Männlichen → Kleine Scheidegg",
           "startDateTime": "2026-05-14T10:30:00+02:00",
           "endDateTime": "2026-05-14T12:30:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "Classic alpine ridge hike — **easy to moderate difficulty** on a wide, well-marked trail. Approximately 1.5–2 hours at a relaxed honeymoon pace with photo stops.\n\n**Views throughout:** Jungfrau, Eiger, Mönch, and rolling alpine scenery.\n\n**Tips:** Wear proper walking shoes. Bring water. Do not rush — this is the point of the day.\n\n*If trail conditions are poor: ask hotel or cable car station for status and choose a shorter walk. If feeling tired: do the Royal Walk / short viewpoint only and return. If weather is perfect: take your time and enjoy every moment.*",
           "imageUrl": null,
@@ -1196,7 +1117,6 @@
             {
               "locationId": "may14-hike-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Männlichen",
               "lat": 46.6181443,
               "lng": 7.938064700000001,
@@ -1209,7 +1129,6 @@
             {
               "locationId": "may14-hike-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Kleine Scheidegg",
               "lat": 46.605407799999995,
               "lng": 7.9215207,
@@ -1232,7 +1151,6 @@
           "title": "Lunch at Kleine Scheidegg",
           "startDateTime": "2026-05-14T12:30:00+02:00",
           "endDateTime": "2026-05-14T13:30:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Mountain lunch with big alpine views after the hike. **Restaurant Grindelwaldblick** and **Restaurant Bellevue des Alpes** are both casual with views — no reservation required, but can be busy midday; a short wait is possible.\n\n*If one is crowded: go to the other. If weather is beautiful: prioritize the view over the menu. If tired: eat quickly and take the train back.*",
           "imageUrl": null,
@@ -1241,7 +1159,6 @@
             {
               "locationId": "may14-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Restaurant Grindelwaldblick",
               "lat": 46.5850153,
               "lng": 7.9612251999999994,
@@ -1254,7 +1171,6 @@
             {
               "locationId": "may14-lunch-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Restaurant Bellevue des Alpes",
               "lat": 46.5850153,
               "lng": 7.9612251999999994,
@@ -1277,7 +1193,6 @@
           "title": "Train: Kleine Scheidegg → Wengen",
           "startDateTime": "2026-05-14T14:00:00+02:00",
           "endDateTime": "2026-05-14T14:30:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "Scenic train descent from Kleine Scheidegg back to Wengen. **Sit on the right side going down** for the best views. This returns you with a solid buffer before the 8:15 PM dinner — protect the afternoon for rest and a shower.",
           "imageUrl": null,
@@ -1286,7 +1201,6 @@
             {
               "locationId": "may14-train-return-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Kleine Scheidegg Railway Station",
               "lat": 46.605407799999995,
               "lng": 7.9215207,
@@ -1299,7 +1213,6 @@
             {
               "locationId": "may14-train-return-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Wengen Railway Station",
               "lat": 46.6054335,
               "lng": 7.921539900000001,
@@ -1327,7 +1240,6 @@
           "title": "Dinner: Schönegg 1903",
           "startDateTime": "2026-05-14T20:15:00+02:00",
           "endDateTime": "2026-05-14T22:00:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": "4986",
           "description": "**Reservation confirmed:** Section: Chmineesaal, Table: 2, Name: Julian Dale, Confirmation: 4986, Phone: 033 855 34 22.\n\n**Leave hotel by 7:45–7:55 PM** — confirm the walking route from Beausite Park Hotel before the day. If tired from the hike, ask hotel about transport options to the restaurant.\n\n*If weather is beautiful: arrive a little early for the views. If tired from the hike: ask hotel for the easiest route or transport. If running late: call the restaurant at 033 855 34 22.*",
           "imageUrl": null,
@@ -1336,7 +1248,6 @@
             {
               "locationId": "may14-dinner-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Schönegg 1903",
               "lat": 46.607306,
               "lng": 7.920952000000001,
@@ -1359,7 +1270,6 @@
       "title": "May 15 — Travel to Hvar",
       "date": "2026-05-15",
       "description": "Big travel chain day. Critical chain: Wengen → Zurich Airport train, Zurich → Split flight at 3:00 PM (Croatia Airlines CRFG3B), taxi to Split ferry port, Split → Hvar ferry at 6:00 PM (last of the day)",
-      "sortOrder": 5,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -1370,7 +1280,6 @@
           "title": "Train: Wengen → Zurich Airport",
           "startDateTime": "2026-05-15T09:00:00+02:00",
           "endDateTime": "2026-05-15T12:30:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Multiple transfers, but Swiss trains make this manageable. Route: Wengen → Lauterbrunnen → Interlaken Ost → Zurich Airport. **Build buffer — do not cut this close.** Flight departs 3:00 PM.\n\n**Suggested departure:** ~9:00 AM from Wengen. Target arrival Zurich Airport ~12:30 PM. Keep SBB route and tickets handy.\n\n*If a transfer is missed: use SBB app for the next route and protect the flight. If anxious: leave Wengen earlier and eat lunch at the airport.*",
           "imageUrl": null,
@@ -1379,7 +1288,6 @@
             {
               "locationId": "may15-train-wengen-zurich-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Wengen Railway Station",
               "lat": 46.6054335,
               "lng": 7.921539900000001,
@@ -1392,7 +1300,6 @@
             {
               "locationId": "may15-train-wengen-zurich-loc-1",
               "role": "waypoint",
-              "sortOrder": 1,
               "name": "Lauterbrunnen Station",
               "lat": 46.5960688,
               "lng": 7.9082575,
@@ -1405,7 +1312,6 @@
             {
               "locationId": "may15-train-wengen-zurich-loc-2",
               "role": "waypoint",
-              "sortOrder": 2,
               "name": "Interlaken Ost Station",
               "lat": 46.685314299999995,
               "lng": 7.8548944,
@@ -1418,7 +1324,6 @@
             {
               "locationId": "may15-train-wengen-zurich-loc-3",
               "role": "destination",
-              "sortOrder": 3,
               "name": "Zurich Airport Railway Station",
               "lat": 47.4516643,
               "lng": 8.5625171,
@@ -1446,7 +1351,6 @@
           "title": "Lunch at Zurich Airport",
           "startDateTime": "2026-05-15T12:30:00+02:00",
           "endDateTime": "2026-05-15T13:45:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Eat at the airport — **do not leave the airport.**\n\n- **HITZBERGER** — fresh, quick, healthy.\n- **Air Restaurant** — sit-down airport option.\n- **Sprüngli** — Swiss pastries and light lunch.\n\n*If arriving early: sit-down meal. If arriving tight: Sprüngli or grab-and-go. If stressed: clear airport process first, then eat.*",
           "imageUrl": null,
@@ -1455,7 +1359,6 @@
             {
               "locationId": "may15-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "HITZBERGER Zurich Airport",
               "lat": 47.461714199999996,
               "lng": 8.550859899999999,
@@ -1468,7 +1371,6 @@
             {
               "locationId": "may15-lunch-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Air Restaurant Zurich Airport",
               "lat": 47.461714199999996,
               "lng": 8.550859899999999,
@@ -1481,7 +1383,6 @@
             {
               "locationId": "may15-lunch-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Sprüngli Zurich Airport",
               "lat": 47.461714199999996,
               "lng": 8.550859899999999,
@@ -1504,7 +1405,6 @@
           "title": "Flight: Zurich → Split",
           "startDateTime": "2026-05-15T15:00:00+02:00",
           "endDateTime": "2026-05-15T16:25:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": "CRFG3B",
           "description": "Croatia Airlines to Split. **Confirmation:** CRFG3B. Departure 3:00 PM, arrival Split 4:25 PM (~1h 25m flight).\n\nOnce you land, the goal is the ferry. **Do not stop for anything unnecessary** — go directly from the plane to a taxi/transfer to the Split ferry port. You have approximately 1h 35m before the ferry departs.",
           "imageUrl": null,
@@ -1513,7 +1413,6 @@
             {
               "locationId": "may15-flight-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Zurich Airport",
               "lat": 47.4516643,
               "lng": 8.5625171,
@@ -1526,7 +1425,6 @@
             {
               "locationId": "may15-flight-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Split Airport",
               "lat": 43.5518128,
               "lng": 16.331662899999998,
@@ -1554,7 +1452,6 @@
           "title": "Ferry: Split → Hvar",
           "startDateTime": "2026-05-15T18:00:00+02:00",
           "endDateTime": "2026-05-15T18:55:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": "BW5012160",
           "description": "**This is the last ferry of the day to Hvar — protect this connection at all costs.**\n\nOperator: Krilo / Kapetan Luka. **Booking codes: 3GB90DVL004, 3GB90DVL003** — keep these accessible.\n\nMove directly from the plane to a taxi to the ferry port. Do not plan dinner or snacks in Split before boarding.\n\n*If flight is on time: taxi to ferry, board calmly. If flight is delayed: go straight to taxi and tell driver the ferry departure time. If you miss this ferry: contact the hotel and ferry operator immediately — there is no later option tonight.*",
           "imageUrl": null,
@@ -1563,7 +1460,6 @@
             {
               "locationId": "may15-ferry-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Gat Sv. Petra Ferry Port",
               "lat": 43.5048453,
               "lng": 16.4411201,
@@ -1576,7 +1472,6 @@
             {
               "locationId": "may15-ferry-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Hvar Harbour",
               "lat": 43.1719882,
               "lng": 16.4412412,
@@ -1604,7 +1499,6 @@
           "title": "Hotel Check-in: Riva Marina Hvar Hotel",
           "startDateTime": "2026-05-15T19:00:00+02:00",
           "endDateTime": "2026-05-15T19:30:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": "PH27312096",
           "description": "Hotel is directly on the Hvar waterfront — very easy walk from the ferry. **Reservation:** PH27312096. Drop bags, freshen up, and transition from travel mode to island mode before dinner.",
           "imageUrl": null,
@@ -1613,7 +1507,6 @@
             {
               "locationId": "may15-hotel-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Riva Marina Hvar Hotel",
               "lat": 43.1703364,
               "lng": 16.4412654,
@@ -1641,7 +1534,6 @@
           "title": "Dinner (Flexible)",
           "startDateTime": "2026-05-15T19:30:00+02:00",
           "endDateTime": "2026-05-15T21:00:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": null,
           "description": "Keep dinner easy — this is not the night for a formal reservation. Walk-in based on wait times and what looks good.\n\n- **Fig Hvar** (Španjola 4) — casual, modern, popular; best for a lively first-night energy.\n- **Dalmatino** (Sveti Marak 1) — friendly local favorite with authentic Croatian food.\n- **Konoba Bonaca** — traditional, quieter option.\n\n*If tired: eat the closest/fastest option. If you want lively energy: Fig. If you want Croatian feel: Dalmatino. Expect possible short waits at any option.*",
           "imageUrl": null,
@@ -1650,7 +1542,6 @@
             {
               "locationId": "may15-dinner-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Fig Hvar",
               "lat": 43.174984099999996,
               "lng": 16.4418705,
@@ -1663,7 +1554,6 @@
             {
               "locationId": "may15-dinner-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Dalmatino",
               "lat": 43.172800599999995,
               "lng": 16.4408513,
@@ -1676,7 +1566,6 @@
             {
               "locationId": "may15-dinner-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Konoba Bonaca",
               "lat": 43.1726228,
               "lng": 16.4445931,
@@ -1699,7 +1588,6 @@
           "title": "Evening: Harbor Walk + Gelato",
           "startDateTime": "2026-05-15T21:00:00+02:00",
           "endDateTime": "2026-05-15T22:30:00+02:00",
-          "sortOrder": 7,
           "confirmationNumber": null,
           "description": "Grab gelato, walk the harbor, and soak in the Hvar evening atmosphere — boats, lights, and the evening crowd. Do not overextend after a long travel day.\n\n*If energized: continue to a casual drink somewhere on the Riva. If tired: short walk and bed. If weather is bad: find a drink near the hotel instead.*",
           "imageUrl": null,
@@ -1708,7 +1596,6 @@
             {
               "locationId": "may15-harbor-walk-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Hvar Riva",
               "lat": 43.1719882,
               "lng": 16.4412412,
@@ -1721,7 +1608,6 @@
             {
               "locationId": "may15-harbor-walk-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "St. Stephen's Square",
               "lat": 43.172561,
               "lng": 16.44117,
@@ -1744,7 +1630,6 @@
       "title": "May 16 — Hvar Boat Day + Giaxa Dinner",
       "date": "2026-05-16",
       "description": "Private boat day around Hvar/Pakleni Islands, flexible lunch, reset at hotel, Giaxa dinner, and optional evening out.",
-      "sortOrder": 6,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -1755,7 +1640,6 @@
           "title": "Private Boat Tour",
           "startDateTime": "2026-05-16T09:30:00+02:00",
           "endDateTime": "2026-05-16T14:30:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Private half-day boat tour around the Pakleni Islands and nearby coves. Book morning-of depending on weather. Walk along Hvar Riva or ask hotel concierge to arrange. Request a boat with shade canopy, fuel included, and optional drinks/snorkel gear. Ask captain for a relaxed route with swimming stops and a lunch stop. Avoid large group tours. No advance reservation required.",
           "imageUrl": null,
@@ -1764,7 +1648,6 @@
             {
               "locationId": "may16-private-boat-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Hvar Riva",
               "lat": 43.1719882,
               "lng": 16.4412412,
@@ -1777,7 +1660,6 @@
             {
               "locationId": "may16-private-boat-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Pakleni Islands",
               "lat": 43.1620214,
               "lng": 16.3684552,
@@ -1800,7 +1682,6 @@
           "title": "Lunch During Boat Day",
           "startDateTime": "2026-05-16T12:30:00+02:00",
           "endDateTime": "2026-05-16T14:00:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Flexible lunch during boat day. Zori and Meneghello on Palmižana are primary scenic options; reservations are recommended, best handled by the captain or hotel calling ahead same day. Laganini is the famous beach-club option but may have limited/uncertain mid-May availability; reservation strongly recommended if open. Konoba Dubovica is the best rustic fallback on Hvar island and usually does not need a reservation.",
           "imageUrl": null,
@@ -1809,7 +1690,6 @@
             {
               "locationId": "may16-boat-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Zori Restaurant",
               "lat": 43.1629321,
               "lng": 16.3924059,
@@ -1822,7 +1702,6 @@
             {
               "locationId": "may16-boat-lunch-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Meneghello Restaurant",
               "lat": 43.1629321,
               "lng": 16.3924059,
@@ -1835,7 +1714,6 @@
             {
               "locationId": "may16-boat-lunch-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Laganini Lounge Bar & Fish House",
               "lat": 43.1629321,
               "lng": 16.3924059,
@@ -1848,7 +1726,6 @@
             {
               "locationId": "may16-boat-lunch-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Konoba Dubovica",
               "lat": 43.145986199999996,
               "lng": 16.5344875,
@@ -1871,7 +1748,6 @@
           "title": "Afternoon Reset",
           "startDateTime": "2026-05-16T15:00:00+02:00",
           "endDateTime": "2026-05-16T17:30:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "Return to hotel, shower, relax, and reset before dinner. Optional light harbor walk or pre-dinner drink.",
           "imageUrl": null,
@@ -1880,7 +1756,6 @@
             {
               "locationId": "may16-afternoon-reset-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Riva Marina Hvar Hotel",
               "lat": 43.1703364,
               "lng": 16.4412654,
@@ -1903,7 +1778,6 @@
           "title": "Dinner: Giaxa",
           "startDateTime": "2026-05-16T19:00:00+02:00",
           "endDateTime": "2026-05-16T21:00:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": "24459",
           "description": "Reserved dinner for 2 under Julian Dale. Historic stone setting and elevated Croatian cuisine; the nice dinner of the Croatia leg.",
           "imageUrl": null,
@@ -1912,7 +1786,6 @@
             {
               "locationId": "may16-dinner-giaxa-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Giaxa",
               "lat": 43.1726715,
               "lng": 16.4427086,
@@ -1935,7 +1808,6 @@
           "title": "Evening Options",
           "startDateTime": "2026-05-16T21:00:00+02:00",
           "endDateTime": "2026-05-16T23:30:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "Choose based on energy: low-key harbor walk along Hvar Riva and St. Stephen's Square; scenic night view from Hvar Fortress/Fortica; cocktails and music at Ka'lavanda; live-music/lively vibe at Central Park Club. Late-night Carpe Diem or beach clubs are possible but not necessary for this trip vibe.",
           "imageUrl": null,
@@ -1944,7 +1816,6 @@
             {
               "locationId": "may16-evening-options-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Hvar Riva",
               "lat": 43.1719882,
               "lng": 16.4412412,
@@ -1957,7 +1828,6 @@
             {
               "locationId": "may16-evening-options-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "St. Stephen's Square",
               "lat": 43.172561,
               "lng": 16.44117,
@@ -1970,7 +1840,6 @@
             {
               "locationId": "may16-evening-options-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Hvar Fortress / Fortica",
               "lat": 43.1748905,
               "lng": 16.4419675,
@@ -1983,7 +1852,6 @@
             {
               "locationId": "may16-evening-options-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Ka'lavanda Music Bar",
               "lat": 43.1724886,
               "lng": 16.443164799999998,
@@ -1996,7 +1864,6 @@
             {
               "locationId": "may16-evening-options-loc-4",
               "role": "venue",
-              "sortOrder": 4,
               "name": "Central Park Club",
               "lat": 43.172909999999995,
               "lng": 16.4411304,
@@ -2019,7 +1886,6 @@
       "title": "May 16 alt — Hvar Rainy Day Backup",
       "date": "2026-05-16",
       "description": "Backup plan if the boat day is not practical due to rain, cold, wind, or poor sea conditions.",
-      "sortOrder": 7,
       "isAlternate": true,
       "completed": false,
       "points": [
@@ -2030,7 +1896,6 @@
           "title": "Coffee + Breakfast Crawl",
           "startDateTime": "2026-05-16T09:30:00+02:00",
           "endDateTime": "2026-05-16T11:00:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Slow rainy-day start with coffee and breakfast in Hvar town.",
           "imageUrl": null,
@@ -2039,7 +1904,6 @@
             {
               "locationId": "may16-alt-coffee-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Central Park Club",
               "lat": 43.172909999999995,
               "lng": 16.4411304,
@@ -2052,7 +1916,6 @@
             {
               "locationId": "may16-alt-coffee-breakfast-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Kava37",
               "lat": 43.1708797,
               "lng": 16.441847,
@@ -2075,7 +1938,6 @@
           "title": "Old Town Exploration",
           "startDateTime": "2026-05-16T11:00:00+02:00",
           "endDateTime": "2026-05-16T12:30:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Explore Hvar Old Town, main square, cathedral, and stone streets at a slower pace.",
           "imageUrl": null,
@@ -2084,7 +1946,6 @@
             {
               "locationId": "may16-alt-old-town-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "St. Stephen's Square",
               "lat": 43.172561,
               "lng": 16.44117,
@@ -2097,7 +1958,6 @@
             {
               "locationId": "may16-alt-old-town-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "St. Stephen's Cathedral",
               "lat": 43.172561,
               "lng": 16.44117,
@@ -2120,7 +1980,6 @@
           "title": "Light Cultural Stop",
           "startDateTime": "2026-05-16T12:30:00+02:00",
           "endDateTime": "2026-05-16T13:30:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "Small cultural stop if weather is poor. Good for a short indoor activity.",
           "imageUrl": null,
@@ -2129,7 +1988,6 @@
             {
               "locationId": "may16-alt-culture-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Hvar Heritage Museum",
               "lat": 43.172221,
               "lng": 16.4453894,
@@ -2152,7 +2010,6 @@
           "title": "Long Lunch",
           "startDateTime": "2026-05-16T13:30:00+02:00",
           "endDateTime": "2026-05-16T15:30:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Make lunch the main daytime event if boating is off. Black Pepper is modern/creative; Dalmatino is a polished local favorite.",
           "imageUrl": null,
@@ -2161,7 +2018,6 @@
             {
               "locationId": "may16-alt-long-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Black Pepper Hvar",
               "lat": 43.171697099999996,
               "lng": 16.443566399999998,
@@ -2174,7 +2030,6 @@
             {
               "locationId": "may16-alt-long-lunch-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Dalmatino",
               "lat": 43.172800599999995,
               "lng": 16.4408513,
@@ -2197,7 +2052,6 @@
           "title": "Spa / Hotel Reset",
           "startDateTime": "2026-05-16T15:30:00+02:00",
           "endDateTime": "2026-05-16T17:30:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "Ask Riva Marina Hvar Hotel about spa partners, massages, or nearby wellness options. Otherwise rest at the hotel before dinner.",
           "imageUrl": null,
@@ -2206,7 +2060,6 @@
             {
               "locationId": "may16-alt-spa-reset-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Riva Marina Hvar Hotel",
               "lat": 43.1703364,
               "lng": 16.4412654,
@@ -2229,7 +2082,6 @@
           "title": "Dinner: Giaxa",
           "startDateTime": "2026-05-16T19:00:00+02:00",
           "endDateTime": "2026-05-16T21:00:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": "24459",
           "description": "Dinner remains unchanged even if daytime plan changes. Reservation for 2 under Julian Dale.",
           "imageUrl": null,
@@ -2238,7 +2090,6 @@
             {
               "locationId": "may16-alt-dinner-giaxa-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Giaxa",
               "lat": 43.1726715,
               "lng": 16.4427086,
@@ -2261,7 +2112,6 @@
       "title": "May 17 — Hvar to Split (Culture + Casual Night)",
       "date": "2026-05-17",
       "description": "Ferry to Split mid-morning, check into Heritage Hotel Slavija inside Diocletian's Palace, afternoon exploring the Old Town",
-      "sortOrder": 8,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -2272,7 +2122,6 @@
           "title": "Breakfast (Hvar)",
           "startDateTime": "2026-05-17T09:00:00+02:00",
           "endDateTime": "2026-05-17T10:00:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Quick breakfast before ferry. Recommended spots include Kava37, Fig Hvar, or Central Park Club.",
           "imageUrl": null,
@@ -2281,7 +2130,6 @@
             {
               "locationId": "may17-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Kava37",
               "lat": 43.1708797,
               "lng": 16.441847,
@@ -2294,7 +2142,6 @@
             {
               "locationId": "may17-breakfast-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Fig Hvar",
               "lat": 43.174984099999996,
               "lng": 16.4418705,
@@ -2307,7 +2154,6 @@
             {
               "locationId": "may17-breakfast-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Central Park Club",
               "lat": 43.172909999999995,
               "lng": 16.4411304,
@@ -2330,7 +2176,6 @@
           "title": "Ferry: Hvar → Split",
           "startDateTime": "2026-05-17T11:15:00+02:00",
           "endDateTime": "2026-05-17T12:10:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": "3GCR0DW1003 / 3GCR0DW1004",
           "description": "Krilo / Kapetan Luka ferry, Hvar → Split. **Booking codes: 3GCR0DW1003, 3GCR0DW1004** — keep accessible. Arrive at Hvar harbour 20–30 minutes before 11:15 AM departure. Sit outside if weather is nice for the scenic Adriatic crossing.",
           "imageUrl": null,
@@ -2339,7 +2184,6 @@
             {
               "locationId": "may17-ferry-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Hvar Harbour",
               "lat": 43.1719882,
               "lng": 16.4412412,
@@ -2352,7 +2196,6 @@
             {
               "locationId": "may17-ferry-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Split Ferry Port",
               "lat": 43.5038827,
               "lng": 16.4426669,
@@ -2380,7 +2223,6 @@
           "title": "Hotel Check-in",
           "startDateTime": "2026-05-17T13:00:00+02:00",
           "endDateTime": "2026-05-17T14:30:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": "MIRAY0KBYT",
           "description": "Room available from 2:30 PM — drop bags earlier if not ready. **Reservation:** MIRAY0KBYT | **Room:** Authentic Palace Room, king size bed | **Breakfast included.**\n\nHotel is inside Diocletian's Palace in the pedestrian historic zone — do not expect direct car access to the entrance.",
           "imageUrl": null,
@@ -2389,7 +2231,6 @@
             {
               "locationId": "may17-hotel-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Heritage Hotel Slavija Split",
               "lat": 43.5080822,
               "lng": 16.4391636,
@@ -2417,7 +2258,6 @@
           "title": "Culture + Exploration",
           "startDateTime": "2026-05-17T14:30:00+02:00",
           "endDateTime": "2026-05-17T18:00:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Explore Split’s Old Town centered around Diocletian’s Palace. Wander through Peristyle Square, Cathedral of Saint Domnius, and surrounding streets. Optional museum stops include Gallery of Fine Arts or Split City Museum. Walk along the Riva promenade and optionally hike Marjan Hill for views.",
           "imageUrl": null,
@@ -2426,7 +2266,6 @@
             {
               "locationId": "may17-culture-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Diocletian's Palace",
               "lat": 43.5083203,
               "lng": 16.4401454,
@@ -2439,7 +2278,6 @@
             {
               "locationId": "may17-culture-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Peristyle Square",
               "lat": 43.5150785,
               "lng": 16.470036,
@@ -2452,7 +2290,6 @@
             {
               "locationId": "may17-culture-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Cathedral of Saint Domnius",
               "lat": 43.507908799999996,
               "lng": 16.440317099999998,
@@ -2465,7 +2302,6 @@
             {
               "locationId": "may17-culture-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Riva Promenade",
               "lat": 43.5077507,
               "lng": 16.4384962,
@@ -2478,7 +2314,6 @@
             {
               "locationId": "may17-culture-loc-4",
               "role": "venue",
-              "sortOrder": 4,
               "name": "Marjan Hill",
               "lat": 43.5150785,
               "lng": 16.470036,
@@ -2501,7 +2336,6 @@
           "title": "Dinner (Casual / Local)",
           "startDateTime": "2026-05-17T18:30:00+02:00",
           "endDateTime": "2026-05-17T20:30:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "Casual Croatian dinner — best organized via hotel concierge since many of these places don't use standard online booking.\n\n**Ask hotel:** \"Could you help us get a casual local dinner reservation tonight? First choice: Konoba Fetivi, second: Villa Spiza, then Konoba Matejuska or Bokeria.\"\n\n- **Konoba Fetivi** (Tomića stine 4) — authentic seafood and traditional dishes; reservation recommended, concierge should call.\n- **Villa Spiza** (Kružićeva 3) — tiny, hyper-local, rotating menu; concierge or early walk-by is best.\n- **Konoba Matejuska** (Tomića stine 3) — rustic harbor-side local feel.\n- **Bokeria** (Domaldova ul. 8) — more modern, still relaxed and polished.\n\n*If Fetivi is available: book it. If Villa Spiza: great, but expect tiny/local feel. If neither: Matejuska. If you want an easier polished option: Bokeria.*",
           "imageUrl": null,
@@ -2510,7 +2344,6 @@
             {
               "locationId": "may17-dinner-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Konoba Fetivi",
               "lat": 43.5083282,
               "lng": 16.434444499999998,
@@ -2523,7 +2356,6 @@
             {
               "locationId": "may17-dinner-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Villa Spiza",
               "lat": 43.5095688,
               "lng": 16.4391911,
@@ -2536,7 +2368,6 @@
             {
               "locationId": "may17-dinner-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Konoba Matejuska",
               "lat": 43.5083158,
               "lng": 16.434418,
@@ -2549,7 +2380,6 @@
             {
               "locationId": "may17-dinner-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Bokeria Kitchen & Wine Bar",
               "lat": 43.5095222,
               "lng": 16.4383583,
@@ -2572,7 +2402,6 @@
           "title": "Evening Walk + Drinks",
           "startDateTime": "2026-05-17T20:30:00+02:00",
           "endDateTime": "2026-05-17T23:30:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": null,
           "description": "Post-dinner stroll through Diocletian’s Palace and along the Riva. Optional drinks at Fabrique Pub, Noor Bar, or Roof 68 for views. Relaxed and atmospheric evening.",
           "imageUrl": null,
@@ -2581,7 +2410,6 @@
             {
               "locationId": "may17-evening-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Diocletian's Palace",
               "lat": 43.5083203,
               "lng": 16.4401454,
@@ -2594,7 +2422,6 @@
             {
               "locationId": "may17-evening-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Riva Promenade",
               "lat": 43.5077507,
               "lng": 16.4384962,
@@ -2607,7 +2434,6 @@
             {
               "locationId": "may17-evening-loc-2",
               "role": "venue",
-              "sortOrder": 2,
               "name": "Fabrique Pub",
               "lat": 43.508237699999995,
               "lng": 16.4359862,
@@ -2620,7 +2446,6 @@
             {
               "locationId": "may17-evening-loc-3",
               "role": "venue",
-              "sortOrder": 3,
               "name": "Noor Bar",
               "lat": 43.5086733,
               "lng": 16.439661,
@@ -2633,7 +2458,6 @@
             {
               "locationId": "may17-evening-loc-4",
               "role": "venue",
-              "sortOrder": 4,
               "name": "Roof 68",
               "lat": 43.5084978,
               "lng": 16.440032,
@@ -2656,7 +2480,6 @@
       "title": "May 18 — Plitvice Day Trip",
       "date": "2026-05-18",
       "description": "Pick up rental car at 8:00 AM (Sixt, reservation 9733419998), drive A1 north to Plitvice Lakes National Park (Entrance 1), explore the park, optional Rastoke stop on return. Car must be back by 8:00 PM.",
-      "sortOrder": 9,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -2667,7 +2490,6 @@
           "title": "Breakfast at Hotel",
           "startDateTime": "2026-05-18T06:45:00+02:00",
           "endDateTime": "2026-05-18T07:20:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Keep it quick — breakfast is included, leave hotel around 7:25–7:30 AM to reach Sixt by 8:00 AM pickup.",
           "imageUrl": null,
@@ -2676,7 +2498,6 @@
             {
               "locationId": "may18-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Heritage Hotel Slavija Split",
               "lat": 43.5080822,
               "lng": 16.4391636,
@@ -2699,7 +2520,6 @@
           "title": "Get Rental Car",
           "startDateTime": "2026-05-18T07:30:00+02:00",
           "endDateTime": "2026-05-18T08:00:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Taxi / Uber / Bolt to Sixt from hotel (~7:30 AM). Pickup 8:00 AM. **Reservation:** 9733419998 — automatic vehicle.\n\n**Bring:** Passport, driver's license, credit card, rental confirmation.\n\n**At the counter, confirm:** automatic transmission, fuel policy, toll process, insurance/CDW coverage, return deadline (8:00 PM), emergency contact number.\n\n**Before leaving the lot:** photograph/video the exterior, wheels, windshield, and fuel gauge. Adjust mirrors, seat, and lights. Set Google Maps before moving.",
           "imageUrl": null,
@@ -2708,7 +2528,6 @@
             {
               "locationId": "may18-get-car-loc-0",
               "role": "destination",
-              "sortOrder": 0,
               "name": "Sixt Split",
               "lat": 43.506201,
               "lng": 16.4642808,
@@ -2736,7 +2555,6 @@
           "title": "Drive: Split → Highway Stop",
           "startDateTime": "2026-05-18T08:00:00+02:00",
           "endDateTime": "2026-05-18T09:15:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "The hardest part is the first 10–15 minutes leaving Split. Once on the A1 highway, it should feel like a normal road trip.\n\n**Key rules:** Drive on the right. Stay in the right lane unless passing. Let faster drivers pass. Yield to traffic already in roundabouts. Stay calm and predictable.\n\n**Tolls:** Take ticket at entry; pay by card or cash at exit unless car has a transponder. Confirm toll process with Sixt before leaving.\n\n*If you miss a turn: let GPS reroute; do not make sudden moves. If someone tailgates: stay right and let them pass. If stressed: stop safely at a rest area.*",
           "imageUrl": null,
@@ -2759,7 +2577,6 @@
           "title": "Quick Stop (Stretch + Coffee)",
           "startDateTime": "2026-05-18T09:15:00+02:00",
           "endDateTime": "2026-05-18T09:35:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Quick roadside stop near Skradin/Krka area for stretch, coffee, and reset.",
           "imageUrl": null,
@@ -2777,7 +2594,6 @@
           "title": "Drive: Stop → Plitvice",
           "startDateTime": "2026-05-18T09:35:00+02:00",
           "endDateTime": "2026-05-18T11:45:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": null,
           "description": "Continue drive to Plitvice. Highway driving is straightforward.",
           "imageUrl": null,
@@ -2800,7 +2616,6 @@
           "title": "Lunch Near Entrance",
           "startDateTime": "2026-05-18T11:45:00+02:00",
           "endDateTime": "2026-05-18T12:30:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": null,
           "description": "Quick flexible lunch near the park entrance. No reservations needed — entrance-area restaurants are not reliable reservation-style places.\n\n- **Lička kuća** (near Entrance 1) — good practical Croatian meal; easiest option if using Entrance 1.\n- **Bistro Vučnica** (near Entrance 2/Mukinje) — better if routing shifts toward Entrance 2.\n- **Restaurant Degenija / Bistro Plum** (outside park) — better sit-down option but less efficient.\n\n*If wait is very long: grab a quick snack and prioritize the park. If ahead of schedule: a proper sit-down lunch is fine.*",
           "imageUrl": null,
@@ -2809,7 +2624,6 @@
             {
               "locationId": "may18-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Lička kuća",
               "lat": 44.9050696,
               "lng": 15.611275200000001,
@@ -2822,7 +2636,6 @@
             {
               "locationId": "may18-lunch-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Bistro Vučnica",
               "lat": 44.8751319,
               "lng": 15.627691299999999,
@@ -2845,7 +2658,6 @@
           "title": "Explore Plitvice Lakes",
           "startDateTime": "2026-05-18T12:30:00+02:00",
           "endDateTime": "2026-05-18T16:30:00+02:00",
-          "sortOrder": 7,
           "confirmationNumber": null,
           "description": "Enter via **Entrance 1** for the best dramatic first impression — closest to the Lower Lakes and Veliki Slap (Great Waterfall).\n\n**Don't-miss:**\n- Veliki Slap / Great Waterfall\n- Lower Lakes boardwalks\n- Lake Kozjak boat crossing (if route/time allows)\n- Upper Lakes cascades (if energy/time allows)\n- Viewpoints above the Lower Lakes\n\n**Crowd strategy:** You are not early enough to beat all crowds — move smarter instead. Let tour groups pass. If a viewpoint is packed, wait 5–10 minutes. Do not stop for every photo on narrow boardwalks. Keep moving through bottlenecks. Flow > perfection.\n\n*If crowded at Veliki Slap: move on and circle back if possible. If tired: focus on Lower Lakes and the waterfall only. If weather is great and energy high: add Upper Lakes. If rain: boardwalks may be slippery — slow down and shorten route.*",
           "imageUrl": null,
@@ -2854,7 +2666,6 @@
             {
               "locationId": "may18-plitvice-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Plitvice Lakes National Park",
               "lat": 44.8820957,
               "lng": 15.6233311,
@@ -2877,7 +2688,6 @@
           "title": "Drive Back + Scenic Stop",
           "startDateTime": "2026-05-18T16:30:00+02:00",
           "endDateTime": "2026-05-18T19:30:00+02:00",
-          "sortOrder": 8,
           "confirmationNumber": null,
           "description": "Leave Plitvice ~4:30 PM. **Rastoke / Slunj** (stop ~5:00–5:30 PM) is a small watermill village with waterfalls, rapids, and a magical off-the-beaten-path feel — exactly the kind of place that makes driving feel worthwhile. Quick coffee, pastry, or riverside snack; keep the stop short unless clearly ahead of schedule.\n\n**Return to Split target: 7:30 PM. Car must be back by 8:00 PM.**\n\n*If running on time: stop at Rastoke. If behind schedule: skip it and return car. If tired: coffee only and keep moving.*",
           "imageUrl": null,
@@ -2886,7 +2696,6 @@
             {
               "locationId": "may18-drive-back-loc-0",
               "role": "destination",
-              "sortOrder": 0,
               "name": "Rastoke",
               "lat": 45.1149355,
               "lng": 15.5857945,
@@ -2914,7 +2723,6 @@
           "title": "Return Rental Car",
           "startDateTime": "2026-05-18T19:30:00+02:00",
           "endDateTime": "2026-05-18T20:00:00+02:00",
-          "sortOrder": 9,
           "confirmationNumber": null,
           "description": "Return deadline: **8:00 PM** at Sixt (Poljička ulica 28b, Split).\n\n**Before returning:** Refuel if required. Photograph fuel gauge and car exterior condition. Keep receipt / return confirmation.\n\n**After return:** Taxi / Uber / Bolt back to Old Town.\n\n*If running late: call Sixt. If fuel station is confusing: use the nearest obvious station before the Sixt office.*",
           "imageUrl": null,
@@ -2923,7 +2731,6 @@
             {
               "locationId": "may18-return-car-loc-0",
               "role": "destination",
-              "sortOrder": 0,
               "name": "Sixt Split",
               "lat": 43.506201,
               "lng": 16.4642808,
@@ -2951,7 +2758,6 @@
       "title": "May 19 — Split Final Day → Zurich",
       "date": "2026-05-19",
       "description": "Final Split day. Key anchors: hotel breakfast and checkout by 10:30 AM, Bell Tower + Diocletian's Palace exploration, Dvor lunch reservation at 1:30 PM, collect bags, taxi to Split Airport, flight Split → Munich → Zurich (CRFG3B)",
-      "sortOrder": 10,
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -2962,7 +2768,6 @@
           "title": "Breakfast + Checkout",
           "startDateTime": "2026-05-19T08:30:00+02:00",
           "endDateTime": "2026-05-19T10:30:00+02:00",
-          "sortOrder": 1,
           "confirmationNumber": null,
           "description": "Breakfast included at hotel, then pack and check out. **Checkout:** 10:30 AM. Leave bags at the hotel front desk for pickup before the airport run.\n\n*If checkout is strict: leave bags at desk and proceed to explore. If you want more time outside: pack before breakfast.*",
           "imageUrl": null,
@@ -2971,7 +2776,6 @@
             {
               "locationId": "may19-breakfast-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Heritage Hotel Slavija Split",
               "lat": 43.5080822,
               "lng": 16.4391636,
@@ -2994,7 +2798,6 @@
           "title": "Split Final Exploration",
           "startDateTime": "2026-05-19T10:30:00+02:00",
           "endDateTime": "2026-05-19T12:30:00+02:00",
-          "sortOrder": 2,
           "confirmationNumber": null,
           "description": "Iconic final Split activity — the right cultural send-off before leaving Croatia.\n\n**Cathedral of Saint Domnius Bell Tower** (Kraj Sv. Duje 5) — buy ticket on-site, no reservation needed. Panoramic view of Split from the top. Pair with wandering the Diocletian's Palace streets below for a complete final memory.\n\n*If weather is good: climb the bell tower. If poor weather or long lines: wander the Palace and Riva instead. If you prefer nature: short Marjan Hill viewpoint — but protect the 1:30 PM lunch reservation.*",
           "imageUrl": null,
@@ -3003,7 +2806,6 @@
             {
               "locationId": "may19-culture-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Cathedral of Saint Domnius Bell Tower",
               "lat": 43.507908799999996,
               "lng": 16.440317099999998,
@@ -3016,7 +2818,6 @@
             {
               "locationId": "may19-culture-loc-1",
               "role": "venue",
-              "sortOrder": 1,
               "name": "Diocletian's Palace",
               "lat": 43.5083203,
               "lng": 16.4401454,
@@ -3039,7 +2840,6 @@
           "title": "Lunch: Dvor",
           "startDateTime": "2026-05-19T13:30:00+02:00",
           "endDateTime": "2026-05-19T15:00:00+02:00",
-          "sortOrder": 3,
           "confirmationNumber": null,
           "description": "Reservation at **1:30 PM** under Julian Dale. Scenic waterfront setting — views, casual but special, the right final meal in Croatia before the airport run.\n\n*If lunch runs long: skip extra wandering and go straight to hotel for bags. If you finish early: short waterfront walk. Ask restaurant to call a taxi or order Uber before leaving if timing feels tight.*",
           "imageUrl": null,
@@ -3048,7 +2848,6 @@
             {
               "locationId": "may19-lunch-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Dvor",
               "lat": 43.5011447,
               "lng": 16.453942599999998,
@@ -3071,7 +2870,6 @@
           "title": "Travel to Airport",
           "startDateTime": "2026-05-19T15:30:00+02:00",
           "endDateTime": "2026-05-19T16:00:00+02:00",
-          "sortOrder": 4,
           "confirmationNumber": null,
           "description": "Use Uber / taxi / Bolt — more reliable and faster than a hotel shuttle unless timing is perfect.\n\n**Target:** Leave hotel ~3:30 PM, arrive Split Airport by ~4:00 PM for the 5:15 PM flight.\n\n*If traffic looks bad: leave earlier. If any uncertainty about shuttle timing: use Uber/taxi.*",
           "imageUrl": null,
@@ -3080,7 +2878,6 @@
             {
               "locationId": "may19-airport-loc-0",
               "role": "destination",
-              "sortOrder": 0,
               "name": "Split Airport",
               "lat": 43.5518128,
               "lng": 16.331662899999998,
@@ -3108,7 +2905,6 @@
           "title": "Flight: Split → Munich",
           "startDateTime": "2026-05-19T17:15:00+02:00",
           "endDateTime": "2026-05-19T18:40:00+02:00",
-          "sortOrder": 5,
           "confirmationNumber": "CRFG3B",
           "description": "**Flight:** OU5400, operated by Lufthansa / Croatia Airlines codeshare. **Booking Reference:** CRFG3B. Departure 5:15 PM, arrival Munich 6:40 PM (1h 25m).\n\nAfter landing in Munich, you have ~2h 15m layover — roughly 90 usable minutes after deplaning before needing to be at the gate.",
           "imageUrl": null,
@@ -3117,7 +2913,6 @@
             {
               "locationId": "may19-flight1-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Split Airport",
               "lat": 43.5518128,
               "lng": 16.331662899999998,
@@ -3130,7 +2925,6 @@
             {
               "locationId": "may19-flight1-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Munich Airport",
               "lat": 48.3536407,
               "lng": 11.7831852,
@@ -3158,7 +2952,6 @@
           "title": "Flight: Munich → Zurich",
           "startDateTime": "2026-05-19T20:55:00+02:00",
           "endDateTime": "2026-05-19T21:50:00+02:00",
-          "sortOrder": 6,
           "confirmationNumber": "CRFG3B",
           "description": "**Flight:** LX1111, Swiss Airlines. **Booking Reference:** CRFG3B. Departure 8:55 PM, arrival Zurich 9:50 PM (55 min).\n\n**Munich layover tip:** Consider **Airbräu Munich Airport Brewery** — a real Bavarian brewery inside the terminal; beer + pretzel is a fun Germany layover moment. Stay airside. If the inbound flight is delayed, skip it and stay near the gate.",
           "imageUrl": null,
@@ -3167,7 +2960,6 @@
             {
               "locationId": "may19-flight2-loc-0",
               "role": "origin",
-              "sortOrder": 0,
               "name": "Munich Airport",
               "lat": 48.3536407,
               "lng": 11.7831852,
@@ -3180,7 +2972,6 @@
             {
               "locationId": "may19-flight2-loc-1",
               "role": "destination",
-              "sortOrder": 1,
               "name": "Zurich Airport",
               "lat": 47.4516643,
               "lng": 8.5625171,
@@ -3208,7 +2999,6 @@
           "title": "Hotel: Zurich Airport Radisson",
           "startDateTime": "2026-05-19T22:00:00+02:00",
           "endDateTime": "2026-05-19T23:00:00+02:00",
-          "sortOrder": 7,
           "confirmationNumber": null,
           "description": "Late arrival — take taxi/Uber from Zurich Airport (5–10 minutes; worth every franc at this hour). **Reservation:** 1HHDZLG7. Room available from 3:00 PM; checkout May 20 by 12:00 PM.\n\n*If hotel shuttle is right there and clearly running: take it. Otherwise: taxi/Uber. Do not optimize for cost at this hour — optimize for simplicity.*",
           "imageUrl": null,
@@ -3217,7 +3007,6 @@
             {
               "locationId": "may19-hotel-loc-0",
               "role": "venue",
-              "sortOrder": 0,
               "name": "Radisson Hotel Zurich Airport",
               "lat": 47.4509985,
               "lng": 8.540113999999999,

@@ -117,8 +117,8 @@ class TripPointCreate(BaseModel):
     dayId: str
     type: PointType
     title: str
-    startDateTime: str
-    endDateTime: str
+    startDateTime: Optional[str] = None
+    endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -134,8 +134,8 @@ class TripPointUpdate(BaseModel):
     dayId: str
     type: PointType
     title: str
-    startDateTime: str
-    endDateTime: str
+    startDateTime: Optional[str] = None
+    endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
