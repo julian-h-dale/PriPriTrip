@@ -50,7 +50,7 @@ export default function AppLayout({ title, actions, children }) {
             <MenuIcon />
           </IconButton>
           <ExploreIcon sx={{ mr: 1, fontSize: 20 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }} noWrap>
             {title}
           </Typography>
           {actions}
