@@ -54,6 +54,7 @@ const tripSlice = createSlice({
       .addCase(fetchTrip.pending, (state) => {
         state.status = 'loading';
         state.error = null;
+        state.data = null;
       })
       .addCase(fetchTrip.fulfilled, (state, action) => {
         state.data = action.payload;
