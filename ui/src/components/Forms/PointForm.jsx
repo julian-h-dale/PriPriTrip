@@ -103,10 +103,11 @@ function buildPayload(form, dayId) {
  *   onSaved       — () => void  (called after successful save, before close)
  *   initialValues — TripPointResponse | null  (null = create mode)
  */
-export default function PointForm({ tripId, dayId, open, onClose, onSaved, initialValues = {} }) {
+export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDeleted, initialValues = {} }) {
   const [form, setForm] = useState(() => buildInitialState(initialValues));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Reset form when the drawer opens (handles switching between create / edit)
   useEffect(() => {
@@ -189,6 +190,21 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, initi
       setErrors({ _submit: err?.response?.data?.detail ?? 'Save failed. Please try again.' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── delete ─────────────────────────────────────────────────────────────────
+
+  async function handleDelete() {
+    try {
+      setDeleting(true);
+      await client.delete(`/trips/${tripId}/points/${initialValues.pointId}`);
+      onDeleted?.();
+      onClose();
+    } catch (err) {
+      setErrors({ _submit: err?.response?.data?.detail ?? 'Delete failed. Please try again.' });
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -383,20 +399,34 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, initi
               {errors._submit}
             </Typography>
           )}
+
+          {/* Delete — edit mode only */}
+          {isEdit && (
+            <Button
+              variant="outlined"
+              color="error"
+              fullWidth
+              onClick={handleDelete}
+              disabled={deleting || saving}
+              startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          )}
         </Stack>
       </Box>
 
       {/* Sticky footer */}
       <Divider />
       <Stack direction="row" spacing={1} sx={{ p: 2 }}>
-        <Button variant="outlined" fullWidth onClick={onClose} disabled={saving}>
+        <Button variant="outlined" fullWidth onClick={onClose} disabled={saving || deleting}>
           Cancel
         </Button>
         <Button
           variant="contained"
           fullWidth
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || deleting}
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
         >
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Point'}

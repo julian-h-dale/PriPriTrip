@@ -254,6 +254,7 @@ export default function PointDetailSheet({ item, onClose }) {
           open={editOpen}
           onClose={() => setEditOpen(false)}
           onSaved={() => dispatch(fetchTrip(trip.tripId))}
+          onDeleted={() => { dispatch(fetchTrip(trip.tripId)); setEditOpen(false); onClose(); }}
           initialValues={item}
         />
       )}
