@@ -46,7 +46,7 @@ const tripSlice = createSlice({
       })
       .addCase(fetchTrips.fulfilled, (state, action) => {
         state.trips = action.payload;
-        state.tripsStatus = 'idle';
+        state.tripsStatus = 'loaded';
       })
       .addCase(fetchTrips.rejected, (state) => {
         state.tripsStatus = 'error';

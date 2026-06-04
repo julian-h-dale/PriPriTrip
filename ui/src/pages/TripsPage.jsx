@@ -53,13 +53,13 @@ export default function TripsPage() {
           Your Trips
         </Typography>
 
-        {status === 'loading' && (
+        {status === 'loading' && trips.length === 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
             <CircularProgress />
           </Box>
         )}
 
-        {status !== 'loading' && trips.length === 0 && (
+        {status === 'loaded' && trips.length === 0 && (
           <Typography color="text.secondary">No trips found.</Typography>
         )}
 
