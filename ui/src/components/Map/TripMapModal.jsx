@@ -11,7 +11,8 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { APIProvider, Map, Marker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
-const DEFAULT_CENTER = { lat: 41.9028, lng: 12.4964 };
+const WORLD_CENTER = { lat: 20, lng: 0 };
+const WORLD_ZOOM = 2;
 
 function asNumber(value) {
   const n = Number(value);
@@ -86,7 +87,7 @@ function TripMapContent({ open, locations }) {
     : selectedSearchLocation
       ? [selectedSearchLocation]
       : [];
-  const center = markers[0]?.position ?? DEFAULT_CENTER;
+  const center = markers[0]?.position ?? WORLD_CENTER;
 
   useEffect(() => {
     if (!open || mode !== 'search') return;
@@ -157,7 +158,7 @@ function TripMapContent({ open, locations }) {
 
       <Box sx={{ flex: 1 }}>
         <Map
-          defaultZoom={4}
+          defaultZoom={WORLD_ZOOM}
           center={center}
           gestureHandling="greedy"
           disableDefaultUI
