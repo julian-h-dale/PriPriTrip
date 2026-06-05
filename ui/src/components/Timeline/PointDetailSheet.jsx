@@ -14,8 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import MapIcon from '@mui/icons-material/Map';
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import dayjs from '../../utils/dayjs';
-import { TRIP_TZ } from '../../utils/dayjs';
+import dayjs, { parseWallClock } from '../../utils/dayjs';
 import { fetchTrip, selectTrip } from '../../store/tripSlice';
 import PointForm from '../Forms/PointForm';
 
@@ -170,9 +169,9 @@ export default function PointDetailSheet({ item, onClose }) {
               {item.title}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-              {item.startDateTime && dayjs(item.startDateTime).tz(TRIP_TZ).format('MMM D · h:mm A')}
+              {item.startDateTime && parseWallClock(item.startDateTime).format('MMM D · h:mm A')}
               {item.startDateTime && item.endDateTime && ' — '}
-              {item.endDateTime && dayjs(item.endDateTime).tz(TRIP_TZ).format('h:mm A')}
+              {item.endDateTime && parseWallClock(item.endDateTime).format('h:mm A')}
             </Typography>
           </Box>
           <IconButton

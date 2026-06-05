@@ -32,7 +32,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await client.post('/auth', { password });
-      dispatch(login(data.token));
+      dispatch(login({ token: data.token, mapsApiKey: data.mapsApiKey }));
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.status === 401 ? 'Wrong password.' : 'Something went wrong.');

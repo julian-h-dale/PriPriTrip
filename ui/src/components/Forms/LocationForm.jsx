@@ -1,3 +1,7 @@
+import { useCallback, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
+import Autocomplete from '@mui/material/Autocomplete';
+import CircularProgress from '@mui/material/CircularProgress';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Accordion from '@mui/material/Accordion';
@@ -8,6 +12,8 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import { selectMapsApiKey } from '../../store/authSlice';
+import { fetchPlaceDetails, fetchPlaceSuggestions } from '../../api/placesService';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
@@ -28,6 +34,46 @@ const LOCATION_ROLES = [
  *   index    — number (for display label)
  */
 export default function LocationForm({ values, onChange, onRemove, index }) {
+  const mapsApiKey = useSelector(selectMapsApiKey);
+
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [inputValue, setInputValue] = useState(values.name ?? '');
+  const debounceRef = useRef(null);
+
+  const handleInputChange = useCallback((_, newInput) => {
+    setInputValue(newInput);
+    clearTimeout(debounceRef.current);
+    if (!newInput.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const results = await fetchPlaceSuggestions(newInput, mapsApiKey);
+        setSuggestions(results);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 300);
+  }, [mapsApiKey]);
+
+  const handleSelect = useCallback(async (_, suggestion) => {
+    if (!suggestion) return;
+    onChange('name', suggestion.mainText);
+    setInputValue(suggestion.mainText);
+    const details = await fetchPlaceDetails(suggestion.placeId, mapsApiKey);
+    if (!details) return;
+    onChange('name', details.name);
+    onChange('fullAddress', details.fullAddress);
+    onChange('lat', details.lat);
+    onChange('lng', details.lng);
+    onChange('googlePlaceId', details.googlePlaceId);
+    onChange('googleMapsUri', details.googleMapsUri);
+    setInputValue(details.name);
+  }, [mapsApiKey, onChange]);
+
   return (
     <Paper variant="outlined" sx={{ p: 2, position: 'relative' }}>
       {/* Header row */}
@@ -56,13 +102,48 @@ export default function LocationForm({ values, onChange, onRemove, index }) {
       </Stack>
 
       <Stack spacing={2}>
-        <TextField
-          label="Name"
-          value={values.name ?? ''}
-          onChange={(e) => onChange('name', e.target.value)}
-          size="small"
-          fullWidth
-          required
+        {/* Name — grouped Places autocomplete */}
+        <Autocomplete
+          freeSolo
+          options={suggestions}
+          groupBy={(option) => option.groupLabel}
+          getOptionLabel={(option) =>
+            typeof option === 'string' ? option : option.description
+          }
+          filterOptions={(x) => x}
+          inputValue={inputValue}
+          onInputChange={handleInputChange}
+          onChange={handleSelect}
+          loading={loadingSuggestions}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Name"
+              size="small"
+              required
+              slotProps={{
+                input: {
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loadingSuggestions && <CircularProgress size={16} />}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                },
+              }}
+            />
+          )}
+          renderOption={(props, option) => (
+            <li {...props} key={option.placeId}>
+              <Stack>
+                <Typography variant="body2">{option.mainText}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {option.description}
+                </Typography>
+              </Stack>
+            </li>
+          )}
         />
         <TextField
           label="Full Address"

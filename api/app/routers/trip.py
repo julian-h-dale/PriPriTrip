@@ -203,3 +203,25 @@ async def upsert_trip(body: TripHeader, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save trip"
         )
+
+
+@router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_trip(trip_id: str, db: Session = Depends(get_db)):
+    trip = db.get(TripRecord, trip_id)
+    if trip is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+
+    # Delete in FK order: locations → travel/stay details → points → days → trip
+    point_ids = [
+        p.point_id
+        for p in db.query(TripPointRecord).filter(TripPointRecord.trip_id == trip_id).all()
+    ]
+    if point_ids:
+        db.query(LocationRecord).filter(LocationRecord.point_id.in_(point_ids)).delete(synchronize_session=False)
+        db.query(TravelDetailRecord).filter(TravelDetailRecord.point_id.in_(point_ids)).delete(synchronize_session=False)
+        db.query(StayDetailRecord).filter(StayDetailRecord.point_id.in_(point_ids)).delete(synchronize_session=False)
+        db.query(TripPointRecord).filter(TripPointRecord.trip_id == trip_id).delete(synchronize_session=False)
+
+    db.query(TripDayRecord).filter(TripDayRecord.trip_id == trip_id).delete(synchronize_session=False)
+    db.delete(trip)
+    db.commit()
