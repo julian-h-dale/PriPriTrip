@@ -7,7 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 def get_database_url() -> str:
     return os.environ.get(
-        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/pripritrip"
+        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/pripritrip"
     )
 
 

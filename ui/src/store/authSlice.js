@@ -30,7 +30,8 @@ const authSlice = createSlice({
 export const { login, logout } = authSlice.actions;
 
 export const selectToken = (state) => state.auth.token;
-export const selectIsAuthenticated = (state) => !!state.auth.token;
 export const selectMapsApiKey = (state) => state.auth.mapsApiKey;
+export const selectIsAuthenticated = (state) => !!state.auth.token;
+
 
 export default authSlice.reducer;

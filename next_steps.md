@@ -33,3 +33,40 @@ Break down into components:
 - create trip point form.  
 - For now let's expose ui elements based on the endpoint schemas.  
 - parent context is going to feed the form the day id and trip id. 
+
+
+
+We need to update the location form to make it easier to use
+
+- I will add a google maps api key. The key will be returned with the auth call.
+- I want to use the new google places api.  We are going to take the name the user inputs in the form and autocomplete the rest of the form.
+- name field should have an mui Grouped autocomplete 
+    - header of the group is the citpoy, State or country
+    - each item has full address of the search result. 
+
+Give me a plan on what changes are needed.  Ask any questions you have. 
+
+1. User the autocomplete please 
+2. Make the calls to the maps api from the front end.  Create a new service for this, dont mix it into the existing api service
+3. yes locality, country makes the most sense, thanks.
+
+ok, I'm realizing an issue with the time inputs. we need to make sure we are storing them in a consistent style
+
+- we need a way for the user translate time zones.  The input for start/end of the trip will possibly be in two timezones. 
+- want to see your plan on how to handle this in the simplest manner. some things I'm thinking
+    - do we want trip settings page? where user can set the home and destination time zones? 
+    - should we make the timezone set explicitly in the points form? Could default it.
+    - do we want to seperate out timezones to another table as a trip could have multiple.
+    - should we store the timezone or does it make more sense to just translate everything to UTC in the api? making timezone a front end issue. 
+
+Give me you plan before any changes.  Ask any questions you need to.
+
+
+It looks like the timezones are still causing some issues.  I want the datatimes to be in the format 2026-05-11T14:15:00+02:00 across the system. the GMT +2:00 is what should set the time zone for any ui labels.  Does that make sense? Ask any questions you have.
+
+ok it looks like times are being recorded but labels are sit
+
+
+There is still an issue with parsing between the UTC offset and the timezone.  So we are going to simplify this with a constant list we can just look up from.  Make the list based on this map:
+
+UTC 0:  

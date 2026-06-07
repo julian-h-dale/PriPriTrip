@@ -18,6 +18,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import AddIcon from '@mui/icons-material/Add';
 import ExploreIcon from '@mui/icons-material/Explore';
+import MapIcon from '@mui/icons-material/Map';
 
 const NAV_ITEMS = [
   { label: 'Home', icon: <HomeIcon />, path: '/' },
@@ -32,9 +33,12 @@ const NAV_ITEMS = [
  *   actions  — optional ReactNode rendered on the right of the AppBar
  *   children — page content rendered below the AppBar
  */
-export default function AppLayout({ title, actions, children }) {
+export default function AppLayout({ title, actions, children, onOpenMapView }) {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const navItems = onOpenMapView
+    ? [...NAV_ITEMS, { label: 'Map View', icon: <MapIcon />, action: onOpenMapView }]
+    : NAV_ITEMS;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -70,12 +74,13 @@ export default function AppLayout({ title, actions, children }) {
           </Box>
           <Divider />
           <List>
-            {NAV_ITEMS.map(({ label, icon, path }) => (
+            {navItems.map(({ label, icon, path, action }) => (
               <ListItem key={label} disablePadding>
                 <ListItemButton
                   onClick={() => {
                     setDrawerOpen(false);
-                    navigate(path);
+                    if (action) action();
+                    else if (path) navigate(path);
                   }}
                 >
                   <ListItemIcon>{icon}</ListItemIcon>

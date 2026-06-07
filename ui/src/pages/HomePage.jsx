@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import {
@@ -12,6 +12,7 @@ import {
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import AppLayout from '../components/AppLayout';
 import Timeline from '../components/Timeline/Timeline';
+import TripMapModal from '../components/Map/TripMapModal';
 import {
   fetchTrip,
   clearError,
@@ -19,6 +20,7 @@ import {
   selectTripStatus,
   selectTripError,
 } from '../store/tripSlice';
+import { selectMapsApiKey } from '../store/authSlice';
 import { useOnlineStatus } from '../utils/useOnlineStatus';
 
 export default function HomePage() {
@@ -27,9 +29,15 @@ export default function HomePage() {
   const trip = useSelector(selectTrip);
   const status = useSelector(selectTripStatus);
   const error = useSelector(selectTripError);
+  const mapsApiKey = useSelector(selectMapsApiKey);
   const isOnline = useOnlineStatus();
 
   const [expandedDayId, setExpandedDayId] = useState(null);
+  const [mapOpen, setMapOpen] = useState(false);
+  const tripLocations = useMemo(
+    () => trip?.days?.flatMap((day) => day.points?.flatMap((point) => point.locations ?? []) ?? []) ?? [],
+    [trip]
+  );
 
   useEffect(() => {
     if (tripId) dispatch(fetchTrip(tripId));
@@ -41,6 +49,7 @@ export default function HomePage() {
   return (
     <AppLayout
       title={trip?.tripName ?? 'PriPriTrip'}
+      onOpenMapView={() => setMapOpen(true)}
       actions={
         !isOnline && (
           <Chip
@@ -94,6 +103,13 @@ export default function HomePage() {
           {error ?? 'Failed to load trip.'}
         </Alert>
       </Snackbar>
+
+      <TripMapModal
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        mapsApiKey={mapsApiKey}
+        locations={tripLocations}
+      />
     </AppLayout>
   );
 }
