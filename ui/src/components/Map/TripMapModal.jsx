@@ -9,7 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { APIProvider, Map, Marker, useMapsLibrary } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
 const WORLD_CENTER = { lat: 20, lng: 0 };
 const WORLD_ZOOM = 2;
@@ -73,7 +73,7 @@ function SearchAutocomplete({ onSelect }) {
   );
 }
 
-function TripMapContent({ open, locations }) {
+function TripMapContent({ open, locations, mapId }) {
   const [resolvedLocations, setResolvedLocations] = useState([]);
   const [selectedSearchLocation, setSelectedSearchLocation] = useState(null);
   const geocoding = useMapsLibrary('geocoding');
@@ -162,10 +162,11 @@ function TripMapContent({ open, locations }) {
           center={center}
           gestureHandling="greedy"
           disableDefaultUI
+          mapId={mapId}
           style={{ width: '100%', height: '100%' }}
         >
           {markers.map((marker) => (
-            <Marker
+            <AdvancedMarker
               key={marker.key}
               position={marker.position}
               title={marker.label}
@@ -181,6 +182,7 @@ export default function TripMapModal({
   open,
   onClose,
   mapsApiKey,
+  mapsMapId = 'DEMO_MAP_ID',
   locations = [],
 }) {
   const hasInputLocations = useMemo(
@@ -232,7 +234,7 @@ export default function TripMapModal({
 
       {mapsApiKey ? (
         <APIProvider apiKey={mapsApiKey} libraries={['places', 'geocoding']}>
-          <TripMapContent open={open} locations={locations} />
+          <TripMapContent open={open} locations={locations} mapId={mapsMapId} />
         </APIProvider>
       ) : (
         <Box sx={{ p: 2 }}>
