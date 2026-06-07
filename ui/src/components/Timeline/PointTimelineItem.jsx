@@ -6,8 +6,7 @@ import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
 import { Box, Typography } from '@mui/material';
-import dayjs from '../../utils/dayjs';
-import { TRIP_TZ } from '../../utils/dayjs';
+import dayjs, { parseWallClock } from '../../utils/dayjs';
 
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';
@@ -60,7 +59,7 @@ export default function PointTimelineItem({ item, isFirst, isLast, onSelect }) {
         color="text.secondary"
       >
         {item.startDateTime
-          ? dayjs(item.startDateTime).tz(TRIP_TZ).format('h:mm A')
+          ? parseWallClock(item.startDateTime).format('h:mm A')
           : null}
       </TimelineOppositeContent>
 

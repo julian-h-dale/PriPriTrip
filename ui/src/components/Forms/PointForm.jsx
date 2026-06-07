@@ -3,6 +3,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -19,6 +20,69 @@ import client from '../../api/client';
 import LocationForm from './LocationForm';
 import StayDetailForm from './StayDetailForm';
 import TravelDetailForm from './TravelDetailForm';
+
+// ── timezone helpers ──────────────────────────────────────────────────────────
+
+const TZ_STORAGE_KEY = 'lastUsedTimezone';
+const ALL_TIMEZONES = Intl.supportedValuesOf('timeZone');
+
+function getDefaultTimezone() {
+  return (
+    localStorage.getItem(TZ_STORAGE_KEY) ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+}
+
+function saveLastTimezone(tz) {
+  localStorage.setItem(TZ_STORAGE_KEY, tz);
+}
+
+/**
+ * Extract the local datetime string (YYYY-MM-DDTHH:mm) from an ISO 8601
+ * string with offset, e.g. "2026-05-11T14:15:00+02:00".
+ * Falls back gracefully for bare strings like "2026-05-11T14:15".
+ */
+function parseStoredDateTime(isoString) {
+  if (!isoString) return { localValue: '', timezone: getDefaultTimezone() };
+  // Slice to YYYY-MM-DDTHH:mm — works for both offset and bare strings
+  const bare = isoString.slice(0, 16);
+  return { localValue: bare, timezone: getDefaultTimezone() };
+}
+
+/**
+ * Combine a local datetime string and a named timezone into a plain
+ * ISO 8601 string with numeric offset: "2026-05-11T14:15:00+02:00"
+ */
+function buildISOWithTZ(localValue, timezone) {
+  if (!localValue) return null;
+  try {
+    const [datePart, timePart] = localValue.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+
+    const dt = new Date(year, month - 1, day, hour, minute);
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'shortOffset',
+    });
+    const parts = formatter.formatToParts(dt);
+    const offsetPart = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    const offsetMatch = offsetPart.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+    let offset = '+00:00';
+    if (offsetMatch) {
+      const sign = offsetMatch[1];
+      const h = offsetMatch[2].padStart(2, '0');
+      const m = (offsetMatch[3] ?? '00').padStart(2, '0');
+      offset = `${sign}${h}:${m}`;
+    }
+
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${datePart}T${pad(hour)}:${pad(minute)}:00${offset}`;
+  } catch {
+    return localValue;
+  }
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,11 +102,14 @@ function makeLocation() {
 }
 
 function buildInitialState(values = {}) {
+  const { localValue: startLocal, timezone: startTZ } = parseStoredDateTime(values.startDateTime);
+  const { localValue: endLocal } = parseStoredDateTime(values.endDateTime);
   return {
     type: values.type ?? 'activity',
     title: values.title ?? '',
-    startDateTime: values.startDateTime ?? '',
-    endDateTime: values.endDateTime ?? '',
+    startDateTime: startLocal,
+    endDateTime: endLocal,
+    timezone: startTZ,
     confirmationNumber: values.confirmationNumber ?? '',
     description: values.description ?? '',
     imageUrl: values.imageUrl ?? '',
@@ -68,8 +135,8 @@ function buildPayload(form, dayId) {
     dayId,
     type: form.type,
     title: form.title.trim(),
-    startDateTime: form.startDateTime || null,
-    endDateTime: form.endDateTime || null,
+    startDateTime: buildISOWithTZ(form.startDateTime, form.timezone),
+    endDateTime: buildISOWithTZ(form.endDateTime, form.timezone),
     confirmationNumber: form.confirmationNumber.trim() || null,
     description: form.description.trim() || null,
     imageUrl: form.imageUrl.trim() || null,
@@ -123,6 +190,11 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   }, [errors]);
+
+  const setTimezone = useCallback((tz) => {
+    setForm((prev) => ({ ...prev, timezone: tz }));
+    saveLastTimezone(tz);
+  }, []);
 
   const setTravelDetail = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, travelDetail: { ...prev.travelDetail, [field]: value } }));
@@ -273,25 +345,40 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
             helperText={errors.title}
           />
 
-          {/* Start / End datetime */}
-          <Stack direction="row" spacing={1}>
-            <TextField
-              label="Start"
-              type="datetime-local"
-              value={form.startDateTime}
-              onChange={(e) => setField('startDateTime', e.target.value)}
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="End"
-              type="datetime-local"
-              value={form.endDateTime}
-              onChange={(e) => setField('endDateTime', e.target.value)}
-              size="small"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
+          {/* Start / End datetime + timezone */}
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Start"
+                type="datetime-local"
+                value={form.startDateTime}
+                onChange={(e) => setField('startDateTime', e.target.value)}
+                size="small"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="End"
+                type="datetime-local"
+                value={form.endDateTime}
+                onChange={(e) => setField('endDateTime', e.target.value)}
+                size="small"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Stack>
+            <Autocomplete
+              options={ALL_TIMEZONES}
+              value={form.timezone}
+              onChange={(_, val) => val && setTimezone(val)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Timezone"
+                  size="small"
+                />
+              )}
+              disableClearable
             />
           </Stack>
 
