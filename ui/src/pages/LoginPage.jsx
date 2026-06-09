@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
   Box,
@@ -8,6 +8,7 @@ import {
   Container,
   InputAdornment,
   IconButton,
+  Link,
   TextField,
   Typography,
 } from '@mui/material';
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,11 +33,11 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await client.post('/auth', { password });
+      const { data } = await client.post('/auth/session', { email, password });
       dispatch(login({ token: data.token, mapsApiKey: data.mapsApiKey ?? '' }));
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.response?.status === 401 ? 'Wrong password.' : 'Something went wrong.');
+      setError(err.response?.status === 401 ? 'Invalid email or password.' : 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -59,12 +61,21 @@ export default function LoginPage() {
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+              autoFocus
+              autoComplete="email"
+            />
+            <TextField
               label="Password"
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
-              autoFocus
+              autoComplete="current-password"
               error={!!error}
               helperText={error}
               InputProps={{
@@ -86,11 +97,18 @@ export default function LoginPage() {
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading || !password}
+              disabled={loading || !email || !password}
               sx={{ py: 1.25 }}
             >
-              {loading ? <CircularProgress size={22} color="inherit" /> : 'Unlock'}
+              {loading ? <CircularProgress size={22} color="inherit" /> : 'Sign In'}
             </Button>
+
+            <Typography variant="body2" align="center" color="text.secondary">
+              Don&apos;t have an account?{' '}
+              <Link component={RouterLink} to="/register">
+                Create one
+              </Link>
+            </Typography>
           </Box>
         </Box>
       </Container>

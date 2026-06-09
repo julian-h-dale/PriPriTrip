@@ -1,3 +1,49 @@
+We will be making a big change here so I want to plan the architecture before you create an code changes.
+
+We are going to implement user management via fastapi-users. 
+
+Make sure to follow best practices and latest libraries.
+
+
+Backend Changes:
+Integrate library
+- Add the library to the requirements.txt file.
+- Authentication backend is configured as Transport is header (bearer token) and strategy is jwt
+- we are using sql as our backing data storage. 
+- create models for base and basic user. 
+- User model needs to track 
+    - name 
+    - username (unique)
+    - email (unique)
+
+Update Auth endpoint
+- Auth endpoint Payload should still have a payload that includes the token and the mapsapikey.
+- Auth endpoint should now accept a username and password.  Use best practices here and justify your implementation approach. 
+
+Update API to add a new user registration page
+- simple form that accepts the fields of the user model. 
+- creates new user with password
+- return auth payload after user is succesfully created. 
+
+
+Front End Changes
+Create registration form.
+- make sure to have a password confirmation field. (we aren't doing reset yet).
+- form fields for all the user fields.
+- update api service to call the new user endpoint
+- if call is successfull, treat the user as logged in. 
+
+Update login page:
+- update to accept username and password.
+- update service call
+
+We are also going to remove the APP_PASSWORD and instead have the jwt secret in the env file.  
+
+Ask any questions you have, and if something is conceptually missing, bring that issue up. 
+
+
+
+
 We are going to build out the feature for adding a new trip
 
 Basic rules:

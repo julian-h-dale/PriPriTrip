@@ -1,3 +1,4 @@
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import (
     Boolean,
     Column,
@@ -6,16 +7,29 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Uuid,
     text,
 )
 
 from app.database import Base
 
 
+class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
+    """
+    Extends the fastapi-users base table (id, email, hashed_password,
+    is_active, is_superuser, is_verified) with an application-level name.
+    """
+
+    __tablename__ = "users"
+
+    name = Column(String, nullable=False, default="")
+
+
 class TripRecord(Base):
     __tablename__ = "trips"
 
-    trip_id = Column(String, primary_key=True)
+    trip_id = Column(Uuid(as_uuid=False), primary_key=True)
+    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
     trip_name = Column(String, nullable=False)
     start_date = Column(String, nullable=False)
     end_date = Column(String, nullable=False)
@@ -26,8 +40,8 @@ class TripRecord(Base):
 class TripDayRecord(Base):
     __tablename__ = "trip_days"
 
-    day_id = Column(String, primary_key=True)
-    trip_id = Column(String, ForeignKey("trips.trip_id"), nullable=False)
+    day_id = Column(Uuid(as_uuid=False), primary_key=True)
+    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
     title = Column(String, nullable=False)
     date = Column(String, nullable=False)
     description = Column(String, nullable=True)
@@ -41,9 +55,9 @@ class TripDayRecord(Base):
 class TripPointRecord(Base):
     __tablename__ = "trip_points"
 
-    point_id = Column(String, primary_key=True)
-    trip_id = Column(String, ForeignKey("trips.trip_id"), nullable=False)
-    day_id = Column(String, ForeignKey("trip_days.day_id"), nullable=False)
+    point_id = Column(Uuid(as_uuid=False), primary_key=True)
+    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
+    day_id = Column(Uuid(as_uuid=False), ForeignKey("trip_days.day_id"), nullable=False)
     type = Column(String, nullable=False)
     title = Column(String, nullable=False)
     start_date_time = Column(String, nullable=True)
@@ -62,8 +76,8 @@ class TripPointRecord(Base):
 class LocationRecord(Base):
     __tablename__ = "locations"
 
-    location_id = Column(String, primary_key=True)
-    point_id = Column(String, ForeignKey("trip_points.point_id"), nullable=False)
+    location_id = Column(Uuid(as_uuid=False), primary_key=True)
+    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), nullable=False)
     role = Column(String, nullable=False)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     name = Column(String, nullable=False)
@@ -79,7 +93,7 @@ class LocationRecord(Base):
 class TravelDetailRecord(Base):
     __tablename__ = "travel_details"
 
-    point_id = Column(String, ForeignKey("trip_points.point_id"), primary_key=True)
+    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
     mode = Column(String, nullable=False)
     operator = Column(String, nullable=True)
     vehicle_number = Column(String, nullable=True)
@@ -89,7 +103,7 @@ class TravelDetailRecord(Base):
 class StayDetailRecord(Base):
     __tablename__ = "stay_details"
 
-    point_id = Column(String, ForeignKey("trip_points.point_id"), primary_key=True)
+    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
     stay_type = Column(String, nullable=False)
     check_in_time = Column(String, nullable=True)
     check_out_time = Column(String, nullable=True)

@@ -1,11 +1,11 @@
 {
-  "tripId": "honeymoon-2026",
+  "tripId": "bd528aef-4997-444a-999c-3c9d672c7be5",
   "tripName": "Switzerland & Croatia Honeymoon",
   "startDate": "2026-05-10",
   "endDate": "2026-05-20",
   "days": [
     {
-      "dayId": "day-2026-05-11",
+      "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
       "title": "May 11 — Arrival in Bern",
       "date": "2026-05-11",
       "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
@@ -13,8 +13,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may11-train-zrh-bern",
-          "dayId": "day-2026-05-11",
+          "pointId": "dbc1ab2d-e56b-48a4-9e5c-49149f7a9f27",
+          "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
           "type": "travel",
           "title": "Train: Zurich Airport → Bern",
           "startDateTime": "2026-05-11T12:15:00+02:00",
@@ -25,7 +25,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may11-train-zrh-bern-loc-0",
+              "locationId": "198ce411-4fc3-4183-a9cf-1a740efc51a6",
               "role": "origin",
               "name": "Zurich Airport Railway Station",
               "lat": 47.461714199999996,
@@ -37,7 +37,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-train-zrh-bern-loc-1",
+              "locationId": "4f790372-afa1-4ef2-ac3b-5d4fc1300f3a",
               "role": "destination",
               "name": "Bern Railway Station",
               "lat": 46.9485269,
@@ -60,8 +60,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may11-hotel-arrival",
-          "dayId": "day-2026-05-11",
+          "pointId": "c1404396-9405-466d-8729-fd4ad8747869",
+          "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
           "type": "stay",
           "title": "Arrive: Hotel Goldener Schlüssel",
           "startDateTime": "2026-05-11T13:45:00+02:00",
@@ -72,7 +72,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may11-hotel-arrival-loc-0",
+              "locationId": "2fd0afe2-be23-479e-86c1-abab746580f5",
               "role": "venue",
               "name": "Hotel Goldener Schlüssel",
               "lat": 46.9486227,
@@ -84,7 +84,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=8246578540599630147&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-hotel-arrival-loc-1",
+              "locationId": "e4cb29b4-576f-4a5a-a4b7-e7f845f45cc1",
               "role": "venue",
               "name": "Zytglogge",
               "lat": 46.9479581,
@@ -96,7 +96,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9037045923021606230&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-hotel-arrival-loc-2",
+              "locationId": "36d2484d-fc00-421b-8fcf-d826dcb1e8ea",
               "role": "venue",
               "name": "Kramgasse",
               "lat": 46.9479785,
@@ -108,7 +108,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5979139629478638965&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-hotel-arrival-loc-3",
+              "locationId": "3c4a5cbd-3fa1-42c1-94fb-e21b6f8e2165",
               "role": "venue",
               "name": "Aare River Viewpoints",
               "lat": 46.9471898,
@@ -131,8 +131,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may11-lunch",
-          "dayId": "day-2026-05-11",
+          "pointId": "6896a4de-bad9-4496-8374-6e03a32d54eb",
+          "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
           "type": "activity",
           "title": "Lunch Options in Bern",
           "startDateTime": "2026-05-11T14:15:00+02:00",
@@ -143,7 +143,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may11-lunch-loc-0",
+              "locationId": "436bf7db-be27-4ff2-9c57-ca1c53f27463",
               "role": "venue",
               "name": "Kornhauskeller",
               "lat": 46.948730399999995,
@@ -155,7 +155,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9166807882138371302&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-lunch-loc-1",
+              "locationId": "0d4c5007-c749-46dc-9036-21ef44b81e9a",
               "role": "venue",
               "name": "Café Einstein",
               "lat": 46.9478097,
@@ -167,7 +167,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9296287240716715360&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-lunch-loc-2",
+              "locationId": "c9a9671d-cea1-4c15-a2cb-980f6c971003",
               "role": "venue",
               "name": "Beaulieu Bistro Bar",
               "lat": 46.9513135,
@@ -185,8 +185,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may11-afternoon-sites",
-          "dayId": "day-2026-05-11",
+          "pointId": "58e73e49-9c1a-409d-8c4e-6511d9f8d7d0",
+          "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
           "type": "activity",
           "title": "Afternoon: Easy Bern Exploration",
           "startDateTime": "2026-05-11T15:15:00+02:00",
@@ -197,7 +197,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may11-afternoon-sites-loc-0",
+              "locationId": "eb3c4268-579d-4c90-a6e0-141881aed78e",
               "role": "venue",
               "name": "Kramgasse",
               "lat": 46.9479785,
@@ -209,7 +209,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5979139629478638965&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-afternoon-sites-loc-1",
+              "locationId": "63bc482b-bf7a-46f1-8c99-053703bbdc24",
               "role": "venue",
               "name": "Zytglogge",
               "lat": 46.9479581,
@@ -221,7 +221,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9037045923021606230&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-afternoon-sites-loc-2",
+              "locationId": "5d192cf9-0339-4ea3-85fc-96ddb1fed64b",
               "role": "venue",
               "name": "Aare River",
               "lat": 47.2269325,
@@ -233,7 +233,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9891662046295158026&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-afternoon-sites-loc-3",
+              "locationId": "df7bab39-872b-45e8-b383-13d0cbf4596e",
               "role": "venue",
               "name": "Kunstmuseum Bern",
               "lat": 46.951194699999995,
@@ -251,8 +251,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may11-dinner-options",
-          "dayId": "day-2026-05-11",
+          "pointId": "7ec0b67d-19ad-450b-a3c9-0159ca258378",
+          "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
           "type": "activity",
           "title": "Dinner: Rosengarten",
           "startDateTime": "2026-05-11T19:30:00+02:00",
@@ -263,7 +263,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may11-dinner-options-loc-0",
+              "locationId": "bd4e1a53-36cf-4137-9a9a-0cde6c8a0a19",
               "role": "venue",
               "name": "Altes Tramdepot",
               "lat": 46.9470185,
@@ -275,7 +275,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=8593588771172276194&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-dinner-options-loc-1",
+              "locationId": "4e206f45-b8f2-4b8e-a1bb-be0efe744576",
               "role": "venue",
               "name": "Lötschberg",
               "lat": 46.9491102,
@@ -287,7 +287,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5688983262189934504&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may11-dinner-options-loc-2",
+              "locationId": "274bb6bd-ec79-4192-9464-e7b4f1bd4754",
               "role": "venue",
               "name": "Restaurant Rosengarten",
               "lat": 46.950891,
@@ -307,7 +307,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-12",
+      "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
       "title": "May 12 — La Chaux-de-Fonds + Birthday Dinner",
       "date": "2026-05-12",
       "description": "Themed day: watchmaking, Swiss culture, UNESCO architecture,  La Chaux-de-Fonds, visit the International Museum of Horology, BIRTHDAY",
@@ -315,8 +315,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may12-breakfast",
-          "dayId": "day-2026-05-12",
+          "pointId": "788e42b2-167b-4437-ac60-0eda3f2d8e49",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Breakfast (Coffee + Light Bite)",
           "startDateTime": "2026-05-12T08:30:00+02:00",
@@ -327,7 +327,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-breakfast-loc-0",
+              "locationId": "5af16fcb-7b13-452d-82f0-75ee4f3f3af2",
               "role": "venue",
               "name": "Adriano's Bar & Café",
               "lat": 46.9478076,
@@ -339,7 +339,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=11587185552799141099&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-breakfast-loc-1",
+              "locationId": "300a5643-2c42-425d-9bc4-a0336d4da830",
               "role": "venue",
               "name": "Café Marta",
               "lat": 46.947862199999996,
@@ -351,7 +351,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=129269223722108012&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-breakfast-loc-2",
+              "locationId": "4f29eda9-7a55-48b1-b566-fbb616ac7187",
               "role": "venue",
               "name": "Bakery Bakery Bern",
               "lat": 46.947790499999996,
@@ -369,8 +369,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "activity-chaux",
-          "dayId": "day-2026-05-12",
+          "pointId": "b1d71580-f5fd-4406-8aea-7a3526a74acc",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Day Trip: La Chaux-de-Fonds",
           "startDateTime": "2026-05-12T09:00:00+02:00",
@@ -381,7 +381,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "activity-chaux-loc-0",
+              "locationId": "1e15e5d2-9f8f-4761-a7ff-c665171e00f2",
               "role": "venue",
               "name": "La Chaux-de-Fonds",
               "lat": 47.1034892,
@@ -399,8 +399,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-train-bern-lcdf",
-          "dayId": "day-2026-05-12",
+          "pointId": "428c3113-5bc7-4383-94a6-0d27eb2a0ac3",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "travel",
           "title": "Train: Bern → La Chaux-de-Fonds",
           "startDateTime": "2026-05-12T10:00:00+02:00",
@@ -411,7 +411,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-train-bern-lcdf-loc-0",
+              "locationId": "2e227650-1393-41b3-8209-a82fdc445093",
               "role": "origin",
               "name": "Bern Railway Station",
               "lat": 46.9485269,
@@ -423,7 +423,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-train-bern-lcdf-loc-1",
+              "locationId": "b33d3b4b-dbec-4556-927a-26fdc1da8cdc",
               "role": "waypoint",
               "name": "Neuchâtel Railway Station",
               "lat": 46.99650450000001,
@@ -435,7 +435,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-train-bern-lcdf-loc-2",
+              "locationId": "2be69c0f-1706-43a5-8d43-cc5a3b948d83",
               "role": "destination",
               "name": "La Chaux-de-Fonds Railway Station",
               "lat": 47.099207400000004,
@@ -458,8 +458,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-watch-museum",
-          "dayId": "day-2026-05-12",
+          "pointId": "8aabaa7d-c3fa-47b9-ba92-8183d2d6c232",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Visit: International Museum of Horology",
           "startDateTime": "2026-05-12T11:30:00+02:00",
@@ -470,7 +470,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-watch-museum-loc-0",
+              "locationId": "9d905a41-8ee8-4134-a388-89c40fbbb57d",
               "role": "venue",
               "name": "International Museum of Horology",
               "lat": 47.100635200000006,
@@ -488,8 +488,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-afternoon-stroll",
-          "dayId": "day-2026-05-12",
+          "pointId": "cd36f9b7-5280-4756-9303-5d82bd67f42a",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Afternoon: Architecture + Shopping Walk",
           "startDateTime": "2026-05-12T13:00:00+02:00",
@@ -500,7 +500,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-afternoon-stroll-loc-0",
+              "locationId": "032862ac-b47e-4a8c-883f-980f74462f06",
               "role": "venue",
               "name": "Avenue Léopold-Robert",
               "lat": 47.0986803,
@@ -512,7 +512,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=15928764161282040722&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-afternoon-stroll-loc-1",
+              "locationId": "85c4e3e9-020f-4486-88fe-83e4629db516",
               "role": "venue",
               "name": "Villa Fallet",
               "lat": 47.103404,
@@ -524,7 +524,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=2993605626553739081&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-afternoon-stroll-loc-2",
+              "locationId": "d7989037-7fe6-415a-b484-0baeb1122cdf",
               "role": "venue",
               "name": "Espacité Tower",
               "lat": 47.1023612,
@@ -542,8 +542,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-snack",
-          "dayId": "day-2026-05-12",
+          "pointId": "b559da79-0126-421b-b7f0-33228a666aba",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Snack Before Train",
           "startDateTime": "2026-05-12T16:00:00+02:00",
@@ -554,7 +554,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-snack-loc-0",
+              "locationId": "c59139de-f064-4e69-bc3e-c7d33fc4fb09",
               "role": "venue",
               "name": "Café du Marché",
               "lat": 47.1043021,
@@ -566,7 +566,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14504889408978193035&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-snack-loc-1",
+              "locationId": "53ea928d-26b5-4c9f-8465-98512c45b556",
               "role": "venue",
               "name": "Crêperie Bretonne",
               "lat": 47.1034892,
@@ -584,8 +584,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-train-lcdf-bern",
-          "dayId": "day-2026-05-12",
+          "pointId": "1de3682e-a8df-4665-bd1a-61ee869b6cb8",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "travel",
           "title": "Train: La Chaux-de-Fonds → Bern",
           "startDateTime": "2026-05-12T16:30:00+02:00",
@@ -596,7 +596,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-train-lcdf-bern-loc-0",
+              "locationId": "9d52b382-3365-43e5-bd08-55c354bc6b36",
               "role": "origin",
               "name": "La Chaux-de-Fonds Railway Station",
               "lat": 47.099207400000004,
@@ -608,7 +608,7 @@
               "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-train-lcdf-bern-loc-1",
+              "locationId": "3a7a40f3-d9f1-4b87-ae19-5509368fdb42",
               "role": "waypoint",
               "name": "Neuchâtel Railway Station",
               "lat": 46.99650450000001,
@@ -620,7 +620,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-train-lcdf-bern-loc-2",
+              "locationId": "77ae474d-8b3d-4f33-845e-3e0fcd5d7d3f",
               "role": "destination",
               "name": "Bern Railway Station",
               "lat": 46.9485269,
@@ -643,8 +643,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-dinner",
-          "dayId": "day-2026-05-12",
+          "pointId": "c14843e9-6ca4-4454-b09e-9b32f773ab55",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Birthday Dinner: Kornhauskeller",
           "startDateTime": "2026-05-12T19:30:00+02:00",
@@ -655,7 +655,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-dinner-loc-0",
+              "locationId": "3b34e2e8-adf8-474c-a9be-cd9f7a9e041b",
               "role": "venue",
               "name": "Kornhauskeller",
               "lat": 46.948730399999995,
@@ -673,8 +673,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may12-night-stroll",
-          "dayId": "day-2026-05-12",
+          "pointId": "a0d26de5-0ea1-4955-9efd-318c229ac7f0",
+          "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
           "type": "activity",
           "title": "Nighttime Stroll",
           "startDateTime": "2026-05-12T21:30:00+02:00",
@@ -685,7 +685,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may12-night-stroll-loc-0",
+              "locationId": "c921df09-977e-49ba-b21a-ec59eeaa67f4",
               "role": "venue",
               "name": "Kornhausplatz",
               "lat": 46.9484888,
@@ -697,7 +697,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=13425232592532197437&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-night-stroll-loc-1",
+              "locationId": "7a74be64-9e33-43d2-ae31-0cbfc65c6156",
               "role": "venue",
               "name": "Gerechtigkeitsgasse",
               "lat": 46.9483617,
@@ -709,7 +709,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=7783099642124934841&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may12-night-stroll-loc-2",
+              "locationId": "9f42e6fa-d3b4-45c2-acbc-c51f9cddff5a",
               "role": "venue",
               "name": "Nydegg Bridge",
               "lat": 46.9485077,
@@ -729,7 +729,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-13",
+      "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
       "title": "May 13 — Travel to Wengen",
       "date": "2026-05-13",
       "description": " Leave Bern, brief lunch stop in Interlaken, then the Lauterbrunnen → Wengen mountain railway. Arrive with time to enjoy the hotel balcony and Jungfrau views.",
@@ -737,8 +737,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may13-breakfast",
-          "dayId": "day-2026-05-13",
+          "pointId": "9d5a6218-262e-4f0f-8c69-037157738b0c",
+          "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
           "type": "activity",
           "title": "Breakfast Near Hotel",
           "startDateTime": "2026-05-13T08:30:00+02:00",
@@ -749,7 +749,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may13-breakfast-loc-0",
+              "locationId": "eb0c60ac-b422-42af-b01f-70b9c2f4bf66",
               "role": "venue",
               "name": "Adriano's Bar & Café",
               "lat": 46.9478076,
@@ -761,7 +761,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=11587185552799141099&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-breakfast-loc-1",
+              "locationId": "d0b7faff-9e2d-4593-aa65-4ccf42d38fdb",
               "role": "venue",
               "name": "Café Einstein",
               "lat": 46.9478097,
@@ -773,7 +773,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9296287240716715360&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-breakfast-loc-2",
+              "locationId": "0f8b20c0-27d9-403b-9667-263fd480c3e6",
               "role": "venue",
               "name": "Confiserie Tschirren",
               "lat": 46.9481501,
@@ -791,8 +791,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may13-train-bern-interlaken",
-          "dayId": "day-2026-05-13",
+          "pointId": "051f05e0-22df-43d7-be93-db20e4a2b302",
+          "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
           "type": "travel",
           "title": "Train: Bern → Interlaken Ost",
           "startDateTime": "2026-05-13T09:30:00+02:00",
@@ -803,7 +803,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may13-train-bern-interlaken-loc-0",
+              "locationId": "5d2d94e5-7c17-4e4f-8381-64b1cda01904",
               "role": "origin",
               "name": "Bern Railway Station",
               "lat": 46.9485269,
@@ -815,7 +815,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-train-bern-interlaken-loc-1",
+              "locationId": "25f05364-d99a-4811-83f1-cb78c11e3556",
               "role": "destination",
               "name": "Interlaken Ost Station",
               "lat": 46.685314299999995,
@@ -838,8 +838,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may13-lunch-interlaken",
-          "dayId": "day-2026-05-13",
+          "pointId": "79ab4364-228c-4e1a-b293-9610ee78ab55",
+          "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
           "type": "activity",
           "title": "Lunch in Interlaken",
           "startDateTime": "2026-05-13T10:30:00+02:00",
@@ -850,7 +850,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may13-lunch-interlaken-loc-0",
+              "locationId": "5980d21b-91d9-488f-b53f-f82460759529",
               "role": "venue",
               "name": "Restaurant Taverne",
               "lat": 46.6884769,
@@ -862,7 +862,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=4335203932344163068&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-lunch-interlaken-loc-1",
+              "locationId": "b112baec-477a-46eb-9221-b9b8f5383ca7",
               "role": "venue",
               "name": "Hüsi Bierhaus",
               "lat": 46.6861007,
@@ -874,7 +874,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5038984181749973048&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-lunch-interlaken-loc-2",
+              "locationId": "77df5653-7bb2-427d-8ed0-2fc65849ea59",
               "role": "venue",
               "name": "Velo Cafe",
               "lat": 46.68593260000001,
@@ -892,8 +892,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may13-train-interlaken-wengen",
-          "dayId": "day-2026-05-13",
+          "pointId": "66c7ef1c-33b3-4726-94f7-df7f4ac57b7c",
+          "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
           "type": "travel",
           "title": "Train: Interlaken → Wengen",
           "startDateTime": "2026-05-13T12:00:00+02:00",
@@ -904,7 +904,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may13-train-interlaken-wengen-loc-0",
+              "locationId": "836614cf-9ba6-44f8-b0ec-aec16f50d3dd",
               "role": "origin",
               "name": "Interlaken Ost Station",
               "lat": 46.685314299999995,
@@ -916,7 +916,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-train-interlaken-wengen-loc-1",
+              "locationId": "a427c9ad-fc17-415f-af07-04ba6d6512aa",
               "role": "waypoint",
               "name": "Lauterbrunnen Station",
               "lat": 46.5960688,
@@ -928,7 +928,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may13-train-interlaken-wengen-loc-2",
+              "locationId": "b170d0d0-6a33-4c3b-9de1-7336404d2985",
               "role": "destination",
               "name": "Wengen Railway Station",
               "lat": 46.6054335,
@@ -951,8 +951,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may13-hotel-wengen",
-          "dayId": "day-2026-05-13",
+          "pointId": "f14e1f93-5eff-4432-85ed-b1d3f5323a06",
+          "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
           "type": "stay",
           "title": "Hotel Check-in: Beausite Park Hotel",
           "startDateTime": "2026-05-13T14:00:00+02:00",
@@ -963,7 +963,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may13-hotel-wengen-loc-0",
+              "locationId": "14023a8e-f674-4d39-857e-a30237a9c0d7",
               "role": "venue",
               "name": "Beausite Park Hotel Wengen",
               "lat": 46.60852,
@@ -986,8 +986,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may13-dinner",
-          "dayId": "day-2026-05-13",
+          "pointId": "c9577a33-e4c7-4724-9285-3b34d79dcf48",
+          "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
           "type": "activity",
           "title": "Dinner: Restaurant Eiger Wengen",
           "startDateTime": "2026-05-13T18:30:00+02:00",
@@ -998,7 +998,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may13-dinner-loc-0",
+              "locationId": "d15aba89-d6f3-497b-bbc7-20ca1eb47448",
               "role": "venue",
               "name": "Restaurant Eiger",
               "lat": 46.6039136,
@@ -1018,7 +1018,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-14",
+      "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
       "title": "May 14 — Wengen Hike + Scenic Day",
       "date": "2026-05-14",
       "description": "Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903",
@@ -1026,8 +1026,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may14-breakfast",
-          "dayId": "day-2026-05-14",
+          "pointId": "76d073fd-23f6-4c3a-8181-a01732b51503",
+          "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "activity",
           "title": "Breakfast at Hotel",
           "startDateTime": "2026-05-14T08:30:00+02:00",
@@ -1038,7 +1038,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may14-breakfast-loc-0",
+              "locationId": "d043fa8a-c3dd-4aa9-afba-fc6fb581bc95",
               "role": "venue",
               "name": "Beausite Park Hotel Wengen",
               "lat": 46.60852,
@@ -1056,8 +1056,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may14-cablecar",
-          "dayId": "day-2026-05-14",
+          "pointId": "2c33a028-31d4-4c64-9f36-252717da0931",
+          "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "travel",
           "title": "Cable Car: Wengen → Männlichen",
           "startDateTime": "2026-05-14T10:00:00+02:00",
@@ -1068,7 +1068,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may14-cablecar-loc-0",
+              "locationId": "48254699-f432-4171-a13e-806e5ada5958",
               "role": "origin",
               "name": "Wengen Cable Car Station",
               "lat": 46.6054335,
@@ -1080,7 +1080,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may14-cablecar-loc-1",
+              "locationId": "f449eb31-3416-47d3-9365-56bfa1936e13",
               "role": "destination",
               "name": "Männlichen Summit",
               "lat": 46.6136349,
@@ -1103,8 +1103,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may14-hike",
-          "dayId": "day-2026-05-14",
+          "pointId": "0de66763-2da7-4b23-ba73-d868a0be82f5",
+          "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "activity",
           "title": "Hike: Männlichen → Kleine Scheidegg",
           "startDateTime": "2026-05-14T10:30:00+02:00",
@@ -1115,7 +1115,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may14-hike-loc-0",
+              "locationId": "f122d2c7-e0a1-483b-851a-80cebd4996c0",
               "role": "venue",
               "name": "Männlichen",
               "lat": 46.6181443,
@@ -1127,7 +1127,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=7864482337798511454&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may14-hike-loc-1",
+              "locationId": "d3af106a-4647-4993-ad0f-6485a38f5cc3",
               "role": "venue",
               "name": "Kleine Scheidegg",
               "lat": 46.605407799999995,
@@ -1145,8 +1145,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may14-lunch",
-          "dayId": "day-2026-05-14",
+          "pointId": "a5d3d439-9a73-4c53-bbee-344a4d225633",
+          "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "activity",
           "title": "Lunch at Kleine Scheidegg",
           "startDateTime": "2026-05-14T12:30:00+02:00",
@@ -1157,7 +1157,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may14-lunch-loc-0",
+              "locationId": "b4226b09-0876-4b62-9863-c7a62c4ef2e5",
               "role": "venue",
               "name": "Restaurant Grindelwaldblick",
               "lat": 46.5850153,
@@ -1169,7 +1169,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5499424951823110522&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may14-lunch-loc-1",
+              "locationId": "3ee531d2-836b-42d6-a17c-f21014365627",
               "role": "venue",
               "name": "Restaurant Bellevue des Alpes",
               "lat": 46.5850153,
@@ -1187,8 +1187,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may14-train-return",
-          "dayId": "day-2026-05-14",
+          "pointId": "b55ffe57-8549-4682-a1c7-9bcc63ece0b7",
+          "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "travel",
           "title": "Train: Kleine Scheidegg → Wengen",
           "startDateTime": "2026-05-14T14:00:00+02:00",
@@ -1199,7 +1199,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may14-train-return-loc-0",
+              "locationId": "4b69e3c4-3dc5-4331-8dc2-60a9010b3764",
               "role": "origin",
               "name": "Kleine Scheidegg Railway Station",
               "lat": 46.605407799999995,
@@ -1211,7 +1211,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5958241575093976877&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may14-train-return-loc-1",
+              "locationId": "adc3f365-8522-4095-be4d-a18bf04ea828",
               "role": "destination",
               "name": "Wengen Railway Station",
               "lat": 46.6054335,
@@ -1234,8 +1234,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may14-dinner",
-          "dayId": "day-2026-05-14",
+          "pointId": "2dcc63b8-bff8-461c-b20c-b62cc2c5567e",
+          "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "activity",
           "title": "Dinner: Schönegg 1903",
           "startDateTime": "2026-05-14T20:15:00+02:00",
@@ -1246,7 +1246,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may14-dinner-loc-0",
+              "locationId": "08fd7309-908f-403b-adc1-4baeebc5a260",
               "role": "venue",
               "name": "Schönegg 1903",
               "lat": 46.607306,
@@ -1266,7 +1266,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-15",
+      "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
       "title": "May 15 — Travel to Hvar",
       "date": "2026-05-15",
       "description": "Big travel chain day. Critical chain: Wengen → Zurich Airport train, Zurich → Split flight at 3:00 PM (Croatia Airlines CRFG3B), taxi to Split ferry port, Split → Hvar ferry at 6:00 PM (last of the day)",
@@ -1274,8 +1274,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may15-train-wengen-zurich",
-          "dayId": "day-2026-05-15",
+          "pointId": "e4dfa03a-66d1-4b3a-9ff0-3496e1ce427d",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "travel",
           "title": "Train: Wengen → Zurich Airport",
           "startDateTime": "2026-05-15T09:00:00+02:00",
@@ -1286,7 +1286,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-train-wengen-zurich-loc-0",
+              "locationId": "53dc13a3-f1a7-403c-83d4-1c40483496be",
               "role": "origin",
               "name": "Wengen Railway Station",
               "lat": 46.6054335,
@@ -1298,7 +1298,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-train-wengen-zurich-loc-1",
+              "locationId": "137c4d8e-37e5-4aff-b9b5-b20c5dad370a",
               "role": "waypoint",
               "name": "Lauterbrunnen Station",
               "lat": 46.5960688,
@@ -1310,7 +1310,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-train-wengen-zurich-loc-2",
+              "locationId": "5b470999-c5c3-48c6-956b-1dc080807ace",
               "role": "waypoint",
               "name": "Interlaken Ost Station",
               "lat": 46.685314299999995,
@@ -1322,7 +1322,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-train-wengen-zurich-loc-3",
+              "locationId": "c8424c83-eeb6-4aff-8f3e-a48a9af8b5ff",
               "role": "destination",
               "name": "Zurich Airport Railway Station",
               "lat": 47.4516643,
@@ -1345,8 +1345,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may15-lunch",
-          "dayId": "day-2026-05-15",
+          "pointId": "1df5282f-1740-4e19-a460-e3c777da9c3e",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "activity",
           "title": "Lunch at Zurich Airport",
           "startDateTime": "2026-05-15T12:30:00+02:00",
@@ -1357,7 +1357,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-lunch-loc-0",
+              "locationId": "12bfd133-8cec-48fb-bd9a-ea80047f6d20",
               "role": "venue",
               "name": "HITZBERGER Zurich Airport",
               "lat": 47.461714199999996,
@@ -1369,7 +1369,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-lunch-loc-1",
+              "locationId": "ccdd86f8-6f79-44eb-8acb-0be2cd043809",
               "role": "venue",
               "name": "Air Restaurant Zurich Airport",
               "lat": 47.461714199999996,
@@ -1381,7 +1381,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-lunch-loc-2",
+              "locationId": "7e4b3a4f-a572-4861-88a4-b7e6b0da1b78",
               "role": "venue",
               "name": "Sprüngli Zurich Airport",
               "lat": 47.461714199999996,
@@ -1399,8 +1399,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may15-flight",
-          "dayId": "day-2026-05-15",
+          "pointId": "17f86b7d-22fb-4b43-8dc3-68a1727b602e",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "travel",
           "title": "Flight: Zurich → Split",
           "startDateTime": "2026-05-15T15:00:00+02:00",
@@ -1411,7 +1411,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-flight-loc-0",
+              "locationId": "6fb4cce7-5613-4126-8694-dde54fe538e5",
               "role": "origin",
               "name": "Zurich Airport",
               "lat": 47.4516643,
@@ -1423,7 +1423,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-flight-loc-1",
+              "locationId": "0968547d-e317-4158-ace5-025d3c2fb7e8",
               "role": "destination",
               "name": "Split Airport",
               "lat": 43.5518128,
@@ -1446,8 +1446,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may15-ferry",
-          "dayId": "day-2026-05-15",
+          "pointId": "873ed383-50af-4075-bd04-f10246e73d5a",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "travel",
           "title": "Ferry: Split → Hvar",
           "startDateTime": "2026-05-15T18:00:00+02:00",
@@ -1458,7 +1458,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-ferry-loc-0",
+              "locationId": "e1aae80b-64bf-4034-9281-4d57f2ed8eba",
               "role": "origin",
               "name": "Gat Sv. Petra Ferry Port",
               "lat": 43.5048453,
@@ -1470,7 +1470,7 @@
               "googleMapsUri": "https://maps.google.com/?q=Gat+Sv.+Petra,+21000,+Split,+Hrvatska&ftid=0x133567554cd01663:0x7f46512ffa312492&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-ferry-loc-1",
+              "locationId": "4d3f5b05-2c4f-4adc-989b-ade27a9e3f65",
               "role": "destination",
               "name": "Hvar Harbour",
               "lat": 43.1719882,
@@ -1493,8 +1493,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may15-hotel",
-          "dayId": "day-2026-05-15",
+          "pointId": "8a46d426-7eb0-42ca-a67d-320255771012",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "stay",
           "title": "Hotel Check-in: Riva Marina Hvar Hotel",
           "startDateTime": "2026-05-15T19:00:00+02:00",
@@ -1505,7 +1505,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-hotel-loc-0",
+              "locationId": "99bb33b7-d91c-4c76-99dc-b195d868cffb",
               "role": "venue",
               "name": "Riva Marina Hvar Hotel",
               "lat": 43.1703364,
@@ -1528,8 +1528,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may15-dinner",
-          "dayId": "day-2026-05-15",
+          "pointId": "c4067978-972d-4d0c-bd14-4e976c431888",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "activity",
           "title": "Dinner (Flexible)",
           "startDateTime": "2026-05-15T19:30:00+02:00",
@@ -1540,7 +1540,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-dinner-loc-0",
+              "locationId": "4c775549-6ef9-4887-b54b-2fd8477c7314",
               "role": "venue",
               "name": "Fig Hvar",
               "lat": 43.174984099999996,
@@ -1552,7 +1552,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=4636467488610827857&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-dinner-loc-1",
+              "locationId": "5bf082f6-5829-4c0c-8b5e-45db03ab06cc",
               "role": "venue",
               "name": "Dalmatino",
               "lat": 43.172800599999995,
@@ -1564,7 +1564,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=9872885976037740660&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-dinner-loc-2",
+              "locationId": "5edcd79b-0b19-4743-a3e6-fa40f5bbc8bd",
               "role": "venue",
               "name": "Konoba Bonaca",
               "lat": 43.1726228,
@@ -1582,8 +1582,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may15-harbor-walk",
-          "dayId": "day-2026-05-15",
+          "pointId": "77b9a3f8-e6b9-4404-9082-25d85c679240",
+          "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
           "type": "activity",
           "title": "Evening: Harbor Walk + Gelato",
           "startDateTime": "2026-05-15T21:00:00+02:00",
@@ -1594,7 +1594,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may15-harbor-walk-loc-0",
+              "locationId": "51b8c42c-e45d-47fa-8428-3149ea4144f3",
               "role": "venue",
               "name": "Hvar Riva",
               "lat": 43.1719882,
@@ -1606,7 +1606,7 @@
               "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may15-harbor-walk-loc-1",
+              "locationId": "57222918-d111-438d-8ab5-d482f3f3f9da",
               "role": "venue",
               "name": "St. Stephen's Square",
               "lat": 43.172561,
@@ -1626,7 +1626,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-16",
+      "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
       "title": "May 16 — Hvar Boat Day + Giaxa Dinner",
       "date": "2026-05-16",
       "description": "Private boat day around Hvar/Pakleni Islands, flexible lunch, reset at hotel, Giaxa dinner, and optional evening out.",
@@ -1634,8 +1634,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may16-private-boat",
-          "dayId": "day-2026-05-16",
+          "pointId": "b41203ee-5d72-406e-8861-d2e1b9c03435",
+          "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
           "type": "activity",
           "title": "Private Boat Tour",
           "startDateTime": "2026-05-16T09:30:00+02:00",
@@ -1646,7 +1646,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-private-boat-loc-0",
+              "locationId": "f7b85213-acf1-476f-b3fc-0e306fd3da23",
               "role": "venue",
               "name": "Hvar Riva",
               "lat": 43.1719882,
@@ -1658,7 +1658,7 @@
               "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-private-boat-loc-1",
+              "locationId": "e090f8bb-55d0-4fa0-9c7f-061453bc848f",
               "role": "venue",
               "name": "Pakleni Islands",
               "lat": 43.1620214,
@@ -1676,8 +1676,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-boat-lunch",
-          "dayId": "day-2026-05-16",
+          "pointId": "101f8554-5902-47f4-8e96-93de9be6fa88",
+          "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
           "type": "activity",
           "title": "Lunch During Boat Day",
           "startDateTime": "2026-05-16T12:30:00+02:00",
@@ -1688,7 +1688,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-boat-lunch-loc-0",
+              "locationId": "a2c5f2bf-02c1-4dc7-b70e-02aeba3f576a",
               "role": "venue",
               "name": "Zori Restaurant",
               "lat": 43.1629321,
@@ -1700,7 +1700,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=4035884399148801086&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-boat-lunch-loc-1",
+              "locationId": "4e115a99-1656-442b-aeb3-c07c8ab81fbe",
               "role": "venue",
               "name": "Meneghello Restaurant",
               "lat": 43.1629321,
@@ -1712,7 +1712,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=4035884399148801086&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-boat-lunch-loc-2",
+              "locationId": "46906df8-a68f-485b-b35e-9b08a8862fb4",
               "role": "venue",
               "name": "Laganini Lounge Bar & Fish House",
               "lat": 43.1629321,
@@ -1724,7 +1724,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=4035884399148801086&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-boat-lunch-loc-3",
+              "locationId": "459b0fe6-b45e-4f84-ae45-69fb89b9ecb3",
               "role": "venue",
               "name": "Konoba Dubovica",
               "lat": 43.145986199999996,
@@ -1742,8 +1742,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-afternoon-reset",
-          "dayId": "day-2026-05-16",
+          "pointId": "db7ca014-81cb-4bd9-8ee3-b11c29584601",
+          "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
           "type": "activity",
           "title": "Afternoon Reset",
           "startDateTime": "2026-05-16T15:00:00+02:00",
@@ -1754,7 +1754,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-afternoon-reset-loc-0",
+              "locationId": "3db8a310-94a2-4e1e-a749-53c7906a3a85",
               "role": "venue",
               "name": "Riva Marina Hvar Hotel",
               "lat": 43.1703364,
@@ -1772,8 +1772,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-dinner-giaxa",
-          "dayId": "day-2026-05-16",
+          "pointId": "5a40f137-3de4-423e-9a3d-f8d358a92957",
+          "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
           "type": "activity",
           "title": "Dinner: Giaxa",
           "startDateTime": "2026-05-16T19:00:00+02:00",
@@ -1784,7 +1784,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-dinner-giaxa-loc-0",
+              "locationId": "1361a134-9e2d-4e5c-9c67-de69bdfa1a89",
               "role": "venue",
               "name": "Giaxa",
               "lat": 43.1726715,
@@ -1802,8 +1802,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-evening-options",
-          "dayId": "day-2026-05-16",
+          "pointId": "6f40b1ad-b5d8-43eb-818e-0a0e1f49430b",
+          "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
           "type": "activity",
           "title": "Evening Options",
           "startDateTime": "2026-05-16T21:00:00+02:00",
@@ -1814,7 +1814,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-evening-options-loc-0",
+              "locationId": "62e5f1b4-a96c-4749-b1f8-9ad74c43a038",
               "role": "venue",
               "name": "Hvar Riva",
               "lat": 43.1719882,
@@ -1826,7 +1826,7 @@
               "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-evening-options-loc-1",
+              "locationId": "8ddd42de-abb4-4028-b6c7-d05f08868594",
               "role": "venue",
               "name": "St. Stephen's Square",
               "lat": 43.172561,
@@ -1838,7 +1838,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-evening-options-loc-2",
+              "locationId": "cdca357f-940e-4430-8799-d701973e6221",
               "role": "venue",
               "name": "Hvar Fortress / Fortica",
               "lat": 43.1748905,
@@ -1850,7 +1850,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=7296638579293825337&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-evening-options-loc-3",
+              "locationId": "b21c641e-0dce-43e3-a365-9dee475477cb",
               "role": "venue",
               "name": "Ka'lavanda Music Bar",
               "lat": 43.1724886,
@@ -1862,7 +1862,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=5968851819467325236&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-evening-options-loc-4",
+              "locationId": "021e2d45-4334-46ee-86b3-8ad098dab25e",
               "role": "venue",
               "name": "Central Park Club",
               "lat": 43.172909999999995,
@@ -1882,7 +1882,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-16-alt",
+      "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
       "title": "May 16 alt — Hvar Rainy Day Backup",
       "date": "2026-05-16",
       "description": "Backup plan if the boat day is not practical due to rain, cold, wind, or poor sea conditions.",
@@ -1890,8 +1890,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may16-alt-coffee-breakfast",
-          "dayId": "day-2026-05-16-alt",
+          "pointId": "a04fedbf-5a6d-46c5-9e59-4234ef330b0b",
+          "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
           "type": "activity",
           "title": "Coffee + Breakfast Crawl",
           "startDateTime": "2026-05-16T09:30:00+02:00",
@@ -1902,7 +1902,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-alt-coffee-breakfast-loc-0",
+              "locationId": "668367c8-60a4-48d0-b1be-bc5146945f87",
               "role": "venue",
               "name": "Central Park Club",
               "lat": 43.172909999999995,
@@ -1914,7 +1914,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=13951752557513967954&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-alt-coffee-breakfast-loc-1",
+              "locationId": "7803e361-bfb3-49e4-80b9-257519dbb1bf",
               "role": "venue",
               "name": "Kava37",
               "lat": 43.1708797,
@@ -1932,8 +1932,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-alt-old-town",
-          "dayId": "day-2026-05-16-alt",
+          "pointId": "52113765-753f-47b1-b3b3-4d7eda514fe3",
+          "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
           "type": "activity",
           "title": "Old Town Exploration",
           "startDateTime": "2026-05-16T11:00:00+02:00",
@@ -1944,7 +1944,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-alt-old-town-loc-0",
+              "locationId": "b962b3b6-788a-4825-b8e2-260b4cec0c8b",
               "role": "venue",
               "name": "St. Stephen's Square",
               "lat": 43.172561,
@@ -1956,7 +1956,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-alt-old-town-loc-1",
+              "locationId": "2ef86f90-339b-4b84-b931-dcd66a2bc64a",
               "role": "venue",
               "name": "St. Stephen's Cathedral",
               "lat": 43.172561,
@@ -1974,8 +1974,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-alt-culture",
-          "dayId": "day-2026-05-16-alt",
+          "pointId": "f09229cd-9b86-4f04-8970-abf63c94de33",
+          "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
           "type": "activity",
           "title": "Light Cultural Stop",
           "startDateTime": "2026-05-16T12:30:00+02:00",
@@ -1986,7 +1986,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-alt-culture-loc-0",
+              "locationId": "9aa3a716-0004-4bbc-aa90-b64ecf1a4f6c",
               "role": "venue",
               "name": "Hvar Heritage Museum",
               "lat": 43.172221,
@@ -2004,8 +2004,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-alt-long-lunch",
-          "dayId": "day-2026-05-16-alt",
+          "pointId": "f96479e5-71e0-482d-b333-53d96a8c129e",
+          "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
           "type": "activity",
           "title": "Long Lunch",
           "startDateTime": "2026-05-16T13:30:00+02:00",
@@ -2016,7 +2016,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-alt-long-lunch-loc-0",
+              "locationId": "6fa71d0e-cb05-4c01-bb51-5dc0438359ec",
               "role": "venue",
               "name": "Black Pepper Hvar",
               "lat": 43.171697099999996,
@@ -2028,7 +2028,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14537284021209401546&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may16-alt-long-lunch-loc-1",
+              "locationId": "4609c610-c142-485d-9071-943a0551cdf0",
               "role": "venue",
               "name": "Dalmatino",
               "lat": 43.172800599999995,
@@ -2046,8 +2046,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-alt-spa-reset",
-          "dayId": "day-2026-05-16-alt",
+          "pointId": "125bf51c-c7c3-4faf-af8b-b9b3c58f1572",
+          "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
           "type": "activity",
           "title": "Spa / Hotel Reset",
           "startDateTime": "2026-05-16T15:30:00+02:00",
@@ -2058,7 +2058,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-alt-spa-reset-loc-0",
+              "locationId": "fe89f32a-ca11-4da8-b2e0-f5dc8216dd5d",
               "role": "venue",
               "name": "Riva Marina Hvar Hotel",
               "lat": 43.1703364,
@@ -2076,8 +2076,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may16-alt-dinner-giaxa",
-          "dayId": "day-2026-05-16-alt",
+          "pointId": "0c00c714-2886-4c50-8f50-2e92c6de3373",
+          "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
           "type": "activity",
           "title": "Dinner: Giaxa",
           "startDateTime": "2026-05-16T19:00:00+02:00",
@@ -2088,7 +2088,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may16-alt-dinner-giaxa-loc-0",
+              "locationId": "f67afaf6-4e59-4aac-bdde-9de97c8624d6",
               "role": "venue",
               "name": "Giaxa",
               "lat": 43.1726715,
@@ -2108,7 +2108,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-17",
+      "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
       "title": "May 17 — Hvar to Split (Culture + Casual Night)",
       "date": "2026-05-17",
       "description": "Ferry to Split mid-morning, check into Heritage Hotel Slavija inside Diocletian's Palace, afternoon exploring the Old Town",
@@ -2116,8 +2116,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may17-breakfast",
-          "dayId": "day-2026-05-17",
+          "pointId": "557d3b16-9947-49c1-9e72-6a6b282b774f",
+          "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
           "type": "activity",
           "title": "Breakfast (Hvar)",
           "startDateTime": "2026-05-17T09:00:00+02:00",
@@ -2128,7 +2128,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may17-breakfast-loc-0",
+              "locationId": "b40135a1-af1a-4fdb-b84d-b3ee8b954775",
               "role": "venue",
               "name": "Kava37",
               "lat": 43.1708797,
@@ -2140,7 +2140,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14302866410943307519&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-breakfast-loc-1",
+              "locationId": "3a26ccec-b6c8-441a-88ae-107a3adb4448",
               "role": "venue",
               "name": "Fig Hvar",
               "lat": 43.174984099999996,
@@ -2152,7 +2152,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=4636467488610827857&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-breakfast-loc-2",
+              "locationId": "d7d4a374-14ff-4c8b-b914-b6cce6f58a98",
               "role": "venue",
               "name": "Central Park Club",
               "lat": 43.172909999999995,
@@ -2170,8 +2170,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may17-ferry",
-          "dayId": "day-2026-05-17",
+          "pointId": "308f090c-a053-4cc4-8344-c215724f7544",
+          "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
           "type": "travel",
           "title": "Ferry: Hvar → Split",
           "startDateTime": "2026-05-17T11:15:00+02:00",
@@ -2182,7 +2182,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may17-ferry-loc-0",
+              "locationId": "70d63648-1c4c-41eb-a72d-9e9558765c54",
               "role": "origin",
               "name": "Hvar Harbour",
               "lat": 43.1719882,
@@ -2194,7 +2194,7 @@
               "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-ferry-loc-1",
+              "locationId": "5eaeacb9-727e-4eec-b129-8a8eb51f09d2",
               "role": "destination",
               "name": "Split Ferry Port",
               "lat": 43.5038827,
@@ -2217,8 +2217,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may17-hotel",
-          "dayId": "day-2026-05-17",
+          "pointId": "5deba660-9218-4c60-a0ea-3db7940c7cb6",
+          "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
           "type": "stay",
           "title": "Hotel Check-in",
           "startDateTime": "2026-05-17T13:00:00+02:00",
@@ -2229,7 +2229,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may17-hotel-loc-0",
+              "locationId": "9d2bc1d9-cd0c-4a4a-ad5e-2e23bf809d02",
               "role": "venue",
               "name": "Heritage Hotel Slavija Split",
               "lat": 43.5080822,
@@ -2252,8 +2252,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may17-culture",
-          "dayId": "day-2026-05-17",
+          "pointId": "3846d098-6ccf-4a93-8563-b2bac07b77b2",
+          "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
           "type": "activity",
           "title": "Culture + Exploration",
           "startDateTime": "2026-05-17T14:30:00+02:00",
@@ -2264,7 +2264,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may17-culture-loc-0",
+              "locationId": "49dbca11-bb8e-42eb-a3f2-ec300a61ea47",
               "role": "venue",
               "name": "Diocletian's Palace",
               "lat": 43.5083203,
@@ -2276,7 +2276,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=6396688951645372313&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-culture-loc-1",
+              "locationId": "e05cb97a-6a92-4dbf-8871-21a916b5a6f4",
               "role": "venue",
               "name": "Peristyle Square",
               "lat": 43.5150785,
@@ -2288,7 +2288,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1369284846720735154&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-culture-loc-2",
+              "locationId": "3e29f500-60b6-4e5a-9426-79a39d4ed752",
               "role": "venue",
               "name": "Cathedral of Saint Domnius",
               "lat": 43.507908799999996,
@@ -2300,7 +2300,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=7433837466571911031&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-culture-loc-3",
+              "locationId": "23ea2d3b-22a5-404b-920b-b8fab4821b9a",
               "role": "venue",
               "name": "Riva Promenade",
               "lat": 43.5077507,
@@ -2312,7 +2312,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1543361673087512220&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-culture-loc-4",
+              "locationId": "bb8f9034-a917-4b78-ae5c-e79bc662983e",
               "role": "venue",
               "name": "Marjan Hill",
               "lat": 43.5150785,
@@ -2330,8 +2330,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may17-dinner",
-          "dayId": "day-2026-05-17",
+          "pointId": "82558b19-6820-4f0c-abda-cceab726b8d3",
+          "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
           "type": "activity",
           "title": "Dinner (Casual / Local)",
           "startDateTime": "2026-05-17T18:30:00+02:00",
@@ -2342,7 +2342,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may17-dinner-loc-0",
+              "locationId": "e4ae0220-74fd-441c-a710-a86c40f1b6ad",
               "role": "venue",
               "name": "Konoba Fetivi",
               "lat": 43.5083282,
@@ -2354,7 +2354,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=7480153199936505650&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-dinner-loc-1",
+              "locationId": "9dbdf02d-5dab-43ff-b1bc-a69ad6451b7c",
               "role": "venue",
               "name": "Villa Spiza",
               "lat": 43.5095688,
@@ -2366,7 +2366,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1845954543842033946&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-dinner-loc-2",
+              "locationId": "0998071d-93f2-42c8-9ff6-e0aa2e767d2d",
               "role": "venue",
               "name": "Konoba Matejuska",
               "lat": 43.5083158,
@@ -2378,7 +2378,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=15527383090687298042&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-dinner-loc-3",
+              "locationId": "705a4636-86f6-4462-8b00-972b2a474d0e",
               "role": "venue",
               "name": "Bokeria Kitchen & Wine Bar",
               "lat": 43.5095222,
@@ -2396,8 +2396,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may17-evening",
-          "dayId": "day-2026-05-17",
+          "pointId": "a17dba25-f14d-4b75-922e-d9131cada56a",
+          "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
           "type": "activity",
           "title": "Evening Walk + Drinks",
           "startDateTime": "2026-05-17T20:30:00+02:00",
@@ -2408,7 +2408,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may17-evening-loc-0",
+              "locationId": "9a136ab4-4f18-46dd-b31a-adb4f4d6de0f",
               "role": "venue",
               "name": "Diocletian's Palace",
               "lat": 43.5083203,
@@ -2420,7 +2420,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=6396688951645372313&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-evening-loc-1",
+              "locationId": "c4f900b0-6271-4c2d-9708-3967a35fe192",
               "role": "venue",
               "name": "Riva Promenade",
               "lat": 43.5077507,
@@ -2432,7 +2432,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=1543361673087512220&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-evening-loc-2",
+              "locationId": "2bdb7626-64ea-495d-be24-22b86e419bb6",
               "role": "venue",
               "name": "Fabrique Pub",
               "lat": 43.508237699999995,
@@ -2444,7 +2444,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=13926627612906537044&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-evening-loc-3",
+              "locationId": "aa1aee98-435d-43bf-af09-3ad5821c7c46",
               "role": "venue",
               "name": "Noor Bar",
               "lat": 43.5086733,
@@ -2456,7 +2456,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=14359314930409150642&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may17-evening-loc-4",
+              "locationId": "8c7e527c-b809-43aa-8641-da1a649a916d",
               "role": "venue",
               "name": "Roof 68",
               "lat": 43.5084978,
@@ -2476,7 +2476,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-18",
+      "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
       "title": "May 18 — Plitvice Day Trip",
       "date": "2026-05-18",
       "description": "Pick up rental car at 8:00 AM (Sixt, reservation 9733419998), drive A1 north to Plitvice Lakes National Park (Entrance 1), explore the park, optional Rastoke stop on return. Car must be back by 8:00 PM.",
@@ -2484,8 +2484,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may18-breakfast",
-          "dayId": "day-2026-05-18",
+          "pointId": "48b6e05b-dff3-476a-9e7b-8ec6301d0173",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "activity",
           "title": "Breakfast at Hotel",
           "startDateTime": "2026-05-18T06:45:00+02:00",
@@ -2496,7 +2496,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may18-breakfast-loc-0",
+              "locationId": "484515ae-14ea-4ba7-8473-a57278bdfab9",
               "role": "venue",
               "name": "Heritage Hotel Slavija Split",
               "lat": 43.5080822,
@@ -2514,8 +2514,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-get-car",
-          "dayId": "day-2026-05-18",
+          "pointId": "1e347555-f42b-4183-b96f-826db56a5aad",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "travel",
           "title": "Get Rental Car",
           "startDateTime": "2026-05-18T07:30:00+02:00",
@@ -2526,7 +2526,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may18-get-car-loc-0",
+              "locationId": "cc2a8244-d8d5-4a64-9405-2c6f7167b29e",
               "role": "destination",
               "name": "Sixt Split",
               "lat": 43.506201,
@@ -2549,8 +2549,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-drive-part1",
-          "dayId": "day-2026-05-18",
+          "pointId": "0e46c2e3-541f-44f4-a73c-025bb5003529",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "travel",
           "title": "Drive: Split → Highway Stop",
           "startDateTime": "2026-05-18T08:00:00+02:00",
@@ -2571,8 +2571,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-stop1",
-          "dayId": "day-2026-05-18",
+          "pointId": "d21c9c8d-6790-4d35-860c-0d3c70d4eac3",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "activity",
           "title": "Quick Stop (Stretch + Coffee)",
           "startDateTime": "2026-05-18T09:15:00+02:00",
@@ -2588,8 +2588,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-drive-part2",
-          "dayId": "day-2026-05-18",
+          "pointId": "3e8e5ff1-be47-4e79-bfc3-c9e358be1d23",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "travel",
           "title": "Drive: Stop → Plitvice",
           "startDateTime": "2026-05-18T09:35:00+02:00",
@@ -2610,8 +2610,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-lunch",
-          "dayId": "day-2026-05-18",
+          "pointId": "59413386-b340-4426-8b29-02590d46c965",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "activity",
           "title": "Lunch Near Entrance",
           "startDateTime": "2026-05-18T11:45:00+02:00",
@@ -2622,7 +2622,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may18-lunch-loc-0",
+              "locationId": "80cea450-a392-4f93-8018-b0a41e738a54",
               "role": "venue",
               "name": "Lička kuća",
               "lat": 44.9050696,
@@ -2634,7 +2634,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=8458240048015318392&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may18-lunch-loc-1",
+              "locationId": "e081f4b8-720c-4600-8621-f913dc2d52a2",
               "role": "venue",
               "name": "Bistro Vučnica",
               "lat": 44.8751319,
@@ -2652,8 +2652,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-plitvice",
-          "dayId": "day-2026-05-18",
+          "pointId": "e7fa7d7e-5ef2-4bbe-b87d-a4ffbb28ea37",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "activity",
           "title": "Explore Plitvice Lakes",
           "startDateTime": "2026-05-18T12:30:00+02:00",
@@ -2664,7 +2664,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may18-plitvice-loc-0",
+              "locationId": "b0b6366d-0387-4f62-932b-dcd1618fc12c",
               "role": "venue",
               "name": "Plitvice Lakes National Park",
               "lat": 44.8820957,
@@ -2682,8 +2682,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-drive-back",
-          "dayId": "day-2026-05-18",
+          "pointId": "7d1e7d2b-0a8d-472e-8bb5-a6edf8786e43",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "travel",
           "title": "Drive Back + Scenic Stop",
           "startDateTime": "2026-05-18T16:30:00+02:00",
@@ -2694,7 +2694,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may18-drive-back-loc-0",
+              "locationId": "5cbe3463-9581-4a28-a34a-32b91a9dd5fe",
               "role": "destination",
               "name": "Rastoke",
               "lat": 45.1149355,
@@ -2717,8 +2717,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may18-return-car",
-          "dayId": "day-2026-05-18",
+          "pointId": "9ec368b9-ff1a-463f-9d81-53ad3da46cbc",
+          "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
           "type": "travel",
           "title": "Return Rental Car",
           "startDateTime": "2026-05-18T19:30:00+02:00",
@@ -2729,7 +2729,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may18-return-car-loc-0",
+              "locationId": "e68a5b3e-0f14-4614-bcc6-0b5b09adbde3",
               "role": "destination",
               "name": "Sixt Split",
               "lat": 43.506201,
@@ -2754,7 +2754,7 @@
       ]
     },
     {
-      "dayId": "day-2026-05-19",
+      "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
       "title": "May 19 — Split Final Day → Zurich",
       "date": "2026-05-19",
       "description": "Final Split day. Key anchors: hotel breakfast and checkout by 10:30 AM, Bell Tower + Diocletian's Palace exploration, Dvor lunch reservation at 1:30 PM, collect bags, taxi to Split Airport, flight Split → Munich → Zurich (CRFG3B)",
@@ -2762,8 +2762,8 @@
       "completed": false,
       "points": [
         {
-          "pointId": "may19-breakfast",
-          "dayId": "day-2026-05-19",
+          "pointId": "2f25cd11-5a88-4da1-903e-6db7fd167cf1",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "activity",
           "title": "Breakfast + Checkout",
           "startDateTime": "2026-05-19T08:30:00+02:00",
@@ -2774,7 +2774,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-breakfast-loc-0",
+              "locationId": "3c718d83-c15d-4e04-b122-daf3766a259b",
               "role": "venue",
               "name": "Heritage Hotel Slavija Split",
               "lat": 43.5080822,
@@ -2792,8 +2792,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may19-culture",
-          "dayId": "day-2026-05-19",
+          "pointId": "59dfcef2-8e59-4d14-995d-b14f4b09c27a",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "activity",
           "title": "Split Final Exploration",
           "startDateTime": "2026-05-19T10:30:00+02:00",
@@ -2804,7 +2804,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-culture-loc-0",
+              "locationId": "28b13c7c-54a6-4f99-a543-bd09e803caf6",
               "role": "venue",
               "name": "Cathedral of Saint Domnius Bell Tower",
               "lat": 43.507908799999996,
@@ -2816,7 +2816,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=7433837466571911031&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may19-culture-loc-1",
+              "locationId": "78ee1ef2-01f9-419c-b15e-7adb64ec8390",
               "role": "venue",
               "name": "Diocletian's Palace",
               "lat": 43.5083203,
@@ -2834,8 +2834,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may19-lunch",
-          "dayId": "day-2026-05-19",
+          "pointId": "7d2cc2dc-81a9-4dc3-b7d1-1ba4c1969062",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "activity",
           "title": "Lunch: Dvor",
           "startDateTime": "2026-05-19T13:30:00+02:00",
@@ -2846,7 +2846,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-lunch-loc-0",
+              "locationId": "b7469ae2-359d-40f8-95fd-620a79d11fcd",
               "role": "venue",
               "name": "Dvor",
               "lat": 43.5011447,
@@ -2864,8 +2864,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may19-airport",
-          "dayId": "day-2026-05-19",
+          "pointId": "782dd8c6-a06a-4d27-bafd-2765d311c2b1",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "travel",
           "title": "Travel to Airport",
           "startDateTime": "2026-05-19T15:30:00+02:00",
@@ -2876,7 +2876,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-airport-loc-0",
+              "locationId": "30142691-52ad-4387-b5d0-445c62664b33",
               "role": "destination",
               "name": "Split Airport",
               "lat": 43.5518128,
@@ -2899,8 +2899,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may19-flight1",
-          "dayId": "day-2026-05-19",
+          "pointId": "74d13439-028f-4794-bc8c-f833270c9b3d",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "travel",
           "title": "Flight: Split → Munich",
           "startDateTime": "2026-05-19T17:15:00+02:00",
@@ -2911,7 +2911,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-flight1-loc-0",
+              "locationId": "7e289c88-4b12-448b-93e9-7be657b112a8",
               "role": "origin",
               "name": "Split Airport",
               "lat": 43.5518128,
@@ -2923,7 +2923,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may19-flight1-loc-1",
+              "locationId": "e5edab60-1740-4560-86a8-5dc09817b4b6",
               "role": "destination",
               "name": "Munich Airport",
               "lat": 48.3536407,
@@ -2946,8 +2946,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may19-flight2",
-          "dayId": "day-2026-05-19",
+          "pointId": "82115a71-336b-4e0a-a9b1-28273cafb91c",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "travel",
           "title": "Flight: Munich → Zurich",
           "startDateTime": "2026-05-19T20:55:00+02:00",
@@ -2958,7 +2958,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-flight2-loc-0",
+              "locationId": "a16680b8-decd-4a96-abd6-583810ce927e",
               "role": "origin",
               "name": "Munich Airport",
               "lat": 48.3536407,
@@ -2970,7 +2970,7 @@
               "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             },
             {
-              "locationId": "may19-flight2-loc-1",
+              "locationId": "ec1c344a-277c-4ee2-a9fb-404250e48a9b",
               "role": "destination",
               "name": "Zurich Airport",
               "lat": 47.4516643,
@@ -2993,8 +2993,8 @@
           "completedDateTime": null
         },
         {
-          "pointId": "may19-hotel",
-          "dayId": "day-2026-05-19",
+          "pointId": "ad925392-472d-4eea-904c-83f136cb741b",
+          "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
           "type": "stay",
           "title": "Hotel: Zurich Airport Radisson",
           "startDateTime": "2026-05-19T22:00:00+02:00",
@@ -3005,7 +3005,7 @@
           "logoUrl": null,
           "locations": [
             {
-              "locationId": "may19-hotel-loc-0",
+              "locationId": "ef9da765-6ff4-43fb-bcf8-bd76e444ee1f",
               "role": "venue",
               "name": "Radisson Hotel Zurich Airport",
               "lat": 47.4509985,
