@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
@@ -12,6 +13,7 @@ from app.models import (
     TripDayRecord,
     TripPointRecord,
     TripRecord,
+    UserRecord,
 )
 from app.schemas import (
     LocationResponse,
@@ -26,26 +28,24 @@ from app.schemas import (
 router = APIRouter(
     prefix="/trips/{trip_id}/points",
     tags=["trip points"],
-    dependencies=[Depends(require_auth)],
 )
 
 
-def _require_trip(trip_id: str, db: Session) -> TripRecord:
-    record = db.get(TripRecord, trip_id)
-    if record is None:
+def _require_trip(trip: TripRecord | None, trip_id: str, user: UserRecord) -> TripRecord:
+    if trip is None or trip.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-    return record
+    return trip
 
 
-def _load_point_response(point: TripPointRecord, db: Session) -> TripPointResponse:
-    locations = (
-        db.query(LocationRecord)
-        .filter(LocationRecord.point_id == point.point_id)
+async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> TripPointResponse:
+    loc_result = await db.execute(
+        select(LocationRecord)
+        .where(LocationRecord.point_id == point.point_id)
         .order_by(LocationRecord.sort_order)
-        .all()
     )
-    travel = db.get(TravelDetailRecord, point.point_id)
-    stay = db.get(StayDetailRecord, point.point_id)
+    locations = loc_result.scalars().all()
+    travel = await db.get(TravelDetailRecord, point.point_id)
+    stay = await db.get(StayDetailRecord, point.point_id)
 
     travel_detail = (
         TravelDetail(
@@ -106,8 +106,8 @@ def _load_point_response(point: TripPointRecord, db: Session) -> TripPointRespon
     )
 
 
-def _replace_locations(point_id: str, locations_payload: list, db: Session) -> None:
-    db.query(LocationRecord).filter(LocationRecord.point_id == point_id).delete()
+async def _replace_locations(point_id: str, locations_payload: list, db: AsyncSession) -> None:
+    await db.execute(delete(LocationRecord).where(LocationRecord.point_id == point_id))
     for i, loc in enumerate(locations_payload):
         db.add(
             LocationRecord(
@@ -127,18 +127,18 @@ def _replace_locations(point_id: str, locations_payload: list, db: Session) -> N
         )
 
 
-def _replace_details(
+async def _replace_details(
     point_id: str,
     travel_detail,
     stay_detail,
-    db: Session,
+    db: AsyncSession,
 ) -> None:
-    existing_travel = db.get(TravelDetailRecord, point_id)
+    existing_travel = await db.get(TravelDetailRecord, point_id)
     if existing_travel:
-        db.delete(existing_travel)
-    existing_stay = db.get(StayDetailRecord, point_id)
+        await db.delete(existing_travel)
+    existing_stay = await db.get(StayDetailRecord, point_id)
     if existing_stay:
-        db.delete(existing_stay)
+        await db.delete(existing_stay)
 
     if travel_detail is not None:
         db.add(
@@ -163,38 +163,51 @@ def _replace_details(
 
 
 @router.get("", response_model=list[TripPointResponse])
-async def list_points(trip_id: str, db: Session = Depends(get_db)):
-    _require_trip(trip_id, db)
-    points = (
-        db.query(TripPointRecord)
-        .filter(TripPointRecord.trip_id == trip_id, TripPointRecord.deleted_at.is_(None))
+async def list_points(
+    trip_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
+    result = await db.execute(
+        select(TripPointRecord)
+        .where(TripPointRecord.trip_id == trip_id, TripPointRecord.deleted_at.is_(None))
         .order_by(TripPointRecord.start_date_time)
-        .all()
     )
-    return [_load_point_response(p, db) for p in points]
+    points = result.scalars().all()
+    return [await _load_point_response(p, db) for p in points]
 
 
 @router.get("/deleted", response_model=list[TripPointResponse])
-async def list_deleted_points(trip_id: str, db: Session = Depends(get_db)):
-    _require_trip(trip_id, db)
-    points = (
-        db.query(TripPointRecord)
-        .filter(
+async def list_deleted_points(
+    trip_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
+    result = await db.execute(
+        select(TripPointRecord)
+        .where(
             TripPointRecord.trip_id == trip_id,
             TripPointRecord.deleted_at.isnot(None),
         )
         .order_by(TripPointRecord.start_date_time)
-        .all()
     )
-    return [_load_point_response(p, db) for p in points]
+    points = result.scalars().all()
+    return [await _load_point_response(p, db) for p in points]
 
 
 @router.post("", response_model=TripPointResponse, status_code=status.HTTP_201_CREATED)
-async def create_point(trip_id: str, body: TripPointCreate, db: Session = Depends(get_db)):
-    _require_trip(trip_id, db)
-    if db.get(TripPointRecord, body.pointId) is not None:
+async def create_point(
+    trip_id: str,
+    body: TripPointCreate,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
+    if await db.get(TripPointRecord, body.pointId) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Point already exists")
-    day = db.get(TripDayRecord, body.dayId)
+    day = await db.get(TripDayRecord, body.dayId)
     if day is None or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
 
@@ -214,20 +227,27 @@ async def create_point(trip_id: str, body: TripPointCreate, db: Session = Depend
         completed_date_time=body.completedDateTime,
     )
     db.add(point)
-    db.flush()
-    _replace_locations(body.pointId, body.locations, db)
-    _replace_details(body.pointId, body.travelDetail, body.stayDetail, db)
-    db.commit()
-    db.refresh(point)
-    return _load_point_response(point, db)
+    await db.flush()
+    await _replace_locations(body.pointId, body.locations, db)
+    await _replace_details(body.pointId, body.travelDetail, body.stayDetail, db)
+    await db.commit()
+    await db.refresh(point)
+    return await _load_point_response(point, db)
 
 
 @router.put("/{point_id}", response_model=TripPointResponse)
-async def update_point(trip_id: str, point_id: str, body: TripPointUpdate, db: Session = Depends(get_db)):
-    point = db.get(TripPointRecord, point_id)
+async def update_point(
+    trip_id: str,
+    point_id: str,
+    body: TripPointUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    point = await db.get(TripPointRecord, point_id)
     if point is None or point.deleted_at is not None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
-    day = db.get(TripDayRecord, body.dayId)
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
+    day = await db.get(TripDayRecord, body.dayId)
     if day is None or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
 
@@ -244,18 +264,25 @@ async def update_point(trip_id: str, point_id: str, body: TripPointUpdate, db: S
     point.completed_date_time = body.completedDateTime
     point.updated_at = datetime.now(timezone.utc)
 
-    _replace_locations(point_id, body.locations, db)
-    _replace_details(point_id, body.travelDetail, body.stayDetail, db)
-    db.commit()
-    db.refresh(point)
-    return _load_point_response(point, db)
+    await _replace_locations(point_id, body.locations, db)
+    await _replace_details(point_id, body.travelDetail, body.stayDetail, db)
+    await db.commit()
+    await db.refresh(point)
+    return await _load_point_response(point, db)
 
 
 @router.patch("/{point_id}", response_model=TripPointResponse)
-async def patch_point(trip_id: str, point_id: str, body: TripPointPatch, db: Session = Depends(get_db)):
-    point = db.get(TripPointRecord, point_id)
+async def patch_point(
+    trip_id: str,
+    point_id: str,
+    body: TripPointPatch,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    point = await db.get(TripPointRecord, point_id)
     if point is None or point.deleted_at is not None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
 
     _scalar_field_map = {
         "dayId": "day_id",
@@ -275,35 +302,47 @@ async def patch_point(trip_id: str, point_id: str, body: TripPointPatch, db: Ses
             setattr(point, orm_field, getattr(body, pydantic_field))
 
     if "locations" in body.model_fields_set:
-        _replace_locations(point_id, body.locations or [], db)
+        await _replace_locations(point_id, body.locations or [], db)
     if "travelDetail" in body.model_fields_set or "stayDetail" in body.model_fields_set:
-        _replace_details(point_id, body.travelDetail, body.stayDetail, db)
+        await _replace_details(point_id, body.travelDetail, body.stayDetail, db)
 
     point.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(point)
-    return _load_point_response(point, db)
+    await db.commit()
+    await db.refresh(point)
+    return await _load_point_response(point, db)
 
 
 @router.delete("/{point_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_point(trip_id: str, point_id: str, db: Session = Depends(get_db)):
-    point = db.get(TripPointRecord, point_id)
+async def delete_point(
+    trip_id: str,
+    point_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    point = await db.get(TripPointRecord, point_id)
     if point is None or point.deleted_at is not None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
     point.deleted_at = datetime.now(timezone.utc)
     point.updated_at = datetime.now(timezone.utc)
-    db.commit()
+    await db.commit()
 
 
 @router.post("/{point_id}/restore", response_model=TripPointResponse)
-async def restore_point(trip_id: str, point_id: str, db: Session = Depends(get_db)):
-    point = db.get(TripPointRecord, point_id)
+async def restore_point(
+    trip_id: str,
+    point_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    point = await db.get(TripPointRecord, point_id)
     if point is None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
+    _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
     if point.deleted_at is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Point is not deleted")
     point.deleted_at = None
     point.updated_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(point)
-    return _load_point_response(point, db)
+    await db.commit()
+    await db.refresh(point)
+    return await _load_point_response(point, db)

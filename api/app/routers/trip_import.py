@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy import text, select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
@@ -11,50 +11,46 @@ from app.models import (
     TripDayRecord,
     TripPointRecord,
     TripRecord,
+    UserRecord,
 )
 from app.schemas import ImportResult, TripImport
 
-router = APIRouter(tags=["import"], dependencies=[Depends(require_auth)])
+router = APIRouter(tags=["import"])
 
 
 @router.post("/trip/import", response_model=ImportResult, status_code=status.HTTP_200_OK)
-def import_trip(body: TripImport, db: Session = Depends(get_db)):
+async def import_trip(
+    body: TripImport,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
     trip_id = body.tripId
 
     # ── 1. Delete all existing data for this trip (FK order) ────────────────
-    db.execute(
-        text(
-            "DELETE FROM locations"
-            " WHERE point_id IN (SELECT point_id FROM trip_points WHERE trip_id = :tid)"
-        ),
-        {"tid": trip_id},
+    point_ids_result = await db.execute(
+        select(TripPointRecord.point_id).where(TripPointRecord.trip_id == trip_id)
     )
-    db.execute(
-        text(
-            "DELETE FROM travel_details"
-            " WHERE point_id IN (SELECT point_id FROM trip_points WHERE trip_id = :tid)"
-        ),
-        {"tid": trip_id},
-    )
-    db.execute(
-        text(
-            "DELETE FROM stay_details"
-            " WHERE point_id IN (SELECT point_id FROM trip_points WHERE trip_id = :tid)"
-        ),
-        {"tid": trip_id},
-    )
-    db.execute(text("DELETE FROM trip_points WHERE trip_id = :tid"), {"tid": trip_id})
-    db.execute(text("DELETE FROM trip_days WHERE trip_id = :tid"), {"tid": trip_id})
+    point_ids = list(point_ids_result.scalars().all())
+
+    if point_ids:
+        await db.execute(delete(LocationRecord).where(LocationRecord.point_id.in_(point_ids)))
+        await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.point_id.in_(point_ids)))
+        await db.execute(delete(StayDetailRecord).where(StayDetailRecord.point_id.in_(point_ids)))
+
+    await db.execute(delete(TripPointRecord).where(TripPointRecord.trip_id == trip_id))
+    await db.execute(delete(TripDayRecord).where(TripDayRecord.trip_id == trip_id))
 
     # ── 2. Upsert trip header ────────────────────────────────────────────────
-    trip = db.get(TripRecord, trip_id)
+    trip = await db.get(TripRecord, trip_id)
     if trip is None:
-        trip = TripRecord(trip_id=trip_id)
+        trip = TripRecord(trip_id=trip_id, user_id=str(user.id))
         db.add(trip)
+    elif trip.user_id != str(user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     trip.trip_name = body.tripName
     trip.start_date = body.startDate
     trip.end_date = body.endDate
-    db.flush()
+    await db.flush()
 
     # ── 3. Insert days, points, and all sub-records ──────────────────────────
     days_inserted = 0
@@ -71,7 +67,7 @@ def import_trip(body: TripImport, db: Session = Depends(get_db)):
             completed=day_data.completed,
         )
         db.add(day)
-        db.flush()
+        await db.flush()
         days_inserted += 1
 
         for pt in day_data.points:
@@ -91,7 +87,7 @@ def import_trip(body: TripImport, db: Session = Depends(get_db)):
                 completed_date_time=pt.completedDateTime,
             )
             db.add(point)
-            db.flush()
+            await db.flush()
             points_inserted += 1
 
             for loc in pt.locations:
@@ -133,7 +129,7 @@ def import_trip(body: TripImport, db: Session = Depends(get_db)):
                     )
                 )
 
-    db.commit()
+    await db.commit()
 
     return ImportResult(
         status="ok",

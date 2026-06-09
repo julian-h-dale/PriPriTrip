@@ -7,10 +7,6 @@ from app.enums import LocationRole, PointType, StayType, TravelMode
 
 # ── Auth ────────────────────────────────────────────────────────────────────
 
-class AuthRequest(BaseModel):
-    password: str
-
-
 class AuthResponse(BaseModel):
     token: str
     mapsApiKey: str

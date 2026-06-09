@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import NewTripPage from './pages/NewTripPage';
+import RegisterPage from './pages/RegisterPage';
 import TripsPage from './pages/TripsPage';
 import { selectIsAuthenticated } from './store/authSlice';
 
@@ -24,6 +25,7 @@ export default function App() {
       <ScrollToTop />
       <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route
         path="/"
         element={

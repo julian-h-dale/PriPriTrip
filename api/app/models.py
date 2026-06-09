@@ -1,3 +1,4 @@
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import (
     Boolean,
     Column,
@@ -12,10 +13,22 @@ from sqlalchemy import (
 from app.database import Base
 
 
+class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
+    """
+    Extends the fastapi-users base table (id, email, hashed_password,
+    is_active, is_superuser, is_verified) with an application-level name.
+    """
+
+    __tablename__ = "users"
+
+    name = Column(String, nullable=False, default="")
+
+
 class TripRecord(Base):
     __tablename__ = "trips"
 
     trip_id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     trip_name = Column(String, nullable=False)
     start_date = Column(String, nullable=False)
     end_date = Column(String, nullable=False)

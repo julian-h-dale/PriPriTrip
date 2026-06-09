@@ -2,7 +2,8 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
@@ -13,6 +14,7 @@ from app.models import (
     TripDayRecord,
     TripPointRecord,
     TripRecord,
+    UserRecord,
 )
 from app.schemas import (
     LocationResponse,
@@ -25,7 +27,7 @@ from app.schemas import (
     TripResponse,
 )
 
-router = APIRouter(prefix="/trips", tags=["trips"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/trips", tags=["trips"])
 
 
 def _point_to_response(
@@ -89,8 +91,16 @@ def _point_to_response(
 
 
 @router.get("", response_model=list[TripListItem])
-async def list_trips(db: Session = Depends(get_db)):
-    records = db.query(TripRecord).order_by(TripRecord.start_date).all()
+async def list_trips(
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    result = await db.execute(
+        select(TripRecord)
+        .where(TripRecord.user_id == str(user.id))
+        .order_by(TripRecord.start_date)
+    )
+    records = result.scalars().all()
     return [
         TripListItem(
             tripId=r.trip_id,
@@ -103,42 +113,55 @@ async def list_trips(db: Session = Depends(get_db)):
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
-async def get_trip(trip_id: str, db: Session = Depends(get_db)):
-    record = db.get(TripRecord, trip_id)
-    if record is None:
+async def get_trip(
+    trip_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    record = await db.get(TripRecord, trip_id)
+    if record is None or record.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
-    days = (
-        db.query(TripDayRecord)
-        .filter(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
+    days_result = await db.execute(
+        select(TripDayRecord)
+        .where(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
-        .all()
     )
-
+    days = days_result.scalars().all()
     day_ids = [d.day_id for d in days]
 
-    points = (
-        db.query(TripPointRecord)
-        .filter(TripPointRecord.day_id.in_(day_ids), TripPointRecord.deleted_at.is_(None))
-        .order_by(TripPointRecord.start_date_time)
-        .all()
-        if day_ids
-        else []
-    )
-
-    point_ids = [p.point_id for p in points]
-
+    points = []
     locs_by_point: dict = {}
     travel_by_point: dict = {}
     stay_by_point: dict = {}
 
-    if point_ids:
-        for loc in db.query(LocationRecord).filter(LocationRecord.point_id.in_(point_ids)).all():
-            locs_by_point.setdefault(loc.point_id, []).append(loc)
-        for t in db.query(TravelDetailRecord).filter(TravelDetailRecord.point_id.in_(point_ids)).all():
-            travel_by_point[t.point_id] = t
-        for s in db.query(StayDetailRecord).filter(StayDetailRecord.point_id.in_(point_ids)).all():
-            stay_by_point[s.point_id] = s
+    if day_ids:
+        pts_result = await db.execute(
+            select(TripPointRecord)
+            .where(TripPointRecord.day_id.in_(day_ids), TripPointRecord.deleted_at.is_(None))
+            .order_by(TripPointRecord.start_date_time)
+        )
+        points = pts_result.scalars().all()
+        point_ids = [p.point_id for p in points]
+
+        if point_ids:
+            loc_result = await db.execute(
+                select(LocationRecord).where(LocationRecord.point_id.in_(point_ids))
+            )
+            for loc in loc_result.scalars().all():
+                locs_by_point.setdefault(loc.point_id, []).append(loc)
+
+            travel_result = await db.execute(
+                select(TravelDetailRecord).where(TravelDetailRecord.point_id.in_(point_ids))
+            )
+            for t in travel_result.scalars().all():
+                travel_by_point[t.point_id] = t
+
+            stay_result = await db.execute(
+                select(StayDetailRecord).where(StayDetailRecord.point_id.in_(point_ids))
+            )
+            for s in stay_result.scalars().all():
+                stay_by_point[s.point_id] = s
 
     points_by_day: dict = {}
     for p in points:
@@ -179,25 +202,34 @@ async def get_trip(trip_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("", status_code=status.HTTP_200_OK)
-async def upsert_trip(body: TripHeader, db: Session = Depends(get_db)):
+async def upsert_trip(
+    body: TripHeader,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
     try:
-        record = db.get(TripRecord, body.tripId)
+        record = await db.get(TripRecord, body.tripId)
         if record is None:
             db.add(
                 TripRecord(
                     trip_id=body.tripId,
+                    user_id=str(user.id),
                     trip_name=body.tripName,
                     start_date=body.startDate,
                     end_date=body.endDate,
                 )
             )
         else:
+            if record.user_id != str(user.id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
             record.trip_name = body.tripName
             record.start_date = body.startDate
             record.end_date = body.endDate
             record.updated_at = datetime.now(timezone.utc)
-        db.commit()
+        await db.commit()
         return {"status": "ok"}
+    except HTTPException:
+        raise
     except Exception as exc:
         logging.error("POST /trips error: %s", exc)
         raise HTTPException(
@@ -206,22 +238,27 @@ async def upsert_trip(body: TripHeader, db: Session = Depends(get_db)):
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_trip(trip_id: str, db: Session = Depends(get_db)):
-    trip = db.get(TripRecord, trip_id)
-    if trip is None:
+async def delete_trip(
+    trip_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    trip = await db.get(TripRecord, trip_id)
+    if trip is None or trip.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
     # Delete in FK order: locations → travel/stay details → points → days → trip
-    point_ids = [
-        p.point_id
-        for p in db.query(TripPointRecord).filter(TripPointRecord.trip_id == trip_id).all()
-    ]
-    if point_ids:
-        db.query(LocationRecord).filter(LocationRecord.point_id.in_(point_ids)).delete(synchronize_session=False)
-        db.query(TravelDetailRecord).filter(TravelDetailRecord.point_id.in_(point_ids)).delete(synchronize_session=False)
-        db.query(StayDetailRecord).filter(StayDetailRecord.point_id.in_(point_ids)).delete(synchronize_session=False)
-        db.query(TripPointRecord).filter(TripPointRecord.trip_id == trip_id).delete(synchronize_session=False)
+    point_ids_result = await db.execute(
+        select(TripPointRecord.point_id).where(TripPointRecord.trip_id == trip_id)
+    )
+    point_ids = list(point_ids_result.scalars().all())
 
-    db.query(TripDayRecord).filter(TripDayRecord.trip_id == trip_id).delete(synchronize_session=False)
-    db.delete(trip)
-    db.commit()
+    if point_ids:
+        await db.execute(delete(LocationRecord).where(LocationRecord.point_id.in_(point_ids)))
+        await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.point_id.in_(point_ids)))
+        await db.execute(delete(StayDetailRecord).where(StayDetailRecord.point_id.in_(point_ids)))
+
+    await db.execute(delete(TripPointRecord).where(TripPointRecord.trip_id == trip_id))
+    await db.execute(delete(TripDayRecord).where(TripDayRecord.trip_id == trip_id))
+    await db.delete(trip)
+    await db.commit()
