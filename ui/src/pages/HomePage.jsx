@@ -34,10 +34,7 @@ export default function HomePage() {
 
   const [expandedDayId, setExpandedDayId] = useState(null);
   const [mapOpen, setMapOpen] = useState(false);
-  const tripLocations = useMemo(
-    () => trip?.days?.flatMap((day) => day.points?.flatMap((point) => point.locations ?? []) ?? []) ?? [],
-    [trip]
-  );
+  const tripDays = useMemo(() => trip?.days ?? [], [trip]);
 
   useEffect(() => {
     if (tripId) dispatch(fetchTrip(tripId));
@@ -108,7 +105,7 @@ export default function HomePage() {
         open={mapOpen}
         onClose={() => setMapOpen(false)}
         mapsApiKey={mapsApiKey}
-        locations={tripLocations}
+        days={tripDays}
       />
     </AppLayout>
   );

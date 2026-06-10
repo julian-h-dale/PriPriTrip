@@ -4,15 +4,28 @@ import {
   Box,
   Drawer,
   IconButton,
+  Link,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import {
+  APIProvider,
+  AdvancedMarker,
+  InfoWindow,
+  Map,
+  useMap,
+  useMapsLibrary,
+} from '@vis.gl/react-google-maps';
+import dayjs from '../../utils/dayjs';
 
 const WORLD_CENTER = { lat: 20, lng: 0 };
 const WORLD_ZOOM = 2;
+const DETAIL_ZOOM = 15;
 
 function asNumber(value) {
   const n = Number(value);
@@ -34,6 +47,12 @@ function labelFromLocation(location) {
   return location?.name?.trim() || location?.fullAddress?.trim() || 'Location';
 }
 
+function formatDayLabel(dateStr) {
+  return dayjs(dateStr).format('MMM D');
+}
+
+// ── Search autocomplete (search mode only) ────────────────────────────────────
+
 function SearchAutocomplete({ onSelect }) {
   const places = useMapsLibrary('places');
   const inputRef = useRef(null);
@@ -52,6 +71,8 @@ function SearchAutocomplete({ onSelect }) {
         key: place.place_id ?? `${loc.lat()}_${loc.lng()}`,
         label: place.name || place.formatted_address || 'Selected location',
         position: { lat: loc.lat(), lng: loc.lng() },
+        role: null,
+        googleMapsUri: null,
       });
     });
 
@@ -73,27 +94,47 @@ function SearchAutocomplete({ onSelect }) {
   );
 }
 
-function TripMapContent({ open, locations, mapId }) {
-  const [resolvedLocations, setResolvedLocations] = useState([]);
+// ── Map controller — imperative map actions ────────────────────────────────────
+
+function MapController({ flyTo }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !flyTo) return;
+    map.panTo(flyTo);
+    map.setZoom(DETAIL_ZOOM);
+  }, [map, flyTo]);
+  return null;
+}
+
+// ── Main map content ───────────────────────────────────────────────────────────
+
+function TripMapContent({ open, days, mapId }) {
+  const [allMarkers, setAllMarkers] = useState([]);
+  const [selectedDayId, setSelectedDayId] = useState('all');
+  const [activeMarker, setActiveMarker] = useState(null); // { key, position, label, role, googleMapsUri }
+  const [flyTo, setFlyTo] = useState(null);
   const [selectedSearchLocation, setSelectedSearchLocation] = useState(null);
   const geocoding = useMapsLibrary('geocoding');
-  const hasInputLocations = useMemo(
-    () => locations.some((loc) => resolveLatLng(loc) || placeIdFromLocation(loc)),
-    [locations]
+
+  // Flatten all locations from all days, preserving day and role context
+  const allLocations = useMemo(() => {
+    return days.flatMap((day) =>
+      (day.points ?? []).flatMap((point) =>
+        (point.locations ?? []).map((loc) => ({
+          ...loc,
+          dayId: day.dayId,
+          dayDate: day.date,
+        }))
+      )
+    );
+  }, [days]);
+
+  const hasInputLocations = allLocations.some(
+    (loc) => resolveLatLng(loc) || placeIdFromLocation(loc)
   );
   const mode = hasInputLocations ? 'locations' : 'search';
-  const markers = mode === 'locations'
-    ? resolvedLocations
-    : selectedSearchLocation
-      ? [selectedSearchLocation]
-      : [];
-  const center = markers[0]?.position ?? WORLD_CENTER;
 
-  useEffect(() => {
-    if (!open || mode !== 'search') return;
-    setSelectedSearchLocation(null);
-  }, [mode, open]);
-
+  // Geocode all locations when drawer opens
   useEffect(() => {
     if (!open || mode !== 'locations' || !geocoding) return undefined;
 
@@ -112,66 +153,146 @@ function TripMapContent({ open, locations, mapId }) {
         });
       });
 
-    const resolveMarkers = async () => {
-      const values = await Promise.all(
-        locations.map(async (loc, index) => {
+    const resolveAll = async () => {
+      const resolved = await Promise.all(
+        allLocations.map(async (loc, index) => {
           const latLng = resolveLatLng(loc);
-          if (latLng) {
-            return {
-              key: loc.locationId ?? `location_${index}`,
-              label: labelFromLocation(loc),
-              position: latLng,
-            };
-          }
+          const position = latLng ?? (() => {
+            const placeId = placeIdFromLocation(loc);
+            if (!placeId) return null;
+            return geocodeByPlaceId(placeId);
+          })();
 
-          const placeId = placeIdFromLocation(loc);
-          if (!placeId) return null;
-          const geocoded = await geocodeByPlaceId(placeId);
-          if (!geocoded) return null;
+          const finalPos = latLng ?? (placeIdFromLocation(loc) ? await geocodeByPlaceId(placeIdFromLocation(loc)) : null);
+          if (!finalPos) return null;
 
           return {
-            key: loc.locationId ?? placeId,
+            key: loc.locationId ?? `loc_${index}`,
             label: labelFromLocation(loc),
-            position: geocoded,
+            position: finalPos,
+            role: loc.role ?? null,
+            googleMapsUri: loc.googleMapsUri ?? null,
+            dayId: loc.dayId,
           };
         })
       );
 
-      if (!cancelled) setResolvedLocations(values.filter(Boolean));
+      if (!cancelled) setAllMarkers(resolved.filter(Boolean));
     };
 
-    resolveMarkers();
+    resolveAll();
     return () => { cancelled = true; };
-  }, [geocoding, locations, mode, open]);
+  }, [geocoding, allLocations, mode, open]);
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setSelectedDayId('all');
+      setActiveMarker(null);
+      setFlyTo(null);
+      setSelectedSearchLocation(null);
+    }
+  }, [open]);
+
+  // Filtered markers based on day selection
+  const markers = useMemo(() => {
+    if (mode === 'search') {
+      return selectedSearchLocation ? [selectedSearchLocation] : [];
+    }
+    if (selectedDayId === 'all') return allMarkers;
+    return allMarkers.filter((m) => m.dayId === selectedDayId);
+  }, [mode, allMarkers, selectedDayId, selectedSearchLocation]);
+
+  const handleMarkerClick = (marker) => {
+    setActiveMarker(marker);
+    setFlyTo({ ...marker.position, _t: Date.now() }); // _t forces effect re-run for same position
+  };
+
+  const ROLE_LABELS = {
+    origin: 'Origin',
+    destination: 'Destination',
+    waypoint: 'Waypoint',
+    venue: 'Venue',
+  };
 
   return (
     <>
+      {/* Toolbar */}
       <Box sx={{ p: 2, pb: 1 }}>
         {mode === 'search' ? (
-          <SearchAutocomplete onSelect={setSelectedSearchLocation} />
+          <SearchAutocomplete onSelect={(loc) => { setSelectedSearchLocation(loc); setFlyTo({ ...loc.position, _t: Date.now() }); }} />
         ) : (
-          <Typography variant="body2" color="text.secondary">
-            {markers.length} location{markers.length === 1 ? '' : 's'} on map
-          </Typography>
+          <Select
+            size="small"
+            fullWidth
+            value={selectedDayId}
+            onChange={(e) => {
+              setSelectedDayId(e.target.value);
+              setActiveMarker(null);
+            }}
+          >
+            <MenuItem value="all">All Days</MenuItem>
+            {days.map((day) => (
+              <MenuItem key={day.dayId} value={day.dayId}>
+                {formatDayLabel(day.date)}
+              </MenuItem>
+            ))}
+          </Select>
         )}
       </Box>
 
+      {/* Map */}
       <Box sx={{ flex: 1 }}>
         <Map
           defaultZoom={WORLD_ZOOM}
-          center={center}
+          defaultCenter={WORLD_CENTER}
           gestureHandling="greedy"
-          disableDefaultUI
+          disableDefaultUI={false}
           mapId={mapId}
           style={{ width: '100%', height: '100%' }}
+          onClick={() => setActiveMarker(null)}
         >
+          <MapController flyTo={flyTo} />
+
           {markers.map((marker) => (
             <AdvancedMarker
               key={marker.key}
               position={marker.position}
               title={marker.label}
+              onClick={() => handleMarkerClick(marker)}
             />
           ))}
+
+          {activeMarker && (
+            <InfoWindow
+              position={activeMarker.position}
+              onCloseClick={() => setActiveMarker(null)}
+              headerDisabled
+            >
+              <Stack spacing={0.5} sx={{ minWidth: 160, maxWidth: 240, p: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                  {activeMarker.label}
+                </Typography>
+                {activeMarker.role && (
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                    {ROLE_LABELS[activeMarker.role] ?? activeMarker.role}
+                  </Typography>
+                )}
+                {activeMarker.googleMapsUri && (
+                  <Link
+                    href={activeMarker.googleMapsUri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="caption"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}
+                  >
+                    Open in Google Maps
+                    <OpenInNewIcon sx={{ fontSize: 12 }} />
+                  </Link>
+                )}
+              </Stack>
+            </InfoWindow>
+          )}
         </Map>
       </Box>
     </>
@@ -183,13 +304,13 @@ export default function TripMapModal({
   onClose,
   mapsApiKey,
   mapsMapId = 'DEMO_MAP_ID',
-  locations = [],
+  days = [],
 }) {
-  const hasInputLocations = useMemo(
-    () => locations.some((loc) => resolveLatLng(loc) || placeIdFromLocation(loc)),
-    [locations]
+  const hasInputLocations = days.some((day) =>
+    (day.points ?? []).some((point) =>
+      (point.locations ?? []).some((loc) => resolveLatLng(loc) || placeIdFromLocation(loc))
+    )
   );
-  const mode = hasInputLocations ? 'locations' : 'search';
 
   return (
     <Drawer
@@ -221,12 +342,7 @@ export default function TripMapModal({
           gap: 1,
         }}
       >
-        <Stack spacing={0.25}>
-          <Typography variant="h6">Map View</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {mode === 'locations' ? 'Showing trip locations' : 'Search for a location'}
-          </Typography>
-        </Stack>
+        <Typography variant="h6">Map View</Typography>
         <IconButton aria-label="Close map view" onClick={onClose}>
           <CloseIcon />
         </IconButton>
@@ -234,7 +350,7 @@ export default function TripMapModal({
 
       {mapsApiKey ? (
         <APIProvider apiKey={mapsApiKey} libraries={['places', 'geocoding']}>
-          <TripMapContent open={open} locations={locations} mapId={mapsMapId} />
+          <TripMapContent open={open} days={days} mapId={mapsMapId} />
         </APIProvider>
       ) : (
         <Box sx={{ p: 2 }}>
