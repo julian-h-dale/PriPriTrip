@@ -1,10 +1,10 @@
 name: Deploy Static Web App
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'ui/**'
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'ui/**'
   workflow_dispatch:
 
 jobs:
