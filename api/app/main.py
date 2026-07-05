@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import get_db
-from app.routers import trip, trip_days, trip_import, trip_points
+from app.routers import trip, trip_ai_import, trip_days, trip_import, trip_points
 from app.schemas import AuthResponse
 from app.users import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, get_user_manager
 
@@ -112,6 +112,7 @@ def create_app() -> FastAPI:
     application.include_router(trip_days.router)
     application.include_router(trip_points.router)
     application.include_router(trip_import.router)
+    application.include_router(trip_ai_import.router)
 
     @application.get("/health", tags=["meta"])
     async def health():

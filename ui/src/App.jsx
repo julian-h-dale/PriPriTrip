@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import HomePage from './pages/HomePage';
+import ImportTripPage from './pages/ImportTripPage';
 import LoginPage from './pages/LoginPage';
 import NewTripPage from './pages/NewTripPage';
 import RegisterPage from './pages/RegisterPage';
@@ -47,6 +48,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <NewTripPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/import-trip"
+        element={
+          <ProtectedRoute>
+            <ImportTripPage />
           </ProtectedRoute>
         }
       />

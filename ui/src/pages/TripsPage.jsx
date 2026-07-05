@@ -12,6 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import dayjs from 'dayjs';
 import {
   fetchTrips,
@@ -43,9 +44,14 @@ export default function TripsPage() {
     <AppLayout
       title="PriPriTrip"
       actions={
-        <IconButton color="inherit" edge="end" onClick={() => navigate('/new-trip')} aria-label="New trip">
-          <AddIcon />
-        </IconButton>
+        <>
+          <IconButton color="inherit" onClick={() => navigate('/import-trip')} aria-label="Import trip from file">
+            <UploadFileIcon />
+          </IconButton>
+          <IconButton color="inherit" edge="end" onClick={() => navigate('/new-trip')} aria-label="New trip">
+            <AddIcon />
+          </IconButton>
+        </>
       }
     >
       <Container maxWidth="sm" sx={{ pt: 3, pb: 4 }}>
