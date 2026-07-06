@@ -18,9 +18,10 @@ import {
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DescriptionIcon from '@mui/icons-material/Description';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import dayjs from 'dayjs';
 import AppLayout from '../components/AppLayout';
-import { aiImportDocument, saveImportedTrip } from '../api/tripImportService';
+import { aiImportDocument, enhanceTrip, saveImportedTrip } from '../api/tripImportService';
 import { fetchTrips } from '../store/tripSlice';
 
 const ACCEPT = '.xlsx,.pdf,.docx';
@@ -35,16 +36,18 @@ export default function ImportTripPage() {
   const inputRef = useRef(null);
 
   const [fileName, setFileName] = useState(null);
-  const [status, setStatus] = useState('idle'); // idle | analyzing | review | saving
+  const [status, setStatus] = useState('idle'); // idle | analyzing | review | enhancing | saving
   const [draft, setDraft] = useState(null);
+  const [enhanced, setEnhanced] = useState(false);
   const [error, setError] = useState(null);
 
-  const busy = status === 'analyzing' || status === 'saving';
+  const busy = status === 'analyzing' || status === 'saving' || status === 'enhancing';
 
   async function handleFile(file) {
     if (!file) return;
     setError(null);
     setDraft(null);
+    setEnhanced(false);
     setFileName(file.name);
     setStatus('analyzing');
     try {
@@ -54,6 +57,21 @@ export default function ImportTripPage() {
     } catch (err) {
       setError(err?.response?.data?.detail ?? 'Could not analyze the document. Please try again.');
       setStatus('idle');
+    }
+  }
+
+  async function handleEnhance() {
+    if (!draft) return;
+    setStatus('enhancing');
+    setError(null);
+    try {
+      const result = await enhanceTrip(draft);
+      setDraft(result);
+      setEnhanced(true);
+    } catch (err) {
+      setError(err?.response?.data?.detail ?? 'Could not enhance the trip. Please try again.');
+    } finally {
+      setStatus('review');
     }
   }
 
@@ -74,6 +92,7 @@ export default function ImportTripPage() {
   function handleReset() {
     setDraft(null);
     setFileName(null);
+    setEnhanced(false);
     setError(null);
     setStatus('idle');
   }
@@ -182,6 +201,15 @@ export default function ImportTripPage() {
                 Start over
               </Button>
               <Button
+                variant="outlined"
+                fullWidth
+                onClick={handleEnhance}
+                disabled={busy}
+                startIcon={status === 'enhancing' ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
+              >
+                {status === 'enhancing' ? 'Enhancing…' : enhanced ? 'Enhance again' : 'Enhance'}
+              </Button>
+              <Button
                 variant="contained"
                 fullWidth
                 onClick={handleSave}
@@ -192,7 +220,9 @@ export default function ImportTripPage() {
               </Button>
             </Stack>
             <Typography variant="caption" color="text.secondary" textAlign="center">
-              You can fine-tune every detail with the editing forms after saving.
+              {enhanced
+                ? 'Descriptions enhanced. You can fine-tune every detail with the editing forms after saving.'
+                : 'Optionally enhance to add vivid day summaries. You can also fine-tune every detail after saving.'}
             </Typography>
           </Stack>
         )}

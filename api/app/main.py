@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,18 @@ from app.users import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_us
 
 
 def create_app() -> FastAPI:
+    # Ensure our app.* loggers emit at INFO and reach a handler even under
+    # uvicorn (which does not configure the root logger).
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(os.environ.get("APP_LOG_LEVEL", "INFO").upper())
+    if not app_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        )
+        app_logger.addHandler(handler)
+        app_logger.propagate = False
+
     application = FastAPI(title="PriPriTrip API")
 
     application.add_middleware(

@@ -3,6 +3,7 @@ import client from './client';
 /**
  * Upload an itinerary document (.xlsx/.pdf/.docx) and get back a draft trip
  * (TripImport shape) produced by the AI. Nothing is persisted server-side yet.
+ * This runs the structure pass only — call enhanceTrip separately to enrich it.
  */
 export async function aiImportDocument(file) {
   const form = new FormData();
@@ -10,6 +11,15 @@ export async function aiImportDocument(file) {
   const { data } = await client.post('/trip/ai-import', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return data;
+}
+
+/**
+ * Run the AI enhance pass on a draft trip: expands day narratives and adds
+ * concise point/location descriptions. IDs and factual fields are preserved.
+ */
+export async function enhanceTrip(draft) {
+  const { data } = await client.post('/trip/ai-enhance', draft);
   return data;
 }
 
