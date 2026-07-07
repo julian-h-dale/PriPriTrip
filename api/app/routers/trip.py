@@ -41,6 +41,9 @@ def _point_to_response(
     travel_detail = None
     if travel:
         travel_detail = TravelDetail(
+            travelDetailId=travel.travel_detail_id,
+            tripId=travel.trip_id,
+            pointId=travel.point_id,
             mode=travel.mode,
             operator=travel.operator,
             vehicleNumber=travel.vehicle_number,
@@ -49,6 +52,9 @@ def _point_to_response(
     stay_detail = None
     if stay:
         stay_detail = StayDetail(
+            stayDetailId=stay.stay_detail_id,
+            tripId=stay.trip_id,
+            pointId=stay.point_id,
             stayType=stay.stay_type,
             checkInTime=stay.check_in_time,
             checkOutTime=stay.check_out_time,

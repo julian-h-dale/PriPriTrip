@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
@@ -44,11 +45,22 @@ async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> Trip
         .order_by(LocationRecord.sort_order)
     )
     locations = loc_result.scalars().all()
-    travel = await db.get(TravelDetailRecord, point.point_id)
-    stay = await db.get(StayDetailRecord, point.point_id)
+    travel = (
+        await db.execute(
+            select(TravelDetailRecord).where(TravelDetailRecord.point_id == point.point_id)
+        )
+    ).scalar_one_or_none()
+    stay = (
+        await db.execute(
+            select(StayDetailRecord).where(StayDetailRecord.point_id == point.point_id)
+        )
+    ).scalar_one_or_none()
 
     travel_detail = (
         TravelDetail(
+            travelDetailId=travel.travel_detail_id,
+            tripId=travel.trip_id,
+            pointId=travel.point_id,
             mode=travel.mode,
             operator=travel.operator,
             vehicleNumber=travel.vehicle_number,
@@ -59,6 +71,9 @@ async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> Trip
     )
     stay_detail = (
         StayDetail(
+            stayDetailId=stay.stay_detail_id,
+            tripId=stay.trip_id,
+            pointId=stay.point_id,
             stayType=stay.stay_type,
             checkInTime=stay.check_in_time,
             checkOutTime=stay.check_out_time,
@@ -129,20 +144,38 @@ async def _replace_locations(point_id: str, locations_payload: list, db: AsyncSe
 
 async def _replace_details(
     point_id: str,
+    trip_id: str,
     travel_detail,
     stay_detail,
     db: AsyncSession,
 ) -> None:
-    existing_travel = await db.get(TravelDetailRecord, point_id)
+    # Preserve existing detail IDs across point saves so standalone detail
+    # references stay stable.
+    existing_travel = (
+        await db.execute(
+            select(TravelDetailRecord).where(TravelDetailRecord.point_id == point_id)
+        )
+    ).scalar_one_or_none()
+    existing_stay = (
+        await db.execute(
+            select(StayDetailRecord).where(StayDetailRecord.point_id == point_id)
+        )
+    ).scalar_one_or_none()
+
+    travel_id = existing_travel.travel_detail_id if existing_travel else str(uuid.uuid4())
+    stay_id = existing_stay.stay_detail_id if existing_stay else str(uuid.uuid4())
+
     if existing_travel:
         await db.delete(existing_travel)
-    existing_stay = await db.get(StayDetailRecord, point_id)
     if existing_stay:
         await db.delete(existing_stay)
+    await db.flush()
 
     if travel_detail is not None:
         db.add(
             TravelDetailRecord(
+                travel_detail_id=travel_id,
+                trip_id=trip_id,
                 point_id=point_id,
                 mode=travel_detail.mode,
                 operator=travel_detail.operator,
@@ -153,6 +186,8 @@ async def _replace_details(
     if stay_detail is not None:
         db.add(
             StayDetailRecord(
+                stay_detail_id=stay_id,
+                trip_id=trip_id,
                 point_id=point_id,
                 stay_type=stay_detail.stayType,
                 check_in_time=stay_detail.checkInTime,
@@ -229,7 +264,7 @@ async def create_point(
     db.add(point)
     await db.flush()
     await _replace_locations(body.pointId, body.locations, db)
-    await _replace_details(body.pointId, body.travelDetail, body.stayDetail, db)
+    await _replace_details(body.pointId, trip_id, body.travelDetail, body.stayDetail, db)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)
@@ -265,7 +300,7 @@ async def update_point(
     point.updated_at = datetime.now(timezone.utc)
 
     await _replace_locations(point_id, body.locations, db)
-    await _replace_details(point_id, body.travelDetail, body.stayDetail, db)
+    await _replace_details(point_id, trip_id, body.travelDetail, body.stayDetail, db)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)
@@ -304,7 +339,7 @@ async def patch_point(
     if "locations" in body.model_fields_set:
         await _replace_locations(point_id, body.locations or [], db)
     if "travelDetail" in body.model_fields_set or "stayDetail" in body.model_fields_set:
-        await _replace_details(point_id, body.travelDetail, body.stayDetail, db)
+        await _replace_details(point_id, trip_id, body.travelDetail, body.stayDetail, db)
 
     point.updated_at = datetime.now(timezone.utc)
     await db.commit()

@@ -58,6 +58,9 @@ class LocationResponse(BaseModel):
 # ── Type-specific details ────────────────────────────────────────────────────
 
 class TravelDetail(BaseModel):
+    travelDetailId: str = Field(default_factory=_uuid)
+    tripId: Optional[str] = None
+    pointId: Optional[str] = None
     mode: TravelMode
     operator: Optional[str] = None
     vehicleNumber: Optional[str] = None
@@ -65,7 +68,24 @@ class TravelDetail(BaseModel):
 
 
 class StayDetail(BaseModel):
+    stayDetailId: str = Field(default_factory=_uuid)
+    tripId: Optional[str] = None
+    pointId: Optional[str] = None
     stayType: StayType
+    checkInTime: Optional[str] = None
+    checkOutTime: Optional[str] = None
+    roomType: Optional[str] = None
+
+
+class TravelDetailPatch(BaseModel):
+    mode: Optional[TravelMode] = None
+    operator: Optional[str] = None
+    vehicleNumber: Optional[str] = None
+    cabinClass: Optional[str] = None
+
+
+class StayDetailPatch(BaseModel):
+    stayType: Optional[StayType] = None
     checkInTime: Optional[str] = None
     checkOutTime: Optional[str] = None
     roomType: Optional[str] = None

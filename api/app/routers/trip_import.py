@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 
 from app.auth import require_auth
 from app.database import get_db
@@ -110,6 +111,8 @@ async def import_trip(
             if pt.travelDetail is not None:
                 db.add(
                     TravelDetailRecord(
+                        travel_detail_id=str(uuid.uuid4()),
+                        trip_id=trip_id,
                         point_id=pt.pointId,
                         mode=pt.travelDetail.mode,
                         operator=pt.travelDetail.operator,
@@ -121,6 +124,8 @@ async def import_trip(
             if pt.stayDetail is not None:
                 db.add(
                     StayDetailRecord(
+                        stay_detail_id=str(uuid.uuid4()),
+                        trip_id=trip_id,
                         point_id=pt.pointId,
                         stay_type=pt.stayDetail.stayType,
                         check_in_time=pt.stayDetail.checkInTime,

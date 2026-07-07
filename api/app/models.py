@@ -93,7 +93,14 @@ class LocationRecord(Base):
 class TravelDetailRecord(Base):
     __tablename__ = "travel_details"
 
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
+    travel_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
+    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
+    point_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("trip_points.point_id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
     mode = Column(String, nullable=False)
     operator = Column(String, nullable=True)
     vehicle_number = Column(String, nullable=True)
@@ -103,7 +110,14 @@ class TravelDetailRecord(Base):
 class StayDetailRecord(Base):
     __tablename__ = "stay_details"
 
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
+    stay_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
+    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
+    point_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("trip_points.point_id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
     stay_type = Column(String, nullable=False)
     check_in_time = Column(String, nullable=True)
     check_out_time = Column(String, nullable=True)
