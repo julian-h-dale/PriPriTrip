@@ -3,132 +3,852 @@
   "tripName": "Switzerland & Croatia Honeymoon",
   "startDate": "2026-05-10",
   "endDate": "2026-05-20",
+  "stays": [
+    {
+      "stayDetailId": "c1404396-9405-466d-8729-fd4ad8747869",
+      "name": "Arrive: Hotel Goldener Schl\u00fcssel",
+      "stayType": "hotel",
+      "checkIn": "2026-05-11T13:45:00+02:00",
+      "checkOut": "2026-05-11T14:15:00+02:00",
+      "roomType": null,
+      "confirmationNumber": "58204SG008394",
+      "description": "Walk or take a short taxi from Bern station depending on energy. Check in if room is ready \u2014 if not, drop bags and keep the afternoon easy. The hotel is in Bern Old Town, exactly where you want to be.\n\n**Confirmation:** 58204SG008394 | **Address:** Rathausgasse 72, 3011 Bern, Switzerland\n\nNearby within easy walking distance: Zytglogge clock tower, Kramgasse (main Old Town street), Bern arcades, Aare River viewpoints.",
+      "locations": [
+        {
+          "locationId": "2fd0afe2-be23-479e-86c1-abab746580f5",
+          "role": "venue",
+          "name": "Hotel Goldener Schl\u00fcssel",
+          "lat": 46.9486227,
+          "lng": 7.4487269,
+          "fullAddress": "Hotel Goldener Schl\u00fcssel, Rathausgasse 72, 3011 Bern, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJFz1_5sM5jkcRQ9nMjH27cXI",
+          "googleMapsUri": "https://maps.google.com/?cid=8246578540599630147&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "stayDetailId": "f14e1f93-5eff-4432-85ed-b1d3f5323a06",
+      "name": "Hotel Check-in: Beausite Park Hotel",
+      "stayType": "hotel",
+      "checkIn": "2026-05-13T14:00:00+02:00",
+      "checkOut": "2026-05-13T15:00:00+02:00",
+      "roomType": null,
+      "confirmationNumber": "56059SG016579",
+      "description": "Major arrival moment \u2014 Beausite Park Hotel Wengen. **Confirmation:** 56059SG016579 | **Room:** Double Room \u2014 Jungfrau View with Balcony.\n\nAsk hotel for help if luggage or the walk from the station feels difficult. Get to the balcony as soon as possible \u2014 this is the Alpine honeymoon moment.",
+      "locations": [
+        {
+          "locationId": "14023a8e-f674-4d39-857e-a30237a9c0d7",
+          "role": "venue",
+          "name": "Beausite Park Hotel Wengen",
+          "lat": 46.60852,
+          "lng": 7.923196299999999,
+          "fullAddress": "Am Wengi, 3823 Wengen BE, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJ01gOiMKhj0cRerUO3mLunpw",
+          "googleMapsUri": "https://maps.google.com/?cid=11285719824636753274&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "stayDetailId": "8a46d426-7eb0-42ca-a67d-320255771012",
+      "name": "Hotel Check-in: Riva Marina Hvar Hotel",
+      "stayType": "hotel",
+      "checkIn": "2026-05-15T19:00:00+02:00",
+      "checkOut": "2026-05-15T19:30:00+02:00",
+      "roomType": null,
+      "confirmationNumber": "PH27312096",
+      "description": "Hotel is directly on the Hvar waterfront \u2014 very easy walk from the ferry. **Reservation:** PH27312096. Drop bags, freshen up, and transition from travel mode to island mode before dinner.",
+      "locations": [
+        {
+          "locationId": "99bb33b7-d91c-4c76-99dc-b195d868cffb",
+          "role": "venue",
+          "name": "Riva Marina Hvar Hotel",
+          "lat": 43.1703364,
+          "lng": 16.4412654,
+          "fullAddress": "Obala, Riva 27, 21450, Hvar, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJE5FokICBNRMRminfeZDsEwo",
+          "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "stayDetailId": "5deba660-9218-4c60-a0ea-3db7940c7cb6",
+      "name": "Hotel Check-in",
+      "stayType": "hotel",
+      "checkIn": "2026-05-17T13:00:00+02:00",
+      "checkOut": "2026-05-17T14:30:00+02:00",
+      "roomType": null,
+      "confirmationNumber": "MIRAY0KBYT",
+      "description": "Room available from 2:30 PM \u2014 drop bags earlier if not ready. **Reservation:** MIRAY0KBYT | **Room:** Authentic Palace Room, king size bed | **Breakfast included.**\n\nHotel is inside Diocletian's Palace in the pedestrian historic zone \u2014 do not expect direct car access to the entrance.",
+      "locations": [
+        {
+          "locationId": "9d2bc1d9-cd0c-4a4a-ad5e-2e23bf809d02",
+          "role": "venue",
+          "name": "Heritage Hotel Slavija Split",
+          "lat": 43.5080822,
+          "lng": 16.4391636,
+          "fullAddress": "Dosud 1, 21000, Split, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJ9ahhNv5dNRMR9Z9yTnniC94",
+          "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "stayDetailId": "ad925392-472d-4eea-904c-83f136cb741b",
+      "name": "Hotel: Zurich Airport Radisson",
+      "stayType": "hotel",
+      "checkIn": "2026-05-19T22:00:00+02:00",
+      "checkOut": "2026-05-19T23:00:00+02:00",
+      "roomType": null,
+      "confirmationNumber": null,
+      "description": "Late arrival \u2014 take taxi/Uber from Zurich Airport (5\u201310 minutes; worth every franc at this hour). **Reservation:** 1HHDZLG7. Room available from 3:00 PM; checkout May 20 by 12:00 PM.\n\n*If hotel shuttle is right there and clearly running: take it. Otherwise: taxi/Uber. Do not optimize for cost at this hour \u2014 optimize for simplicity.*",
+      "locations": [
+        {
+          "locationId": "ef9da765-6ff4-43fb-bcf8-bd76e444ee1f",
+          "role": "venue",
+          "name": "Radisson Hotel Zurich Airport",
+          "lat": 47.4509985,
+          "lng": 8.540113999999999,
+          "fullAddress": "Flughofstrasse 75, 8153 R\u00fcmlang, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJ87eMDDZ1kEcRSOwKPJqpo3U",
+          "googleMapsUri": "https://maps.google.com/?cid=8476805403538811976&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    }
+  ],
+  "travels": [
+    {
+      "travelDetailId": "dbc1ab2d-e56b-48a4-9e5c-49149f7a9f27",
+      "name": "Train: Zurich Airport \u2192 Bern",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-11T12:15:00+02:00",
+      "arrivalDateTime": "2026-05-11T13:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Direct InterCity train from Zurich Airport to Bern. The station is inside the airport terminal \u2014 follow signs for **Train / Bahn / SBB**. Buy tickets at an SBB machine or use the SBB Mobile app. No seat reservation needed; trains run frequently.\n\n**Step-by-step:** Exit plane \u2192 passport control \u2192 skip baggage claim (carry-on only) \u2192 follow SBB/Bahn signs to underground station \u2192 buy ticket or open SBB app \u2192 look for direct InterCity to Bern \u2192 board.\n\n**Timing:** Flight arrives 10:50 AM. Allow buffer until ~11:45 AM, target ~12:15 PM train, arrive Bern ~1:15 PM. If you miss one, the next train is fine \u2014 do not rush.\n\n*If passport control is slow: take the next train. If you feel disoriented: follow SBB/Bahn signage, not taxi signage. If hungry before boarding: grab something quick at the airport.*",
+      "locations": [
+        {
+          "locationId": "198ce411-4fc3-4183-a9cf-1a740efc51a6",
+          "role": "origin",
+          "name": "Zurich Airport Railway Station",
+          "lat": 47.461714199999996,
+          "lng": 8.550859899999999,
+          "fullAddress": "Switzerland",
+          "description": "Also shown as Z\u00fcrich Flughafen. Located inside Zurich Airport; follow signs for Train / Bahn / SBB.",
+          "link": null,
+          "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+          "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "4f790372-afa1-4ef2-ac3b-5d4fc1300f3a",
+          "role": "destination",
+          "name": "Bern Railway Station",
+          "lat": 46.9485269,
+          "lng": 7.439914,
+          "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+          "description": "Main railway station for Bern; walking distance to Bern Old Town and Hotel Goldener Schl\u00fcssel.",
+          "link": null,
+          "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+          "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "428c3113-5bc7-4383-94a6-0d27eb2a0ac3",
+      "name": "Train: Bern \u2192 La Chaux-de-Fonds",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-12T10:00:00+02:00",
+      "arrivalDateTime": "2026-05-12T11:15:00+02:00",
+      "confirmationNumber": null,
+      "description": "IC train from Bern to Neuch\u00e2tel, then transfer to regional train to La Chaux-de-Fonds. Total travel ~1h 15m. Use the SBB app for live timing and platform info. No reservation needed.\n\n*If you miss a connection: take the next train \u2014 this route runs regularly. Follow SBB app platform info and station signage.*",
+      "locations": [
+        {
+          "locationId": "2e227650-1393-41b3-8209-a82fdc445093",
+          "role": "origin",
+          "name": "Bern Railway Station",
+          "lat": 46.9485269,
+          "lng": 7.439914,
+          "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+          "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "b33d3b4b-dbec-4556-927a-26fdc1da8cdc",
+          "role": "waypoint",
+          "name": "Neuch\u00e2tel Railway Station",
+          "lat": 46.99650450000001,
+          "lng": 6.9358911999999995,
+          "fullAddress": "Place de La Gare 1, 2000 Neuenburg, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJGdHvrxkKjkcRMrUVa5Q3WAo",
+          "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "2be69c0f-1706-43a5-8d43-cc5a3b948d83",
+          "role": "destination",
+          "name": "La Chaux-de-Fonds Railway Station",
+          "lat": 47.099207400000004,
+          "lng": 6.8250723,
+          "fullAddress": "Pl. de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "EjVQbC4gZGUgbGEgR2FyZSAxLCAyMzAwIExhIENoYXV4LWRlLUZvbmRzLCBTd2l0emVybGFuZCIwEi4KFAoSCQ_7p_1H-41HEYDhcb48KCijEAEqFAoSCbk8ggdI-41HEbBdqCt-Lx1P",
+          "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "1de3682e-a8df-4665-bd1a-61ee869b6cb8",
+      "name": "Train: La Chaux-de-Fonds \u2192 Bern",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-12T16:30:00+02:00",
+      "arrivalDateTime": "2026-05-12T17:45:00+02:00",
+      "confirmationNumber": null,
+      "description": "Same basic route as outbound \u2014 La Chaux-de-Fonds \u2192 Neuch\u00e2tel \u2192 Bern. Transfer at Neuch\u00e2tel. Use the SBB app for live timing.\n\n**Protect the 7:30 PM Kornhauskeller reservation.** If you miss the planned train, take the next one \u2014 but go straight to hotel, change quickly, and head directly to dinner. Do not add extra stops.",
+      "locations": [
+        {
+          "locationId": "9d52b382-3365-43e5-bd08-55c354bc6b36",
+          "role": "origin",
+          "name": "La Chaux-de-Fonds Railway Station",
+          "lat": 47.099207400000004,
+          "lng": 6.8250723,
+          "fullAddress": "Pl. de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "EjVQbC4gZGUgbGEgR2FyZSAxLCAyMzAwIExhIENoYXV4LWRlLUZvbmRzLCBTd2l0emVybGFuZCIwEi4KFAoSCQ_7p_1H-41HEYDhcb48KCijEAEqFAoSCbk8ggdI-41HEbBdqCt-Lx1P",
+          "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "3a7a40f3-d9f1-4b87-ae19-5509368fdb42",
+          "role": "waypoint",
+          "name": "Neuch\u00e2tel Railway Station",
+          "lat": 46.99650450000001,
+          "lng": 6.9358911999999995,
+          "fullAddress": "Place de La Gare 1, 2000 Neuenburg, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJGdHvrxkKjkcRMrUVa5Q3WAo",
+          "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "77ae474d-8b3d-4f33-845e-3e0fcd5d7d3f",
+          "role": "destination",
+          "name": "Bern Railway Station",
+          "lat": 46.9485269,
+          "lng": 7.439914,
+          "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+          "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "051f05e0-22df-43d7-be93-db20e4a2b302",
+      "name": "Train: Bern \u2192 Interlaken Ost",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-13T09:30:00+02:00",
+      "arrivalDateTime": "2026-05-13T10:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Direct InterCity train from Bern to Interlaken Ost. Scenic as you approach the lakes and mountains. No reservation required. Keep luggage manageable for the Lauterbrunnen transfer ahead.",
+      "locations": [
+        {
+          "locationId": "5d2d94e5-7c17-4e4f-8381-64b1cda01904",
+          "role": "origin",
+          "name": "Bern Railway Station",
+          "lat": 46.9485269,
+          "lng": 7.439914,
+          "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
+          "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "25f05364-d99a-4811-83f1-cb78c11e3556",
+          "role": "destination",
+          "name": "Interlaken Ost Station",
+          "lat": 46.685314299999995,
+          "lng": 7.8548944,
+          "fullAddress": "H\u00f6heweg 7, 3800 Interlaken, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
+          "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "66c7ef1c-33b3-4726-94f7-df7f4ac57b7c",
+      "name": "Train: Interlaken \u2192 Wengen",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-13T12:00:00+02:00",
+      "arrivalDateTime": "2026-05-13T13:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Transfer at Lauterbrunnen for the mountain cog railway to Wengen. Wengen is car-free \u2014 the train is how everyone arrives. **Sit on the right side going up** for the best views of the Lauterbrunnen valley walls and waterfalls. Scenic ascent all the way.",
+      "locations": [
+        {
+          "locationId": "836614cf-9ba6-44f8-b0ec-aec16f50d3dd",
+          "role": "origin",
+          "name": "Interlaken Ost Station",
+          "lat": 46.685314299999995,
+          "lng": 7.8548944,
+          "fullAddress": "H\u00f6heweg 7, 3800 Interlaken, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
+          "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "a427c9ad-fc17-415f-af07-04ba6d6512aa",
+          "role": "waypoint",
+          "name": "Lauterbrunnen Station",
+          "lat": 46.5960688,
+          "lng": 7.9082575,
+          "fullAddress": "3822 Lauterbrunnen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJzQeHBx2hj0cR4dVU3d9jMes",
+          "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "b170d0d0-6a33-4c3b-9de1-7336404d2985",
+          "role": "destination",
+          "name": "Wengen Railway Station",
+          "lat": 46.6054335,
+          "lng": 7.921539900000001,
+          "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+          "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "2c33a028-31d4-4c64-9f36-252717da0931",
+      "name": "Cable Car: Wengen \u2192 M\u00e4nnlichen",
+      "mode": "other",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-14T10:00:00+02:00",
+      "arrivalDateTime": "2026-05-14T10:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Short cable car ride to M\u00e4nnlichen delivering panoramic alpine views quickly without a full day of climbing.\n\n**Tickets:** Buy at station or via app. No advance reservation needed. **Check weather morning-of** before committing to this plan \u2014 if clouds are low, delay start or ask hotel about the best window.\n\n*If visibility is good: proceed as planned. If clouds are persistent: delay or ask hotel for advice. If cable car has an issue: pivot to a lower-elevation walk around Wengen or Lauterbrunnen.*",
+      "locations": [
+        {
+          "locationId": "48254699-f432-4171-a13e-806e5ada5958",
+          "role": "origin",
+          "name": "Wengen Cable Car Station",
+          "lat": 46.6054335,
+          "lng": 7.921539900000001,
+          "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+          "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "f449eb31-3416-47d3-9365-56bfa1936e13",
+          "role": "destination",
+          "name": "M\u00e4nnlichen Summit",
+          "lat": 46.6136349,
+          "lng": 7.9411866,
+          "fullAddress": "M\u00e4nnlichen, 3823 Kleine Scheidegg, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "Ei9Nw6RubmxpY2hlbiwgMzgyMyBLbGVpbmUgU2NoZWlkZWdnLCBTd2l0emVybGFuZCIuKiwKFAoSCZH-KulYn49HEVhcbqKtq0M6EhQKEgnp2o6XpZ-PRxEtv3D5JO2vUg",
+          "googleMapsUri": "https://maps.google.com/?q=M%C3%A4nnlichen,+3823+Kleine+Scheidegg,+Schweiz&ftid=0x478f9f58e92afe91:0x3a43abada26e5c58&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "b55ffe57-8549-4682-a1c7-9bcc63ece0b7",
+      "name": "Train: Kleine Scheidegg \u2192 Wengen",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-14T14:00:00+02:00",
+      "arrivalDateTime": "2026-05-14T14:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Scenic train descent from Kleine Scheidegg back to Wengen. **Sit on the right side going down** for the best views. This returns you with a solid buffer before the 8:15 PM dinner \u2014 protect the afternoon for rest and a shower.",
+      "locations": [
+        {
+          "locationId": "4b69e3c4-3dc5-4331-8dc2-60a9010b3764",
+          "role": "origin",
+          "name": "Kleine Scheidegg Railway Station",
+          "lat": 46.605407799999995,
+          "lng": 7.9215207,
+          "fullAddress": "3823 Wengen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJ6dqOl6Wfj0cRLb9w-STtr1I",
+          "googleMapsUri": "https://maps.google.com/?cid=5958241575093976877&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "adc3f365-8522-4095-be4d-a18bf04ea828",
+          "role": "destination",
+          "name": "Wengen Railway Station",
+          "lat": 46.6054335,
+          "lng": 7.921539900000001,
+          "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+          "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "e4dfa03a-66d1-4b3a-9ff0-3496e1ce427d",
+      "name": "Train: Wengen \u2192 Zurich Airport",
+      "mode": "train",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-15T09:00:00+02:00",
+      "arrivalDateTime": "2026-05-15T12:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Multiple transfers, but Swiss trains make this manageable. Route: Wengen \u2192 Lauterbrunnen \u2192 Interlaken Ost \u2192 Zurich Airport. **Build buffer \u2014 do not cut this close.** Flight departs 3:00 PM.\n\n**Suggested departure:** ~9:00 AM from Wengen. Target arrival Zurich Airport ~12:30 PM. Keep SBB route and tickets handy.\n\n*If a transfer is missed: use SBB app for the next route and protect the flight. If anxious: leave Wengen earlier and eat lunch at the airport.*",
+      "locations": [
+        {
+          "locationId": "53dc13a3-f1a7-403c-83d4-1c40483496be",
+          "role": "origin",
+          "name": "Wengen Railway Station",
+          "lat": 46.6054335,
+          "lng": 7.921539900000001,
+          "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+          "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "137c4d8e-37e5-4aff-b9b5-b20c5dad370a",
+          "role": "waypoint",
+          "name": "Lauterbrunnen Station",
+          "lat": 46.5960688,
+          "lng": 7.9082575,
+          "fullAddress": "3822 Lauterbrunnen, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJzQeHBx2hj0cR4dVU3d9jMes",
+          "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "5b470999-c5c3-48c6-956b-1dc080807ace",
+          "role": "waypoint",
+          "name": "Interlaken Ost Station",
+          "lat": 46.685314299999995,
+          "lng": 7.8548944,
+          "fullAddress": "H\u00f6heweg 7, 3800 Interlaken, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
+          "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "c8424c83-eeb6-4aff-8f3e-a48a9af8b5ff",
+          "role": "destination",
+          "name": "Zurich Airport Railway Station",
+          "lat": 47.4516643,
+          "lng": 8.5625171,
+          "fullAddress": "8058 Kloten, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
+          "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "17f86b7d-22fb-4b43-8dc3-68a1727b602e",
+      "name": "Flight: Zurich \u2192 Split",
+      "mode": "flight",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-15T15:00:00+02:00",
+      "arrivalDateTime": "2026-05-15T16:25:00+02:00",
+      "confirmationNumber": "CRFG3B",
+      "description": "Croatia Airlines to Split. **Confirmation:** CRFG3B. Departure 3:00 PM, arrival Split 4:25 PM (~1h 25m flight).\n\nOnce you land, the goal is the ferry. **Do not stop for anything unnecessary** \u2014 go directly from the plane to a taxi/transfer to the Split ferry port. You have approximately 1h 35m before the ferry departs.",
+      "locations": [
+        {
+          "locationId": "6fb4cce7-5613-4126-8694-dde54fe538e5",
+          "role": "origin",
+          "name": "Zurich Airport",
+          "lat": 47.4516643,
+          "lng": 8.5625171,
+          "fullAddress": "8058 Kloten, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
+          "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "0968547d-e317-4158-ace5-025d3c2fb7e8",
+          "role": "destination",
+          "name": "Split Airport",
+          "lat": 43.5518128,
+          "lng": 16.331662899999998,
+          "fullAddress": "21217, Ka\u0161tel \u0160tafili\u0107, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
+          "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "873ed383-50af-4075-bd04-f10246e73d5a",
+      "name": "Ferry: Split \u2192 Hvar",
+      "mode": "ferry",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-15T18:00:00+02:00",
+      "arrivalDateTime": "2026-05-15T18:55:00+02:00",
+      "confirmationNumber": "BW5012160",
+      "description": "**This is the last ferry of the day to Hvar \u2014 protect this connection at all costs.**\n\nOperator: Krilo / Kapetan Luka. **Booking codes: 3GB90DVL004, 3GB90DVL003** \u2014 keep these accessible.\n\nMove directly from the plane to a taxi to the ferry port. Do not plan dinner or snacks in Split before boarding.\n\n*If flight is on time: taxi to ferry, board calmly. If flight is delayed: go straight to taxi and tell driver the ferry departure time. If you miss this ferry: contact the hotel and ferry operator immediately \u2014 there is no later option tonight.*",
+      "locations": [
+        {
+          "locationId": "e1aae80b-64bf-4034-9281-4d57f2ed8eba",
+          "role": "origin",
+          "name": "Gat Sv. Petra Ferry Port",
+          "lat": 43.5048453,
+          "lng": 16.4411201,
+          "fullAddress": "Gat Sv. Petra, 21000, Split, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "EiRHYXQgU3YuIFBldHJhLCAyMTAwMCwgU3BsaXQsIENyb2F0aWEiLiosChQKEgljFtBMVWc1ExGSJDH6L1FGfxIUChIJv1MSzf9dNRMRslcdNVCtABM",
+          "googleMapsUri": "https://maps.google.com/?q=Gat+Sv.+Petra,+21000,+Split,+Hrvatska&ftid=0x133567554cd01663:0x7f46512ffa312492&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "4d3f5b05-2c4f-4adc-989b-ade27a9e3f65",
+          "role": "destination",
+          "name": "Hvar Harbour",
+          "lat": 43.1719882,
+          "lng": 16.4412412,
+          "fullAddress": "Riva, 21450, Hvar, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+          "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "308f090c-a053-4cc4-8344-c215724f7544",
+      "name": "Ferry: Hvar \u2192 Split",
+      "mode": "ferry",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-17T11:15:00+02:00",
+      "arrivalDateTime": "2026-05-17T12:10:00+02:00",
+      "confirmationNumber": "3GCR0DW1003 / 3GCR0DW1004",
+      "description": "Krilo / Kapetan Luka ferry, Hvar \u2192 Split. **Booking codes: 3GCR0DW1003, 3GCR0DW1004** \u2014 keep accessible. Arrive at Hvar harbour 20\u201330 minutes before 11:15 AM departure. Sit outside if weather is nice for the scenic Adriatic crossing.",
+      "locations": [
+        {
+          "locationId": "70d63648-1c4c-41eb-a72d-9e9558765c54",
+          "role": "origin",
+          "name": "Hvar Harbour",
+          "lat": 43.1719882,
+          "lng": 16.4412412,
+          "fullAddress": "Riva, 21450, Hvar, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
+          "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "5eaeacb9-727e-4eec-b129-8a8eb51f09d2",
+          "role": "destination",
+          "name": "Split Ferry Port",
+          "lat": 43.5038827,
+          "lng": 16.4426669,
+          "fullAddress": "Obala kneza Domagoja, 21000, Split, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "EitPYmFsYSBrbmV6YSBEb21hZ29qYSwgMjEwMDAsIFNwbGl0LCBDcm9hdGlhIi4qLAoUChIJcwaHzKpgNRMRzzhS6XazxakSFAoSCRf1vGv8XTUTEZiftDH2j3mh",
+          "googleMapsUri": "https://maps.google.com/?q=Obala+kneza+Domagoja,+21000,+Split,+Hrvatska&ftid=0x133560aacc870673:0xa9c5b376e95238cf&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "1e347555-f42b-4183-b96f-826db56a5aad",
+      "name": "Get Rental Car",
+      "mode": "car",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-18T07:30:00+02:00",
+      "arrivalDateTime": "2026-05-18T08:00:00+02:00",
+      "confirmationNumber": null,
+      "description": "Taxi / Uber / Bolt to Sixt from hotel (~7:30 AM). Pickup 8:00 AM. **Reservation:** 9733419998 \u2014 automatic vehicle.\n\n**Bring:** Passport, driver's license, credit card, rental confirmation.\n\n**At the counter, confirm:** automatic transmission, fuel policy, toll process, insurance/CDW coverage, return deadline (8:00 PM), emergency contact number.\n\n**Before leaving the lot:** photograph/video the exterior, wheels, windshield, and fuel gauge. Adjust mirrors, seat, and lights. Set Google Maps before moving.",
+      "locations": [
+        {
+          "locationId": "cc2a8244-d8d5-4a64-9405-2c6f7167b29e",
+          "role": "destination",
+          "name": "Sixt Split",
+          "lat": 43.506201,
+          "lng": 16.4642808,
+          "fullAddress": "Polji\u010dka cesta 28B, 21000, Split, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJETDG_SFeNRMRVye5Z59XSLA",
+          "googleMapsUri": "https://maps.google.com/?cid=12702499091150088023&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "0e46c2e3-541f-44f4-a73c-025bb5003529",
+      "name": "Drive: Split \u2192 Highway Stop",
+      "mode": "car",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-18T08:00:00+02:00",
+      "arrivalDateTime": "2026-05-18T09:15:00+02:00",
+      "confirmationNumber": null,
+      "description": "The hardest part is the first 10\u201315 minutes leaving Split. Once on the A1 highway, it should feel like a normal road trip.\n\n**Key rules:** Drive on the right. Stay in the right lane unless passing. Let faster drivers pass. Yield to traffic already in roundabouts. Stay calm and predictable.\n\n**Tolls:** Take ticket at entry; pay by card or cash at exit unless car has a transponder. Confirm toll process with Sixt before leaving.\n\n*If you miss a turn: let GPS reroute; do not make sudden moves. If someone tailgates: stay right and let them pass. If stressed: stop safely at a rest area.*",
+      "locations": []
+    },
+    {
+      "travelDetailId": "3e8e5ff1-be47-4e79-bfc3-c9e358be1d23",
+      "name": "Drive: Stop \u2192 Plitvice",
+      "mode": "car",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-18T09:35:00+02:00",
+      "arrivalDateTime": "2026-05-18T11:45:00+02:00",
+      "confirmationNumber": null,
+      "description": "Continue drive to Plitvice. Highway driving is straightforward.",
+      "locations": []
+    },
+    {
+      "travelDetailId": "7d1e7d2b-0a8d-472e-8bb5-a6edf8786e43",
+      "name": "Drive Back + Scenic Stop",
+      "mode": "car",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-18T16:30:00+02:00",
+      "arrivalDateTime": "2026-05-18T19:30:00+02:00",
+      "confirmationNumber": null,
+      "description": "Leave Plitvice ~4:30 PM. **Rastoke / Slunj** (stop ~5:00\u20135:30 PM) is a small watermill village with waterfalls, rapids, and a magical off-the-beaten-path feel \u2014 exactly the kind of place that makes driving feel worthwhile. Quick coffee, pastry, or riverside snack; keep the stop short unless clearly ahead of schedule.\n\n**Return to Split target: 7:30 PM. Car must be back by 8:00 PM.**\n\n*If running on time: stop at Rastoke. If behind schedule: skip it and return car. If tired: coffee only and keep moving.*",
+      "locations": [
+        {
+          "locationId": "5cbe3463-9581-4a28-a34a-32b91a9dd5fe",
+          "role": "destination",
+          "name": "Rastoke",
+          "lat": 45.1149355,
+          "lng": 15.5857945,
+          "fullAddress": "47240, Slunj, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJTc-7RQz_Y0cRuel3KAMeiKc",
+          "googleMapsUri": "https://maps.google.com/?cid=12071931800079296953&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "9ec368b9-ff1a-463f-9d81-53ad3da46cbc",
+      "name": "Return Rental Car",
+      "mode": "car",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-18T19:30:00+02:00",
+      "arrivalDateTime": "2026-05-18T20:00:00+02:00",
+      "confirmationNumber": null,
+      "description": "Return deadline: **8:00 PM** at Sixt (Polji\u010dka ulica 28b, Split).\n\n**Before returning:** Refuel if required. Photograph fuel gauge and car exterior condition. Keep receipt / return confirmation.\n\n**After return:** Taxi / Uber / Bolt back to Old Town.\n\n*If running late: call Sixt. If fuel station is confusing: use the nearest obvious station before the Sixt office.*",
+      "locations": [
+        {
+          "locationId": "e68a5b3e-0f14-4614-bcc6-0b5b09adbde3",
+          "role": "destination",
+          "name": "Sixt Split",
+          "lat": 43.506201,
+          "lng": 16.4642808,
+          "fullAddress": "Polji\u010dka cesta 28B, 21000, Split, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJETDG_SFeNRMRVye5Z59XSLA",
+          "googleMapsUri": "https://maps.google.com/?cid=12702499091150088023&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "782dd8c6-a06a-4d27-bafd-2765d311c2b1",
+      "name": "Travel to Airport",
+      "mode": "car",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-19T15:30:00+02:00",
+      "arrivalDateTime": "2026-05-19T16:00:00+02:00",
+      "confirmationNumber": null,
+      "description": "Use Uber / taxi / Bolt \u2014 more reliable and faster than a hotel shuttle unless timing is perfect.\n\n**Target:** Leave hotel ~3:30 PM, arrive Split Airport by ~4:00 PM for the 5:15 PM flight.\n\n*If traffic looks bad: leave earlier. If any uncertainty about shuttle timing: use Uber/taxi.*",
+      "locations": [
+        {
+          "locationId": "30142691-52ad-4387-b5d0-445c62664b33",
+          "role": "destination",
+          "name": "Split Airport",
+          "lat": 43.5518128,
+          "lng": 16.331662899999998,
+          "fullAddress": "21217, Ka\u0161tel \u0160tafili\u0107, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
+          "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "74d13439-028f-4794-bc8c-f833270c9b3d",
+      "name": "Flight: Split \u2192 Munich",
+      "mode": "flight",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-19T17:15:00+02:00",
+      "arrivalDateTime": "2026-05-19T18:40:00+02:00",
+      "confirmationNumber": "CRFG3B",
+      "description": "**Flight:** OU5400, operated by Lufthansa / Croatia Airlines codeshare. **Booking Reference:** CRFG3B. Departure 5:15 PM, arrival Munich 6:40 PM (1h 25m).\n\nAfter landing in Munich, you have ~2h 15m layover \u2014 roughly 90 usable minutes after deplaning before needing to be at the gate.",
+      "locations": [
+        {
+          "locationId": "7e289c88-4b12-448b-93e9-7be657b112a8",
+          "role": "origin",
+          "name": "Split Airport",
+          "lat": 43.5518128,
+          "lng": 16.331662899999998,
+          "fullAddress": "21217, Ka\u0161tel \u0160tafili\u0107, Croatia",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
+          "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "e5edab60-1740-4560-86a8-5dc09817b4b6",
+          "role": "destination",
+          "name": "Munich Airport",
+          "lat": 48.3536407,
+          "lng": 11.7831852,
+          "fullAddress": "Nordallee 25, 85356 Oberding, Germany",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJRW3aI1kTnkcRS89WOoV6xeM",
+          "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    },
+    {
+      "travelDetailId": "82115a71-336b-4e0a-a9b1-28273cafb91c",
+      "name": "Flight: Munich \u2192 Zurich",
+      "mode": "flight",
+      "operator": null,
+      "vehicleNumber": null,
+      "cabinClass": null,
+      "departureDateTime": "2026-05-19T20:55:00+02:00",
+      "arrivalDateTime": "2026-05-19T21:50:00+02:00",
+      "confirmationNumber": "CRFG3B",
+      "description": "**Flight:** LX1111, Swiss Airlines. **Booking Reference:** CRFG3B. Departure 8:55 PM, arrival Zurich 9:50 PM (55 min).\n\n**Munich layover tip:** Consider **Airbr\u00e4u Munich Airport Brewery** \u2014 a real Bavarian brewery inside the terminal; beer + pretzel is a fun Germany layover moment. Stay airside. If the inbound flight is delayed, skip it and stay near the gate.",
+      "locations": [
+        {
+          "locationId": "a16680b8-decd-4a96-abd6-583810ce927e",
+          "role": "origin",
+          "name": "Munich Airport",
+          "lat": 48.3536407,
+          "lng": 11.7831852,
+          "fullAddress": "Nordallee 25, 85356 Oberding, Germany",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJRW3aI1kTnkcRS89WOoV6xeM",
+          "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        },
+        {
+          "locationId": "ec1c344a-277c-4ee2-a9fb-404250e48a9b",
+          "role": "destination",
+          "name": "Zurich Airport",
+          "lat": 47.4516643,
+          "lng": 8.5625171,
+          "fullAddress": "8058 Kloten, Switzerland",
+          "description": null,
+          "link": null,
+          "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
+          "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+        }
+      ]
+    }
+  ],
   "days": [
     {
       "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
-      "title": "May 11 — Arrival in Bern",
+      "title": "May 11 \u2014 Arrival in Bern",
       "date": "2026-05-11",
-      "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
+      "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schl\u00fcssel, see Bern Old Town",
       "isAlternate": false,
       "completed": false,
       "points": [
         {
           "pointId": "dbc1ab2d-e56b-48a4-9e5c-49149f7a9f27",
           "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
-          "type": "travel",
-          "title": "Train: Zurich Airport → Bern",
+          "type": "departure",
+          "title": "Train: Zurich Airport \u2192 Bern",
           "startDateTime": "2026-05-11T12:15:00+02:00",
           "endDateTime": "2026-05-11T13:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Direct InterCity train from Zurich Airport to Bern. The station is inside the airport terminal — follow signs for **Train / Bahn / SBB**. Buy tickets at an SBB machine or use the SBB Mobile app. No seat reservation needed; trains run frequently.\n\n**Step-by-step:** Exit plane → passport control → skip baggage claim (carry-on only) → follow SBB/Bahn signs to underground station → buy ticket or open SBB app → look for direct InterCity to Bern → board.\n\n**Timing:** Flight arrives 10:50 AM. Allow buffer until ~11:45 AM, target ~12:15 PM train, arrive Bern ~1:15 PM. If you miss one, the next train is fine — do not rush.\n\n*If passport control is slow: take the next train. If you feel disoriented: follow SBB/Bahn signage, not taxi signage. If hungry before boarding: grab something quick at the airport.*",
+          "description": "Direct InterCity train from Zurich Airport to Bern. The station is inside the airport terminal \u2014 follow signs for **Train / Bahn / SBB**. Buy tickets at an SBB machine or use the SBB Mobile app. No seat reservation needed; trains run frequently.\n\n**Step-by-step:** Exit plane \u2192 passport control \u2192 skip baggage claim (carry-on only) \u2192 follow SBB/Bahn signs to underground station \u2192 buy ticket or open SBB app \u2192 look for direct InterCity to Bern \u2192 board.\n\n**Timing:** Flight arrives 10:50 AM. Allow buffer until ~11:45 AM, target ~12:15 PM train, arrive Bern ~1:15 PM. If you miss one, the next train is fine \u2014 do not rush.\n\n*If passport control is slow: take the next train. If you feel disoriented: follow SBB/Bahn signage, not taxi signage. If hungry before boarding: grab something quick at the airport.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "198ce411-4fc3-4183-a9cf-1a740efc51a6",
-              "role": "origin",
-              "name": "Zurich Airport Railway Station",
-              "lat": 47.461714199999996,
-              "lng": 8.550859899999999,
-              "fullAddress": "Switzerland",
-              "description": "Also shown as Zürich Flughafen. Located inside Zurich Airport; follow signs for Train / Bahn / SBB.",
-              "link": null,
-              "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
-              "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "4f790372-afa1-4ef2-ac3b-5d4fc1300f3a",
-              "role": "destination",
-              "name": "Bern Railway Station",
-              "lat": 46.9485269,
-              "lng": 7.439914,
-              "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
-              "description": "Main railway station for Bern; walking distance to Bern Old Town and Hotel Goldener Schlüssel.",
-              "link": null,
-              "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
-              "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "dbc1ab2d-e56b-48a4-9e5c-49149f7a9f27"
         },
         {
           "pointId": "c1404396-9405-466d-8729-fd4ad8747869",
           "dayId": "c7c4897f-06d2-4035-9842-28f2d235c6f5",
-          "type": "stay",
-          "title": "Arrive: Hotel Goldener Schlüssel",
+          "type": "check-in",
+          "title": "Arrive: Hotel Goldener Schl\u00fcssel",
           "startDateTime": "2026-05-11T13:45:00+02:00",
           "endDateTime": "2026-05-11T14:15:00+02:00",
           "confirmationNumber": "58204SG008394",
-          "description": "Walk or take a short taxi from Bern station depending on energy. Check in if room is ready — if not, drop bags and keep the afternoon easy. The hotel is in Bern Old Town, exactly where you want to be.\n\n**Confirmation:** 58204SG008394 | **Address:** Rathausgasse 72, 3011 Bern, Switzerland\n\nNearby within easy walking distance: Zytglogge clock tower, Kramgasse (main Old Town street), Bern arcades, Aare River viewpoints.",
+          "description": "Walk or take a short taxi from Bern station depending on energy. Check in if room is ready \u2014 if not, drop bags and keep the afternoon easy. The hotel is in Bern Old Town, exactly where you want to be.\n\n**Confirmation:** 58204SG008394 | **Address:** Rathausgasse 72, 3011 Bern, Switzerland\n\nNearby within easy walking distance: Zytglogge clock tower, Kramgasse (main Old Town street), Bern arcades, Aare River viewpoints.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "2fd0afe2-be23-479e-86c1-abab746580f5",
-              "role": "venue",
-              "name": "Hotel Goldener Schlüssel",
-              "lat": 46.9486227,
-              "lng": 7.4487269,
-              "fullAddress": "Hotel Goldener Schlüssel, Rathausgasse 72, 3011 Bern, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJFz1_5sM5jkcRQ9nMjH27cXI",
-              "googleMapsUri": "https://maps.google.com/?cid=8246578540599630147&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "e4cb29b4-576f-4a5a-a4b7-e7f845f45cc1",
-              "role": "venue",
-              "name": "Zytglogge",
-              "lat": 46.9479581,
-              "lng": 7.447792400000001,
-              "fullAddress": "Zytglogge, Bim Zytglogge 3, 3011 Bern, Switzerland",
-              "description": "Historic medieval clock tower near the hotel.",
-              "link": null,
-              "googlePlaceId": "ChIJtYNMVME5jkcRVk2Y_GIJan0",
-              "googleMapsUri": "https://maps.google.com/?cid=9037045923021606230&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "36d2484d-fc00-421b-8fcf-d826dcb1e8ea",
-              "role": "venue",
-              "name": "Kramgasse",
-              "lat": 46.9479785,
-              "lng": 7.4505088,
-              "fullAddress": "Kramgasse, 3011 Bern, Switzerland",
-              "description": "Main historic street in Bern Old Town.",
-              "link": null,
-              "googlePlaceId": "ChIJT8mAhcM5jkcRdfWIbdAr-lI",
-              "googleMapsUri": "https://maps.google.com/?cid=5979139629478638965&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "3c4a5cbd-3fa1-42c1-94fb-e21b6f8e2165",
-              "role": "venue",
-              "name": "Aare River Viewpoints",
-              "lat": 46.9471898,
-              "lng": 7.459508899999999,
-              "fullAddress": "Grosser Muristalden 6, 3006 Bern, Switzerland",
-              "description": "Area-based location; exact viewpoint can vary.",
-              "link": null,
-              "googlePlaceId": "ChIJ1yUzp1Y5jkcRQcYS67CbmNc",
-              "googleMapsUri": "https://maps.google.com/?cid=15535338098774951489&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": null,
-          "stayDetail": {
-            "stayType": "hotel",
-            "checkInTime": null,
-            "checkOutTime": null,
-            "roomType": null
-          },
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "stayDetailId": "c1404396-9405-466d-8729-fd4ad8747869"
         },
         {
           "pointId": "6896a4de-bad9-4496-8374-6e03a32d54eb",
@@ -138,7 +858,7 @@
           "startDateTime": "2026-05-11T14:15:00+02:00",
           "endDateTime": "2026-05-11T15:15:00+02:00",
           "confirmationNumber": null,
-          "description": "Casual first lunch after arrival. Keep it simple and close — the win is sitting down and resetting after an overnight flight. Pick based on energy:\n\n- **Kornhauskeller** (Kornhausplatz 18) — historic vaulted setting; the 'we made it to Switzerland' choice if you have energy.\n- **Café Einstein** (Kramgasse 49) — classic relaxed café, coffee and light lunch; best if exhausted.\n- **Beaulieu Bistro Bar** (Erlachstrasse 3) — more local and less touristy; worth it if you want to avoid the tourist strip.\n\nNo reservation needed for any of these.",
+          "description": "Casual first lunch after arrival. Keep it simple and close \u2014 the win is sitting down and resetting after an overnight flight. Pick based on energy:\n\n- **Kornhauskeller** (Kornhausplatz 18) \u2014 historic vaulted setting; the 'we made it to Switzerland' choice if you have energy.\n- **Caf\u00e9 Einstein** (Kramgasse 49) \u2014 classic relaxed caf\u00e9, coffee and light lunch; best if exhausted.\n- **Beaulieu Bistro Bar** (Erlachstrasse 3) \u2014 more local and less touristy; worth it if you want to avoid the tourist strip.\n\nNo reservation needed for any of these.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -157,11 +877,11 @@
             {
               "locationId": "0d4c5007-c749-46dc-9036-21ef44b81e9a",
               "role": "venue",
-              "name": "Café Einstein",
+              "name": "Caf\u00e9 Einstein",
               "lat": 46.9478097,
               "lng": 7.4499341999999995,
               "fullAddress": "Kramgasse 49, 3011 Bern, Switzerland",
-              "description": "Relaxed café option near the hotel and Old Town walk.",
+              "description": "Relaxed caf\u00e9 option near the hotel and Old Town walk.",
               "link": null,
               "googlePlaceId": "ChIJDe4EicM5jkcRYIXq2P0LA4E",
               "googleMapsUri": "https://maps.google.com/?cid=9296287240716715360&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
@@ -179,8 +899,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=5717718140856517289&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -192,7 +910,7 @@
           "startDateTime": "2026-05-11T15:15:00+02:00",
           "endDateTime": "2026-05-11T17:45:00+02:00",
           "confirmationNumber": null,
-          "description": "Jet-lag-friendly afternoon — wander, do not 'do.' Keep it flexible and treat this as a decompression block.\n\n- **Old Town Walk:** Kramgasse, Zytglogge, covered arcades, and Bern's famous fountains — easy, close together, no agenda needed.\n- **Aare River viewpoints:** multiple viewpoints around Old Town; sit, rest, and enjoy the city without forcing much movement.\n- **Kunstmuseum Bern** (Hodlerstrasse 8-12) — use only if weather is bad or you want a quiet indoor option.\n\n*If weather is nice: Old Town + Aare viewpoints. If dragging: pick one street and one viewpoint. If it rains: Kunstmuseum. If the room is ready and you crash: that is fine.*",
+          "description": "Jet-lag-friendly afternoon \u2014 wander, do not 'do.' Keep it flexible and treat this as a decompression block.\n\n- **Old Town Walk:** Kramgasse, Zytglogge, covered arcades, and Bern's famous fountains \u2014 easy, close together, no agenda needed.\n- **Aare River viewpoints:** multiple viewpoints around Old Town; sit, rest, and enjoy the city without forcing much movement.\n- **Kunstmuseum Bern** (Hodlerstrasse 8-12) \u2014 use only if weather is bad or you want a quiet indoor option.\n\n*If weather is nice: Old Town + Aare viewpoints. If dragging: pick one street and one viewpoint. If it rains: Kunstmuseum. If the room is ready and you crash: that is fine.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -245,8 +963,6 @@
               "googleMapsUri": "https://maps.google.com/?q=Hodlerstrasse+8/12,+3011+Bern,+Schweiz&ftid=0x478e39c0770b2727:0x1f345df2192d05f2&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -258,7 +974,7 @@
           "startDateTime": "2026-05-11T19:30:00+02:00",
           "endDateTime": "2026-05-11T20:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Easy walk-in dinner for the first night. Choose based on energy.\n\n- **Altes Tramdepot** (Grosser Muristalden 6) — brewery + restaurant near the Bear Park with views over Bern; larger space, easier to get a table.\n- **Lötschberg** (Zeughausgasse 16) — casual Swiss comfort food, local and relaxed in the Old Town core.\n- **Restaurant Rosengarten** (Alter Aargauerstalden 31B) — scenic overlook above Old Town; good if you still have energy.\n\n*Rosengarten reservation made for 7:30 PM. If too tired to go out: eat near the hotel and sleep early.*",
+          "description": "Easy walk-in dinner for the first night. Choose based on energy.\n\n- **Altes Tramdepot** (Grosser Muristalden 6) \u2014 brewery + restaurant near the Bear Park with views over Bern; larger space, easier to get a table.\n- **L\u00f6tschberg** (Zeughausgasse 16) \u2014 casual Swiss comfort food, local and relaxed in the Old Town core.\n- **Restaurant Rosengarten** (Alter Aargauerstalden 31B) \u2014 scenic overlook above Old Town; good if you still have energy.\n\n*Rosengarten reservation made for 7:30 PM. If too tired to go out: eat near the hotel and sleep early.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -277,7 +993,7 @@
             {
               "locationId": "4e206f45-b8f2-4b8e-a1bb-be0efe744576",
               "role": "venue",
-              "name": "Lötschberg",
+              "name": "L\u00f6tschberg",
               "lat": 46.9491102,
               "lng": 7.4454687999999996,
               "fullAddress": "Zeughausgasse 16, 3011 Bern, Switzerland",
@@ -299,8 +1015,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=15798666527398630164&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": true,
           "completedDateTime": null
         }
@@ -308,7 +1022,7 @@
     },
     {
       "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
-      "title": "May 12 — La Chaux-de-Fonds + Birthday Dinner",
+      "title": "May 12 \u2014 La Chaux-de-Fonds + Birthday Dinner",
       "date": "2026-05-12",
       "description": "Themed day: watchmaking, Swiss culture, UNESCO architecture,  La Chaux-de-Fonds, visit the International Museum of Horology, BIRTHDAY",
       "isAlternate": false,
@@ -322,14 +1036,14 @@
           "startDateTime": "2026-05-12T08:30:00+02:00",
           "endDateTime": "2026-05-12T09:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Keep it light and efficient — you have a train day and a big dinner tonight. **Adriano's Bar & Café** (Theaterplatz 2) is lively and good for coffee and a pastry. **Café Marta** (Kramgasse 83) is cozy and quieter. **Bakery Bakery Bern** (Spitalgasse area) is the grab-and-go option.",
+          "description": "Keep it light and efficient \u2014 you have a train day and a big dinner tonight. **Adriano's Bar & Caf\u00e9** (Theaterplatz 2) is lively and good for coffee and a pastry. **Caf\u00e9 Marta** (Kramgasse 83) is cozy and quieter. **Bakery Bakery Bern** (Spitalgasse area) is the grab-and-go option.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "5af16fcb-7b13-452d-82f0-75ee4f3f3af2",
               "role": "venue",
-              "name": "Adriano's Bar & Café",
+              "name": "Adriano's Bar & Caf\u00e9",
               "lat": 46.9478076,
               "lng": 7.4472638999999985,
               "fullAddress": "Theaterpl. 2, 3011 Bern, Switzerland",
@@ -341,7 +1055,7 @@
             {
               "locationId": "300a5643-2c42-425d-9bc4-a0336d4da830",
               "role": "venue",
-              "name": "Café Marta",
+              "name": "Caf\u00e9 Marta",
               "lat": 46.947862199999996,
               "lng": 7.4484052,
               "fullAddress": "Kramgasse 83, 3011 Bern, Switzerland",
@@ -363,8 +1077,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=4413540392948944412&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -376,7 +1088,7 @@
           "startDateTime": "2026-05-12T09:00:00+02:00",
           "endDateTime": "2026-05-12T18:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Full day trip to La Chaux-de-Fonds — one of the world's great watchmaking cities and a UNESCO urban landscape. Train from Bern via Neuchâtel (~1h 15m each way, no reservation needed).\n\n**Plan:** International Museum of Horology in the morning, then the UNESCO city grid walk — Avenue Léopold-Robert, Villa Fallet (early Le Corbusier), Espacité Tower — in the afternoon. Optional vintage watch shop browsing along the main boulevard.\n\nLeave by ~4:30 PM train to protect the **7:30 PM Kornhauskeller birthday dinner** reservation back in Bern.",
+          "description": "Full day trip to La Chaux-de-Fonds \u2014 one of the world's great watchmaking cities and a UNESCO urban landscape. Train from Bern via Neuch\u00e2tel (~1h 15m each way, no reservation needed).\n\n**Plan:** International Museum of Horology in the morning, then the UNESCO city grid walk \u2014 Avenue L\u00e9opold-Robert, Villa Fallet (early Le Corbusier), Espacit\u00e9 Tower \u2014 in the afternoon. Optional vintage watch shop browsing along the main boulevard.\n\nLeave by ~4:30 PM train to protect the **7:30 PM Kornhauskeller birthday dinner** reservation back in Bern.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -393,69 +1105,23 @@
               "googleMapsUri": "https://maps.google.com/?cid=4798130941862229838&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "428c3113-5bc7-4383-94a6-0d27eb2a0ac3",
           "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
-          "type": "travel",
-          "title": "Train: Bern → La Chaux-de-Fonds",
+          "type": "departure",
+          "title": "Train: Bern \u2192 La Chaux-de-Fonds",
           "startDateTime": "2026-05-12T10:00:00+02:00",
           "endDateTime": "2026-05-12T11:15:00+02:00",
           "confirmationNumber": null,
-          "description": "IC train from Bern to Neuchâtel, then transfer to regional train to La Chaux-de-Fonds. Total travel ~1h 15m. Use the SBB app for live timing and platform info. No reservation needed.\n\n*If you miss a connection: take the next train — this route runs regularly. Follow SBB app platform info and station signage.*",
+          "description": "IC train from Bern to Neuch\u00e2tel, then transfer to regional train to La Chaux-de-Fonds. Total travel ~1h 15m. Use the SBB app for live timing and platform info. No reservation needed.\n\n*If you miss a connection: take the next train \u2014 this route runs regularly. Follow SBB app platform info and station signage.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "2e227650-1393-41b3-8209-a82fdc445093",
-              "role": "origin",
-              "name": "Bern Railway Station",
-              "lat": 46.9485269,
-              "lng": 7.439914,
-              "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
-              "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "b33d3b4b-dbec-4556-927a-26fdc1da8cdc",
-              "role": "waypoint",
-              "name": "Neuchâtel Railway Station",
-              "lat": 46.99650450000001,
-              "lng": 6.9358911999999995,
-              "fullAddress": "Place de La Gare 1, 2000 Neuenburg, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJGdHvrxkKjkcRMrUVa5Q3WAo",
-              "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "2be69c0f-1706-43a5-8d43-cc5a3b948d83",
-              "role": "destination",
-              "name": "La Chaux-de-Fonds Railway Station",
-              "lat": 47.099207400000004,
-              "lng": 6.8250723,
-              "fullAddress": "Pl. de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "EjVQbC4gZGUgbGEgR2FyZSAxLCAyMzAwIExhIENoYXV4LWRlLUZvbmRzLCBTd2l0emVybGFuZCIwEi4KFAoSCQ_7p_1H-41HEYDhcb48KCijEAEqFAoSCbk8ggdI-41HEbBdqCt-Lx1P",
-              "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "428c3113-5bc7-4383-94a6-0d27eb2a0ac3"
         },
         {
           "pointId": "8aabaa7d-c3fa-47b9-ba92-8183d2d6c232",
@@ -465,7 +1131,7 @@
           "startDateTime": "2026-05-12T11:30:00+02:00",
           "endDateTime": "2026-05-12T13:00:00+02:00",
           "confirmationNumber": null,
-          "description": "One of the world's great watch museums and likely the most personally meaningful cultural stop of the trip given your watch interest. Allow 60–90 minutes.\n\n**Focus on:** early clocks, pocket watches, wristwatch evolution, watchmaking tools and mechanics.\n\n**Tickets:** Check hours before visiting — https://www.mih.ch/en/visit/. Pre-booking is not strictly required, but verify hours ahead of time.\n\n*If loving it: stay longer and shorten the afternoon walk. If tired after 60–75 minutes: do the highlights and move on.*",
+          "description": "One of the world's great watch museums and likely the most personally meaningful cultural stop of the trip given your watch interest. Allow 60\u201390 minutes.\n\n**Focus on:** early clocks, pocket watches, wristwatch evolution, watchmaking tools and mechanics.\n\n**Tickets:** Check hours before visiting \u2014 https://www.mih.ch/en/visit/. Pre-booking is not strictly required, but verify hours ahead of time.\n\n*If loving it: stay longer and shorten the afternoon walk. If tired after 60\u201375 minutes: do the highlights and move on.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -475,15 +1141,13 @@
               "name": "International Museum of Horology",
               "lat": 47.100635200000006,
               "lng": 6.8305877,
-              "fullAddress": "Rue des Musées 29, 2300 La Chaux-de-Fonds, Switzerland",
+              "fullAddress": "Rue des Mus\u00e9es 29, 2300 La Chaux-de-Fonds, Switzerland",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJiThueEb7jUcR1KDOeGCvGJY",
               "googleMapsUri": "https://maps.google.com/?cid=10815587334008774868&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -495,17 +1159,17 @@
           "startDateTime": "2026-05-12T13:00:00+02:00",
           "endDateTime": "2026-05-12T16:00:00+02:00",
           "confirmationNumber": null,
-          "description": "La Chaux-de-Fonds is not just 'a town with a museum' — it is a UNESCO watchmaking urban landscape. Walk it with that lens: the wide streets and grid layout were designed to give watchmaking workshops maximum natural light.\n\n- **Avenue Léopold-Robert** — main boulevard; shops, cafés, and the city grid feeling.\n- **Villa Fallet** (Rue de la Serre 15) — early Le Corbusier; a worthwhile architecture stop.\n- **Espacité Tower** (Espacité 1) — optional viewpoint and orientation point.\n\n*Expect small local boutiques, not Geneva-style luxury. If you find vintage watch shops, browse casually and do not feel pressured.*",
+          "description": "La Chaux-de-Fonds is not just 'a town with a museum' \u2014 it is a UNESCO watchmaking urban landscape. Walk it with that lens: the wide streets and grid layout were designed to give watchmaking workshops maximum natural light.\n\n- **Avenue L\u00e9opold-Robert** \u2014 main boulevard; shops, caf\u00e9s, and the city grid feeling.\n- **Villa Fallet** (Rue de la Serre 15) \u2014 early Le Corbusier; a worthwhile architecture stop.\n- **Espacit\u00e9 Tower** (Espacit\u00e9 1) \u2014 optional viewpoint and orientation point.\n\n*Expect small local boutiques, not Geneva-style luxury. If you find vintage watch shops, browse casually and do not feel pressured.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "032862ac-b47e-4a8c-883f-980f74462f06",
               "role": "venue",
-              "name": "Avenue Léopold-Robert",
+              "name": "Avenue L\u00e9opold-Robert",
               "lat": 47.0986803,
               "lng": 6.823153,
-              "fullAddress": "Av. Léopold-Robert, 2300 La Chaux-de-Fonds, Switzerland",
+              "fullAddress": "Av. L\u00e9opold-Robert, 2300 La Chaux-de-Fonds, Switzerland",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJh3BM7jf7jUcRkmMwSJxWDt0",
@@ -526,18 +1190,16 @@
             {
               "locationId": "d7989037-7fe6-415a-b484-0baeb1122cdf",
               "role": "venue",
-              "name": "Espacité Tower",
+              "name": "Espacit\u00e9 Tower",
               "lat": 47.1023612,
               "lng": 6.8287451,
-              "fullAddress": "Tour Espacité, Espacité 1, 2300 La Chaux-de-Fonds, Switzerland",
+              "fullAddress": "Tour Espacit\u00e9, Espacit\u00e9 1, 2300 La Chaux-de-Fonds, Switzerland",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJd1C450b7jUcRM0NRuk0D1AY",
               "googleMapsUri": "https://maps.google.com/?cid=492021891663479603&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -549,17 +1211,17 @@
           "startDateTime": "2026-05-12T16:00:00+02:00",
           "endDateTime": "2026-05-12T16:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Quick pre-train snack — keep it small since the birthday dinner is tonight. **Café du Marché** (Place du Marché 2) is the easy go-to for a quick snack or drink. **Crêperie Bretonne** is an alternative for a sweet or savory snack if open.\n\n*If running late: skip the sit-down and grab something near the station. Protect dinner appetite.*",
+          "description": "Quick pre-train snack \u2014 keep it small since the birthday dinner is tonight. **Caf\u00e9 du March\u00e9** (Place du March\u00e9 2) is the easy go-to for a quick snack or drink. **Cr\u00eaperie Bretonne** is an alternative for a sweet or savory snack if open.\n\n*If running late: skip the sit-down and grab something near the station. Protect dinner appetite.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "c59139de-f064-4e69-bc3e-c7d33fc4fb09",
               "role": "venue",
-              "name": "Café du Marché",
+              "name": "Caf\u00e9 du March\u00e9",
               "lat": 47.1043021,
               "lng": 6.831559800000001,
-              "fullAddress": "Pl. du Marché 2, 2300 La Chaux-de-Fonds, Switzerland",
+              "fullAddress": "Pl. du March\u00e9 2, 2300 La Chaux-de-Fonds, Switzerland",
               "description": "Easy go-to for a quick snack or drink before the train.",
               "link": null,
               "googlePlaceId": "ChIJ83aZWEH7jUcRi4p4OBG4S8k",
@@ -568,79 +1230,33 @@
             {
               "locationId": "53ea928d-26b5-4c9f-8465-98512c45b556",
               "role": "venue",
-              "name": "Crêperie Bretonne",
+              "name": "Cr\u00eaperie Bretonne",
               "lat": 47.1034892,
               "lng": 6.8327838000000005,
               "fullAddress": "La Chaux-de-Fonds, Switzerland",
-              "description": "Sweet or savory crêpe option if open. Verify location locally.",
+              "description": "Sweet or savory cr\u00eape option if open. Verify location locally.",
               "link": null,
               "googlePlaceId": "ChIJBVcKvSKhj0cRTjeCh6tilkI",
               "googleMapsUri": "https://maps.google.com/?cid=4798130941862229838&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "1de3682e-a8df-4665-bd1a-61ee869b6cb8",
           "dayId": "cd8763ff-4266-483e-8d30-8028f5ace44d",
-          "type": "travel",
-          "title": "Train: La Chaux-de-Fonds → Bern",
+          "type": "departure",
+          "title": "Train: La Chaux-de-Fonds \u2192 Bern",
           "startDateTime": "2026-05-12T16:30:00+02:00",
           "endDateTime": "2026-05-12T17:45:00+02:00",
           "confirmationNumber": null,
-          "description": "Same basic route as outbound — La Chaux-de-Fonds → Neuchâtel → Bern. Transfer at Neuchâtel. Use the SBB app for live timing.\n\n**Protect the 7:30 PM Kornhauskeller reservation.** If you miss the planned train, take the next one — but go straight to hotel, change quickly, and head directly to dinner. Do not add extra stops.",
+          "description": "Same basic route as outbound \u2014 La Chaux-de-Fonds \u2192 Neuch\u00e2tel \u2192 Bern. Transfer at Neuch\u00e2tel. Use the SBB app for live timing.\n\n**Protect the 7:30 PM Kornhauskeller reservation.** If you miss the planned train, take the next one \u2014 but go straight to hotel, change quickly, and head directly to dinner. Do not add extra stops.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "9d52b382-3365-43e5-bd08-55c354bc6b36",
-              "role": "origin",
-              "name": "La Chaux-de-Fonds Railway Station",
-              "lat": 47.099207400000004,
-              "lng": 6.8250723,
-              "fullAddress": "Pl. de la Gare 1, 2300 La Chaux-de-Fonds, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "EjVQbC4gZGUgbGEgR2FyZSAxLCAyMzAwIExhIENoYXV4LWRlLUZvbmRzLCBTd2l0emVybGFuZCIwEi4KFAoSCQ_7p_1H-41HEYDhcb48KCijEAEqFAoSCbk8ggdI-41HEbBdqCt-Lx1P",
-              "googleMapsUri": "https://maps.google.com/?q=Pl.+de+la+Gare+1,+2300+La+Chaux-de-Fonds,+Suisse&ftid=0x478dfb47fda7fb0f:0x65606996f99799d8&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "3a7a40f3-d9f1-4b87-ae19-5509368fdb42",
-              "role": "waypoint",
-              "name": "Neuchâtel Railway Station",
-              "lat": 46.99650450000001,
-              "lng": 6.9358911999999995,
-              "fullAddress": "Place de La Gare 1, 2000 Neuenburg, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJGdHvrxkKjkcRMrUVa5Q3WAo",
-              "googleMapsUri": "https://maps.google.com/?cid=745406848921089330&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "77ae474d-8b3d-4f33-845e-3e0fcd5d7d3f",
-              "role": "destination",
-              "name": "Bern Railway Station",
-              "lat": 46.9485269,
-              "lng": 7.439914,
-              "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
-              "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "1de3682e-a8df-4665-bd1a-61ee869b6cb8"
         },
         {
           "pointId": "c14843e9-6ca4-4454-b09e-9b32f773ab55",
@@ -650,7 +1266,7 @@
           "startDateTime": "2026-05-12T19:30:00+02:00",
           "endDateTime": "2026-05-12T21:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Iconic vaulted dining room — the anchor of the birthday day. **Reservation:** 7:30 PM, already booked. Arrive by 7:20 PM.\n\nKornhauskeller is a monumental historic space in a converted granary vault. This is the memorable birthday celebration dinner — give it the arrival energy it deserves.",
+          "description": "Iconic vaulted dining room \u2014 the anchor of the birthday day. **Reservation:** 7:30 PM, already booked. Arrive by 7:20 PM.\n\nKornhauskeller is a monumental historic space in a converted granary vault. This is the memorable birthday celebration dinner \u2014 give it the arrival energy it deserves.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -667,8 +1283,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=9166807882138371302&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -680,7 +1294,7 @@
           "startDateTime": "2026-05-12T21:30:00+02:00",
           "endDateTime": "2026-05-12T23:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Post-birthday evening stroll through Bern. The goal is an upbeat post-dinner walk and a sense of the city at night — not a club night.\n\n- **Kornhausplatz** — right outside dinner; natural starting point.\n- **Gerechtigkeitsgasse** — Old Town street with bars and evening activity.\n- **Nydegg Bridge** — night views over the Aare River.\n\n*If energy is high: walk Gerechtigkeitsgasse and find a drink. If low: short stroll around Kornhausplatz and back. If weather is bad: find one cozy bar near the hotel.*",
+          "description": "Post-birthday evening stroll through Bern. The goal is an upbeat post-dinner walk and a sense of the city at night \u2014 not a club night.\n\n- **Kornhausplatz** \u2014 right outside dinner; natural starting point.\n- **Gerechtigkeitsgasse** \u2014 Old Town street with bars and evening activity.\n- **Nydegg Bridge** \u2014 night views over the Aare River.\n\n*If energy is high: walk Gerechtigkeitsgasse and find a drink. If low: short stroll around Kornhausplatz and back. If weather is bad: find one cozy bar near the hotel.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -714,15 +1328,13 @@
               "name": "Nydegg Bridge",
               "lat": 46.9485077,
               "lng": 7.4578806,
-              "fullAddress": "Nydeggbrücke, 3011 Bern, Switzerland",
+              "fullAddress": "Nydeggbr\u00fccke, 3011 Bern, Switzerland",
               "description": null,
               "link": null,
               "googlePlaceId": "EiVOeWRlZ2dicsO8Y2tlLCAzMDExIEJlcm4sIFN3aXR6ZXJsYW5kIi4qLAoUChIJUaL9QNw5jkcRwvYGTHLbQUsSFAoSCTmM1ty7OY5HEWfXSojOtc-7",
               "googleMapsUri": "https://maps.google.com/?q=Nydeggbr%C3%BCcke,+3011+Bern,+Schweiz&ftid=0x478e39dc40fda251:0x4b41db724c06f6c2&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -730,9 +1342,9 @@
     },
     {
       "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
-      "title": "May 13 — Travel to Wengen",
+      "title": "May 13 \u2014 Travel to Wengen",
       "date": "2026-05-13",
-      "description": " Leave Bern, brief lunch stop in Interlaken, then the Lauterbrunnen → Wengen mountain railway. Arrive with time to enjoy the hotel balcony and Jungfrau views.",
+      "description": " Leave Bern, brief lunch stop in Interlaken, then the Lauterbrunnen \u2192 Wengen mountain railway. Arrive with time to enjoy the hotel balcony and Jungfrau views.",
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -744,14 +1356,14 @@
           "startDateTime": "2026-05-13T08:30:00+02:00",
           "endDateTime": "2026-05-13T09:15:00+02:00",
           "confirmationNumber": null,
-          "description": "Efficient breakfast before the travel day — do not make it a long sit-down unless you plan to leave later. **Adriano's Bar & Café** or **Café Einstein** are easy and close. **Confiserie Tschirren** (Marktgasse 73) is a good Swiss pastry option for a lighter, grab-and-go start.",
+          "description": "Efficient breakfast before the travel day \u2014 do not make it a long sit-down unless you plan to leave later. **Adriano's Bar & Caf\u00e9** or **Caf\u00e9 Einstein** are easy and close. **Confiserie Tschirren** (Marktgasse 73) is a good Swiss pastry option for a lighter, grab-and-go start.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "eb0c60ac-b422-42af-b01f-70b9c2f4bf66",
               "role": "venue",
-              "name": "Adriano's Bar & Café",
+              "name": "Adriano's Bar & Caf\u00e9",
               "lat": 46.9478076,
               "lng": 7.4472638999999985,
               "fullAddress": "Theaterpl. 2, 3011 Bern, Switzerland",
@@ -763,11 +1375,11 @@
             {
               "locationId": "d0b7faff-9e2d-4593-aa65-4ccf42d38fdb",
               "role": "venue",
-              "name": "Café Einstein",
+              "name": "Caf\u00e9 Einstein",
               "lat": 46.9478097,
               "lng": 7.4499341999999995,
               "fullAddress": "Kramgasse 49, 3011 Bern, Switzerland",
-              "description": "Classic relaxed café near the hotel and Old Town.",
+              "description": "Classic relaxed caf\u00e9 near the hotel and Old Town.",
               "link": null,
               "googlePlaceId": "ChIJDe4EicM5jkcRYIXq2P0LA4E",
               "googleMapsUri": "https://maps.google.com/?cid=9296287240716715360&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
@@ -785,57 +1397,23 @@
               "googleMapsUri": "https://maps.google.com/?q=Marktgasse+73,+3011+Bern,+Schweiz&ftid=0x478e39c0cb864c3d:0x5a3ad467d01a57f&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "051f05e0-22df-43d7-be93-db20e4a2b302",
           "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
-          "type": "travel",
-          "title": "Train: Bern → Interlaken Ost",
+          "type": "departure",
+          "title": "Train: Bern \u2192 Interlaken Ost",
           "startDateTime": "2026-05-13T09:30:00+02:00",
           "endDateTime": "2026-05-13T10:30:00+02:00",
           "confirmationNumber": null,
           "description": "Direct InterCity train from Bern to Interlaken Ost. Scenic as you approach the lakes and mountains. No reservation required. Keep luggage manageable for the Lauterbrunnen transfer ahead.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "5d2d94e5-7c17-4e4f-8381-64b1cda01904",
-              "role": "origin",
-              "name": "Bern Railway Station",
-              "lat": 46.9485269,
-              "lng": 7.439914,
-              "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
-              "googleMapsUri": "https://maps.google.com/?cid=1654077600818821085&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "25f05364-d99a-4811-83f1-cb78c11e3556",
-              "role": "destination",
-              "name": "Interlaken Ost Station",
-              "lat": 46.685314299999995,
-              "lng": 7.8548944,
-              "fullAddress": "Höheweg 7, 3800 Interlaken, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
-              "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "051f05e0-22df-43d7-be93-db20e4a2b302"
         },
         {
           "pointId": "79ab4364-228c-4e1a-b293-9610ee78ab55",
@@ -845,7 +1423,7 @@
           "startDateTime": "2026-05-13T10:30:00+02:00",
           "endDateTime": "2026-05-13T12:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Early lunch or brunch-style stop — Wengen is the real destination so do not overstay.\n\n- **Restaurant Taverne** (Höheweg 74) — traditional Swiss, sit-down; good for a proper meal.\n- **Hüsi Bierhaus** (Postgasse 3) — casual, hearty, beer-hall feel.\n- **Velo Cafe** (Marktgasse 41) — lighter, modern, quick.\n\n*If hungry early: eat a full meal. If not very hungry: coffee/snack and continue. If weather is perfect: keep it short and get up the mountain.*",
+          "description": "Early lunch or brunch-style stop \u2014 Wengen is the real destination so do not overstay.\n\n- **Restaurant Taverne** (H\u00f6heweg 74) \u2014 traditional Swiss, sit-down; good for a proper meal.\n- **H\u00fcsi Bierhaus** (Postgasse 3) \u2014 casual, hearty, beer-hall feel.\n- **Velo Cafe** (Marktgasse 41) \u2014 lighter, modern, quick.\n\n*If hungry early: eat a full meal. If not very hungry: coffee/snack and continue. If weather is perfect: keep it short and get up the mountain.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -855,7 +1433,7 @@
               "name": "Restaurant Taverne",
               "lat": 46.6884769,
               "lng": 7.863434400000001,
-              "fullAddress": "Höheweg 74, 3800 Interlaken, Switzerland",
+              "fullAddress": "H\u00f6heweg 74, 3800 Interlaken, Switzerland",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJ6fenVJ6kj0cR_BpA8AG9KTw",
@@ -864,7 +1442,7 @@
             {
               "locationId": "b112baec-477a-46eb-9221-b9b8f5383ca7",
               "role": "venue",
-              "name": "Hüsi Bierhaus",
+              "name": "H\u00fcsi Bierhaus",
               "lat": 46.6861007,
               "lng": 7.854629,
               "fullAddress": "Postgasse 3, 3800 Interlaken, Switzerland",
@@ -886,104 +1464,38 @@
               "googleMapsUri": "https://maps.google.com/?q=Marktgasse+41,+3800+Interlaken,+Schweiz&ftid=0x478fa490a404cbed:0xaa404b0444484dc7&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "66c7ef1c-33b3-4726-94f7-df7f4ac57b7c",
           "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
-          "type": "travel",
-          "title": "Train: Interlaken → Wengen",
+          "type": "departure",
+          "title": "Train: Interlaken \u2192 Wengen",
           "startDateTime": "2026-05-13T12:00:00+02:00",
           "endDateTime": "2026-05-13T13:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Transfer at Lauterbrunnen for the mountain cog railway to Wengen. Wengen is car-free — the train is how everyone arrives. **Sit on the right side going up** for the best views of the Lauterbrunnen valley walls and waterfalls. Scenic ascent all the way.",
+          "description": "Transfer at Lauterbrunnen for the mountain cog railway to Wengen. Wengen is car-free \u2014 the train is how everyone arrives. **Sit on the right side going up** for the best views of the Lauterbrunnen valley walls and waterfalls. Scenic ascent all the way.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "836614cf-9ba6-44f8-b0ec-aec16f50d3dd",
-              "role": "origin",
-              "name": "Interlaken Ost Station",
-              "lat": 46.685314299999995,
-              "lng": 7.8548944,
-              "fullAddress": "Höheweg 7, 3800 Interlaken, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
-              "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "a427c9ad-fc17-415f-af07-04ba6d6512aa",
-              "role": "waypoint",
-              "name": "Lauterbrunnen Station",
-              "lat": 46.5960688,
-              "lng": 7.9082575,
-              "fullAddress": "3822 Lauterbrunnen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJzQeHBx2hj0cR4dVU3d9jMes",
-              "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "b170d0d0-6a33-4c3b-9de1-7336404d2985",
-              "role": "destination",
-              "name": "Wengen Railway Station",
-              "lat": 46.6054335,
-              "lng": 7.921539900000001,
-              "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
-              "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "66c7ef1c-33b3-4726-94f7-df7f4ac57b7c"
         },
         {
           "pointId": "f14e1f93-5eff-4432-85ed-b1d3f5323a06",
           "dayId": "7cf5b98b-f077-494f-91e7-895e3dcac503",
-          "type": "stay",
+          "type": "check-in",
           "title": "Hotel Check-in: Beausite Park Hotel",
           "startDateTime": "2026-05-13T14:00:00+02:00",
           "endDateTime": "2026-05-13T15:00:00+02:00",
           "confirmationNumber": "56059SG016579",
-          "description": "Major arrival moment — Beausite Park Hotel Wengen. **Confirmation:** 56059SG016579 | **Room:** Double Room — Jungfrau View with Balcony.\n\nAsk hotel for help if luggage or the walk from the station feels difficult. Get to the balcony as soon as possible — this is the Alpine honeymoon moment.",
+          "description": "Major arrival moment \u2014 Beausite Park Hotel Wengen. **Confirmation:** 56059SG016579 | **Room:** Double Room \u2014 Jungfrau View with Balcony.\n\nAsk hotel for help if luggage or the walk from the station feels difficult. Get to the balcony as soon as possible \u2014 this is the Alpine honeymoon moment.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "14023a8e-f674-4d39-857e-a30237a9c0d7",
-              "role": "venue",
-              "name": "Beausite Park Hotel Wengen",
-              "lat": 46.60852,
-              "lng": 7.923196299999999,
-              "fullAddress": "Am Wengi, 3823 Wengen BE, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJ01gOiMKhj0cRerUO3mLunpw",
-              "googleMapsUri": "https://maps.google.com/?cid=11285719824636753274&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": null,
-          "stayDetail": {
-            "stayType": "hotel",
-            "checkInTime": null,
-            "checkOutTime": null,
-            "roomType": null
-          },
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "stayDetailId": "f14e1f93-5eff-4432-85ed-b1d3f5323a06"
         },
         {
           "pointId": "c9577a33-e4c7-4724-9285-3b34d79dcf48",
@@ -993,7 +1505,7 @@
           "startDateTime": "2026-05-13T18:30:00+02:00",
           "endDateTime": "2026-05-13T20:30:00+02:00",
           "confirmationNumber": null,
-          "description": "First Wengen dinner. **Restaurant Eiger** (Am Acher, 3823 Wengen) is the natural choice — mountain-village feel and views. If unavailable, ask the hotel for a similar scenic or local recommendation.\n\n*If tired: eat at the hotel or closest scenic restaurant. If energy allows: take a short village walk before dinner. If view matters most: ask hotel which restaurant has the best visibility that night.*",
+          "description": "First Wengen dinner. **Restaurant Eiger** (Am Acher, 3823 Wengen) is the natural choice \u2014 mountain-village feel and views. If unavailable, ask the hotel for a similar scenic or local recommendation.\n\n*If tired: eat at the hotel or closest scenic restaurant. If energy allows: take a short village walk before dinner. If view matters most: ask hotel which restaurant has the best visibility that night.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1010,8 +1522,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=15951694484229536385&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -1019,9 +1529,9 @@
     },
     {
       "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
-      "title": "May 14 — Wengen Hike + Scenic Day",
+      "title": "May 14 \u2014 Wengen Hike + Scenic Day",
       "date": "2026-05-14",
-      "description": "Cable car to Männlichen, hike Männlichen → Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Schönegg 1903",
+      "description": "Cable car to M\u00e4nnlichen, hike M\u00e4nnlichen \u2192 Kleine Scheidegg, lunch with views of Jungfrau and Eiger, afternoon rest at hotel, and the Sch\u00f6negg 1903",
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -1033,7 +1543,7 @@
           "startDateTime": "2026-05-14T08:30:00+02:00",
           "endDateTime": "2026-05-14T09:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Breakfast at the hotel — the Jungfrau views from here are part of the experience. **Eat enough for the hike ahead**, but do not overdo it. Plan to leave for the cable car around 9:30–10:00 AM.",
+          "description": "Breakfast at the hotel \u2014 the Jungfrau views from here are part of the experience. **Eat enough for the hike ahead**, but do not overdo it. Plan to leave for the cable car around 9:30\u201310:00 AM.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1050,77 +1560,43 @@
               "googleMapsUri": "https://maps.google.com/?cid=11285719824636753274&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "2c33a028-31d4-4c64-9f36-252717da0931",
           "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
-          "type": "travel",
-          "title": "Cable Car: Wengen → Männlichen",
+          "type": "departure",
+          "title": "Cable Car: Wengen \u2192 M\u00e4nnlichen",
           "startDateTime": "2026-05-14T10:00:00+02:00",
           "endDateTime": "2026-05-14T10:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Short cable car ride to Männlichen delivering panoramic alpine views quickly without a full day of climbing.\n\n**Tickets:** Buy at station or via app. No advance reservation needed. **Check weather morning-of** before committing to this plan — if clouds are low, delay start or ask hotel about the best window.\n\n*If visibility is good: proceed as planned. If clouds are persistent: delay or ask hotel for advice. If cable car has an issue: pivot to a lower-elevation walk around Wengen or Lauterbrunnen.*",
+          "description": "Short cable car ride to M\u00e4nnlichen delivering panoramic alpine views quickly without a full day of climbing.\n\n**Tickets:** Buy at station or via app. No advance reservation needed. **Check weather morning-of** before committing to this plan \u2014 if clouds are low, delay start or ask hotel about the best window.\n\n*If visibility is good: proceed as planned. If clouds are persistent: delay or ask hotel for advice. If cable car has an issue: pivot to a lower-elevation walk around Wengen or Lauterbrunnen.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "48254699-f432-4171-a13e-806e5ada5958",
-              "role": "origin",
-              "name": "Wengen Cable Car Station",
-              "lat": 46.6054335,
-              "lng": 7.921539900000001,
-              "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
-              "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "f449eb31-3416-47d3-9365-56bfa1936e13",
-              "role": "destination",
-              "name": "Männlichen Summit",
-              "lat": 46.6136349,
-              "lng": 7.9411866,
-              "fullAddress": "Männlichen, 3823 Kleine Scheidegg, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "Ei9Nw6RubmxpY2hlbiwgMzgyMyBLbGVpbmUgU2NoZWlkZWdnLCBTd2l0emVybGFuZCIuKiwKFAoSCZH-KulYn49HEVhcbqKtq0M6EhQKEgnp2o6XpZ-PRxEtv3D5JO2vUg",
-              "googleMapsUri": "https://maps.google.com/?q=M%C3%A4nnlichen,+3823+Kleine+Scheidegg,+Schweiz&ftid=0x478f9f58e92afe91:0x3a43abada26e5c58&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "other",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "2c33a028-31d4-4c64-9f36-252717da0931"
         },
         {
           "pointId": "0de66763-2da7-4b23-ba73-d868a0be82f5",
           "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "activity",
-          "title": "Hike: Männlichen → Kleine Scheidegg",
+          "title": "Hike: M\u00e4nnlichen \u2192 Kleine Scheidegg",
           "startDateTime": "2026-05-14T10:30:00+02:00",
           "endDateTime": "2026-05-14T12:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Classic alpine ridge hike — **easy to moderate difficulty** on a wide, well-marked trail. Approximately 1.5–2 hours at a relaxed honeymoon pace with photo stops.\n\n**Views throughout:** Jungfrau, Eiger, Mönch, and rolling alpine scenery.\n\n**Tips:** Wear proper walking shoes. Bring water. Do not rush — this is the point of the day.\n\n*If trail conditions are poor: ask hotel or cable car station for status and choose a shorter walk. If feeling tired: do the Royal Walk / short viewpoint only and return. If weather is perfect: take your time and enjoy every moment.*",
+          "description": "Classic alpine ridge hike \u2014 **easy to moderate difficulty** on a wide, well-marked trail. Approximately 1.5\u20132 hours at a relaxed honeymoon pace with photo stops.\n\n**Views throughout:** Jungfrau, Eiger, M\u00f6nch, and rolling alpine scenery.\n\n**Tips:** Wear proper walking shoes. Bring water. Do not rush \u2014 this is the point of the day.\n\n*If trail conditions are poor: ask hotel or cable car station for status and choose a shorter walk. If feeling tired: do the Royal Walk / short viewpoint only and return. If weather is perfect: take your time and enjoy every moment.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "f122d2c7-e0a1-483b-851a-80cebd4996c0",
               "role": "venue",
-              "name": "Männlichen",
+              "name": "M\u00e4nnlichen",
               "lat": 46.6181443,
               "lng": 7.938064700000001,
-              "fullAddress": "Männlichen, 3818 Grindelwald, Switzerland",
+              "fullAddress": "M\u00e4nnlichen, 3818 Grindelwald, Switzerland",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJdYycLv2hj0cRXlvQtgRBJG0",
@@ -1139,8 +1615,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=5958241575093976877&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1152,7 +1626,7 @@
           "startDateTime": "2026-05-14T12:30:00+02:00",
           "endDateTime": "2026-05-14T13:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Mountain lunch with big alpine views after the hike. **Restaurant Grindelwaldblick** and **Restaurant Bellevue des Alpes** are both casual with views — no reservation required, but can be busy midday; a short wait is possible.\n\n*If one is crowded: go to the other. If weather is beautiful: prioritize the view over the menu. If tired: eat quickly and take the train back.*",
+          "description": "Mountain lunch with big alpine views after the hike. **Restaurant Grindelwaldblick** and **Restaurant Bellevue des Alpes** are both casual with views \u2014 no reservation required, but can be busy midday; a short wait is possible.\n\n*If one is crowded: go to the other. If weather is beautiful: prioritize the view over the menu. If tired: eat quickly and take the train back.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1181,74 +1655,40 @@
               "googleMapsUri": "https://maps.google.com/?cid=5499424951823110522&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "b55ffe57-8549-4682-a1c7-9bcc63ece0b7",
           "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
-          "type": "travel",
-          "title": "Train: Kleine Scheidegg → Wengen",
+          "type": "departure",
+          "title": "Train: Kleine Scheidegg \u2192 Wengen",
           "startDateTime": "2026-05-14T14:00:00+02:00",
           "endDateTime": "2026-05-14T14:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Scenic train descent from Kleine Scheidegg back to Wengen. **Sit on the right side going down** for the best views. This returns you with a solid buffer before the 8:15 PM dinner — protect the afternoon for rest and a shower.",
+          "description": "Scenic train descent from Kleine Scheidegg back to Wengen. **Sit on the right side going down** for the best views. This returns you with a solid buffer before the 8:15 PM dinner \u2014 protect the afternoon for rest and a shower.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "4b69e3c4-3dc5-4331-8dc2-60a9010b3764",
-              "role": "origin",
-              "name": "Kleine Scheidegg Railway Station",
-              "lat": 46.605407799999995,
-              "lng": 7.9215207,
-              "fullAddress": "3823 Wengen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJ6dqOl6Wfj0cRLb9w-STtr1I",
-              "googleMapsUri": "https://maps.google.com/?cid=5958241575093976877&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "adc3f365-8522-4095-be4d-a18bf04ea828",
-              "role": "destination",
-              "name": "Wengen Railway Station",
-              "lat": 46.6054335,
-              "lng": 7.921539900000001,
-              "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
-              "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "b55ffe57-8549-4682-a1c7-9bcc63ece0b7"
         },
         {
           "pointId": "2dcc63b8-bff8-461c-b20c-b62cc2c5567e",
           "dayId": "7575fe46-0671-42da-ba5d-ab04464e7953",
           "type": "activity",
-          "title": "Dinner: Schönegg 1903",
+          "title": "Dinner: Sch\u00f6negg 1903",
           "startDateTime": "2026-05-14T20:15:00+02:00",
           "endDateTime": "2026-05-14T22:00:00+02:00",
           "confirmationNumber": "4986",
-          "description": "**Reservation confirmed:** Section: Chmineesaal, Table: 2, Name: Julian Dale, Confirmation: 4986, Phone: 033 855 34 22.\n\n**Leave hotel by 7:45–7:55 PM** — confirm the walking route from Beausite Park Hotel before the day. If tired from the hike, ask hotel about transport options to the restaurant.\n\n*If weather is beautiful: arrive a little early for the views. If tired from the hike: ask hotel for the easiest route or transport. If running late: call the restaurant at 033 855 34 22.*",
+          "description": "**Reservation confirmed:** Section: Chmineesaal, Table: 2, Name: Julian Dale, Confirmation: 4986, Phone: 033 855 34 22.\n\n**Leave hotel by 7:45\u20137:55 PM** \u2014 confirm the walking route from Beausite Park Hotel before the day. If tired from the hike, ask hotel about transport options to the restaurant.\n\n*If weather is beautiful: arrive a little early for the views. If tired from the hike: ask hotel for the easiest route or transport. If running late: call the restaurant at 033 855 34 22.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "08fd7309-908f-403b-adc1-4baeebc5a260",
               "role": "venue",
-              "name": "Schönegg 1903",
+              "name": "Sch\u00f6negg 1903",
               "lat": 46.607306,
               "lng": 7.920952000000001,
               "fullAddress": "Auf der Burg 1401c, 3823 Wengen BE, Switzerland",
@@ -1258,8 +1698,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=6813237359229461252&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -1267,82 +1705,26 @@
     },
     {
       "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
-      "title": "May 15 — Travel to Hvar",
+      "title": "May 15 \u2014 Travel to Hvar",
       "date": "2026-05-15",
-      "description": "Big travel chain day. Critical chain: Wengen → Zurich Airport train, Zurich → Split flight at 3:00 PM (Croatia Airlines CRFG3B), taxi to Split ferry port, Split → Hvar ferry at 6:00 PM (last of the day)",
+      "description": "Big travel chain day. Critical chain: Wengen \u2192 Zurich Airport train, Zurich \u2192 Split flight at 3:00 PM (Croatia Airlines CRFG3B), taxi to Split ferry port, Split \u2192 Hvar ferry at 6:00 PM (last of the day)",
       "isAlternate": false,
       "completed": false,
       "points": [
         {
           "pointId": "e4dfa03a-66d1-4b3a-9ff0-3496e1ce427d",
           "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
-          "type": "travel",
-          "title": "Train: Wengen → Zurich Airport",
+          "type": "departure",
+          "title": "Train: Wengen \u2192 Zurich Airport",
           "startDateTime": "2026-05-15T09:00:00+02:00",
           "endDateTime": "2026-05-15T12:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Multiple transfers, but Swiss trains make this manageable. Route: Wengen → Lauterbrunnen → Interlaken Ost → Zurich Airport. **Build buffer — do not cut this close.** Flight departs 3:00 PM.\n\n**Suggested departure:** ~9:00 AM from Wengen. Target arrival Zurich Airport ~12:30 PM. Keep SBB route and tickets handy.\n\n*If a transfer is missed: use SBB app for the next route and protect the flight. If anxious: leave Wengen earlier and eat lunch at the airport.*",
+          "description": "Multiple transfers, but Swiss trains make this manageable. Route: Wengen \u2192 Lauterbrunnen \u2192 Interlaken Ost \u2192 Zurich Airport. **Build buffer \u2014 do not cut this close.** Flight departs 3:00 PM.\n\n**Suggested departure:** ~9:00 AM from Wengen. Target arrival Zurich Airport ~12:30 PM. Keep SBB route and tickets handy.\n\n*If a transfer is missed: use SBB app for the next route and protect the flight. If anxious: leave Wengen earlier and eat lunch at the airport.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "53dc13a3-f1a7-403c-83d4-1c40483496be",
-              "role": "origin",
-              "name": "Wengen Railway Station",
-              "lat": 46.6054335,
-              "lng": 7.921539900000001,
-              "fullAddress": "Wengen, 3823 Lauterbrunnen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
-              "googleMapsUri": "https://maps.google.com/?cid=12801929419722523521&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "137c4d8e-37e5-4aff-b9b5-b20c5dad370a",
-              "role": "waypoint",
-              "name": "Lauterbrunnen Station",
-              "lat": 46.5960688,
-              "lng": 7.9082575,
-              "fullAddress": "3822 Lauterbrunnen, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJzQeHBx2hj0cR4dVU3d9jMes",
-              "googleMapsUri": "https://maps.google.com/?cid=16947436685914068449&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "5b470999-c5c3-48c6-956b-1dc080807ace",
-              "role": "waypoint",
-              "name": "Interlaken Ost Station",
-              "lat": 46.685314299999995,
-              "lng": 7.8548944,
-              "fullAddress": "Höheweg 7, 3800 Interlaken, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJgYMZJhilj0cR6qv6w96OyBA",
-              "googleMapsUri": "https://maps.google.com/?cid=1209373587370847210&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "c8424c83-eeb6-4aff-8f3e-a48a9af8b5ff",
-              "role": "destination",
-              "name": "Zurich Airport Railway Station",
-              "lat": 47.4516643,
-              "lng": 8.5625171,
-              "fullAddress": "8058 Kloten, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
-              "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "train",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "e4dfa03a-66d1-4b3a-9ff0-3496e1ce427d"
         },
         {
           "pointId": "1df5282f-1740-4e19-a460-e3c777da9c3e",
@@ -1352,7 +1734,7 @@
           "startDateTime": "2026-05-15T12:30:00+02:00",
           "endDateTime": "2026-05-15T13:45:00+02:00",
           "confirmationNumber": null,
-          "description": "Eat at the airport — **do not leave the airport.**\n\n- **HITZBERGER** — fresh, quick, healthy.\n- **Air Restaurant** — sit-down airport option.\n- **Sprüngli** — Swiss pastries and light lunch.\n\n*If arriving early: sit-down meal. If arriving tight: Sprüngli or grab-and-go. If stressed: clear airport process first, then eat.*",
+          "description": "Eat at the airport \u2014 **do not leave the airport.**\n\n- **HITZBERGER** \u2014 fresh, quick, healthy.\n- **Air Restaurant** \u2014 sit-down airport option.\n- **Spr\u00fcngli** \u2014 Swiss pastries and light lunch.\n\n*If arriving early: sit-down meal. If arriving tight: Spr\u00fcngli or grab-and-go. If stressed: clear airport process first, then eat.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1383,7 +1765,7 @@
             {
               "locationId": "7e4b3a4f-a572-4861-88a4-b7e6b0da1b78",
               "role": "venue",
-              "name": "Sprüngli Zurich Airport",
+              "name": "Spr\u00fcngli Zurich Airport",
               "lat": 47.461714199999996,
               "lng": 8.550859899999999,
               "fullAddress": "Switzerland",
@@ -1393,139 +1775,53 @@
               "googleMapsUri": "https://maps.google.com/?cid=14297653204207826520&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "17f86b7d-22fb-4b43-8dc3-68a1727b602e",
           "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
-          "type": "travel",
-          "title": "Flight: Zurich → Split",
+          "type": "departure",
+          "title": "Flight: Zurich \u2192 Split",
           "startDateTime": "2026-05-15T15:00:00+02:00",
           "endDateTime": "2026-05-15T16:25:00+02:00",
           "confirmationNumber": "CRFG3B",
-          "description": "Croatia Airlines to Split. **Confirmation:** CRFG3B. Departure 3:00 PM, arrival Split 4:25 PM (~1h 25m flight).\n\nOnce you land, the goal is the ferry. **Do not stop for anything unnecessary** — go directly from the plane to a taxi/transfer to the Split ferry port. You have approximately 1h 35m before the ferry departs.",
+          "description": "Croatia Airlines to Split. **Confirmation:** CRFG3B. Departure 3:00 PM, arrival Split 4:25 PM (~1h 25m flight).\n\nOnce you land, the goal is the ferry. **Do not stop for anything unnecessary** \u2014 go directly from the plane to a taxi/transfer to the Split ferry port. You have approximately 1h 35m before the ferry departs.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "6fb4cce7-5613-4126-8694-dde54fe538e5",
-              "role": "origin",
-              "name": "Zurich Airport",
-              "lat": 47.4516643,
-              "lng": 8.5625171,
-              "fullAddress": "8058 Kloten, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
-              "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "0968547d-e317-4158-ace5-025d3c2fb7e8",
-              "role": "destination",
-              "name": "Split Airport",
-              "lat": 43.5518128,
-              "lng": 16.331662899999998,
-              "fullAddress": "21217, Kaštel Štafilić, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
-              "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "flight",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "17f86b7d-22fb-4b43-8dc3-68a1727b602e"
         },
         {
           "pointId": "873ed383-50af-4075-bd04-f10246e73d5a",
           "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
-          "type": "travel",
-          "title": "Ferry: Split → Hvar",
+          "type": "departure",
+          "title": "Ferry: Split \u2192 Hvar",
           "startDateTime": "2026-05-15T18:00:00+02:00",
           "endDateTime": "2026-05-15T18:55:00+02:00",
           "confirmationNumber": "BW5012160",
-          "description": "**This is the last ferry of the day to Hvar — protect this connection at all costs.**\n\nOperator: Krilo / Kapetan Luka. **Booking codes: 3GB90DVL004, 3GB90DVL003** — keep these accessible.\n\nMove directly from the plane to a taxi to the ferry port. Do not plan dinner or snacks in Split before boarding.\n\n*If flight is on time: taxi to ferry, board calmly. If flight is delayed: go straight to taxi and tell driver the ferry departure time. If you miss this ferry: contact the hotel and ferry operator immediately — there is no later option tonight.*",
+          "description": "**This is the last ferry of the day to Hvar \u2014 protect this connection at all costs.**\n\nOperator: Krilo / Kapetan Luka. **Booking codes: 3GB90DVL004, 3GB90DVL003** \u2014 keep these accessible.\n\nMove directly from the plane to a taxi to the ferry port. Do not plan dinner or snacks in Split before boarding.\n\n*If flight is on time: taxi to ferry, board calmly. If flight is delayed: go straight to taxi and tell driver the ferry departure time. If you miss this ferry: contact the hotel and ferry operator immediately \u2014 there is no later option tonight.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "e1aae80b-64bf-4034-9281-4d57f2ed8eba",
-              "role": "origin",
-              "name": "Gat Sv. Petra Ferry Port",
-              "lat": 43.5048453,
-              "lng": 16.4411201,
-              "fullAddress": "Gat Sv. Petra, 21000, Split, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "EiRHYXQgU3YuIFBldHJhLCAyMTAwMCwgU3BsaXQsIENyb2F0aWEiLiosChQKEgljFtBMVWc1ExGSJDH6L1FGfxIUChIJv1MSzf9dNRMRslcdNVCtABM",
-              "googleMapsUri": "https://maps.google.com/?q=Gat+Sv.+Petra,+21000,+Split,+Hrvatska&ftid=0x133567554cd01663:0x7f46512ffa312492&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "4d3f5b05-2c4f-4adc-989b-ade27a9e3f65",
-              "role": "destination",
-              "name": "Hvar Harbour",
-              "lat": 43.1719882,
-              "lng": 16.4412412,
-              "fullAddress": "Riva, 21450, Hvar, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
-              "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "ferry",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "873ed383-50af-4075-bd04-f10246e73d5a"
         },
         {
           "pointId": "8a46d426-7eb0-42ca-a67d-320255771012",
           "dayId": "35f9044b-0068-43a7-a843-a48de40d8880",
-          "type": "stay",
+          "type": "check-in",
           "title": "Hotel Check-in: Riva Marina Hvar Hotel",
           "startDateTime": "2026-05-15T19:00:00+02:00",
           "endDateTime": "2026-05-15T19:30:00+02:00",
           "confirmationNumber": "PH27312096",
-          "description": "Hotel is directly on the Hvar waterfront — very easy walk from the ferry. **Reservation:** PH27312096. Drop bags, freshen up, and transition from travel mode to island mode before dinner.",
+          "description": "Hotel is directly on the Hvar waterfront \u2014 very easy walk from the ferry. **Reservation:** PH27312096. Drop bags, freshen up, and transition from travel mode to island mode before dinner.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "99bb33b7-d91c-4c76-99dc-b195d868cffb",
-              "role": "venue",
-              "name": "Riva Marina Hvar Hotel",
-              "lat": 43.1703364,
-              "lng": 16.4412654,
-              "fullAddress": "Obala, Riva 27, 21450, Hvar, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJE5FokICBNRMRminfeZDsEwo",
-              "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": null,
-          "stayDetail": {
-            "stayType": "hotel",
-            "checkInTime": null,
-            "checkOutTime": null,
-            "roomType": null
-          },
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "stayDetailId": "8a46d426-7eb0-42ca-a67d-320255771012"
         },
         {
           "pointId": "c4067978-972d-4d0c-bd14-4e976c431888",
@@ -1535,7 +1831,7 @@
           "startDateTime": "2026-05-15T19:30:00+02:00",
           "endDateTime": "2026-05-15T21:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Keep dinner easy — this is not the night for a formal reservation. Walk-in based on wait times and what looks good.\n\n- **Fig Hvar** (Španjola 4) — casual, modern, popular; best for a lively first-night energy.\n- **Dalmatino** (Sveti Marak 1) — friendly local favorite with authentic Croatian food.\n- **Konoba Bonaca** — traditional, quieter option.\n\n*If tired: eat the closest/fastest option. If you want lively energy: Fig. If you want Croatian feel: Dalmatino. Expect possible short waits at any option.*",
+          "description": "Keep dinner easy \u2014 this is not the night for a formal reservation. Walk-in based on wait times and what looks good.\n\n- **Fig Hvar** (\u0160panjola 4) \u2014 casual, modern, popular; best for a lively first-night energy.\n- **Dalmatino** (Sveti Marak 1) \u2014 friendly local favorite with authentic Croatian food.\n- **Konoba Bonaca** \u2014 traditional, quieter option.\n\n*If tired: eat the closest/fastest option. If you want lively energy: Fig. If you want Croatian feel: Dalmatino. Expect possible short waits at any option.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1576,8 +1872,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=288420937511718816&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1589,7 +1883,7 @@
           "startDateTime": "2026-05-15T21:00:00+02:00",
           "endDateTime": "2026-05-15T22:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Grab gelato, walk the harbor, and soak in the Hvar evening atmosphere — boats, lights, and the evening crowd. Do not overextend after a long travel day.\n\n*If energized: continue to a casual drink somewhere on the Riva. If tired: short walk and bed. If weather is bad: find a drink near the hotel instead.*",
+          "description": "Grab gelato, walk the harbor, and soak in the Hvar evening atmosphere \u2014 boats, lights, and the evening crowd. Do not overextend after a long travel day.\n\n*If energized: continue to a casual drink somewhere on the Riva. If tired: short walk and bed. If weather is bad: find a drink near the hotel instead.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1618,8 +1912,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -1627,7 +1919,7 @@
     },
     {
       "dayId": "3deafa7e-8c72-4446-b628-9fa4551aa365",
-      "title": "May 16 — Hvar Boat Day + Giaxa Dinner",
+      "title": "May 16 \u2014 Hvar Boat Day + Giaxa Dinner",
       "date": "2026-05-16",
       "description": "Private boat day around Hvar/Pakleni Islands, flexible lunch, reset at hotel, Giaxa dinner, and optional evening out.",
       "isAlternate": false,
@@ -1670,8 +1962,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=3823172369898175212&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1683,7 +1973,7 @@
           "startDateTime": "2026-05-16T12:30:00+02:00",
           "endDateTime": "2026-05-16T14:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Flexible lunch during boat day. Zori and Meneghello on Palmižana are primary scenic options; reservations are recommended, best handled by the captain or hotel calling ahead same day. Laganini is the famous beach-club option but may have limited/uncertain mid-May availability; reservation strongly recommended if open. Konoba Dubovica is the best rustic fallback on Hvar island and usually does not need a reservation.",
+          "description": "Flexible lunch during boat day. Zori and Meneghello on Palmi\u017eana are primary scenic options; reservations are recommended, best handled by the captain or hotel calling ahead same day. Laganini is the famous beach-club option but may have limited/uncertain mid-May availability; reservation strongly recommended if open. Konoba Dubovica is the best rustic fallback on Hvar island and usually does not need a reservation.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -1693,7 +1983,7 @@
               "name": "Zori Restaurant",
               "lat": 43.1629321,
               "lng": 16.3924059,
-              "fullAddress": "Palmižana, Croatia",
+              "fullAddress": "Palmi\u017eana, Croatia",
               "description": "Primary Pakleni Islands lunch option; reservation recommended.",
               "link": null,
               "googlePlaceId": "ChIJmTHiTgiDNRMRPhzOXXpXAjg",
@@ -1705,7 +1995,7 @@
               "name": "Meneghello Restaurant",
               "lat": 43.1629321,
               "lng": 16.3924059,
-              "fullAddress": "Palmižana, Croatia",
+              "fullAddress": "Palmi\u017eana, Croatia",
               "description": "Artistic/upscale Pakleni Islands option; reservation recommended.",
               "link": null,
               "googlePlaceId": "ChIJmTHiTgiDNRMRPhzOXXpXAjg",
@@ -1717,7 +2007,7 @@
               "name": "Laganini Lounge Bar & Fish House",
               "lat": 43.1629321,
               "lng": 16.3924059,
-              "fullAddress": "Palmižana, Croatia",
+              "fullAddress": "Palmi\u017eana, Croatia",
               "description": "Famous beach-club lunch option; mid-May availability uncertain, reservation strongly recommended if open.",
               "link": null,
               "googlePlaceId": "ChIJmTHiTgiDNRMRPhzOXXpXAjg",
@@ -1736,8 +2026,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=7414985020019922252&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1766,8 +2054,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1789,15 +2075,13 @@
               "name": "Giaxa",
               "lat": 43.1726715,
               "lng": 16.4427086,
-              "fullAddress": "Petra Hektorovića 3, 21450, Hvar, Croatia",
+              "fullAddress": "Petra Hektorovi\u0107a 3, 21450, Hvar, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJI8u3EIeBNRMRwzlPHcFU2iE",
               "googleMapsUri": "https://maps.google.com/?cid=2439355336571697603&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1855,7 +2139,7 @@
               "name": "Ka'lavanda Music Bar",
               "lat": 43.1724886,
               "lng": 16.443164799999998,
-              "fullAddress": "Trg Marka, Dr. Mate Miličića 7, 21450, Hvar, Croatia",
+              "fullAddress": "Trg Marka, Dr. Mate Mili\u010di\u0107a 7, 21450, Hvar, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJa0rLHoeBNRMRND9LABuf1VI",
@@ -1874,8 +2158,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=13951752557513967954&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -1883,7 +2165,7 @@
     },
     {
       "dayId": "b53e3735-b585-437f-b8af-0ec27bdfe22b",
-      "title": "May 16 alt — Hvar Rainy Day Backup",
+      "title": "May 16 alt \u2014 Hvar Rainy Day Backup",
       "date": "2026-05-16",
       "description": "Backup plan if the boat day is not practical due to rain, cold, wind, or poor sea conditions.",
       "isAlternate": true,
@@ -1926,8 +2208,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=14302866410943307519&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1968,8 +2248,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=8608307065522106217&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -1991,15 +2269,13 @@
               "name": "Hvar Heritage Museum",
               "lat": 43.172221,
               "lng": 16.4453894,
-              "fullAddress": "Hanibala Lucića 8, 21450, Hvar, Croatia",
+              "fullAddress": "Hanibala Luci\u0107a 8, 21450, Hvar, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJA-ColoaBNRMR_Ls3a_2XiRA",
               "googleMapsUri": "https://maps.google.com/?cid=1191650691097541628&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2040,8 +2316,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=9872885976037740660&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2070,8 +2344,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=726184070200895898&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2093,15 +2365,13 @@
               "name": "Giaxa",
               "lat": 43.1726715,
               "lng": 16.4427086,
-              "fullAddress": "Petra Hektorovića 3, 21450, Hvar, Croatia",
+              "fullAddress": "Petra Hektorovi\u0107a 3, 21450, Hvar, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJI8u3EIeBNRMRwzlPHcFU2iE",
               "googleMapsUri": "https://maps.google.com/?cid=2439355336571697603&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -2109,7 +2379,7 @@
     },
     {
       "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
-      "title": "May 17 — Hvar to Split (Culture + Casual Night)",
+      "title": "May 17 \u2014 Hvar to Split (Culture + Casual Night)",
       "date": "2026-05-17",
       "description": "Ferry to Split mid-morning, check into Heritage Hotel Slavija inside Diocletian's Palace, afternoon exploring the Old Town",
       "isAlternate": false,
@@ -2164,92 +2434,38 @@
               "googleMapsUri": "https://maps.google.com/?cid=13951752557513967954&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "308f090c-a053-4cc4-8344-c215724f7544",
           "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
-          "type": "travel",
-          "title": "Ferry: Hvar → Split",
+          "type": "departure",
+          "title": "Ferry: Hvar \u2192 Split",
           "startDateTime": "2026-05-17T11:15:00+02:00",
           "endDateTime": "2026-05-17T12:10:00+02:00",
           "confirmationNumber": "3GCR0DW1003 / 3GCR0DW1004",
-          "description": "Krilo / Kapetan Luka ferry, Hvar → Split. **Booking codes: 3GCR0DW1003, 3GCR0DW1004** — keep accessible. Arrive at Hvar harbour 20–30 minutes before 11:15 AM departure. Sit outside if weather is nice for the scenic Adriatic crossing.",
+          "description": "Krilo / Kapetan Luka ferry, Hvar \u2192 Split. **Booking codes: 3GCR0DW1003, 3GCR0DW1004** \u2014 keep accessible. Arrive at Hvar harbour 20\u201330 minutes before 11:15 AM departure. Sit outside if weather is nice for the scenic Adriatic crossing.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "70d63648-1c4c-41eb-a72d-9e9558765c54",
-              "role": "origin",
-              "name": "Hvar Harbour",
-              "lat": 43.1719882,
-              "lng": 16.4412412,
-              "fullAddress": "Riva, 21450, Hvar, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "EhpSaXZhLCAyMTQ1MCwgSHZhciwgQ3JvYXRpYSIuKiwKFAoSCUFRYrKAgTUTEekyHvnJ2NYUEhQKEgljhQH7gIE1ExGyqxw1UK0AEw",
-              "googleMapsUri": "https://maps.google.com/?q=Riva,+21450,+Hvar,+Hrvatska&ftid=0x13358180b2625141:0x14d6d8c9f91e32e9&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "5eaeacb9-727e-4eec-b129-8a8eb51f09d2",
-              "role": "destination",
-              "name": "Split Ferry Port",
-              "lat": 43.5038827,
-              "lng": 16.4426669,
-              "fullAddress": "Obala kneza Domagoja, 21000, Split, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "EitPYmFsYSBrbmV6YSBEb21hZ29qYSwgMjEwMDAsIFNwbGl0LCBDcm9hdGlhIi4qLAoUChIJcwaHzKpgNRMRzzhS6XazxakSFAoSCRf1vGv8XTUTEZiftDH2j3mh",
-              "googleMapsUri": "https://maps.google.com/?q=Obala+kneza+Domagoja,+21000,+Split,+Hrvatska&ftid=0x133560aacc870673:0xa9c5b376e95238cf&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "ferry",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "308f090c-a053-4cc4-8344-c215724f7544"
         },
         {
           "pointId": "5deba660-9218-4c60-a0ea-3db7940c7cb6",
           "dayId": "723073d8-e80c-49b6-9861-b1e1c931b8cf",
-          "type": "stay",
+          "type": "check-in",
           "title": "Hotel Check-in",
           "startDateTime": "2026-05-17T13:00:00+02:00",
           "endDateTime": "2026-05-17T14:30:00+02:00",
           "confirmationNumber": "MIRAY0KBYT",
-          "description": "Room available from 2:30 PM — drop bags earlier if not ready. **Reservation:** MIRAY0KBYT | **Room:** Authentic Palace Room, king size bed | **Breakfast included.**\n\nHotel is inside Diocletian's Palace in the pedestrian historic zone — do not expect direct car access to the entrance.",
+          "description": "Room available from 2:30 PM \u2014 drop bags earlier if not ready. **Reservation:** MIRAY0KBYT | **Room:** Authentic Palace Room, king size bed | **Breakfast included.**\n\nHotel is inside Diocletian's Palace in the pedestrian historic zone \u2014 do not expect direct car access to the entrance.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "9d2bc1d9-cd0c-4a4a-ad5e-2e23bf809d02",
-              "role": "venue",
-              "name": "Heritage Hotel Slavija Split",
-              "lat": 43.5080822,
-              "lng": 16.4391636,
-              "fullAddress": "Dosud 1, 21000, Split, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJ9ahhNv5dNRMR9Z9yTnniC94",
-              "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": null,
-          "stayDetail": {
-            "stayType": "hotel",
-            "checkInTime": null,
-            "checkOutTime": null,
-            "roomType": null
-          },
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "stayDetailId": "5deba660-9218-4c60-a0ea-3db7940c7cb6"
         },
         {
           "pointId": "3846d098-6ccf-4a93-8563-b2bac07b77b2",
@@ -2259,7 +2475,7 @@
           "startDateTime": "2026-05-17T14:30:00+02:00",
           "endDateTime": "2026-05-17T18:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Explore Split’s Old Town centered around Diocletian’s Palace. Wander through Peristyle Square, Cathedral of Saint Domnius, and surrounding streets. Optional museum stops include Gallery of Fine Arts or Split City Museum. Walk along the Riva promenade and optionally hike Marjan Hill for views.",
+          "description": "Explore Split\u2019s Old Town centered around Diocletian\u2019s Palace. Wander through Peristyle Square, Cathedral of Saint Domnius, and surrounding streets. Optional museum stops include Gallery of Fine Arts or Split City Museum. Walk along the Riva promenade and optionally hike Marjan Hill for views.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2324,8 +2540,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=1369284846720735154&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2337,7 +2551,7 @@
           "startDateTime": "2026-05-17T18:30:00+02:00",
           "endDateTime": "2026-05-17T20:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Casual Croatian dinner — best organized via hotel concierge since many of these places don't use standard online booking.\n\n**Ask hotel:** \"Could you help us get a casual local dinner reservation tonight? First choice: Konoba Fetivi, second: Villa Spiza, then Konoba Matejuska or Bokeria.\"\n\n- **Konoba Fetivi** (Tomića stine 4) — authentic seafood and traditional dishes; reservation recommended, concierge should call.\n- **Villa Spiza** (Kružićeva 3) — tiny, hyper-local, rotating menu; concierge or early walk-by is best.\n- **Konoba Matejuska** (Tomića stine 3) — rustic harbor-side local feel.\n- **Bokeria** (Domaldova ul. 8) — more modern, still relaxed and polished.\n\n*If Fetivi is available: book it. If Villa Spiza: great, but expect tiny/local feel. If neither: Matejuska. If you want an easier polished option: Bokeria.*",
+          "description": "Casual Croatian dinner \u2014 best organized via hotel concierge since many of these places don't use standard online booking.\n\n**Ask hotel:** \"Could you help us get a casual local dinner reservation tonight? First choice: Konoba Fetivi, second: Villa Spiza, then Konoba Matejuska or Bokeria.\"\n\n- **Konoba Fetivi** (Tomi\u0107a stine 4) \u2014 authentic seafood and traditional dishes; reservation recommended, concierge should call.\n- **Villa Spiza** (Kru\u017ei\u0107eva 3) \u2014 tiny, hyper-local, rotating menu; concierge or early walk-by is best.\n- **Konoba Matejuska** (Tomi\u0107a stine 3) \u2014 rustic harbor-side local feel.\n- **Bokeria** (Domaldova ul. 8) \u2014 more modern, still relaxed and polished.\n\n*If Fetivi is available: book it. If Villa Spiza: great, but expect tiny/local feel. If neither: Matejuska. If you want an easier polished option: Bokeria.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2347,7 +2561,7 @@
               "name": "Konoba Fetivi",
               "lat": 43.5083282,
               "lng": 16.434444499999998,
-              "fullAddress": "Ul. Tomića stine 4, 21000, Split, Croatia",
+              "fullAddress": "Ul. Tomi\u0107a stine 4, 21000, Split, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJz_ir1vhdNRMRMoe3K7TXzmc",
@@ -2359,7 +2573,7 @@
               "name": "Villa Spiza",
               "lat": 43.5095688,
               "lng": 16.4391911,
-              "fullAddress": "Ul. Petra Kružića 6, 21000, Split, Croatia",
+              "fullAddress": "Ul. Petra Kru\u017ei\u0107a 6, 21000, Split, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJZYxSEv5dNRMRGgE5meAlnhk",
@@ -2371,7 +2585,7 @@
               "name": "Konoba Matejuska",
               "lat": 43.5083158,
               "lng": 16.434418,
-              "fullAddress": "Ul. Tomića stine 3, 21000, Split, Croatia",
+              "fullAddress": "Ul. Tomi\u0107a stine 3, 21000, Split, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJDzv10_hdNRMR-snSQ6dYfNc",
@@ -2390,8 +2604,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=6615287781975116883&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2403,7 +2615,7 @@
           "startDateTime": "2026-05-17T20:30:00+02:00",
           "endDateTime": "2026-05-17T23:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Post-dinner stroll through Diocletian’s Palace and along the Riva. Optional drinks at Fabrique Pub, Noor Bar, or Roof 68 for views. Relaxed and atmospheric evening.",
+          "description": "Post-dinner stroll through Diocletian\u2019s Palace and along the Riva. Optional drinks at Fabrique Pub, Noor Bar, or Roof 68 for views. Relaxed and atmospheric evening.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2437,7 +2649,7 @@
               "name": "Fabrique Pub",
               "lat": 43.508237699999995,
               "lng": 16.4359862,
-              "fullAddress": "Trg Franje Tuđmana 3, 21000, Split, Croatia",
+              "fullAddress": "Trg Franje Tu\u0111mana 3, 21000, Split, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJo8RCIP9dNRMRVMBwCgdSRcE",
@@ -2461,15 +2673,13 @@
               "name": "Roof 68",
               "lat": 43.5084978,
               "lng": 16.440032,
-              "fullAddress": "Ul. Kralja Petra Krešimira IV 5, 21000, Split, Croatia",
+              "fullAddress": "Ul. Kralja Petra Kre\u0161imira IV 5, 21000, Split, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJwYMvm1NeNRMReMJidC0A5Vk",
               "googleMapsUri": "https://maps.google.com/?cid=6477583834268484216&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         }
@@ -2477,7 +2687,7 @@
     },
     {
       "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
-      "title": "May 18 — Plitvice Day Trip",
+      "title": "May 18 \u2014 Plitvice Day Trip",
       "date": "2026-05-18",
       "description": "Pick up rental car at 8:00 AM (Sixt, reservation 9733419998), drive A1 north to Plitvice Lakes National Park (Entrance 1), explore the park, optional Rastoke stop on return. Car must be back by 8:00 PM.",
       "isAlternate": false,
@@ -2491,7 +2701,7 @@
           "startDateTime": "2026-05-18T06:45:00+02:00",
           "endDateTime": "2026-05-18T07:20:00+02:00",
           "confirmationNumber": null,
-          "description": "Keep it quick — breakfast is included, leave hotel around 7:25–7:30 AM to reach Sixt by 8:00 AM pickup.",
+          "description": "Keep it quick \u2014 breakfast is included, leave hotel around 7:25\u20137:30 AM to reach Sixt by 8:00 AM pickup.",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2508,67 +2718,38 @@
               "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "1e347555-f42b-4183-b96f-826db56a5aad",
           "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
-          "type": "travel",
+          "type": "departure",
           "title": "Get Rental Car",
           "startDateTime": "2026-05-18T07:30:00+02:00",
           "endDateTime": "2026-05-18T08:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Taxi / Uber / Bolt to Sixt from hotel (~7:30 AM). Pickup 8:00 AM. **Reservation:** 9733419998 — automatic vehicle.\n\n**Bring:** Passport, driver's license, credit card, rental confirmation.\n\n**At the counter, confirm:** automatic transmission, fuel policy, toll process, insurance/CDW coverage, return deadline (8:00 PM), emergency contact number.\n\n**Before leaving the lot:** photograph/video the exterior, wheels, windshield, and fuel gauge. Adjust mirrors, seat, and lights. Set Google Maps before moving.",
+          "description": "Taxi / Uber / Bolt to Sixt from hotel (~7:30 AM). Pickup 8:00 AM. **Reservation:** 9733419998 \u2014 automatic vehicle.\n\n**Bring:** Passport, driver's license, credit card, rental confirmation.\n\n**At the counter, confirm:** automatic transmission, fuel policy, toll process, insurance/CDW coverage, return deadline (8:00 PM), emergency contact number.\n\n**Before leaving the lot:** photograph/video the exterior, wheels, windshield, and fuel gauge. Adjust mirrors, seat, and lights. Set Google Maps before moving.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "cc2a8244-d8d5-4a64-9405-2c6f7167b29e",
-              "role": "destination",
-              "name": "Sixt Split",
-              "lat": 43.506201,
-              "lng": 16.4642808,
-              "fullAddress": "Poljička cesta 28B, 21000, Split, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJETDG_SFeNRMRVye5Z59XSLA",
-              "googleMapsUri": "https://maps.google.com/?cid=12702499091150088023&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "car",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "1e347555-f42b-4183-b96f-826db56a5aad"
         },
         {
           "pointId": "0e46c2e3-541f-44f4-a73c-025bb5003529",
           "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
-          "type": "travel",
-          "title": "Drive: Split → Highway Stop",
+          "type": "departure",
+          "title": "Drive: Split \u2192 Highway Stop",
           "startDateTime": "2026-05-18T08:00:00+02:00",
           "endDateTime": "2026-05-18T09:15:00+02:00",
           "confirmationNumber": null,
-          "description": "The hardest part is the first 10–15 minutes leaving Split. Once on the A1 highway, it should feel like a normal road trip.\n\n**Key rules:** Drive on the right. Stay in the right lane unless passing. Let faster drivers pass. Yield to traffic already in roundabouts. Stay calm and predictable.\n\n**Tolls:** Take ticket at entry; pay by card or cash at exit unless car has a transponder. Confirm toll process with Sixt before leaving.\n\n*If you miss a turn: let GPS reroute; do not make sudden moves. If someone tailgates: stay right and let them pass. If stressed: stop safely at a rest area.*",
+          "description": "The hardest part is the first 10\u201315 minutes leaving Split. Once on the A1 highway, it should feel like a normal road trip.\n\n**Key rules:** Drive on the right. Stay in the right lane unless passing. Let faster drivers pass. Yield to traffic already in roundabouts. Stay calm and predictable.\n\n**Tolls:** Take ticket at entry; pay by card or cash at exit unless car has a transponder. Confirm toll process with Sixt before leaving.\n\n*If you miss a turn: let GPS reroute; do not make sudden moves. If someone tailgates: stay right and let them pass. If stressed: stop safely at a rest area.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [],
-          "travelDetail": {
-            "mode": "car",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "0e46c2e3-541f-44f4-a73c-025bb5003529"
         },
         {
           "pointId": "d21c9c8d-6790-4d35-860c-0d3c70d4eac3",
@@ -2582,32 +2763,23 @@
           "imageUrl": null,
           "logoUrl": null,
           "locations": [],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "3e8e5ff1-be47-4e79-bfc3-c9e358be1d23",
           "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
-          "type": "travel",
-          "title": "Drive: Stop → Plitvice",
+          "type": "departure",
+          "title": "Drive: Stop \u2192 Plitvice",
           "startDateTime": "2026-05-18T09:35:00+02:00",
           "endDateTime": "2026-05-18T11:45:00+02:00",
           "confirmationNumber": null,
           "description": "Continue drive to Plitvice. Highway driving is straightforward.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [],
-          "travelDetail": {
-            "mode": "car",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "3e8e5ff1-be47-4e79-bfc3-c9e358be1d23"
         },
         {
           "pointId": "59413386-b340-4426-8b29-02590d46c965",
@@ -2617,17 +2789,17 @@
           "startDateTime": "2026-05-18T11:45:00+02:00",
           "endDateTime": "2026-05-18T12:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Quick flexible lunch near the park entrance. No reservations needed — entrance-area restaurants are not reliable reservation-style places.\n\n- **Lička kuća** (near Entrance 1) — good practical Croatian meal; easiest option if using Entrance 1.\n- **Bistro Vučnica** (near Entrance 2/Mukinje) — better if routing shifts toward Entrance 2.\n- **Restaurant Degenija / Bistro Plum** (outside park) — better sit-down option but less efficient.\n\n*If wait is very long: grab a quick snack and prioritize the park. If ahead of schedule: a proper sit-down lunch is fine.*",
+          "description": "Quick flexible lunch near the park entrance. No reservations needed \u2014 entrance-area restaurants are not reliable reservation-style places.\n\n- **Li\u010dka ku\u0107a** (near Entrance 1) \u2014 good practical Croatian meal; easiest option if using Entrance 1.\n- **Bistro Vu\u010dnica** (near Entrance 2/Mukinje) \u2014 better if routing shifts toward Entrance 2.\n- **Restaurant Degenija / Bistro Plum** (outside park) \u2014 better sit-down option but less efficient.\n\n*If wait is very long: grab a quick snack and prioritize the park. If ahead of schedule: a proper sit-down lunch is fine.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
             {
               "locationId": "80cea450-a392-4f93-8018-b0a41e738a54",
               "role": "venue",
-              "name": "Lička kuća",
+              "name": "Li\u010dka ku\u0107a",
               "lat": 44.9050696,
               "lng": 15.611275200000001,
-              "fullAddress": "Josipa Jovića, 53231, Rastovača, Croatia",
+              "fullAddress": "Josipa Jovi\u0107a, 53231, Rastova\u010da, Croatia",
               "description": "Best practical Croatian meal near Entrance 1.",
               "link": null,
               "googlePlaceId": "ChIJi8ts-7xZYUcReJ3vjoK0YXU",
@@ -2636,18 +2808,16 @@
             {
               "locationId": "e081f4b8-720c-4600-8621-f913dc2d52a2",
               "role": "venue",
-              "name": "Bistro Vučnica",
+              "name": "Bistro Vu\u010dnica",
               "lat": 44.8751319,
               "lng": 15.627691299999999,
-              "fullAddress": "Mukinje 2, 53231, Plitvička Jezera, Croatia",
+              "fullAddress": "Mukinje 2, 53231, Plitvi\u010dka Jezera, Croatia",
               "description": "Better option if routing toward Entrance 2.",
               "link": null,
               "googlePlaceId": "EixNdWtpbmplIDIsIDUzMjMxLCBQbGl0dmnEjWthIEplemVyYSwgQ3JvYXRpYSIwEi4KFAoSCS0lh_g6XGFHERU196nptARpEAIqFAoSCZsTA0A6XGFHEVdRwJDBWwki",
               "googleMapsUri": "https://maps.google.com/?q=Mukinje+2,+53231,+Plitvi%C4%8Dka+Jezera,+Hrvatska&ftid=0x47615c3af887252d:0xfec00109ce987c2d&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2659,7 +2829,7 @@
           "startDateTime": "2026-05-18T12:30:00+02:00",
           "endDateTime": "2026-05-18T16:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Enter via **Entrance 1** for the best dramatic first impression — closest to the Lower Lakes and Veliki Slap (Great Waterfall).\n\n**Don't-miss:**\n- Veliki Slap / Great Waterfall\n- Lower Lakes boardwalks\n- Lake Kozjak boat crossing (if route/time allows)\n- Upper Lakes cascades (if energy/time allows)\n- Viewpoints above the Lower Lakes\n\n**Crowd strategy:** You are not early enough to beat all crowds — move smarter instead. Let tour groups pass. If a viewpoint is packed, wait 5–10 minutes. Do not stop for every photo on narrow boardwalks. Keep moving through bottlenecks. Flow > perfection.\n\n*If crowded at Veliki Slap: move on and circle back if possible. If tired: focus on Lower Lakes and the waterfall only. If weather is great and energy high: add Upper Lakes. If rain: boardwalks may be slippery — slow down and shorten route.*",
+          "description": "Enter via **Entrance 1** for the best dramatic first impression \u2014 closest to the Lower Lakes and Veliki Slap (Great Waterfall).\n\n**Don't-miss:**\n- Veliki Slap / Great Waterfall\n- Lower Lakes boardwalks\n- Lake Kozjak boat crossing (if route/time allows)\n- Upper Lakes cascades (if energy/time allows)\n- Viewpoints above the Lower Lakes\n\n**Crowd strategy:** You are not early enough to beat all crowds \u2014 move smarter instead. Let tour groups pass. If a viewpoint is packed, wait 5\u201310 minutes. Do not stop for every photo on narrow boardwalks. Keep moving through bottlenecks. Flow > perfection.\n\n*If crowded at Veliki Slap: move on and circle back if possible. If tired: focus on Lower Lakes and the waterfall only. If weather is great and energy high: add Upper Lakes. If rain: boardwalks may be slippery \u2014 slow down and shorten route.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2669,95 +2839,53 @@
               "name": "Plitvice Lakes National Park",
               "lat": 44.8820957,
               "lng": 15.6233311,
-              "fullAddress": "53231, Plitvička Jezera, Croatia",
+              "fullAddress": "53231, Plitvi\u010dka Jezera, Croatia",
               "description": null,
               "link": null,
               "googlePlaceId": "ChIJqX7IpYRnYUcRsMMrhlCtAAQ",
               "googleMapsUri": "https://maps.google.com/?cid=288420937511715760&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "7d1e7d2b-0a8d-472e-8bb5-a6edf8786e43",
           "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
-          "type": "travel",
+          "type": "departure",
           "title": "Drive Back + Scenic Stop",
           "startDateTime": "2026-05-18T16:30:00+02:00",
           "endDateTime": "2026-05-18T19:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Leave Plitvice ~4:30 PM. **Rastoke / Slunj** (stop ~5:00–5:30 PM) is a small watermill village with waterfalls, rapids, and a magical off-the-beaten-path feel — exactly the kind of place that makes driving feel worthwhile. Quick coffee, pastry, or riverside snack; keep the stop short unless clearly ahead of schedule.\n\n**Return to Split target: 7:30 PM. Car must be back by 8:00 PM.**\n\n*If running on time: stop at Rastoke. If behind schedule: skip it and return car. If tired: coffee only and keep moving.*",
+          "description": "Leave Plitvice ~4:30 PM. **Rastoke / Slunj** (stop ~5:00\u20135:30 PM) is a small watermill village with waterfalls, rapids, and a magical off-the-beaten-path feel \u2014 exactly the kind of place that makes driving feel worthwhile. Quick coffee, pastry, or riverside snack; keep the stop short unless clearly ahead of schedule.\n\n**Return to Split target: 7:30 PM. Car must be back by 8:00 PM.**\n\n*If running on time: stop at Rastoke. If behind schedule: skip it and return car. If tired: coffee only and keep moving.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "5cbe3463-9581-4a28-a34a-32b91a9dd5fe",
-              "role": "destination",
-              "name": "Rastoke",
-              "lat": 45.1149355,
-              "lng": 15.5857945,
-              "fullAddress": "47240, Slunj, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJTc-7RQz_Y0cRuel3KAMeiKc",
-              "googleMapsUri": "https://maps.google.com/?cid=12071931800079296953&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "car",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "7d1e7d2b-0a8d-472e-8bb5-a6edf8786e43"
         },
         {
           "pointId": "9ec368b9-ff1a-463f-9d81-53ad3da46cbc",
           "dayId": "1b4029ac-3ca8-4e12-9458-c97c0a496b68",
-          "type": "travel",
+          "type": "departure",
           "title": "Return Rental Car",
           "startDateTime": "2026-05-18T19:30:00+02:00",
           "endDateTime": "2026-05-18T20:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Return deadline: **8:00 PM** at Sixt (Poljička ulica 28b, Split).\n\n**Before returning:** Refuel if required. Photograph fuel gauge and car exterior condition. Keep receipt / return confirmation.\n\n**After return:** Taxi / Uber / Bolt back to Old Town.\n\n*If running late: call Sixt. If fuel station is confusing: use the nearest obvious station before the Sixt office.*",
+          "description": "Return deadline: **8:00 PM** at Sixt (Polji\u010dka ulica 28b, Split).\n\n**Before returning:** Refuel if required. Photograph fuel gauge and car exterior condition. Keep receipt / return confirmation.\n\n**After return:** Taxi / Uber / Bolt back to Old Town.\n\n*If running late: call Sixt. If fuel station is confusing: use the nearest obvious station before the Sixt office.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "e68a5b3e-0f14-4614-bcc6-0b5b09adbde3",
-              "role": "destination",
-              "name": "Sixt Split",
-              "lat": 43.506201,
-              "lng": 16.4642808,
-              "fullAddress": "Poljička cesta 28B, 21000, Split, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJETDG_SFeNRMRVye5Z59XSLA",
-              "googleMapsUri": "https://maps.google.com/?cid=12702499091150088023&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "car",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "9ec368b9-ff1a-463f-9d81-53ad3da46cbc"
         }
       ]
     },
     {
       "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
-      "title": "May 19 — Split Final Day → Zurich",
+      "title": "May 19 \u2014 Split Final Day \u2192 Zurich",
       "date": "2026-05-19",
-      "description": "Final Split day. Key anchors: hotel breakfast and checkout by 10:30 AM, Bell Tower + Diocletian's Palace exploration, Dvor lunch reservation at 1:30 PM, collect bags, taxi to Split Airport, flight Split → Munich → Zurich (CRFG3B)",
+      "description": "Final Split day. Key anchors: hotel breakfast and checkout by 10:30 AM, Bell Tower + Diocletian's Palace exploration, Dvor lunch reservation at 1:30 PM, collect bags, taxi to Split Airport, flight Split \u2192 Munich \u2192 Zurich (CRFG3B)",
       "isAlternate": false,
       "completed": false,
       "points": [
@@ -2786,8 +2914,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=16000131111798874101&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2799,7 +2925,7 @@
           "startDateTime": "2026-05-19T10:30:00+02:00",
           "endDateTime": "2026-05-19T12:30:00+02:00",
           "confirmationNumber": null,
-          "description": "Iconic final Split activity — the right cultural send-off before leaving Croatia.\n\n**Cathedral of Saint Domnius Bell Tower** (Kraj Sv. Duje 5) — buy ticket on-site, no reservation needed. Panoramic view of Split from the top. Pair with wandering the Diocletian's Palace streets below for a complete final memory.\n\n*If weather is good: climb the bell tower. If poor weather or long lines: wander the Palace and Riva instead. If you prefer nature: short Marjan Hill viewpoint — but protect the 1:30 PM lunch reservation.*",
+          "description": "Iconic final Split activity \u2014 the right cultural send-off before leaving Croatia.\n\n**Cathedral of Saint Domnius Bell Tower** (Kraj Sv. Duje 5) \u2014 buy ticket on-site, no reservation needed. Panoramic view of Split from the top. Pair with wandering the Diocletian's Palace streets below for a complete final memory.\n\n*If weather is good: climb the bell tower. If poor weather or long lines: wander the Palace and Riva instead. If you prefer nature: short Marjan Hill viewpoint \u2014 but protect the 1:30 PM lunch reservation.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2828,8 +2954,6 @@
               "googleMapsUri": "https://maps.google.com/?cid=6396688951645372313&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
@@ -2841,7 +2965,7 @@
           "startDateTime": "2026-05-19T13:30:00+02:00",
           "endDateTime": "2026-05-19T15:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Reservation at **1:30 PM** under Julian Dale. Scenic waterfront setting — views, casual but special, the right final meal in Croatia before the airport run.\n\n*If lunch runs long: skip extra wandering and go straight to hotel for bags. If you finish early: short waterfront walk. Ask restaurant to call a taxi or order Uber before leaving if timing feels tight.*",
+          "description": "Reservation at **1:30 PM** under Julian Dale. Scenic waterfront setting \u2014 views, casual but special, the right final meal in Croatia before the airport run.\n\n*If lunch runs long: skip extra wandering and go straight to hotel for bags. If you finish early: short waterfront walk. Ask restaurant to call a taxi or order Uber before leaving if timing feels tight.*",
           "imageUrl": null,
           "logoUrl": null,
           "locations": [
@@ -2858,174 +2982,68 @@
               "googleMapsUri": "https://maps.google.com/?cid=1460971887310206861&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
             }
           ],
-          "travelDetail": null,
-          "stayDetail": null,
           "completed": false,
           "completedDateTime": null
         },
         {
           "pointId": "782dd8c6-a06a-4d27-bafd-2765d311c2b1",
           "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
-          "type": "travel",
+          "type": "departure",
           "title": "Travel to Airport",
           "startDateTime": "2026-05-19T15:30:00+02:00",
           "endDateTime": "2026-05-19T16:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Use Uber / taxi / Bolt — more reliable and faster than a hotel shuttle unless timing is perfect.\n\n**Target:** Leave hotel ~3:30 PM, arrive Split Airport by ~4:00 PM for the 5:15 PM flight.\n\n*If traffic looks bad: leave earlier. If any uncertainty about shuttle timing: use Uber/taxi.*",
+          "description": "Use Uber / taxi / Bolt \u2014 more reliable and faster than a hotel shuttle unless timing is perfect.\n\n**Target:** Leave hotel ~3:30 PM, arrive Split Airport by ~4:00 PM for the 5:15 PM flight.\n\n*If traffic looks bad: leave earlier. If any uncertainty about shuttle timing: use Uber/taxi.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "30142691-52ad-4387-b5d0-445c62664b33",
-              "role": "destination",
-              "name": "Split Airport",
-              "lat": 43.5518128,
-              "lng": 16.331662899999998,
-              "fullAddress": "21217, Kaštel Štafilić, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
-              "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "car",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "782dd8c6-a06a-4d27-bafd-2765d311c2b1"
         },
         {
           "pointId": "74d13439-028f-4794-bc8c-f833270c9b3d",
           "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
-          "type": "travel",
-          "title": "Flight: Split → Munich",
+          "type": "departure",
+          "title": "Flight: Split \u2192 Munich",
           "startDateTime": "2026-05-19T17:15:00+02:00",
           "endDateTime": "2026-05-19T18:40:00+02:00",
           "confirmationNumber": "CRFG3B",
-          "description": "**Flight:** OU5400, operated by Lufthansa / Croatia Airlines codeshare. **Booking Reference:** CRFG3B. Departure 5:15 PM, arrival Munich 6:40 PM (1h 25m).\n\nAfter landing in Munich, you have ~2h 15m layover — roughly 90 usable minutes after deplaning before needing to be at the gate.",
+          "description": "**Flight:** OU5400, operated by Lufthansa / Croatia Airlines codeshare. **Booking Reference:** CRFG3B. Departure 5:15 PM, arrival Munich 6:40 PM (1h 25m).\n\nAfter landing in Munich, you have ~2h 15m layover \u2014 roughly 90 usable minutes after deplaning before needing to be at the gate.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "7e289c88-4b12-448b-93e9-7be657b112a8",
-              "role": "origin",
-              "name": "Split Airport",
-              "lat": 43.5518128,
-              "lng": 16.331662899999998,
-              "fullAddress": "21217, Kaštel Štafilić, Croatia",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJJUBIadpCNRMRgC1_lSa1rnA",
-              "googleMapsUri": "https://maps.google.com/?cid=8119626355517107584&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "e5edab60-1740-4560-86a8-5dc09817b4b6",
-              "role": "destination",
-              "name": "Munich Airport",
-              "lat": 48.3536407,
-              "lng": 11.7831852,
-              "fullAddress": "Nordallee 25, 85356 Oberding, Germany",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJRW3aI1kTnkcRS89WOoV6xeM",
-              "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "flight",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "74d13439-028f-4794-bc8c-f833270c9b3d"
         },
         {
           "pointId": "82115a71-336b-4e0a-a9b1-28273cafb91c",
           "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
-          "type": "travel",
-          "title": "Flight: Munich → Zurich",
+          "type": "departure",
+          "title": "Flight: Munich \u2192 Zurich",
           "startDateTime": "2026-05-19T20:55:00+02:00",
           "endDateTime": "2026-05-19T21:50:00+02:00",
           "confirmationNumber": "CRFG3B",
-          "description": "**Flight:** LX1111, Swiss Airlines. **Booking Reference:** CRFG3B. Departure 8:55 PM, arrival Zurich 9:50 PM (55 min).\n\n**Munich layover tip:** Consider **Airbräu Munich Airport Brewery** — a real Bavarian brewery inside the terminal; beer + pretzel is a fun Germany layover moment. Stay airside. If the inbound flight is delayed, skip it and stay near the gate.",
+          "description": "**Flight:** LX1111, Swiss Airlines. **Booking Reference:** CRFG3B. Departure 8:55 PM, arrival Zurich 9:50 PM (55 min).\n\n**Munich layover tip:** Consider **Airbr\u00e4u Munich Airport Brewery** \u2014 a real Bavarian brewery inside the terminal; beer + pretzel is a fun Germany layover moment. Stay airside. If the inbound flight is delayed, skip it and stay near the gate.",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "a16680b8-decd-4a96-abd6-583810ce927e",
-              "role": "origin",
-              "name": "Munich Airport",
-              "lat": 48.3536407,
-              "lng": 11.7831852,
-              "fullAddress": "Nordallee 25, 85356 Oberding, Germany",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJRW3aI1kTnkcRS89WOoV6xeM",
-              "googleMapsUri": "https://maps.google.com/?cid=16412659129649647435&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            },
-            {
-              "locationId": "ec1c344a-277c-4ee2-a9fb-404250e48a9b",
-              "role": "destination",
-              "name": "Zurich Airport",
-              "lat": 47.4516643,
-              "lng": 8.5625171,
-              "fullAddress": "8058 Kloten, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJC0OOA1d1kEcRr0D34nJcXes",
-              "googleMapsUri": "https://maps.google.com/?cid=16959813420251037871&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": {
-            "mode": "flight",
-            "operator": null,
-            "vehicleNumber": null,
-            "cabinClass": null
-          },
-          "stayDetail": null,
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "travelDetailId": "82115a71-336b-4e0a-a9b1-28273cafb91c"
         },
         {
           "pointId": "ad925392-472d-4eea-904c-83f136cb741b",
           "dayId": "0ff26a88-d750-41ec-b73f-c97760e47fb2",
-          "type": "stay",
+          "type": "check-in",
           "title": "Hotel: Zurich Airport Radisson",
           "startDateTime": "2026-05-19T22:00:00+02:00",
           "endDateTime": "2026-05-19T23:00:00+02:00",
           "confirmationNumber": null,
-          "description": "Late arrival — take taxi/Uber from Zurich Airport (5–10 minutes; worth every franc at this hour). **Reservation:** 1HHDZLG7. Room available from 3:00 PM; checkout May 20 by 12:00 PM.\n\n*If hotel shuttle is right there and clearly running: take it. Otherwise: taxi/Uber. Do not optimize for cost at this hour — optimize for simplicity.*",
+          "description": "Late arrival \u2014 take taxi/Uber from Zurich Airport (5\u201310 minutes; worth every franc at this hour). **Reservation:** 1HHDZLG7. Room available from 3:00 PM; checkout May 20 by 12:00 PM.\n\n*If hotel shuttle is right there and clearly running: take it. Otherwise: taxi/Uber. Do not optimize for cost at this hour \u2014 optimize for simplicity.*",
           "imageUrl": null,
           "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "ef9da765-6ff4-43fb-bcf8-bd76e444ee1f",
-              "role": "venue",
-              "name": "Radisson Hotel Zurich Airport",
-              "lat": 47.4509985,
-              "lng": 8.540113999999999,
-              "fullAddress": "Flughofstrasse 75, 8153 Rümlang, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJ87eMDDZ1kEcRSOwKPJqpo3U",
-              "googleMapsUri": "https://maps.google.com/?cid=8476805403538811976&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
-            }
-          ],
-          "travelDetail": null,
-          "stayDetail": {
-            "stayType": "hotel",
-            "checkInTime": null,
-            "checkOutTime": null,
-            "roomType": null
-          },
           "completed": false,
-          "completedDateTime": null
+          "completedDateTime": null,
+          "stayDetailId": "ad925392-472d-4eea-904c-83f136cb741b"
         }
       ]
     }
