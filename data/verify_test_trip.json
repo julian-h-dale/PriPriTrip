@@ -1,96 +1,105 @@
 {
+  "tripId": "3f02e19d-6e79-4a71-a33a-9ed8586e627f",
   "tripName": "Verify Test Trip (with gaps)",
   "startDate": "2026-08-01",
   "endDate": "2026-08-05",
   "stays": [
     {
-      "stayDetailId": "stay-hotel-a",
+      "stayDetailId": "ab4d5d3e-42f2-4bb7-8ef2-24ecb5ae0f79",
       "name": "Hotel A",
       "stayType": "hotel",
       "checkIn": "2026-08-01T15:00:00+02:00",
       "checkOut": "2026-08-01T23:00:00+02:00",
       "confirmationNumber": "ABC123",
       "locations": [
-        { "role": "venue", "name": "Hotel A" }
+        { "locationId": "00f18f14-4267-4cbf-9676-44599dc96eb4", "role": "venue", "name": "Hotel A" }
       ]
     },
     {
-      "stayDetailId": "stay-hotel-b",
+      "stayDetailId": "2866421b-7bd8-4c8b-a63b-4f76f78435ec",
       "name": "Hotel B",
       "stayType": "hotel",
       "checkIn": "2026-08-05T14:00:00+02:00",
       "checkOut": "2026-08-05T22:00:00+02:00",
       "locations": [
-        { "role": "venue", "name": "Hotel B" }
+        { "locationId": "592cd8c8-7c4e-4ea8-9506-0e6e7646f77a", "role": "venue", "name": "Hotel B" }
       ]
     }
   ],
   "travels": [
     {
-      "travelDetailId": "travel-flight-in",
+      "travelDetailId": "ca0664dd-c2fe-4b49-9446-f58e766a3837",
       "name": "Flight to City",
       "mode": "flight",
       "operator": "Test Air",
       "departureDateTime": "2026-08-01T09:00:00+02:00",
       "arrivalDateTime": "2026-08-01T11:00:00+02:00",
       "locations": [
-        { "role": "origin", "name": "Home Airport" },
-        { "role": "destination", "name": "City Airport" }
+        { "locationId": "a0f85e80-7e9f-43b8-b275-f44d61bcf6bd", "role": "origin", "name": "Home Airport" },
+        { "locationId": "dff20db3-9ff1-4908-833c-9247a8f2dbd8", "role": "destination", "name": "City Airport" }
       ]
     }
   ],
   "days": [
     {
+      "dayId": "1ef8c671-7f89-4358-8856-8b8bf6eef2ef",
       "title": "Aug 1 — Arrival (clean day)",
       "date": "2026-08-01",
       "description": "Arrive and check in.",
       "points": [
         {
+          "pointId": "c977e6ec-e0f0-4037-871a-e7cb9a974593",
           "type": "arrival",
           "title": "Arrive at City Airport",
-          "travelDetailId": "travel-flight-in",
+          "travelDetailId": "ca0664dd-c2fe-4b49-9446-f58e766a3837",
           "startDateTime": "2026-08-01T11:00:00+02:00",
           "endDateTime": "2026-08-01T11:30:00+02:00"
         },
         {
+          "pointId": "53f75e92-5c83-4cdb-a272-f26ce7ce3c82",
           "type": "check-in",
           "title": "Check in",
-          "stayDetailId": "stay-hotel-a",
+          "stayDetailId": "ab4d5d3e-42f2-4bb7-8ef2-24ecb5ae0f79",
           "startDateTime": "2026-08-01T15:00:00+02:00",
           "endDateTime": "2026-08-01T15:30:00+02:00"
         }
       ]
     },
     {
+      "dayId": "16d47c8f-708d-4d5f-ad4c-e794346cbe67",
       "title": "Aug 2 — Sightseeing (uncovered → MISSING_STAY warning)",
       "date": "2026-08-02",
       "description": "A day of activities with no accommodation covering the night.",
       "points": [
         {
+          "pointId": "2e55fd8f-d4cc-4b8b-9e89-3f41e1664eec",
           "type": "activity",
           "title": "Old Town Walking Tour",
           "startDateTime": "2026-08-02T10:00:00+02:00",
           "endDateTime": "2026-08-02T12:00:00+02:00",
           "locations": [
-            { "role": "venue", "name": "Old Town Square" }
+            { "locationId": "c5d00a14-7ea3-45de-a7e4-14ec159fdd75", "role": "venue", "name": "Old Town Square" }
           ]
         }
       ]
     },
     {
+      "dayId": "922f14d5-8886-4f3a-b03e-2985702f4f5c",
       "title": "Aug 3 — No plans (empty → EMPTY_DAY error)",
       "date": "2026-08-03",
       "points": []
     },
     {
+      "dayId": "9bbf1e2d-e450-4afb-9da3-f6880be3ec2b",
       "title": "Aug 5 — Departure (clean day)",
       "date": "2026-08-05",
       "description": "Check in at Hotel B before flying out.",
       "points": [
         {
+          "pointId": "bb9cb6ea-2f37-4f1d-bb40-8d507fceeb1e",
           "type": "check-in",
           "title": "Check in",
-          "stayDetailId": "stay-hotel-b",
+          "stayDetailId": "2866421b-7bd8-4c8b-a63b-4f76f78435ec",
           "startDateTime": "2026-08-05T14:00:00+02:00",
           "endDateTime": "2026-08-05T14:30:00+02:00"
         }
