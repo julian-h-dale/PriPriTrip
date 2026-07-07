@@ -43,7 +43,10 @@ class LocationCreate(BaseModel):
 
 class LocationResponse(BaseModel):
     locationId: str
-    pointId: str
+    # Exactly one owner is set depending on what the location is attached to.
+    pointId: Optional[str] = None
+    stayDetailId: Optional[str] = None
+    travelDetailId: Optional[str] = None
     role: LocationRole
     name: str
     lat: Optional[float] = None
@@ -55,40 +58,82 @@ class LocationResponse(BaseModel):
     googleMapsUri: Optional[str] = None
 
 
-# ── Type-specific details ────────────────────────────────────────────────────
+# ── Travel / Stay details (first-class trip entities) ────────────────────────
 
 class TravelDetail(BaseModel):
     travelDetailId: str = Field(default_factory=_uuid)
     tripId: Optional[str] = None
-    pointId: Optional[str] = None
+    name: Optional[str] = None
     mode: TravelMode
     operator: Optional[str] = None
     vehicleNumber: Optional[str] = None
     cabinClass: Optional[str] = None
+    departureDateTime: Optional[str] = None
+    arrivalDateTime: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
+    locations: List[LocationResponse] = []
 
 
 class StayDetail(BaseModel):
     stayDetailId: str = Field(default_factory=_uuid)
     tripId: Optional[str] = None
-    pointId: Optional[str] = None
+    name: Optional[str] = None
     stayType: StayType
-    checkInTime: Optional[str] = None
-    checkOutTime: Optional[str] = None
+    checkIn: Optional[str] = None
+    checkOut: Optional[str] = None
     roomType: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
+    locations: List[LocationResponse] = []
+
+
+class TravelDetailImport(BaseModel):
+    travelDetailId: str = Field(default_factory=_uuid)
+    name: Optional[str] = None
+    mode: TravelMode
+    operator: Optional[str] = None
+    vehicleNumber: Optional[str] = None
+    cabinClass: Optional[str] = None
+    departureDateTime: Optional[str] = None
+    arrivalDateTime: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
+    locations: List[LocationCreate] = []
+
+
+class StayDetailImport(BaseModel):
+    stayDetailId: str = Field(default_factory=_uuid)
+    name: Optional[str] = None
+    stayType: StayType
+    checkIn: Optional[str] = None
+    checkOut: Optional[str] = None
+    roomType: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
+    locations: List[LocationCreate] = []
 
 
 class TravelDetailPatch(BaseModel):
+    name: Optional[str] = None
     mode: Optional[TravelMode] = None
     operator: Optional[str] = None
     vehicleNumber: Optional[str] = None
     cabinClass: Optional[str] = None
+    departureDateTime: Optional[str] = None
+    arrivalDateTime: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
 
 
 class StayDetailPatch(BaseModel):
+    name: Optional[str] = None
     stayType: Optional[StayType] = None
-    checkInTime: Optional[str] = None
-    checkOutTime: Optional[str] = None
+    checkIn: Optional[str] = None
+    checkOut: Optional[str] = None
     roomType: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
 
 
 # ── Trip Day ────────────────────────────────────────────────────────────────
@@ -138,6 +183,8 @@ class TripPointCreate(BaseModel):
     dayId: Optional[str] = None
     type: PointType
     title: str
+    stayDetailId: Optional[str] = None
+    travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
     endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
@@ -145,8 +192,6 @@ class TripPointCreate(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationCreate] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
     completed: bool = False
     completedDateTime: Optional[str] = None
 
@@ -155,6 +200,8 @@ class TripPointUpdate(BaseModel):
     dayId: str
     type: PointType
     title: str
+    stayDetailId: Optional[str] = None
+    travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
     endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
@@ -162,8 +209,6 @@ class TripPointUpdate(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationCreate] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
     completed: bool = False
     completedDateTime: Optional[str] = None
 
@@ -172,6 +217,8 @@ class TripPointPatch(BaseModel):
     dayId: Optional[str] = None
     type: Optional[PointType] = None
     title: Optional[str] = None
+    stayDetailId: Optional[str] = None
+    travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
     endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
@@ -179,8 +226,6 @@ class TripPointPatch(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: Optional[List[LocationCreate]] = None
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
     completed: Optional[bool] = None
     completedDateTime: Optional[str] = None
 
@@ -191,13 +236,16 @@ class TripPointResponse(BaseModel):
     dayId: str
     type: PointType
     title: str
-    startDateTime: str
-    endDateTime: str
+    stayDetailId: Optional[str] = None
+    travelDetailId: Optional[str] = None
+    startDateTime: Optional[str] = None
+    endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationResponse] = []
+    # The referenced first-class detail, embedded for convenience.
     travelDetail: Optional[TravelDetail] = None
     stayDetail: Optional[StayDetail] = None
     completed: bool
@@ -225,6 +273,8 @@ class TripResponse(BaseModel):
     tripName: str
     startDate: str
     endDate: str
+    stays: List[StayDetail] = []
+    travels: List[TravelDetail] = []
     days: List[TripDayWithPoints] = []
 
 
@@ -245,6 +295,8 @@ class TripImport(BaseModel):
     tripName: str
     startDate: str
     endDate: str
+    stays: List[StayDetailImport] = []
+    travels: List[TravelDetailImport] = []
     days: List[TripDayImport] = []
 
 
@@ -253,6 +305,8 @@ class ImportResult(BaseModel):
     tripId: str
     daysImported: int
     pointsImported: int
+    staysImported: int = 0
+    travelsImported: int = 0
 
 
 # ── Verify ───────────────────────────────────────────────────────────────────

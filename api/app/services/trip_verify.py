@@ -2,9 +2,10 @@
 
 Checks a fully-assembled trip against two criteria over its date range:
   - EMPTY_DAY  (error):   a date in [startDate, endDate] with no day record, or a
-                          day whose legs are empty -> no plans found for that day.
-  - MISSING_STAY (warning): a day that has plans but no `stay` point, surfaced so
-                          the user can confirm accommodation coverage manually.
+                          day whose points are empty -> no plans found for that day.
+  - MISSING_STAY (warning): a date not covered by any trip-level stay
+                          (check-in..check-out), surfaced so the user can confirm
+                          accommodation coverage manually.
 
 De-duplication: an empty day only yields EMPTY_DAY (no stay warning).
 """
@@ -13,7 +14,6 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from app.enums import PointType
 from app.schemas import TripResponse, VerifyIssue, VerifyResult
 
 
@@ -35,6 +35,26 @@ def _date_range(start: str, end: str) -> list[date]:
     return days
 
 
+def _stay_covered_dates(trip: TripResponse) -> set[date]:
+    """Dates covered by any trip-level stay (check-in..check-out inclusive)."""
+    covered: set[date] = set()
+    for stay in getattr(trip, "stays", []) or []:
+        if not stay.checkIn or not stay.checkOut:
+            continue
+        try:
+            start = _parse_date(stay.checkIn)
+            end = _parse_date(stay.checkOut)
+        except ValueError:
+            continue
+        if end < start:
+            continue
+        current = start
+        while current <= end:
+            covered.add(current)
+            current += timedelta(days=1)
+    return covered
+
+
 def verify_trip(trip: TripResponse) -> VerifyResult:
     # Group (non-alternate) days by their date.
     days_by_date: dict[date, list] = {}
@@ -47,6 +67,7 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
             continue
         days_by_date.setdefault(key, []).append(day)
 
+    covered = _stay_covered_dates(trip)
     issues: list[VerifyIssue] = []
     all_dates = _date_range(trip.startDate, trip.endDate)
 
@@ -68,15 +89,14 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
             )
             continue
 
-        has_stay = any(p.type == PointType.STAY for p in points)
-        if not has_stay:
+        if d not in covered:
             issues.append(
                 VerifyIssue(
                     code="MISSING_STAY",
                     severity="warning",
                     date=iso,
                     dayId=first_day_id,
-                    message="No accommodation (stay) found for this day. Confirm coverage.",
+                    message="No accommodation (stay) covers this day. Confirm coverage.",
                 )
             )
 

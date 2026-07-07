@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Trip Import Model",
-  "description": "Canonical trip model used by the PriPriTrip API import endpoint (POST /trip/import). A trip contains ordered days; each day contains ordered points (travel/stay/activity); points contain locations and optional travel/stay details.",
+  "description": "Canonical trip model used by POST /trip/import. Travel and stay details are first-class objects at trip level; day points reference them by ID.",
   "type": "object",
-  "required": ["tripId", "tripName", "startDate", "endDate", "days"],
+  "required": ["tripName", "startDate", "endDate", "stays", "travels", "days"],
   "properties": {
     "tripId": {
       "type": "string",
-      "description": "Unique identifier for the trip (UUID)."
+      "description": "Unique identifier for the trip (UUID). Optional on import; generated if omitted."
     },
     "tripName": {
       "type": "string",
@@ -23,26 +23,56 @@
       "format": "date",
       "description": "Trip end date, ISO 8601 (YYYY-MM-DD)."
     },
+    "stays": {
+      "type": "array",
+      "description": "First-class stay details. Points reference stays through stayDetailId.",
+      "items": { "$ref": "#/$defs/stayDetail" },
+      "default": []
+    },
+    "travels": {
+      "type": "array",
+      "description": "First-class travel details. Points reference travels through travelDetailId.",
+      "items": { "$ref": "#/$defs/travelDetail" },
+      "default": []
+    },
     "days": {
       "type": "array",
       "description": "Ordered list of trip days.",
-      "items": { "$ref": "#/$defs/day" }
+      "items": { "$ref": "#/$defs/day" },
+      "default": []
     }
   },
   "$defs": {
     "day": {
       "type": "object",
-      "required": ["dayId", "title", "date"],
+      "required": ["title", "date", "points"],
       "properties": {
-        "dayId": { "type": "string", "description": "Unique identifier for the day (UUID)." },
-        "title": { "type": "string", "description": "Short day title, e.g. 'May 11 — Arrival in Bern'." },
-        "date": { "type": "string", "format": "date", "description": "Day date, ISO 8601 (YYYY-MM-DD)." },
+        "dayId": {
+          "type": "string",
+          "description": "Unique identifier for the day (UUID). Optional on import; generated if omitted."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short day title."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Day date, ISO 8601 (YYYY-MM-DD)."
+        },
         "description": {
           "type": ["string", "null"],
-          "description": "Narrative day summary. The AI enhance pass expands this into an exciting overview of the day's highlights."
+          "description": "Narrative day summary."
         },
-        "isAlternate": { "type": "boolean", "default": false, "description": "True if this day is an alternate/optional plan." },
-        "completed": { "type": "boolean", "default": false },
+        "isAlternate": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if this day is an alternate/optional plan."
+        },
+        "completed": {
+          "type": "boolean",
+          "default": false
+        },
         "points": {
           "type": "array",
           "description": "Ordered list of points within the day.",
@@ -53,93 +83,144 @@
     },
     "point": {
       "type": "object",
-      "required": ["pointId", "dayId", "type", "title"],
+      "required": ["type", "title"],
       "properties": {
-        "pointId": { "type": "string", "description": "Unique identifier for the point (UUID)." },
-        "dayId": { "type": "string", "description": "The dayId this point belongs to." },
+        "pointId": {
+          "type": "string",
+          "description": "Unique identifier for the point (UUID). Optional on import; generated if omitted."
+        },
+        "dayId": {
+          "type": ["string", "null"],
+          "description": "Optional in import payloads; inferred from containing day when omitted."
+        },
         "type": {
           "type": "string",
-          "enum": ["travel", "stay", "activity"],
-          "description": "The kind of point."
+          "enum": ["check-in", "check-out", "departure", "arrival", "activity"],
+          "description": "Action-focused point type."
         },
         "title": { "type": "string" },
+        "stayDetailId": {
+          "type": ["string", "null"],
+          "description": "Reference to a stay in top-level stays[]."
+        },
+        "travelDetailId": {
+          "type": ["string", "null"],
+          "description": "Reference to a travel in top-level travels[]."
+        },
         "startDateTime": {
           "type": ["string", "null"],
-          "format": "date-time",
-          "description": "ISO 8601 datetime with timezone offset, e.g. 2026-05-11T12:15:00+02:00."
+          "format": "date-time"
         },
         "endDateTime": {
           "type": ["string", "null"],
           "format": "date-time"
         },
         "confirmationNumber": { "type": ["string", "null"] },
-        "description": {
-          "type": ["string", "null"],
-          "description": "Concise, helpful description of the point. Kept shorter than day descriptions."
-        },
+        "description": { "type": ["string", "null"] },
         "imageUrl": { "type": ["string", "null"] },
         "logoUrl": { "type": ["string", "null"] },
         "locations": {
           "type": "array",
+          "description": "Point-owned locations. Use when location is specific to this point.",
           "items": { "$ref": "#/$defs/location" },
           "default": []
         },
-        "travelDetail": {
-          "oneOf": [{ "$ref": "#/$defs/travelDetail" }, { "type": "null" }],
-          "description": "Present only for type=travel."
-        },
-        "stayDetail": {
-          "oneOf": [{ "$ref": "#/$defs/stayDetail" }, { "type": "null" }],
-          "description": "Present only for type=stay."
-        },
         "completed": { "type": "boolean", "default": false },
         "completedDateTime": { "type": ["string", "null"], "format": "date-time" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "check-in" } }, "required": ["type"] },
+          "then": { "required": ["stayDetailId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "check-out" } }, "required": ["type"] },
+          "then": { "required": ["stayDetailId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "arrival" } }, "required": ["type"] },
+          "then": { "required": ["travelDetailId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "departure" } }, "required": ["type"] },
+          "then": { "required": ["travelDetailId"] }
+        }
+      ]
     },
     "location": {
       "type": "object",
-      "required": ["locationId", "role", "name"],
+      "required": ["role", "name"],
       "properties": {
-        "locationId": { "type": "string", "description": "Unique identifier for the location (UUID)." },
+        "locationId": {
+          "type": "string",
+          "description": "Unique identifier for the location (UUID). Optional on import; generated if omitted."
+        },
         "role": {
           "type": "string",
-          "enum": ["origin", "destination", "venue", "waypoint"],
-          "description": "Role of the location within the point. travel points use origin/destination/waypoint; stay/activity points use venue."
+          "enum": ["origin", "destination", "venue", "waypoint"]
         },
         "name": { "type": "string" },
-        "lat": { "type": ["number", "null"], "description": "Filled by Google Places enrichment; leave null on AI output." },
-        "lng": { "type": ["number", "null"], "description": "Filled by Google Places enrichment; leave null on AI output." },
-        "fullAddress": { "type": ["string", "null"], "description": "Filled/normalised by Google Places enrichment." },
-        "description": { "type": ["string", "null"], "description": "Short description of the location." },
+        "lat": { "type": ["number", "null"] },
+        "lng": { "type": ["number", "null"] },
+        "fullAddress": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
         "link": { "type": ["string", "null"] },
-        "googlePlaceId": { "type": ["string", "null"], "description": "Filled by Google Places enrichment; leave null on AI output." },
-        "googleMapsUri": { "type": ["string", "null"], "description": "Filled by Google Places enrichment; leave null on AI output." }
+        "googlePlaceId": { "type": ["string", "null"] },
+        "googleMapsUri": { "type": ["string", "null"] }
       }
     },
     "travelDetail": {
       "type": "object",
       "required": ["mode"],
       "properties": {
+        "travelDetailId": {
+          "type": "string",
+          "description": "Unique identifier for this first-class travel detail (UUID). Optional on import; generated if omitted."
+        },
+        "name": { "type": ["string", "null"] },
         "mode": {
           "type": "string",
           "enum": ["flight", "train", "car", "bus", "ferry", "boat", "walk", "hike", "other"]
         },
         "operator": { "type": ["string", "null"] },
         "vehicleNumber": { "type": ["string", "null"] },
-        "cabinClass": { "type": ["string", "null"] }
+        "cabinClass": { "type": ["string", "null"] },
+        "departureDateTime": { "type": ["string", "null"], "format": "date-time" },
+        "arrivalDateTime": { "type": ["string", "null"], "format": "date-time" },
+        "confirmationNumber": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "locations": {
+          "type": "array",
+          "description": "Travel-owned locations (for example origin and destination airports/stations).",
+          "items": { "$ref": "#/$defs/location" },
+          "default": []
+        }
       }
     },
     "stayDetail": {
       "type": "object",
       "required": ["stayType"],
       "properties": {
+        "stayDetailId": {
+          "type": "string",
+          "description": "Unique identifier for this first-class stay detail (UUID). Optional on import; generated if omitted."
+        },
+        "name": { "type": ["string", "null"] },
         "stayType": {
           "type": "string",
           "enum": ["hotel", "hostel", "airbnb", "rental", "other"]
         },
-        "checkInTime": { "type": ["string", "null"] },
-        "checkOutTime": { "type": ["string", "null"] },
-        "roomType": { "type": ["string", "null"] }
+        "checkIn": { "type": ["string", "null"], "format": "date-time" },
+        "checkOut": { "type": ["string", "null"], "format": "date-time" },
+        "roomType": { "type": ["string", "null"] },
+        "confirmationNumber": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "locations": {
+          "type": "array",
+          "description": "Stay-owned locations (usually hotel/accommodation venue).",
+          "items": { "$ref": "#/$defs/location" },
+          "default": []
+        }
       }
     }
   }

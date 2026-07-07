@@ -27,19 +27,12 @@ async def import_trip(
 ):
     trip_id = body.tripId
 
-    # ── 1. Delete all existing data for this trip (FK order) ────────────────
-    point_ids_result = await db.execute(
-        select(TripPointRecord.point_id).where(TripPointRecord.trip_id == trip_id)
-    )
-    point_ids = list(point_ids_result.scalars().all())
-
-    if point_ids:
-        await db.execute(delete(LocationRecord).where(LocationRecord.point_id.in_(point_ids)))
-        await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.point_id.in_(point_ids)))
-        await db.execute(delete(StayDetailRecord).where(StayDetailRecord.point_id.in_(point_ids)))
-
+    # ── 1. Delete existing data for this trip. Locations have ON DELETE CASCADE
+    #       from points/stays/travels, so removing those clears their locations.
     await db.execute(delete(TripPointRecord).where(TripPointRecord.trip_id == trip_id))
     await db.execute(delete(TripDayRecord).where(TripDayRecord.trip_id == trip_id))
+    await db.execute(delete(StayDetailRecord).where(StayDetailRecord.trip_id == trip_id))
+    await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.trip_id == trip_id))
 
     # ── 2. Upsert trip header ────────────────────────────────────────────────
     trip = await db.get(TripRecord, trip_id)
@@ -53,7 +46,69 @@ async def import_trip(
     trip.end_date = body.endDate
     await db.flush()
 
-    # ── 3. Insert days, points, and all sub-records ──────────────────────────
+    def _add_locations(locations, *, point_id=None, stay_id=None, travel_id=None):
+        for i, loc in enumerate(locations):
+            db.add(
+                LocationRecord(
+                    location_id=loc.locationId,
+                    point_id=point_id,
+                    stay_detail_id=stay_id,
+                    travel_detail_id=travel_id,
+                    role=loc.role,
+                    sort_order=i,
+                    name=loc.name,
+                    lat=loc.lat,
+                    lng=loc.lng,
+                    full_address=loc.fullAddress,
+                    description=loc.description,
+                    link=loc.link,
+                    google_place_id=loc.googlePlaceId,
+                    google_maps_uri=loc.googleMapsUri,
+                )
+            )
+
+    # ── 3. Insert trip-level stays & travels (with their locations) ──────────
+    stays_inserted = 0
+    for stay in body.stays:
+        db.add(
+            StayDetailRecord(
+                stay_detail_id=stay.stayDetailId,
+                trip_id=trip_id,
+                name=stay.name,
+                stay_type=stay.stayType,
+                check_in=stay.checkIn,
+                check_out=stay.checkOut,
+                room_type=stay.roomType,
+                confirmation_number=stay.confirmationNumber,
+                description=stay.description,
+            )
+        )
+        await db.flush()
+        _add_locations(stay.locations, stay_id=stay.stayDetailId)
+        stays_inserted += 1
+
+    travels_inserted = 0
+    for travel in body.travels:
+        db.add(
+            TravelDetailRecord(
+                travel_detail_id=travel.travelDetailId,
+                trip_id=trip_id,
+                name=travel.name,
+                mode=travel.mode,
+                operator=travel.operator,
+                vehicle_number=travel.vehicleNumber,
+                cabin_class=travel.cabinClass,
+                departure_date_time=travel.departureDateTime,
+                arrival_date_time=travel.arrivalDateTime,
+                confirmation_number=travel.confirmationNumber,
+                description=travel.description,
+            )
+        )
+        await db.flush()
+        _add_locations(travel.locations, travel_id=travel.travelDetailId)
+        travels_inserted += 1
+
+    # ── 4. Insert days & points (points reference stays/travels) ─────────────
     days_inserted = 0
     points_inserted = 0
 
@@ -78,6 +133,8 @@ async def import_trip(
                 day_id=day_data.dayId,
                 type=pt.type,
                 title=pt.title,
+                stay_detail_id=pt.stayDetailId,
+                travel_detail_id=pt.travelDetailId,
                 start_date_time=pt.startDateTime,
                 end_date_time=pt.endDateTime,
                 confirmation_number=pt.confirmationNumber,
@@ -91,48 +148,7 @@ async def import_trip(
             await db.flush()
             points_inserted += 1
 
-            for loc in pt.locations:
-                db.add(
-                    LocationRecord(
-                        location_id=loc.locationId,
-                        point_id=pt.pointId,
-                        role=loc.role,
-                        name=loc.name,
-                        lat=loc.lat,
-                        lng=loc.lng,
-                        full_address=loc.fullAddress,
-                        description=loc.description,
-                        link=loc.link,
-                        google_place_id=loc.googlePlaceId,
-                        google_maps_uri=loc.googleMapsUri,
-                    )
-                )
-
-            if pt.travelDetail is not None:
-                db.add(
-                    TravelDetailRecord(
-                        travel_detail_id=str(uuid.uuid4()),
-                        trip_id=trip_id,
-                        point_id=pt.pointId,
-                        mode=pt.travelDetail.mode,
-                        operator=pt.travelDetail.operator,
-                        vehicle_number=pt.travelDetail.vehicleNumber,
-                        cabin_class=pt.travelDetail.cabinClass,
-                    )
-                )
-
-            if pt.stayDetail is not None:
-                db.add(
-                    StayDetailRecord(
-                        stay_detail_id=str(uuid.uuid4()),
-                        trip_id=trip_id,
-                        point_id=pt.pointId,
-                        stay_type=pt.stayDetail.stayType,
-                        check_in_time=pt.stayDetail.checkInTime,
-                        check_out_time=pt.stayDetail.checkOutTime,
-                        room_type=pt.stayDetail.roomType,
-                    )
-                )
+            _add_locations(pt.locations, point_id=pt.pointId)
 
     await db.commit()
 
@@ -141,4 +157,6 @@ async def import_trip(
         tripId=trip_id,
         daysImported=days_inserted,
         pointsImported=points_inserted,
+        staysImported=stays_inserted,
+        travelsImported=travels_inserted,
     )

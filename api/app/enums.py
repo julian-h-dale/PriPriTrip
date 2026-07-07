@@ -2,8 +2,10 @@ from enum import StrEnum
 
 
 class PointType(StrEnum):
-    TRAVEL = "travel"
-    STAY = "stay"
+    CHECK_IN = "check-in"
+    CHECK_OUT = "check-out"
+    DEPARTURE = "departure"
+    ARRIVAL = "arrival"
     ACTIVITY = "activity"
 
 

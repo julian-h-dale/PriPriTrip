@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
@@ -17,14 +16,12 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import (
-    LocationResponse,
-    StayDetail,
-    TravelDetail,
     TripPointCreate,
     TripPointPatch,
     TripPointResponse,
     TripPointUpdate,
 )
+from app.serializers import point_to_response, stay_to_response, travel_to_response
 
 router = APIRouter(
     prefix="/trips/{trip_id}/points",
@@ -45,80 +42,34 @@ async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> Trip
         .order_by(LocationRecord.sort_order)
     )
     locations = loc_result.scalars().all()
-    travel = (
-        await db.execute(
-            select(TravelDetailRecord).where(TravelDetailRecord.point_id == point.point_id)
-        )
-    ).scalar_one_or_none()
-    stay = (
-        await db.execute(
-            select(StayDetailRecord).where(StayDetailRecord.point_id == point.point_id)
-        )
-    ).scalar_one_or_none()
 
-    travel_detail = (
-        TravelDetail(
-            travelDetailId=travel.travel_detail_id,
-            tripId=travel.trip_id,
-            pointId=travel.point_id,
-            mode=travel.mode,
-            operator=travel.operator,
-            vehicleNumber=travel.vehicle_number,
-            cabinClass=travel.cabin_class,
-        )
-        if travel
-        else None
-    )
-    stay_detail = (
-        StayDetail(
-            stayDetailId=stay.stay_detail_id,
-            tripId=stay.trip_id,
-            pointId=stay.point_id,
-            stayType=stay.stay_type,
-            checkInTime=stay.check_in_time,
-            checkOutTime=stay.check_out_time,
-            roomType=stay.room_type,
-        )
-        if stay
-        else None
-    )
+    travel_detail = None
+    if point.travel_detail_id:
+        travel = await db.get(TravelDetailRecord, point.travel_detail_id)
+        if travel:
+            tlocs = (
+                await db.execute(
+                    select(LocationRecord).where(
+                        LocationRecord.travel_detail_id == travel.travel_detail_id
+                    )
+                )
+            ).scalars().all()
+            travel_detail = travel_to_response(travel, tlocs)
 
-    return TripPointResponse(
-        pointId=point.point_id,
-        tripId=point.trip_id,
-        dayId=point.day_id,
-        type=point.type,
-        title=point.title,
-        startDateTime=point.start_date_time,
-        endDateTime=point.end_date_time,
-        confirmationNumber=point.confirmation_number,
-        description=point.description,
-        imageUrl=point.image_url,
-        logoUrl=point.logo_url,
-        locations=[
-            LocationResponse(
-                locationId=loc.location_id,
-                pointId=loc.point_id,
-                role=loc.role,
-                name=loc.name,
-                lat=loc.lat,
-                lng=loc.lng,
-                fullAddress=loc.full_address,
-                description=loc.description,
-                link=loc.link,
-                googlePlaceId=loc.google_place_id,
-                googleMapsUri=loc.google_maps_uri,
-            )
-            for loc in locations
-        ],
-        travelDetail=travel_detail,
-        stayDetail=stay_detail,
-        completed=point.completed,
-        completedDateTime=point.completed_date_time,
-        deletedAt=point.deleted_at.isoformat() if point.deleted_at else None,
-        createdAt=point.created_at.isoformat() if point.created_at else None,
-        updatedAt=point.updated_at.isoformat() if point.updated_at else None,
-    )
+    stay_detail = None
+    if point.stay_detail_id:
+        stay = await db.get(StayDetailRecord, point.stay_detail_id)
+        if stay:
+            slocs = (
+                await db.execute(
+                    select(LocationRecord).where(
+                        LocationRecord.stay_detail_id == stay.stay_detail_id
+                    )
+                )
+            ).scalars().all()
+            stay_detail = stay_to_response(stay, slocs)
+
+    return point_to_response(point, locations, travel_detail, stay_detail)
 
 
 async def _replace_locations(point_id: str, locations_payload: list, db: AsyncSession) -> None:
@@ -142,59 +93,25 @@ async def _replace_locations(point_id: str, locations_payload: list, db: AsyncSe
         )
 
 
-async def _replace_details(
-    point_id: str,
+async def _validate_detail_refs(
     trip_id: str,
-    travel_detail,
-    stay_detail,
+    stay_detail_id: str | None,
+    travel_detail_id: str | None,
     db: AsyncSession,
 ) -> None:
-    # Preserve existing detail IDs across point saves so standalone detail
-    # references stay stable.
-    existing_travel = (
-        await db.execute(
-            select(TravelDetailRecord).where(TravelDetailRecord.point_id == point_id)
-        )
-    ).scalar_one_or_none()
-    existing_stay = (
-        await db.execute(
-            select(StayDetailRecord).where(StayDetailRecord.point_id == point_id)
-        )
-    ).scalar_one_or_none()
-
-    travel_id = existing_travel.travel_detail_id if existing_travel else str(uuid.uuid4())
-    stay_id = existing_stay.stay_detail_id if existing_stay else str(uuid.uuid4())
-
-    if existing_travel:
-        await db.delete(existing_travel)
-    if existing_stay:
-        await db.delete(existing_stay)
-    await db.flush()
-
-    if travel_detail is not None:
-        db.add(
-            TravelDetailRecord(
-                travel_detail_id=travel_id,
-                trip_id=trip_id,
-                point_id=point_id,
-                mode=travel_detail.mode,
-                operator=travel_detail.operator,
-                vehicle_number=travel_detail.vehicleNumber,
-                cabin_class=travel_detail.cabinClass,
+    """Ensure referenced stay/travel details exist and belong to this trip."""
+    if stay_detail_id:
+        stay = await db.get(StayDetailRecord, stay_detail_id)
+        if stay is None or stay.trip_id != trip_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found"
             )
-        )
-    if stay_detail is not None:
-        db.add(
-            StayDetailRecord(
-                stay_detail_id=stay_id,
-                trip_id=trip_id,
-                point_id=point_id,
-                stay_type=stay_detail.stayType,
-                check_in_time=stay_detail.checkInTime,
-                check_out_time=stay_detail.checkOutTime,
-                room_type=stay_detail.roomType,
+    if travel_detail_id:
+        travel = await db.get(TravelDetailRecord, travel_detail_id)
+        if travel is None or travel.trip_id != trip_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found"
             )
-        )
 
 
 @router.get("", response_model=list[TripPointResponse])
@@ -245,6 +162,7 @@ async def create_point(
     day = await db.get(TripDayRecord, body.dayId)
     if day is None or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
+    await _validate_detail_refs(trip_id, body.stayDetailId, body.travelDetailId, db)
 
     point = TripPointRecord(
         point_id=body.pointId,
@@ -252,6 +170,8 @@ async def create_point(
         day_id=body.dayId,
         type=body.type,
         title=body.title,
+        stay_detail_id=body.stayDetailId,
+        travel_detail_id=body.travelDetailId,
         start_date_time=body.startDateTime,
         end_date_time=body.endDateTime,
         confirmation_number=body.confirmationNumber,
@@ -264,7 +184,6 @@ async def create_point(
     db.add(point)
     await db.flush()
     await _replace_locations(body.pointId, body.locations, db)
-    await _replace_details(body.pointId, trip_id, body.travelDetail, body.stayDetail, db)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)
@@ -286,9 +205,16 @@ async def update_point(
     if day is None or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
 
+    day = await db.get(TripDayRecord, body.dayId)
+    if day is None or day.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
+    await _validate_detail_refs(trip_id, body.stayDetailId, body.travelDetailId, db)
+
     point.day_id = body.dayId
     point.type = body.type
     point.title = body.title
+    point.stay_detail_id = body.stayDetailId
+    point.travel_detail_id = body.travelDetailId
     point.start_date_time = body.startDateTime
     point.end_date_time = body.endDateTime
     point.confirmation_number = body.confirmationNumber
@@ -300,7 +226,6 @@ async def update_point(
     point.updated_at = datetime.now(timezone.utc)
 
     await _replace_locations(point_id, body.locations, db)
-    await _replace_details(point_id, trip_id, body.travelDetail, body.stayDetail, db)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)
@@ -323,6 +248,8 @@ async def patch_point(
         "dayId": "day_id",
         "type": "type",
         "title": "title",
+        "stayDetailId": "stay_detail_id",
+        "travelDetailId": "travel_detail_id",
         "startDateTime": "start_date_time",
         "endDateTime": "end_date_time",
         "confirmationNumber": "confirmation_number",
@@ -332,14 +259,18 @@ async def patch_point(
         "completed": "completed",
         "completedDateTime": "completed_date_time",
     }
+    await _validate_detail_refs(
+        trip_id,
+        body.stayDetailId if "stayDetailId" in body.model_fields_set else None,
+        body.travelDetailId if "travelDetailId" in body.model_fields_set else None,
+        db,
+    )
     for pydantic_field, orm_field in _scalar_field_map.items():
         if pydantic_field in body.model_fields_set:
             setattr(point, orm_field, getattr(body, pydantic_field))
 
     if "locations" in body.model_fields_set:
         await _replace_locations(point_id, body.locations or [], db)
-    if "travelDetail" in body.model_fields_set or "stayDetail" in body.model_fields_set:
-        await _replace_details(point_id, trip_id, body.travelDetail, body.stayDetail, db)
 
     point.updated_at = datetime.now(timezone.utc)
     await db.commit()

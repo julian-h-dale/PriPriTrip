@@ -1,6 +1,7 @@
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Float,
@@ -60,6 +61,18 @@ class TripPointRecord(Base):
     day_id = Column(Uuid(as_uuid=False), ForeignKey("trip_days.day_id"), nullable=False)
     type = Column(String, nullable=False)
     title = Column(String, nullable=False)
+    # A check-in/check-out point links to a stay; a departure/arrival point links
+    # to a travel. Activity points reference neither.
+    stay_detail_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("stay_details.stay_detail_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    travel_detail_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("travel_details.travel_detail_id", ondelete="SET NULL"),
+        nullable=True,
+    )
     start_date_time = Column(String, nullable=True)
     end_date_time = Column(String, nullable=True)
     confirmation_number = Column(String, nullable=True)
@@ -77,7 +90,22 @@ class LocationRecord(Base):
     __tablename__ = "locations"
 
     location_id = Column(Uuid(as_uuid=False), primary_key=True)
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), nullable=False)
+    # Exactly one owner FK is set (enforced by the check constraint below).
+    point_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("trip_points.point_id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    stay_detail_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("stay_details.stay_detail_id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    travel_detail_id = Column(
+        Uuid(as_uuid=False),
+        ForeignKey("travel_details.travel_detail_id", ondelete="CASCADE"),
+        nullable=True,
+    )
     role = Column(String, nullable=False)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     name = Column(String, nullable=False)
@@ -89,22 +117,31 @@ class LocationRecord(Base):
     google_place_id = Column(String, nullable=True)
     google_maps_uri = Column(String, nullable=True)
 
+    __table_args__ = (
+        CheckConstraint(
+            "num_nonnulls(point_id, stay_detail_id, travel_detail_id) = 1",
+            name="location_single_owner",
+        ),
+    )
+
 
 class TravelDetailRecord(Base):
     __tablename__ = "travel_details"
 
     travel_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
     trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
-    point_id = Column(
-        Uuid(as_uuid=False),
-        ForeignKey("trip_points.point_id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-    )
+    name = Column(String, nullable=True)
     mode = Column(String, nullable=False)
     operator = Column(String, nullable=True)
     vehicle_number = Column(String, nullable=True)
     cabin_class = Column(String, nullable=True)
+    departure_date_time = Column(String, nullable=True)
+    arrival_date_time = Column(String, nullable=True)
+    confirmation_number = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class StayDetailRecord(Base):
@@ -112,13 +149,13 @@ class StayDetailRecord(Base):
 
     stay_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
     trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
-    point_id = Column(
-        Uuid(as_uuid=False),
-        ForeignKey("trip_points.point_id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-    )
+    name = Column(String, nullable=True)
     stay_type = Column(String, nullable=False)
-    check_in_time = Column(String, nullable=True)
-    check_out_time = Column(String, nullable=True)
+    check_in = Column(String, nullable=True)
+    check_out = Column(String, nullable=True)
     room_type = Column(String, nullable=True)
+    confirmation_number = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    deleted_at = Column(DateTime(timezone=True), nullable=True)

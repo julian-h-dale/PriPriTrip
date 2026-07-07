@@ -23,8 +23,8 @@ from pydantic import BaseModel
 from app.enums import LocationRole, PointType, StayType, TravelMode
 from app.schemas import (
     LocationCreate,
-    StayDetail,
-    TravelDetail,
+    StayDetailImport,
+    TravelDetailImport,
     TripDayImport,
     TripImport,
     TripPointCreate,
@@ -47,16 +47,42 @@ class AILocation(BaseModel):
     link: Optional[str] = None
 
 
+class AIStay(BaseModel):
+    ref: str  # temporary id the model assigns, referenced by points
+    name: Optional[str] = None
+    stayType: StayType
+    checkIn: Optional[str] = None
+    checkOut: Optional[str] = None
+    roomType: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
+    locations: List[AILocation] = []
+
+
+class AITravel(BaseModel):
+    ref: str  # temporary id the model assigns, referenced by points
+    name: Optional[str] = None
+    mode: TravelMode
+    operator: Optional[str] = None
+    vehicleNumber: Optional[str] = None
+    cabinClass: Optional[str] = None
+    departureDateTime: Optional[str] = None
+    arrivalDateTime: Optional[str] = None
+    confirmationNumber: Optional[str] = None
+    description: Optional[str] = None
+    locations: List[AILocation] = []
+
+
 class AIPoint(BaseModel):
     type: PointType
     title: str
+    stayRef: Optional[str] = None  # -> AIStay.ref for check-in/check-out
+    travelRef: Optional[str] = None  # -> AITravel.ref for departure/arrival
     startDateTime: Optional[str] = None
     endDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     locations: List[AILocation] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
 
 
 class AIDay(BaseModel):
@@ -71,6 +97,8 @@ class AITrip(BaseModel):
     tripName: str
     startDate: str
     endDate: str
+    stays: List[AIStay] = []
+    travels: List[AITravel] = []
     days: List[AIDay] = []
 
 
@@ -78,17 +106,31 @@ class AITrip(BaseModel):
 
 _STRUCTURE_SYSTEM = """You convert a traveller's raw itinerary document into a structured trip.
 
-Rules:
-- Group everything into days. Each day has a title (e.g. "May 11 — Arrival in Bern") and an ISO date (YYYY-MM-DD).
-- Each day has ordered points. A point is one of: "travel", "stay", or "activity".
-- travel points: set travelDetail.mode (flight/train/car/bus/ferry/boat/walk/hike/other) and give locations roles origin/destination (waypoint if intermediate).
-- stay points: set stayDetail.stayType (hotel/hostel/airbnb/rental/other) and give locations role "venue".
-- activity points: locations use role "venue".
-- Use ISO 8601 datetimes with a timezone offset when times are known (e.g. 2026-05-11T12:15:00+02:00); otherwise leave them null.
-- Preserve confirmation numbers exactly.
-- Keep descriptions short and factual at this stage; do not invent facts, times, or confirmation numbers.
+The trip has three top-level collections: stays, travels, and days.
+
+STAYS (accommodation, one entry per booking that can span multiple nights):
+- Give each a unique "ref" (e.g. "stay-1"), a "name" (the hotel/property name — this is the primary label),
+  stayType (hotel/hostel/airbnb/rental/other), checkIn and checkOut as ISO datetimes, roomType, confirmationNumber.
+- Put the property location under the stay's "locations" with role "venue".
+
+TRAVELS (a flight, train, drive, etc.):
+- Give each a unique "ref" (e.g. "travel-1"), a "name" (e.g. "Flight to Zurich"), mode
+  (flight/train/car/bus/ferry/boat/walk/hike/other), operator, vehicleNumber, cabinClass,
+  departureDateTime and arrivalDateTime as ISO datetimes, confirmationNumber.
+- Put origin/destination (and any waypoints) under the travel's "locations" with roles origin/destination/waypoint.
+
+DAYS contain ordered timeline POINTS. A point is an "action" of type:
+  check-in | check-out | departure | arrival | activity
+- A "check-in" or "check-out" point references a stay via stayRef.
+- A "departure" or "arrival" point references a travel via travelRef.
+- An "activity" point references neither; put its venue under the point's "locations" with role "venue".
+- The point "title" is the action (e.g. "Check in", "Depart for Zurich"); the stay/travel "name" holds the entity label.
+
+General:
+- Use ISO 8601 datetimes with a timezone offset when known (e.g. 2026-05-11T12:15:00+02:00); otherwise null.
+- Preserve confirmation numbers exactly. Keep descriptions short and factual here.
 - Do NOT fabricate coordinates or addresses; only include location names you can infer from the document.
-Return ONLY data that is supported by the document."""
+Return ONLY data supported by the document."""
 
 _ENHANCE_SYSTEM = """You are enhancing an already-structured trip to make it engaging.
 
@@ -96,14 +138,15 @@ For each day: write a SHORT, exciting description of just 2-3 sentences that
 captures the vibe and the top highlights of the day. Keep it high-level — do NOT
 put logistics, step-by-step instructions, or practical tips in the day description.
 
-For each point/leg: this is where the detail belongs. Write a helpful, vivid
-description that can be a bit longer, covering what to do or expect, practical
+For each point, stay, and travel: this is where the detail belongs. Write a helpful,
+vivid description that can be a bit longer, covering what to do or expect, practical
 tips, timing guidance, and any useful step-by-step notes. Location descriptions
 stay concise (1-2 sentences).
 
-Do NOT change any factual fields: titles, dates, times, types, modes, stayTypes,
-confirmation numbers, or location names. Do NOT add or remove days, points, or
-locations. Only improve the description fields. Return the full trip in the same structure."""
+Do NOT change any factual fields: refs, titles, names, dates, times, types, modes,
+stayTypes, confirmation numbers, or location names. Do NOT add or remove stays,
+travels, days, points, or locations. Only improve the description fields. Return the
+full trip in the same structure."""
 
 
 def _client():
@@ -178,39 +221,76 @@ def enhance_trip(trip: AITrip, client=None) -> AITrip:
     return _parse(client, _ENHANCE_SYSTEM, user, pass_name="enhance")
 
 
-def to_trip_import(trip: AITrip) -> TripImport:
-    """Assign UUIDs and wire day<->point linkage, producing a TripImport."""
-    trip_id = str(uuid.uuid4())
-    days: List[TripDayImport] = []
+def _ai_locations(ai_locs, *, stay_id=None, travel_id=None) -> List[LocationCreate]:
+    return [
+        LocationCreate(
+            locationId=str(uuid.uuid4()),
+            role=loc.role,
+            name=loc.name,
+            description=loc.description,
+            link=loc.link,
+        )
+        for loc in ai_locs
+    ]
 
+
+def to_trip_import(trip: AITrip) -> TripImport:
+    """Assign UUIDs, hoist stays/travels to trip level, and wire point refs."""
+    trip_id = str(uuid.uuid4())
+
+    # Map the model's temporary refs to generated UUIDs.
+    stay_ref_to_id = {s.ref: str(uuid.uuid4()) for s in trip.stays}
+    travel_ref_to_id = {t.ref: str(uuid.uuid4()) for t in trip.travels}
+
+    stays: List[StayDetailImport] = [
+        StayDetailImport(
+            stayDetailId=stay_ref_to_id[s.ref],
+            name=s.name,
+            stayType=s.stayType,
+            checkIn=s.checkIn,
+            checkOut=s.checkOut,
+            roomType=s.roomType,
+            confirmationNumber=s.confirmationNumber,
+            description=s.description,
+            locations=_ai_locations(s.locations),
+        )
+        for s in trip.stays
+    ]
+    travels: List[TravelDetailImport] = [
+        TravelDetailImport(
+            travelDetailId=travel_ref_to_id[t.ref],
+            name=t.name,
+            mode=t.mode,
+            operator=t.operator,
+            vehicleNumber=t.vehicleNumber,
+            cabinClass=t.cabinClass,
+            departureDateTime=t.departureDateTime,
+            arrivalDateTime=t.arrivalDateTime,
+            confirmationNumber=t.confirmationNumber,
+            description=t.description,
+            locations=_ai_locations(t.locations),
+        )
+        for t in trip.travels
+    ]
+
+    days: List[TripDayImport] = []
     for ai_day in trip.days:
         day_id = str(uuid.uuid4())
         points: List[TripPointCreate] = []
         for ai_point in ai_day.points:
-            point_id = str(uuid.uuid4())
-            locations = [
-                LocationCreate(
-                    locationId=str(uuid.uuid4()),
-                    role=loc.role,
-                    name=loc.name,
-                    description=loc.description,
-                    link=loc.link,
-                )
-                for loc in ai_point.locations
-            ]
             points.append(
                 TripPointCreate(
-                    pointId=point_id,
+                    pointId=str(uuid.uuid4()),
                     dayId=day_id,
                     type=ai_point.type,
                     title=ai_point.title,
+                    stayDetailId=stay_ref_to_id.get(ai_point.stayRef) if ai_point.stayRef else None,
+                    travelDetailId=travel_ref_to_id.get(ai_point.travelRef) if ai_point.travelRef else None,
                     startDateTime=ai_point.startDateTime,
                     endDateTime=ai_point.endDateTime,
                     confirmationNumber=ai_point.confirmationNumber,
                     description=ai_point.description,
-                    locations=locations,
-                    travelDetail=ai_point.travelDetail,
-                    stayDetail=ai_point.stayDetail,
+                    locations=_ai_locations(ai_point.locations),
                 )
             )
         days.append(
@@ -229,6 +309,8 @@ def to_trip_import(trip: AITrip) -> TripImport:
         tripName=trip.tripName,
         startDate=trip.startDate,
         endDate=trip.endDate,
+        stays=stays,
+        travels=travels,
         days=days,
     )
 
@@ -261,12 +343,52 @@ def structure_document(document_text: str, client=None) -> TripImport:
     return to_trip_import(structured)
 
 
+def _ai_locs_from(locations) -> List[AILocation]:
+    return [
+        AILocation(role=loc.role, name=loc.name, description=loc.description, link=loc.link)
+        for loc in locations
+    ]
+
+
 def _trip_import_to_ai(trip: TripImport) -> AITrip:
-    """Convert a TripImport (with IDs) back into the ID-free AITrip model."""
+    """Convert a TripImport (with IDs) back into the ID-free AITrip model.
+
+    Detail IDs are reused as the temporary refs so points keep their linkage.
+    """
     return AITrip(
         tripName=trip.tripName,
         startDate=trip.startDate,
         endDate=trip.endDate,
+        stays=[
+            AIStay(
+                ref=s.stayDetailId,
+                name=s.name,
+                stayType=s.stayType,
+                checkIn=s.checkIn,
+                checkOut=s.checkOut,
+                roomType=s.roomType,
+                confirmationNumber=s.confirmationNumber,
+                description=s.description,
+                locations=_ai_locs_from(s.locations),
+            )
+            for s in trip.stays
+        ],
+        travels=[
+            AITravel(
+                ref=t.travelDetailId,
+                name=t.name,
+                mode=t.mode,
+                operator=t.operator,
+                vehicleNumber=t.vehicleNumber,
+                cabinClass=t.cabinClass,
+                departureDateTime=t.departureDateTime,
+                arrivalDateTime=t.arrivalDateTime,
+                confirmationNumber=t.confirmationNumber,
+                description=t.description,
+                locations=_ai_locs_from(t.locations),
+            )
+            for t in trip.travels
+        ],
         days=[
             AIDay(
                 title=day.title,
@@ -277,21 +399,13 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
                     AIPoint(
                         type=pt.type,
                         title=pt.title,
+                        stayRef=pt.stayDetailId,
+                        travelRef=pt.travelDetailId,
                         startDateTime=pt.startDateTime,
                         endDateTime=pt.endDateTime,
                         confirmationNumber=pt.confirmationNumber,
                         description=pt.description,
-                        locations=[
-                            AILocation(
-                                role=loc.role,
-                                name=loc.name,
-                                description=loc.description,
-                                link=loc.link,
-                            )
-                            for loc in pt.locations
-                        ],
-                        travelDetail=pt.travelDetail,
-                        stayDetail=pt.stayDetail,
+                        locations=_ai_locs_from(pt.locations),
                     )
                     for pt in day.points
                 ],
@@ -305,24 +419,36 @@ def enhance_trip_import(trip: TripImport, client=None) -> TripImport:
     """Pass 2 only: enhance descriptions of an existing trip, preserving IDs.
 
     The enhance pass only touches description fields and does not add/remove
-    days, points, or locations, so enhanced text is merged back into the
-    original TripImport by position — keeping every existing ID intact.
+    entities, so enhanced text is merged back into the original TripImport by
+    position — keeping every existing ID intact.
     """
     client = client or _client()
     logger.info(
-        "enhance-only: enhancing trip=%r (%d days)", trip.tripName, len(trip.days)
+        "enhance-only: enhancing trip=%r (%d stays, %d travels, %d days)",
+        trip.tripName, len(trip.stays), len(trip.travels), len(trip.days),
     )
     enhanced = enhance_trip(_trip_import_to_ai(trip), client=client)
 
+    def _merge_locs(locs, ai_locs):
+        for loc, ai_loc in zip(locs, ai_locs):
+            if ai_loc.description:
+                loc.description = ai_loc.description
+
     result = trip.model_copy(deep=True)
+    for stay, ai_stay in zip(result.stays, enhanced.stays):
+        if ai_stay.description:
+            stay.description = ai_stay.description
+        _merge_locs(stay.locations, ai_stay.locations)
+    for travel, ai_travel in zip(result.travels, enhanced.travels):
+        if ai_travel.description:
+            travel.description = ai_travel.description
+        _merge_locs(travel.locations, ai_travel.locations)
     for day, ai_day in zip(result.days, enhanced.days):
         if ai_day.description:
             day.description = ai_day.description
         for pt, ai_pt in zip(day.points, ai_day.points):
             if ai_pt.description:
                 pt.description = ai_pt.description
-            for loc, ai_loc in zip(pt.locations, ai_pt.locations):
-                if ai_loc.description:
-                    loc.description = ai_loc.description
+            _merge_locs(pt.locations, ai_pt.locations)
     logger.info("enhance-only: merged enhancements back into trip=%r", result.tripName)
     return result

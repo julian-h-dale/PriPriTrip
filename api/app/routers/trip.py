@@ -17,85 +17,16 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import (
-    LocationResponse,
-    StayDetail,
-    TravelDetail,
     TripDayWithPoints,
     TripHeader,
     TripListItem,
-    TripPointResponse,
     TripResponse,
     VerifyResult,
 )
+from app.serializers import point_to_response, stay_to_response, travel_to_response
 from app.services.trip_verify import verify_trip
 
 router = APIRouter(prefix="/trips", tags=["trips"])
-
-
-def _point_to_response(
-    point: TripPointRecord,
-    locations: list,
-    travel: TravelDetailRecord | None,
-    stay: StayDetailRecord | None,
-) -> TripPointResponse:
-    travel_detail = None
-    if travel:
-        travel_detail = TravelDetail(
-            travelDetailId=travel.travel_detail_id,
-            tripId=travel.trip_id,
-            pointId=travel.point_id,
-            mode=travel.mode,
-            operator=travel.operator,
-            vehicleNumber=travel.vehicle_number,
-            cabinClass=travel.cabin_class,
-        )
-    stay_detail = None
-    if stay:
-        stay_detail = StayDetail(
-            stayDetailId=stay.stay_detail_id,
-            tripId=stay.trip_id,
-            pointId=stay.point_id,
-            stayType=stay.stay_type,
-            checkInTime=stay.check_in_time,
-            checkOutTime=stay.check_out_time,
-            roomType=stay.room_type,
-        )
-    return TripPointResponse(
-        pointId=point.point_id,
-        tripId=point.trip_id,
-        dayId=point.day_id,
-        type=point.type,
-        title=point.title,
-        startDateTime=point.start_date_time,
-        endDateTime=point.end_date_time,
-        confirmationNumber=point.confirmation_number,
-        description=point.description,
-        imageUrl=point.image_url,
-        logoUrl=point.logo_url,
-        locations=[
-            LocationResponse(
-                locationId=loc.location_id,
-                pointId=loc.point_id,
-                role=loc.role,
-                name=loc.name,
-                lat=loc.lat,
-                lng=loc.lng,
-                fullAddress=loc.full_address,
-                description=loc.description,
-                link=loc.link,
-                googlePlaceId=loc.google_place_id,
-                googleMapsUri=loc.google_maps_uri,
-            )
-            for loc in sorted(locations, key=lambda l: l.sort_order)
-        ],
-        travelDetail=travel_detail,
-        stayDetail=stay_detail,
-        completed=point.completed,
-        completedDateTime=point.completed_date_time,
-        deletedAt=point.deleted_at.isoformat() if point.deleted_at else None,
-        createdAt=point.created_at.isoformat() if point.created_at else None,
-        updatedAt=point.updated_at.isoformat() if point.updated_at else None,
-    )
 
 
 @router.get("", response_model=list[TripListItem])
@@ -138,6 +69,50 @@ async def _load_trip(
     if record is None or record.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
+    # ── Trip-level stays & travels (with their own locations) ────────────────
+    stays_result = await db.execute(
+        select(StayDetailRecord).where(
+            StayDetailRecord.trip_id == trip_id, StayDetailRecord.deleted_at.is_(None)
+        )
+    )
+    stay_records = stays_result.scalars().all()
+    travels_result = await db.execute(
+        select(TravelDetailRecord).where(
+            TravelDetailRecord.trip_id == trip_id, TravelDetailRecord.deleted_at.is_(None)
+        )
+    )
+    travel_records = travels_result.scalars().all()
+
+    locs_by_stay: dict = {}
+    locs_by_travel: dict = {}
+    locs_by_point: dict = {}
+
+    stay_ids = [s.stay_detail_id for s in stay_records]
+    travel_ids = [t.travel_detail_id for t in travel_records]
+
+    if stay_ids:
+        res = await db.execute(
+            select(LocationRecord).where(LocationRecord.stay_detail_id.in_(stay_ids))
+        )
+        for loc in res.scalars().all():
+            locs_by_stay.setdefault(loc.stay_detail_id, []).append(loc)
+    if travel_ids:
+        res = await db.execute(
+            select(LocationRecord).where(LocationRecord.travel_detail_id.in_(travel_ids))
+        )
+        for loc in res.scalars().all():
+            locs_by_travel.setdefault(loc.travel_detail_id, []).append(loc)
+
+    stays = {
+        s.stay_detail_id: stay_to_response(s, locs_by_stay.get(s.stay_detail_id, []))
+        for s in stay_records
+    }
+    travels = {
+        t.travel_detail_id: travel_to_response(t, locs_by_travel.get(t.travel_detail_id, []))
+        for t in travel_records
+    }
+
+    # ── Days & points ────────────────────────────────────────────────────────
     days_result = await db.execute(
         select(TripDayRecord)
         .where(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
@@ -147,10 +122,6 @@ async def _load_trip(
     day_ids = [d.day_id for d in days]
 
     points = []
-    locs_by_point: dict = {}
-    travel_by_point: dict = {}
-    stay_by_point: dict = {}
-
     if day_ids:
         pts_result = await db.execute(
             select(TripPointRecord)
@@ -166,18 +137,6 @@ async def _load_trip(
             )
             for loc in loc_result.scalars().all():
                 locs_by_point.setdefault(loc.point_id, []).append(loc)
-
-            travel_result = await db.execute(
-                select(TravelDetailRecord).where(TravelDetailRecord.point_id.in_(point_ids))
-            )
-            for t in travel_result.scalars().all():
-                travel_by_point[t.point_id] = t
-
-            stay_result = await db.execute(
-                select(StayDetailRecord).where(StayDetailRecord.point_id.in_(point_ids))
-            )
-            for s in stay_result.scalars().all():
-                stay_by_point[s.point_id] = s
 
     points_by_day: dict = {}
     for p in points:
@@ -196,11 +155,11 @@ async def _load_trip(
             createdAt=d.created_at.isoformat() if d.created_at else None,
             updatedAt=d.updated_at.isoformat() if d.updated_at else None,
             points=[
-                _point_to_response(
+                point_to_response(
                     p,
                     locs_by_point.get(p.point_id, []),
-                    travel_by_point.get(p.point_id),
-                    stay_by_point.get(p.point_id),
+                    travels.get(p.travel_detail_id) if p.travel_detail_id else None,
+                    stays.get(p.stay_detail_id) if p.stay_detail_id else None,
                 )
                 for p in points_by_day.get(d.day_id, [])
             ],
@@ -213,6 +172,8 @@ async def _load_trip(
         tripName=record.trip_name,
         startDate=record.start_date,
         endDate=record.end_date,
+        stays=list(stays.values()),
+        travels=list(travels.values()),
         days=assembled_days,
     )
 

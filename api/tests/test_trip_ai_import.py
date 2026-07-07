@@ -10,7 +10,15 @@ from app.main import app
 from app.schemas import TripImport
 from app.services import trip_ai
 from app.services.document_ingest import extract_text
-from app.services.trip_ai import AIDay, AILocation, AIPoint, AITrip, to_trip_import
+from app.services.trip_ai import (
+    AIDay,
+    AILocation,
+    AIPoint,
+    AIStay,
+    AITravel,
+    AITrip,
+    to_trip_import,
+)
 
 
 client = TestClient(app)
@@ -27,6 +35,29 @@ def _sample_ai_trip() -> AITrip:
         tripName="Test Honeymoon",
         startDate="2026-05-10",
         endDate="2026-05-11",
+        stays=[
+            AIStay(
+                ref="stay-1",
+                name="Hotel Goldener Schlüssel",
+                stayType="hotel",
+                checkIn="2026-05-11T15:00:00+02:00",
+                checkOut="2026-05-12T11:00:00+02:00",
+                locations=[AILocation(role="venue", name="Hotel Goldener Schlüssel")],
+            )
+        ],
+        travels=[
+            AITravel(
+                ref="travel-1",
+                name="Train to Bern",
+                mode="train",
+                departureDateTime="2026-05-11T12:15:00+02:00",
+                arrivalDateTime="2026-05-11T13:30:00+02:00",
+                locations=[
+                    AILocation(role="origin", name="Zurich Airport"),
+                    AILocation(role="destination", name="Bern"),
+                ],
+            )
+        ],
         days=[
             AIDay(
                 title="May 11 — Arrival",
@@ -34,15 +65,18 @@ def _sample_ai_trip() -> AITrip:
                 description="Short",
                 points=[
                     AIPoint(
-                        type="travel",
-                        title="Train: Airport → Bern",
+                        type="departure",
+                        title="Depart Zurich Airport",
+                        travelRef="travel-1",
                         startDateTime="2026-05-11T12:15:00+02:00",
-                        endDateTime="2026-05-11T13:30:00+02:00",
-                        locations=[
-                            AILocation(role="origin", name="Zurich Airport"),
-                            AILocation(role="destination", name="Bern"),
-                        ],
-                        travelDetail={"mode": "train"},
+                        endDateTime="2026-05-11T12:15:00+02:00",
+                    ),
+                    AIPoint(
+                        type="check-in",
+                        title="Check in",
+                        stayRef="stay-1",
+                        startDateTime="2026-05-11T15:00:00+02:00",
+                        endDateTime="2026-05-11T15:30:00+02:00",
                     ),
                 ],
             )
@@ -82,13 +116,23 @@ def test_to_trip_import_assigns_ids_and_links():
     result = to_trip_import(_sample_ai_trip())
     assert isinstance(result, TripImport)
     assert result.tripId
+    # Trip-level stays/travels hoisted out of points
+    assert len(result.stays) == 1
+    assert len(result.travels) == 1
+    stay = result.stays[0]
+    travel = result.travels[0]
+    assert stay.name == "Hotel Goldener Schlüssel"
+    assert travel.mode == "train"
+    assert stay.locations[0].locationId
+
     day = result.days[0]
     assert day.dayId
-    point = day.points[0]
-    assert point.dayId == day.dayId
-    assert point.pointId
-    assert point.locations[0].locationId
-    assert point.travelDetail.mode == "train"
+    dep_point = day.points[0]
+    checkin_point = day.points[1]
+    assert dep_point.dayId == day.dayId
+    # Points reference the hoisted details by generated id
+    assert dep_point.travelDetailId == travel.travelDetailId
+    assert checkin_point.stayDetailId == stay.stayDetailId
 
 
 # ── single-pass service functions (mocked OpenAI) ─────────────────────────

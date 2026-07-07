@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Convert an app trip JSON (days/points model) into a realistic, flat itinerary
-spreadsheet (.xlsx) that resembles something a user would actually upload.
+Convert an app trip JSON (stays/travels/days model) into a realistic, flat
+itinerary spreadsheet (.xlsx) that resembles something a user would upload.
 
 The goal is a TEST FIXTURE for the AI import pipeline, so it deliberately:
   - drops internal UUIDs (dayId/pointId/locationId)
@@ -9,7 +9,7 @@ The goal is a TEST FIXTURE for the AI import pipeline, so it deliberately:
   - drops long descriptions (the AI "enhance" pass is expected to fill these in)
 
 It keeps the factual scaffolding a traveller would type: dates, titles, times,
-travel mode / stay type, confirmation numbers and location names.
+point action type, travel mode / stay type, confirmation numbers and location names.
 
 Usage:
     python3 data/json_to_xlsx.py [input.json] [output.xlsx]
@@ -29,7 +29,7 @@ from openpyxl.utils import get_column_letter
 HEADERS = [
     "Date",
     "Day",
-    "Type",
+    "Point Type",
     "Title",
     "Start Time",
     "End Time",
@@ -51,9 +51,9 @@ def _time_only(dt: str | None) -> str:
         return ""
 
 
-def _locations(point: dict) -> str:
+def _locations(locations: list[dict]) -> str:
     parts = []
-    for loc in point.get("locations", []):
+    for loc in locations:
         name = loc.get("name", "").strip()
         if not name:
             continue
@@ -63,6 +63,9 @@ def _locations(point: dict) -> str:
 
 
 def build_rows(trip: dict) -> list[list[str]]:
+    stays = {s.get("stayDetailId"): s for s in trip.get("stays", []) if s.get("stayDetailId")}
+    travels = {t.get("travelDetailId"): t for t in trip.get("travels", []) if t.get("travelDetailId")}
+
     rows: list[list[str]] = []
     for day in trip.get("days", []):
         day_title = day.get("title", "")
@@ -72,8 +75,19 @@ def build_rows(trip: dict) -> list[list[str]]:
             rows.append([date, day_title, "", "", "", "", "", "", "", ""])
             continue
         for point in points:
-            travel = point.get("travelDetail") or {}
-            stay = point.get("stayDetail") or {}
+            travel = travels.get(point.get("travelDetailId")) or {}
+            stay = stays.get(point.get("stayDetailId")) or {}
+            merged_locations = [
+                *(point.get("locations") or []),
+                *(travel.get("locations") or []),
+                *(stay.get("locations") or []),
+            ]
+            confirmation = (
+                point.get("confirmationNumber")
+                or travel.get("confirmationNumber")
+                or stay.get("confirmationNumber")
+                or ""
+            )
             rows.append(
                 [
                     date,
@@ -84,8 +98,8 @@ def build_rows(trip: dict) -> list[list[str]]:
                     _time_only(point.get("endDateTime")),
                     travel.get("mode", "") or "",
                     stay.get("stayType", "") or "",
-                    point.get("confirmationNumber") or "",
-                    _locations(point),
+                    confirmation,
+                    _locations(merged_locations),
                 ]
             )
     return rows
