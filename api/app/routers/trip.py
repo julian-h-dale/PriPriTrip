@@ -25,7 +25,9 @@ from app.schemas import (
     TripListItem,
     TripPointResponse,
     TripResponse,
+    VerifyResult,
 )
+from app.services.trip_verify import verify_trip
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -118,6 +120,14 @@ async def get_trip(
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
+    return await _load_trip(trip_id, db, user)
+
+
+async def _load_trip(
+    trip_id: str,
+    db: AsyncSession,
+    user: UserRecord,
+) -> TripResponse:
     record = await db.get(TripRecord, trip_id)
     if record is None or record.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
@@ -199,6 +209,16 @@ async def get_trip(
         endDate=record.end_date,
         days=assembled_days,
     )
+
+
+@router.get("/{trip_id}/verify", response_model=VerifyResult)
+async def verify_trip_endpoint(
+    trip_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    trip = await _load_trip(trip_id, db, user)
+    return verify_trip(trip)
 
 
 @router.post("", status_code=status.HTTP_200_OK)

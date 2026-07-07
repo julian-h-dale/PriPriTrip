@@ -131,10 +131,33 @@ def write_workbook(trip: dict, rows: list[list[str]], out_path: Path) -> None:
 
 
 def main() -> None:
-    in_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("data/trip.json")
-    out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("data/trip_example.xlsx")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Convert a trip JSON into an itinerary spreadsheet.")
+    parser.add_argument("input", nargs="?", default="data/trip.json", help="Input trip JSON path.")
+    parser.add_argument("output", nargs="?", default="data/trip_example.xlsx", help="Output .xlsx path.")
+    parser.add_argument(
+        "--gap-day",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Empty the legs of the Nth day (1-based) to create a fully-empty day for testing verification.",
+    )
+    args = parser.parse_args()
+
+    in_path = Path(args.input)
+    out_path = Path(args.output)
 
     trip = json.loads(in_path.read_text(encoding="utf-8"))
+
+    if args.gap_day is not None:
+        days = trip.get("days", [])
+        idx = args.gap_day - 1
+        if not 0 <= idx < len(days):
+            parser.error(f"--gap-day {args.gap_day} is out of range (1..{len(days)}).")
+        days[idx]["points"] = []
+        print(f"Emptied day {args.gap_day}: {days[idx].get('title', '')}")
+
     rows = build_rows(trip)
     write_workbook(trip, rows, out_path)
     print(f"Wrote {out_path} ({len(rows)} itinerary rows across {len(trip.get('days', []))} days)")

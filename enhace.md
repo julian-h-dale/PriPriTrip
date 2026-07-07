@@ -14,3 +14,7 @@ Ask any questions you have.  Give me the plan first and I will confirm before we
 
 
 recommendations (reservations, etc)
+
+
+
+Ok I want us to narrow the verification of the stays a little more. I want to add an error for the case where a day has a "stayDetails" property but there isn't either a check in or check out date set. 

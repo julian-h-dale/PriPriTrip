@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# dev.sh — Wipe the local Postgres volume, apply all Alembic migrations
-#           from scratch, then start the API with hot-reload.
+# dev.sh — Start the local Postgres container, ensure the schema exists,
+#           then start the API with hot-reload.
+#
+# By default the database is PERSISTED between runs.
 #
 # Usage:
-#   ./dev.sh          # wipe + migrate + start
-#   ./dev.sh --no-wipe  # skip wipe, just migrate + start
+#   ./dev.sh          # persist data + ensure schema + start
+#   ./dev.sh --clean  # wipe the Postgres volume for a brand-new empty db
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-WIPE=true
-if [[ "${1:-}" == "--no-wipe" ]]; then
-  WIPE=false
+CLEAN=false
+if [[ "${1:-}" == "--clean" ]]; then
+  CLEAN=true
 fi
 
 # ── 1. Activate venv ─────────────────────────────────────────────────────────
@@ -32,11 +34,14 @@ if [[ -f ".env" ]]; then
   set +a
 fi
 
-# ── 3. Wipe the database volume (optional) ────────────────────────────────────
-if [[ "$WIPE" == "true" ]]; then
+# ── 3. Wipe the database volume (optional, --clean) ──────────────────────────
+if [[ "$CLEAN" == "true" ]]; then
   echo ""
-  echo "▶ Wiping Postgres volume..."
+  echo "▶ --clean: wiping Postgres volume for a fresh database..."
   docker compose down -v --remove-orphans
+else
+  echo ""
+  echo "▶ Persisting existing database (use --clean to reset)."
 fi
 
 # ── 4. Start a fresh Postgres container ──────────────────────────────────────
@@ -54,7 +59,7 @@ echo " ready."
 
 # ── 5. Create schema ─────────────────────────────────────────────────────────
 echo ""
-echo "▶ Creating schema..."
+echo "▶ Ensuring schema exists..."
 python3 init_db.py
 
 # ── 6. Start API ─────────────────────────────────────────────────────────────

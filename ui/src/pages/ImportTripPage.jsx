@@ -111,7 +111,7 @@ export default function ImportTripPage() {
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        {status !== 'review' && (
+        {!draft && (
           <Paper
             variant="outlined"
             sx={{
@@ -148,7 +148,7 @@ export default function ImportTripPage() {
           </Paper>
         )}
 
-        {status === 'review' && draft && (
+        {draft && (
           <Stack spacing={2}>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>

@@ -1,0 +1,111 @@
+{
+  "tripName": "Verify Test Trip (with gaps)",
+  "startDate": "2026-08-01",
+  "endDate": "2026-08-05",
+  "days": [
+    {
+      "title": "Aug 1 — Arrival (clean day)",
+      "date": "2026-08-01",
+      "description": "Arrive and check in.",
+      "isAlternate": false,
+      "completed": false,
+      "points": [
+        {
+          "type": "travel",
+          "title": "Train: Airport → City",
+          "startDateTime": "2026-08-01T12:00:00+02:00",
+          "endDateTime": "2026-08-01T13:00:00+02:00",
+          "confirmationNumber": null,
+          "description": "Direct train into the city.",
+          "imageUrl": null,
+          "logoUrl": null,
+          "locations": [
+            { "role": "origin", "name": "Airport Station" },
+            { "role": "destination", "name": "Central Station" }
+          ],
+          "travelDetail": { "mode": "train", "operator": null, "vehicleNumber": null, "cabinClass": null },
+          "stayDetail": null,
+          "completed": false,
+          "completedDateTime": null
+        },
+        {
+          "type": "stay",
+          "title": "Hotel Central",
+          "startDateTime": "2026-08-01T13:30:00+02:00",
+          "endDateTime": "2026-08-01T14:00:00+02:00",
+          "confirmationNumber": "ABC123",
+          "description": "Check in at Hotel Central.",
+          "imageUrl": null,
+          "logoUrl": null,
+          "locations": [
+            { "role": "venue", "name": "Hotel Central" }
+          ],
+          "travelDetail": null,
+          "stayDetail": { "stayType": "hotel", "checkInTime": null, "checkOutTime": null, "roomType": null },
+          "completed": false,
+          "completedDateTime": null
+        }
+      ]
+    },
+    {
+      "title": "Aug 2 — Sightseeing (no stay → MISSING_STAY warning)",
+      "date": "2026-08-02",
+      "description": "A day of activities with no accommodation recorded.",
+      "isAlternate": false,
+      "completed": false,
+      "points": [
+        {
+          "type": "activity",
+          "title": "Old Town Walking Tour",
+          "startDateTime": "2026-08-02T10:00:00+02:00",
+          "endDateTime": "2026-08-02T12:00:00+02:00",
+          "confirmationNumber": null,
+          "description": "Guided walk through the old town.",
+          "imageUrl": null,
+          "logoUrl": null,
+          "locations": [
+            { "role": "venue", "name": "Old Town Square" }
+          ],
+          "travelDetail": null,
+          "stayDetail": null,
+          "completed": false,
+          "completedDateTime": null
+        }
+      ]
+    },
+    {
+      "title": "Aug 3 — No plans (empty legs → EMPTY_DAY error)",
+      "date": "2026-08-03",
+      "description": null,
+      "isAlternate": false,
+      "completed": false,
+      "points": []
+    },
+    {
+      "title": "Aug 5 — Departure (clean day)",
+      "date": "2026-08-05",
+      "description": "Check out and depart.",
+      "isAlternate": false,
+      "completed": false,
+      "points": [
+        {
+          "type": "stay",
+          "title": "Hotel Central — Check out",
+          "startDateTime": "2026-08-05T09:00:00+02:00",
+          "endDateTime": "2026-08-05T10:00:00+02:00",
+          "confirmationNumber": "ABC123",
+          "description": "Late check out.",
+          "imageUrl": null,
+          "logoUrl": null,
+          "locations": [
+            { "role": "venue", "name": "Hotel Central" }
+          ],
+          "travelDetail": null,
+          "stayDetail": { "stayType": "hotel", "checkInTime": null, "checkOutTime": null, "roomType": null },
+          "completed": false,
+          "completedDateTime": null
+        }
+      ]
+    }
+  ]
+}

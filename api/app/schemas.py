@@ -1,8 +1,13 @@
+import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.enums import LocationRole, PointType, StayType, TravelMode
+
+
+def _uuid() -> str:
+    return str(uuid.uuid4())
 
 
 # ── Auth ────────────────────────────────────────────────────────────────────
@@ -24,7 +29,7 @@ class TripHeader(BaseModel):
 # ── Location ────────────────────────────────────────────────────────────────
 
 class LocationCreate(BaseModel):
-    locationId: str
+    locationId: str = Field(default_factory=_uuid)
     role: LocationRole
     name: str
     lat: Optional[float] = None
@@ -109,8 +114,8 @@ class TripDayResponse(BaseModel):
 # ── Trip Point ───────────────────────────────────────────────────────────────
 
 class TripPointCreate(BaseModel):
-    pointId: str
-    dayId: str
+    pointId: str = Field(default_factory=_uuid)
+    dayId: Optional[str] = None
     type: PointType
     title: str
     startDateTime: Optional[str] = None
@@ -206,7 +211,7 @@ class TripResponse(BaseModel):
 # ── Import ───────────────────────────────────────────────────────────────────
 
 class TripDayImport(BaseModel):
-    dayId: str
+    dayId: str = Field(default_factory=_uuid)
     title: str
     date: str
     description: Optional[str] = None
@@ -216,7 +221,7 @@ class TripDayImport(BaseModel):
 
 
 class TripImport(BaseModel):
-    tripId: str
+    tripId: str = Field(default_factory=_uuid)
     tripName: str
     startDate: str
     endDate: str
@@ -225,5 +230,22 @@ class TripImport(BaseModel):
 
 class ImportResult(BaseModel):
     status: str
+    tripId: str
     daysImported: int
     pointsImported: int
+
+
+# ── Verify ───────────────────────────────────────────────────────────────────
+
+class VerifyIssue(BaseModel):
+    code: str
+    severity: str  # "error" | "warning"
+    date: str
+    dayId: Optional[str] = None
+    message: str
+
+
+class VerifyResult(BaseModel):
+    ok: bool
+    daysChecked: int
+    issues: List[VerifyIssue] = []

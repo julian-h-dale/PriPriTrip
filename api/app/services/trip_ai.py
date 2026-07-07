@@ -92,11 +92,14 @@ Return ONLY data that is supported by the document."""
 
 _ENHANCE_SYSTEM = """You are enhancing an already-structured trip to make it engaging.
 
-For each day: write an exciting, vivid description (3-5 sentences) that summarises
-the day's highlights and builds anticipation. Mention the key places and moments.
+For each day: write a SHORT, exciting description of just 2-3 sentences that
+captures the vibe and the top highlights of the day. Keep it high-level — do NOT
+put logistics, step-by-step instructions, or practical tips in the day description.
 
-For each point and location: add a concise, helpful description (1-2 sentences) if
-one is missing or thin. Keep point and location descriptions SHORTER than day descriptions.
+For each point/leg: this is where the detail belongs. Write a helpful, vivid
+description that can be a bit longer, covering what to do or expect, practical
+tips, timing guidance, and any useful step-by-step notes. Location descriptions
+stay concise (1-2 sentences).
 
 Do NOT change any factual fields: titles, dates, times, types, modes, stayTypes,
 confirmation numbers, or location names. Do NOT add or remove days, points, or

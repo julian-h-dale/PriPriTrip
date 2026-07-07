@@ -133,6 +133,7 @@ async def import_trip(
 
     return ImportResult(
         status="ok",
+        tripId=trip_id,
         daysImported=days_inserted,
         pointsImported=points_inserted,
     )
