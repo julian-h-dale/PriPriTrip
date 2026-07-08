@@ -13,6 +13,7 @@ import {
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import HouseIcon from '@mui/icons-material/House';
+import DescriptionIcon from '@mui/icons-material/Description';
 import AppLayout from '../components/AppLayout';
 import Timeline from '../components/Timeline/Timeline';
 import TripMapModal from '../components/Map/TripMapModal';
@@ -68,6 +69,13 @@ export default function HomePage() {
               }}
             />
           )}
+          <IconButton
+            color="inherit"
+            aria-label="Document importer"
+            onClick={() => navigate(`/trip/${tripId}/document-import`)}
+          >
+            <DescriptionIcon />
+          </IconButton>
           <IconButton
             color="inherit"
             aria-label="Stay details"

@@ -46,3 +46,20 @@ export async function patchTravelDetail(tripId, travelDetailId, payload) {
   const { data } = await client.patch(`/trips/${tripId}/travel-details/${travelDetailId}`, payload);
   return data;
 }
+
+/** Extract stay/travel records from a single reservation/ticket document for an existing trip. */
+export async function aiImportTripDocument(tripId, file) {
+  const form = new FormData();
+  form.append('tripId', tripId);
+  form.append('file', file);
+  const { data } = await client.post('/trip/ai-document', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+/** Save selected extracted stay/travel records from an AI document extraction. */
+export async function saveAiDocumentRecords(documentId, payload) {
+  const { data } = await client.post(`/trip/ai-document/${documentId}/save`, payload);
+  return data;
+}

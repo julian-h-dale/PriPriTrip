@@ -336,6 +336,30 @@ class ImportResult(BaseModel):
     travelsImported: int = 0
 
 
+class AIDocumentExtraction(BaseModel):
+    documentId: str
+    tripId: str
+    filename: str
+    cached: bool = False
+    stays: List[StayDetailImport] = []
+    travels: List[TravelDetailImport] = []
+
+
+class AIDocumentSaveRequest(BaseModel):
+    stays: Optional[List[StayDetailImport]] = None
+    travels: Optional[List[TravelDetailImport]] = None
+    stayDetailIds: Optional[List[str]] = None
+    travelDetailIds: Optional[List[str]] = None
+
+
+class AIDocumentSaveResult(BaseModel):
+    status: str
+    tripId: str
+    documentId: str
+    staysSaved: int
+    travelsSaved: int
+
+
 # ── Verify ───────────────────────────────────────────────────────────────────
 
 class VerifyIssue(BaseModel):

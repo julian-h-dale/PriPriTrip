@@ -102,6 +102,16 @@ class AITrip(BaseModel):
     days: List[AIDay] = []
 
 
+class AIDocumentExtract(BaseModel):
+    stays: List[AIStay] = []
+    travels: List[AITravel] = []
+
+
+class AIDocumentDraft(BaseModel):
+    stays: List[StayDetailImport] = []
+    travels: List[TravelDetailImport] = []
+
+
 # ── Prompts ───────────────────────────────────────────────────────────────
 
 _STRUCTURE_SYSTEM = """You convert a traveller's raw itinerary document into a structured trip.
@@ -149,6 +159,34 @@ Do NOT change any factual fields: refs, titles, names, dates, times, types, mode
 stayTypes, confirmation numbers, or location names. Do NOT add or remove stays,
 travels, days, points, or locations. Only improve the description fields. Return the
 full trip in the same structure."""
+
+_DOCUMENT_SYSTEM = """You convert a single reservation or ticket document into structured stay/travel records.
+
+Return ONLY top-level collections:
+- stays: hotel/accommodation reservations only
+- travels: transport reservations only
+
+Date/time rules:
+- Treat all date-times as wall-clock local times from the document text.
+- Output date-times in local ISO shape WITHOUT timezone offset (for example 2026-05-11T12:15:00).
+- Do not invent timezone offsets and do not convert to UTC.
+
+Stays:
+- Use fields: name, stayType, checkIn, checkOut, roomType, confirmationNumber, description, locations.
+- Put the property location in locations with role=venue.
+
+Travels:
+- Use fields: name, mode, operator, vehicleNumber, cabinClass, departureDateTime, arrivalDateTime,
+  confirmationNumber, description, locations.
+- Put main boarding location as role=origin and destination as role=destination.
+- Include role=waypoint only when clearly present.
+
+General:
+- Preserve confirmation numbers exactly.
+- Keep descriptions concise and factual.
+- Do not fabricate lat/lng, addresses, or links.
+- If a value is unknown, return null.
+"""
 
 
 def _client():
@@ -207,6 +245,43 @@ def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="OpenAI did not return a parseable trip.",
+        )
+    return parsed
+
+
+def _parse_document(client, system: str, user: str, *, pass_name: str) -> AIDocumentExtract:
+    logger.info(
+        "OpenAI %s pass: model=%s prompt_chars=%d timeout=%.0fs",
+        pass_name, _DEFAULT_MODEL, len(user), _REQUEST_TIMEOUT,
+    )
+    started = time.monotonic()
+    try:
+        completion = client.beta.chat.completions.parse(
+            model=_DEFAULT_MODEL,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            response_format=AIDocumentExtract,
+        )
+    except Exception as exc:
+        logger.exception("OpenAI %s pass failed after %.1fs", pass_name, time.monotonic() - started)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"OpenAI request failed: {exc}",
+        ) from exc
+
+    message = completion.choices[0].message
+    if getattr(message, "refusal", None):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"OpenAI refused the request: {message.refusal}",
+        )
+    parsed = message.parsed
+    if parsed is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="OpenAI did not return parseable document records.",
         )
     return parsed
 
@@ -343,6 +418,52 @@ def structure_document(document_text: str, client=None) -> TripImport:
         sum(len(d.points) for d in structured.days),
     )
     return to_trip_import(structured)
+
+
+def extract_document_records(document_text: str, client=None) -> AIDocumentDraft:
+    """Extract only stays/travels from a single uploaded reservation/ticket document."""
+    client = client or _client()
+    user = f"Document text:\n\n{document_text}"
+    parsed = _parse_document(client, _DOCUMENT_SYSTEM, user, pass_name="document")
+
+    stays: List[StayDetailImport] = []
+    for s in parsed.stays:
+        stays.append(
+            StayDetailImport(
+                stayDetailId=str(uuid.uuid4()),
+                name=s.name,
+                stayType=s.stayType,
+                checkIn=s.checkIn,
+                checkOut=s.checkOut,
+                roomType=s.roomType,
+                confirmationNumber=s.confirmationNumber,
+                description=s.description,
+                locations=_ai_locations(s.locations),
+            )
+        )
+
+    travels: List[TravelDetailImport] = []
+    for t in parsed.travels:
+        travels.append(
+            TravelDetailImport(
+                travelDetailId=str(uuid.uuid4()),
+                name=t.name,
+                mode=t.mode,
+                operator=t.operator,
+                vehicleNumber=t.vehicleNumber,
+                cabinClass=t.cabinClass,
+                departureDateTime=t.departureDateTime,
+                arrivalDateTime=t.arrivalDateTime,
+                confirmationNumber=t.confirmationNumber,
+                description=t.description,
+                locations=_ai_locations(t.locations),
+            )
+        )
+
+    return AIDocumentDraft(
+        stays=stays,
+        travels=travels,
+    )
 
 
 def _ai_locs_from(locations) -> List[AILocation]:

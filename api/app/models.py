@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    UniqueConstraint,
     Uuid,
     text,
 )
@@ -184,3 +185,38 @@ class StayDetailRecord(SoftDeleteMixin, Base):
     description = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+
+
+class AIDocumentRecord(Base):
+    __tablename__ = "ai_documents"
+
+    document_id = Column(Uuid(as_uuid=False), primary_key=True)
+    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
+    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
+    filename = Column(String, nullable=False)
+    content_hash = Column(String, nullable=False, index=True)
+    body_contents = Column(String, nullable=False)
+    extracted_payload = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "trip_id",
+            "content_hash",
+            name="uq_ai_documents_user_trip_hash",
+        ),
+        CheckConstraint(
+            "filename <> ''",
+            name="ai_document_filename_nonempty",
+        ),
+        CheckConstraint(
+            "content_hash <> ''",
+            name="ai_document_hash_nonempty",
+        ),
+        CheckConstraint(
+            "body_contents <> ''",
+            name="ai_document_body_nonempty",
+        ),
+    )
