@@ -224,3 +224,99 @@ def test_travel_missing_locations_raises_error():
     assert len(issues) == 1
     assert issues[0].severity == "error"
     assert "TRAVEL_INCOMPLETE_LOCATIONS" in issues[0].message
+
+
+def test_travel_out_of_bounds_before_and_after_trip():
+    trip = _trip(
+        [_day("d1", "2026-05-10", [_point("p1", "d1")])],
+        stays=[_stay("2026-05-10T15:00:00", "2026-05-10T23:00:00")],
+        travels=[_travel("2026-05-09T22:00:00", "2026-05-13T01:00:00")],
+        start="2026-05-10",
+        end="2026-05-12",
+    )
+    result = verify_trip(trip)
+    issues = [i for i in result.issues if i.code == "TRAVEL_OUTOFBOUNDS"]
+    assert len(issues) == 2
+
+
+def test_stay_out_of_bounds_before_and_after_trip():
+    trip = _trip(
+        [_day("d1", "2026-05-10", [_point("p1", "d1")])],
+        stays=[_stay("2026-05-09T15:00:00", "2026-05-13T11:00:00")],
+        start="2026-05-10",
+        end="2026-05-12",
+    )
+    result = verify_trip(trip)
+    issues = [i for i in result.issues if i.code == "STAY_OUTOFBOUNDS"]
+    assert len(issues) == 2
+
+
+def test_travel_overlap_raises_error_but_equal_boundary_is_allowed():
+    trip = _trip(
+        [_day("d1", "2026-05-10", [_point("p1", "d1")])],
+        stays=[_stay("2026-05-10T15:00:00", "2026-05-10T23:00:00")],
+        travels=[
+            _travel("2026-05-10T09:00:00", "2026-05-10T12:00:00"),
+            TravelDetail(
+                travelDetailId="t2",
+                tripId="trip_1",
+                name="Overlap Leg",
+                mode="train",
+                departureDateTime="2026-05-10T11:30:00",
+                arrivalDateTime="2026-05-10T13:00:00",
+                locations=[
+                    LocationResponse(locationId="o2", travelDetailId="t2", role="origin", name="Origin 2"),
+                    LocationResponse(locationId="d2", travelDetailId="t2", role="destination", name="Dest 2"),
+                ],
+            ),
+            TravelDetail(
+                travelDetailId="t3",
+                tripId="trip_1",
+                name="Equal Boundary Leg",
+                mode="train",
+                departureDateTime="2026-05-10T13:00:00",
+                arrivalDateTime="2026-05-10T14:00:00",
+                locations=[
+                    LocationResponse(locationId="o3", travelDetailId="t3", role="origin", name="Origin 3"),
+                    LocationResponse(locationId="d3", travelDetailId="t3", role="destination", name="Dest 3"),
+                ],
+            ),
+        ],
+        start="2026-05-10",
+        end="2026-05-10",
+    )
+    result = verify_trip(trip)
+    issues = [i for i in result.issues if i.code == "TRAVEL_OVERLAP"]
+    assert len(issues) == 1
+    assert issues[0].date == "2026-05-10"
+
+
+def test_stay_overlap_raises_error_but_same_day_gap_is_allowed():
+    trip = _trip(
+        [_day("d1", "2026-05-10", [_point("p1", "d1")])],
+        stays=[
+            _stay("2026-05-10T10:00:00", "2026-05-10T11:00:00"),
+            StayDetail(
+                stayDetailId="s2",
+                tripId="trip_1",
+                name="Overlap Stay",
+                stayType="hotel",
+                checkIn="2026-05-10T10:30:00",
+                checkOut="2026-05-10T12:00:00",
+            ),
+            StayDetail(
+                stayDetailId="s3",
+                tripId="trip_1",
+                name="Gap Stay",
+                stayType="hotel",
+                checkIn="2026-05-10T14:00:00",
+                checkOut="2026-05-10T16:00:00",
+            ),
+        ],
+        start="2026-05-10",
+        end="2026-05-10",
+    )
+    result = verify_trip(trip)
+    issues = [i for i in result.issues if i.code == "STAY_OVERLAP"]
+    assert len(issues) == 1
+    assert issues[0].date == "2026-05-10"
