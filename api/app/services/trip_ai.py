@@ -127,7 +127,9 @@ DAYS contain ordered timeline POINTS. A point is an "action" of type:
 - The point "title" is the action (e.g. "Check in", "Depart for Zurich"); the stay/travel "name" holds the entity label.
 
 General:
-- Use ISO 8601 datetimes with a timezone offset when known (e.g. 2026-05-11T12:15:00+02:00); otherwise null.
+- Treat all date-times as wall-clock local times from the itinerary text.
+- Output date-times in local ISO shape without offset (e.g. 2026-05-11T12:15:00); otherwise null.
+- Do not invent timezone offsets or convert times to UTC. Timezone inference is handled by import code.
 - Preserve confirmation numbers exactly. Keep descriptions short and factual here.
 - Do NOT fabricate coordinates or addresses; only include location names you can infer from the document.
 Return ONLY data supported by the document."""

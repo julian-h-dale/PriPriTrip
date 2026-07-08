@@ -13,6 +13,10 @@
       "type": "string",
       "description": "Human-readable name of the trip."
     },
+    "defaultTimezoneId": {
+      "type": ["string", "null"],
+      "description": "Optional IANA timezone id (for example Europe/Zurich) used as fallback when per-item timezone cannot be inferred from locations."
+    },
     "startDate": {
       "type": "string",
       "format": "date",
@@ -109,11 +113,13 @@
         },
         "startDateTime": {
           "type": ["string", "null"],
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Wall-clock local datetime in ISO form. Prefer no offset, for example 2026-05-11T12:15:00."
         },
         "endDateTime": {
           "type": ["string", "null"],
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Wall-clock local datetime in ISO form. Prefer no offset, for example 2026-05-11T13:30:00."
         },
         "confirmationNumber": { "type": ["string", "null"] },
         "description": { "type": ["string", "null"] },
@@ -185,8 +191,16 @@
         "operator": { "type": ["string", "null"] },
         "vehicleNumber": { "type": ["string", "null"] },
         "cabinClass": { "type": ["string", "null"] },
-        "departureDateTime": { "type": ["string", "null"], "format": "date-time" },
-        "arrivalDateTime": { "type": ["string", "null"], "format": "date-time" },
+        "departureDateTime": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Wall-clock local datetime in ISO form. Prefer no offset, for example 2026-05-11T12:15:00."
+        },
+        "arrivalDateTime": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Wall-clock local datetime in ISO form. Prefer no offset, for example 2026-05-11T13:30:00."
+        },
         "confirmationNumber": { "type": ["string", "null"] },
         "description": { "type": ["string", "null"] },
         "locations": {
@@ -210,8 +224,16 @@
           "type": "string",
           "enum": ["hotel", "hostel", "airbnb", "rental", "other"]
         },
-        "checkIn": { "type": ["string", "null"], "format": "date-time" },
-        "checkOut": { "type": ["string", "null"], "format": "date-time" },
+        "checkIn": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Wall-clock local datetime in ISO form. Prefer no offset, for example 2026-05-11T15:00:00."
+        },
+        "checkOut": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Wall-clock local datetime in ISO form. Prefer no offset, for example 2026-05-12T11:00:00."
+        },
         "roomType": { "type": ["string", "null"] },
         "confirmationNumber": { "type": ["string", "null"] },
         "description": { "type": ["string", "null"] },

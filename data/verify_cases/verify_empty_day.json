@@ -1,6 +1,7 @@
 {
   "tripId": "d37d17f7-4d8c-4ad5-b522-d7f0f0bd2814",
   "tripName": "Verify Case - EMPTY_DAY",
+  "defaultTimezoneId": "Europe/Zurich",
   "startDate": "2026-09-04",
   "endDate": "2026-09-04",
   "stays": [
@@ -8,8 +9,8 @@
       "stayDetailId": "bc6f2aa7-8c6e-40da-bf5e-a2bbec1be020",
       "name": "Coverage Stay",
       "stayType": "hotel",
-      "checkIn": "2026-09-04T00:00:00+02:00",
-      "checkOut": "2026-09-04T23:59:00+02:00",
+      "checkIn": "2026-09-04T00:00:00",
+      "checkOut": "2026-09-04T23:59:00",
       "locations": [
         { "locationId": "7903f2f3-a26f-41e1-86f0-fec7190e8528", "role": "venue", "name": "Coverage Hotel" }
       ]
