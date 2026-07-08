@@ -30,6 +30,35 @@ function fmtDate(dateStr) {
   return dayjs(dateStr).format('MMM D, YYYY');
 }
 
+function fmtDateTime(dateTimeStr) {
+  if (!dateTimeStr) return '—';
+  const dt = dayjs(dateTimeStr);
+  return dt.isValid() ? dt.format('MMM D, YYYY h:mm A') : '—';
+}
+
+function fmtDateRange(startStr, endStr) {
+  const start = startStr ? dayjs(startStr) : null;
+  const end = endStr ? dayjs(endStr) : null;
+  const startText = start?.isValid() ? start.format('MMM D, YYYY') : '—';
+  const endText = end?.isValid() ? end.format('MMM D, YYYY') : '—';
+  return `${startText} - ${endText}`;
+}
+
+function localityLabel(location) {
+  const fullAddress = location?.fullAddress;
+  if (!fullAddress) return location?.name || '—';
+  const parts = fullAddress
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
+  return parts[0] || location?.name || '—';
+}
+
+function firstLocationByRole(locations, role) {
+  return (locations ?? []).find((l) => l.role === role) || null;
+}
+
 export default function ImportTripPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -98,6 +127,8 @@ export default function ImportTripPage() {
   }
 
   const pointCount = (draft?.days ?? []).reduce((n, d) => n + (d.points?.length ?? 0), 0);
+  const travelCount = draft?.travels?.length ?? 0;
+  const stayCount = draft?.stays?.length ?? 0;
 
   return (
     <AppLayout title="Import Trip">
@@ -166,7 +197,102 @@ export default function ImportTripPage() {
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Chip size="small" label={`${draft.days?.length ?? 0} days`} />
                 <Chip size="small" label={`${pointCount} points`} />
+                <Chip size="small" label={`${travelCount} travel legs`} />
+                <Chip size="small" label={`${stayCount} accommodations`} />
               </Stack>
+            </Paper>
+
+            <Paper variant="outlined">
+              <List disablePadding>
+                <ListItem>
+                  <ListItemText
+                    primary="Travel Legs"
+                    secondary={`${travelCount} total`}
+                    primaryTypographyProps={{ fontWeight: 700 }}
+                  />
+                </ListItem>
+                {(draft.travels ?? []).map((travel, i) => {
+                  const origin = firstLocationByRole(travel.locations, 'origin');
+                  const destination = firstLocationByRole(travel.locations, 'destination');
+                  return (
+                    <Box key={travel.travelDetailId || `${travel.name}-${i}`}>
+                      {i >= 0 && <Divider />}
+                      <ListItem alignItems="flex-start">
+                        <ListItemText
+                          primary={travel.name || 'Untitled travel leg'}
+                          secondary={
+                            <>
+                              <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                {fmtDateTime(travel.departureDateTime)}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                Mode: {travel.mode || '—'}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                Departure: {localityLabel(origin)}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                Destination: {localityLabel(destination)}
+                              </Typography>
+                            </>
+                          }
+                        />
+                      </ListItem>
+                    </Box>
+                  );
+                })}
+                {(draft.travels ?? []).length === 0 && (
+                  <>
+                    <Divider />
+                    <ListItem>
+                      <ListItemText secondary="No travel legs found." />
+                    </ListItem>
+                  </>
+                )}
+              </List>
+            </Paper>
+
+            <Paper variant="outlined">
+              <List disablePadding>
+                <ListItem>
+                  <ListItemText
+                    primary="Stays"
+                    secondary={`${stayCount} total`}
+                    primaryTypographyProps={{ fontWeight: 700 }}
+                  />
+                </ListItem>
+                {(draft.stays ?? []).map((stay, i) => {
+                  const venue = firstLocationByRole(stay.locations, 'venue') || (stay.locations ?? [])[0] || null;
+                  return (
+                    <Box key={stay.stayDetailId || `${stay.name}-${i}`}>
+                      {i >= 0 && <Divider />}
+                      <ListItem alignItems="flex-start">
+                        <ListItemText
+                          primary={stay.name || 'Untitled stay'}
+                          secondary={
+                            <>
+                              <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                {fmtDateRange(stay.checkIn, stay.checkOut)}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" component="span" display="block">
+                                {localityLabel(venue)}
+                              </Typography>
+                            </>
+                          }
+                        />
+                      </ListItem>
+                    </Box>
+                  );
+                })}
+                {(draft.stays ?? []).length === 0 && (
+                  <>
+                    <Divider />
+                    <ListItem>
+                      <ListItemText secondary="No stays found." />
+                    </ListItem>
+                  </>
+                )}
+              </List>
             </Paper>
 
             <Paper variant="outlined">

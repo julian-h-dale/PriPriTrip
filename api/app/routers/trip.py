@@ -240,10 +240,27 @@ async def delete_trip(
     )
     point_ids = list(point_ids_result.scalars().all())
 
+    stay_ids_result = await db.execute(
+        select(StayDetailRecord.stay_detail_id).where(StayDetailRecord.trip_id == trip_id)
+    )
+    stay_ids = list(stay_ids_result.scalars().all())
+
+    travel_ids_result = await db.execute(
+        select(TravelDetailRecord.travel_detail_id).where(TravelDetailRecord.trip_id == trip_id)
+    )
+    travel_ids = list(travel_ids_result.scalars().all())
+
     if point_ids:
         await db.execute(delete(LocationRecord).where(LocationRecord.point_id.in_(point_ids)))
-        await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.point_id.in_(point_ids)))
-        await db.execute(delete(StayDetailRecord).where(StayDetailRecord.point_id.in_(point_ids)))
+
+    if stay_ids:
+        await db.execute(delete(LocationRecord).where(LocationRecord.stay_detail_id.in_(stay_ids)))
+
+    if travel_ids:
+        await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id.in_(travel_ids)))
+
+    await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.trip_id == trip_id))
+    await db.execute(delete(StayDetailRecord).where(StayDetailRecord.trip_id == trip_id))
 
     await db.execute(delete(TripPointRecord).where(TripPointRecord.trip_id == trip_id))
     await db.execute(delete(TripDayRecord).where(TripDayRecord.trip_id == trip_id))

@@ -9,7 +9,7 @@ own locations.
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
@@ -18,6 +18,7 @@ from app.models import (
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
+    TripPointRecord,
     TripRecord,
     UserRecord,
 )
@@ -190,6 +191,18 @@ async def delete_travel_detail(
     rec = await db.get(TravelDetailRecord, travel_detail_id)
     if rec is None or rec.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
+
+    # Explicitly detach referenced points before deleting the detail. This keeps
+    # timeline points intact even if DB-level ON DELETE behavior differs.
+    await db.execute(
+        update(TripPointRecord)
+        .where(
+            TripPointRecord.trip_id == trip_id,
+            TripPointRecord.travel_detail_id == travel_detail_id,
+        )
+        .values(travel_detail_id=None)
+    )
+
     await db.delete(rec)
     await db.commit()
 
@@ -302,5 +315,17 @@ async def delete_stay_detail(
     rec = await db.get(StayDetailRecord, stay_detail_id)
     if rec is None or rec.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")
+
+    # Explicitly detach referenced points before deleting the detail. This keeps
+    # timeline points intact even if DB-level ON DELETE behavior differs.
+    await db.execute(
+        update(TripPointRecord)
+        .where(
+            TripPointRecord.trip_id == trip_id,
+            TripPointRecord.stay_detail_id == stay_detail_id,
+        )
+        .values(stay_detail_id=None)
+    )
+
     await db.delete(rec)
     await db.commit()
