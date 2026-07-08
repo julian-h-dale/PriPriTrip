@@ -174,6 +174,9 @@ async def patch_travel_detail(
         if pydantic_field in body.model_fields_set:
             setattr(rec, orm_field, getattr(body, pydantic_field))
 
+    if "locations" in body.model_fields_set:
+        await _replace_detail_locations(db, body.locations or [], travel_id=travel_detail_id)
+
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, travel_id=travel_detail_id)
@@ -297,6 +300,9 @@ async def patch_stay_detail(
     for pydantic_field, orm_field in field_map.items():
         if pydantic_field in body.model_fields_set:
             setattr(rec, orm_field, getattr(body, pydantic_field))
+
+    if "locations" in body.model_fields_set:
+        await _replace_detail_locations(db, body.locations or [], stay_id=stay_detail_id)
 
     await db.commit()
     await db.refresh(rec)

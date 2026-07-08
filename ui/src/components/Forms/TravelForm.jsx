@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
+import LocationForm from './LocationForm';
 
 const TRAVEL_MODES = [
   { value: 'flight', label: 'Flight' },
@@ -29,7 +30,44 @@ function parseDateTimeLocal(value) {
   return value.slice(0, 16);
 }
 
-export default function TravelForm({ tripId, open, onClose, onSaved, initialValues = {} }) {
+function findByRole(locations, role) {
+  return (locations ?? []).find((loc) => loc.role === role) || null;
+}
+
+function makeLocation(role, overrides = {}) {
+  return {
+    locationId: overrides.locationId || crypto.randomUUID(),
+    role,
+    name: overrides.name ?? '',
+    lat: overrides.lat ?? null,
+    lng: overrides.lng ?? null,
+    fullAddress: overrides.fullAddress ?? '',
+    description: overrides.description ?? '',
+    link: overrides.link ?? '',
+    googlePlaceId: overrides.googlePlaceId ?? '',
+    googleMapsUri: overrides.googleMapsUri ?? '',
+  };
+}
+
+function buildTravelLocations(locations = []) {
+  const origin = findByRole(locations, 'origin');
+  const destination = findByRole(locations, 'destination');
+  const remainder = locations.filter((loc) => loc.role !== 'origin' && loc.role !== 'destination');
+  return [
+    makeLocation('origin', origin || {}),
+    makeLocation('destination', destination || {}),
+    ...remainder,
+  ];
+}
+
+export default function TravelForm({
+  tripId,
+  open,
+  onClose,
+  onSaved,
+  initialValues = {},
+  requireLocations = false,
+}) {
   const [form, setForm] = useState({
     name: '',
     mode: 'flight',
@@ -38,6 +76,7 @@ export default function TravelForm({ tripId, open, onClose, onSaved, initialValu
     cabinClass: '',
     departureDateTime: '',
     arrivalDateTime: '',
+    locations: [],
     confirmationNumber: '',
     description: '',
   });
@@ -55,6 +94,7 @@ export default function TravelForm({ tripId, open, onClose, onSaved, initialValu
       cabinClass: initialValues.cabinClass ?? '',
       departureDateTime: parseDateTimeLocal(initialValues.departureDateTime),
       arrivalDateTime: parseDateTimeLocal(initialValues.arrivalDateTime),
+      locations: buildTravelLocations(initialValues.locations),
       confirmationNumber: initialValues.confirmationNumber ?? '',
       description: initialValues.description ?? '',
     });
@@ -68,11 +108,31 @@ export default function TravelForm({ tripId, open, onClose, onSaved, initialValu
     }
   }
 
+  function setLocationField(index, field, value) {
+    setForm((prev) => {
+      const nextLocations = [...prev.locations];
+      if (!nextLocations[index]) return prev;
+      nextLocations[index] = { ...nextLocations[index], [field]: value };
+      return { ...prev, locations: nextLocations };
+    });
+
+    if (index === 0 && errors.originName) {
+      setErrors((prev) => ({ ...prev, originName: undefined }));
+    }
+    if (index === 1 && errors.destinationName) {
+      setErrors((prev) => ({ ...prev, destinationName: undefined }));
+    }
+  }
+
   function validate() {
     const next = {};
+    const origin = findByRole(form.locations, 'origin');
+    const destination = findByRole(form.locations, 'destination');
     if (!form.name.trim()) next.name = 'Travel name is required';
     if (!form.departureDateTime) next.departureDateTime = 'Departure date/time is required';
     if (!form.arrivalDateTime) next.arrivalDateTime = 'Arrival date/time is required';
+    if (requireLocations && !origin?.name?.trim()) next.originName = 'Origin is required';
+    if (requireLocations && !destination?.name?.trim()) next.destinationName = 'Destination is required';
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -92,6 +152,18 @@ export default function TravelForm({ tripId, open, onClose, onSaved, initialValu
         confirmationNumber: form.confirmationNumber.trim() || null,
         description: form.description.trim() || null,
       };
+
+      const normalizedLocations = buildTravelLocations(form.locations).map((loc) => ({
+        ...loc,
+        role: loc.role === 'destination' ? 'destination' : loc.role === 'origin' ? 'origin' : loc.role,
+        name: loc.name?.trim() || (loc.role === 'origin' ? 'Origin' : loc.role === 'destination' ? 'Destination' : 'Location'),
+        fullAddress: loc.fullAddress?.trim() || null,
+        description: loc.description?.trim() || null,
+        link: loc.link?.trim() || null,
+        googlePlaceId: loc.googlePlaceId?.trim() || null,
+        googleMapsUri: loc.googleMapsUri?.trim() || null,
+      }));
+      payload.locations = normalizedLocations;
 
       if (isEdit) {
         await client.patch(
@@ -197,6 +269,36 @@ export default function TravelForm({ tripId, open, onClose, onSaved, initialValu
               InputLabelProps={{ shrink: true }}
             />
           </Stack>
+
+          <LocationForm
+            values={form.locations[0] || makeLocation('origin')}
+            onChange={(field, value) => setLocationField(0, field, value)}
+            onRemove={() => {}}
+            index={0}
+            title="Origin"
+            roleEditable={false}
+            hideRemove
+          />
+          {errors.originName && (
+            <Typography variant="body2" color="error" sx={{ mt: -1.5 }}>
+              {errors.originName}
+            </Typography>
+          )}
+
+          <LocationForm
+            values={form.locations[1] || makeLocation('destination')}
+            onChange={(field, value) => setLocationField(1, field, value)}
+            onRemove={() => {}}
+            index={1}
+            title="Destination"
+            roleEditable={false}
+            hideRemove
+          />
+          {errors.destinationName && (
+            <Typography variant="body2" color="error" sx={{ mt: -1.5 }}>
+              {errors.destinationName}
+            </Typography>
+          )}
 
           <TextField
             label="Operator / Airline"

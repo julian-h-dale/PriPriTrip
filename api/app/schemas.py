@@ -124,6 +124,7 @@ class TravelDetailPatch(BaseModel):
     arrivalDateTime: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
+    locations: Optional[List[LocationCreate]] = None
 
 
 class StayDetailPatch(BaseModel):
@@ -134,6 +135,7 @@ class StayDetailPatch(BaseModel):
     roomType: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
+    locations: Optional[List[LocationCreate]] = None
 
 
 # ── Trip Day ────────────────────────────────────────────────────────────────

@@ -40,3 +40,9 @@ export async function verifyTrip(tripId) {
   const { data } = await client.get(`/trips/${tripId}/verify`);
   return data;
 }
+
+/** Update one travel detail record. */
+export async function patchTravelDetail(tripId, travelDetailId, payload) {
+  const { data } = await client.patch(`/trips/${tripId}/travel-details/${travelDetailId}`, payload);
+  return data;
+}

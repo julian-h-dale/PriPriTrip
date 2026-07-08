@@ -57,6 +57,13 @@ export default function TripInspectionPage() {
     () => issues.filter((i) => i.severity === 'warning').length,
     [issues]
   );
+  const travelIssueCount = useMemo(
+    () =>
+      issues.filter(
+        (i) => i.code === 'TRAVEL_INCOMPLETE_DATES' || i.code === 'TRAVEL_INCOMPLETE_LOCATIONS'
+      ).length,
+    [issues]
+  );
 
   return (
     <AppLayout title="Trip Inspection">
@@ -132,6 +139,12 @@ export default function TripInspectionPage() {
             <Button variant="contained" fullWidth onClick={() => navigate(`/trip/${tripId}`)}>
               Open trip
             </Button>
+
+            {travelIssueCount > 0 && (
+              <Button variant="outlined" fullWidth onClick={() => navigate(`/trip/${tripId}/workflow`)}>
+                Start trip workflow
+              </Button>
+            )}
           </Stack>
         )}
       </Container>

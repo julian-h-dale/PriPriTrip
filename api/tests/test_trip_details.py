@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.auth import require_auth
 from app.database import get_db
 from app.main import app
-from app.models import StayDetailRecord, TravelDetailRecord, TripRecord
+from app.models import LocationRecord, StayDetailRecord, TravelDetailRecord, TripRecord
 
 
 client = TestClient(app)
@@ -202,6 +202,32 @@ class TestStayDetails:
         body = resp.json()
         assert body["roomType"] == "suite"
         assert body["checkIn"] == "2026-01-01T16:00:00Z"
+
+    def test_patch_locations(self):
+        rec = _stay("sd-1")
+        rows = {
+            "locations": [
+                LocationRecord(
+                    location_id="loc-1",
+                    point_id=None,
+                    stay_detail_id="sd-1",
+                    travel_detail_id=None,
+                    role="venue",
+                    sort_order=0,
+                    name="Grand Hotel",
+                )
+            ]
+        }
+        _install({(TripRecord, TRIP_ID): _trip(), (StayDetailRecord, "sd-1"): rec}, rows)
+        resp = client.patch(
+            f"/trips/{TRIP_ID}/stay-details/sd-1",
+            json={
+                "locations": [
+                    {"locationId": "loc-1", "role": "venue", "name": "Grand Hotel"}
+                ]
+            },
+        )
+        assert resp.status_code == 200
 
     def test_delete(self):
         rec = _stay("sd-1")

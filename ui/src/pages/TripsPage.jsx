@@ -17,6 +17,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
+import { verifyTrip } from '../api/tripImportService';
 import {
   deleteTripById,
   fetchTrips,
@@ -40,6 +41,7 @@ export default function TripsPage() {
   const trips = useSelector(selectTrips);
   const status = useSelector(selectTripsStatus);
   const [deletingTripId, setDeletingTripId] = useState(null);
+  const [inspectingTripId, setInspectingTripId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
@@ -55,6 +57,30 @@ export default function TripsPage() {
       setDeleteError(err?.message ?? 'Could not delete trip. Please try again.');
     } finally {
       setDeletingTripId(null);
+    }
+  }
+
+  async function handleInspectTrip(trip) {
+    setDeleteError(null);
+    setInspectingTripId(trip.tripId);
+    try {
+      const verify = await verifyTrip(trip.tripId);
+      const hasTravelWorkflowIssues = (verify?.issues ?? []).some(
+        (issue) => issue.code === 'TRAVEL_INCOMPLETE_DATES' || issue.code === 'TRAVEL_INCOMPLETE_LOCATIONS'
+      );
+
+      if (hasTravelWorkflowIssues) {
+        navigate(`/trip/${trip.tripId}/workflow`);
+        return;
+      }
+
+      navigate(`/trip-inspection/${trip.tripId}`, {
+        state: { verify, tripName: trip.tripName },
+      });
+    } catch (err) {
+      setDeleteError(err?.response?.data?.detail ?? 'Could not inspect trip. Please try again.');
+    } finally {
+      setInspectingTripId(null);
     }
   }
 
@@ -116,10 +142,11 @@ export default function TripsPage() {
                 <Stack direction="row" spacing={0.5}>
                   <IconButton
                     aria-label={`Inspect ${trip.tripName}`}
-                    onClick={() => navigate(`/trip-inspection/${trip.tripId}`)}
+                    onClick={() => handleInspectTrip(trip)}
+                    disabled={inspectingTripId === trip.tripId}
                     sx={{ color: 'success.main' }}
                   >
-                    <CheckCircleIcon />
+                    {inspectingTripId === trip.tripId ? <CircularProgress size={20} color="inherit" /> : <CheckCircleIcon />}
                   </IconButton>
                   <IconButton
                     aria-label={`Delete ${trip.tripName}`}

@@ -10,6 +10,7 @@ import RegisterPage from './pages/RegisterPage';
 import StayDetailsPage from './pages/StayDetailsPage';
 import TravelDetailsPage from './pages/TravelDetailsPage';
 import TripInspectionPage from './pages/TripInspectionPage';
+import TripWorkflowPage from './pages/TripWorkflowPage';
 import TripsPage from './pages/TripsPage';
 import { selectIsAuthenticated } from './store/authSlice';
 
@@ -92,6 +93,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <TripInspectionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/workflow"
+        element={
+          <ProtectedRoute>
+            <TripWorkflowPage />
           </ProtectedRoute>
         }
       />

@@ -6,11 +6,14 @@ import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
+import LocationForm from './LocationForm';
 
 const STAY_TYPES = [
   { value: 'hotel', label: 'Hotel' },
@@ -25,6 +28,21 @@ function parseDateTimeLocal(value) {
   return value.slice(0, 16);
 }
 
+function makeLocation(overrides = {}) {
+  return {
+    locationId: overrides.locationId || crypto.randomUUID(),
+    role: overrides.role || 'venue',
+    name: overrides.name ?? '',
+    lat: overrides.lat ?? null,
+    lng: overrides.lng ?? null,
+    fullAddress: overrides.fullAddress ?? '',
+    description: overrides.description ?? '',
+    link: overrides.link ?? '',
+    googlePlaceId: overrides.googlePlaceId ?? '',
+    googleMapsUri: overrides.googleMapsUri ?? '',
+  };
+}
+
 export default function StayForm({ tripId, open, onClose, onSaved, initialValues = {} }) {
   const [form, setForm] = useState({
     name: '',
@@ -34,6 +52,7 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
     roomType: '',
     confirmationNumber: '',
     description: '',
+    locations: [],
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -49,6 +68,10 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
       roomType: initialValues.roomType ?? '',
       confirmationNumber: initialValues.confirmationNumber ?? '',
       description: initialValues.description ?? '',
+      locations:
+        (initialValues.locations ?? []).length > 0
+          ? initialValues.locations.map((loc) => makeLocation(loc))
+          : [makeLocation({ role: 'venue' })],
     });
     setErrors({});
   }, [open, initialValues]);
@@ -58,6 +81,29 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  }
+
+  function addLocation() {
+    setForm((prev) => ({
+      ...prev,
+      locations: [...prev.locations, makeLocation({ role: 'venue' })],
+    }));
+  }
+
+  function removeLocation(index) {
+    setForm((prev) => ({
+      ...prev,
+      locations: prev.locations.filter((_, i) => i !== index),
+    }));
+  }
+
+  function setLocationField(index, field, value) {
+    setForm((prev) => {
+      const nextLocations = [...prev.locations];
+      if (!nextLocations[index]) return prev;
+      nextLocations[index] = { ...nextLocations[index], [field]: value };
+      return { ...prev, locations: nextLocations };
+    });
   }
 
   function validate() {
@@ -81,6 +127,16 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
         roomType: form.roomType.trim() || null,
         confirmationNumber: form.confirmationNumber.trim() || null,
         description: form.description.trim() || null,
+        locations: form.locations.map((loc) => ({
+          ...loc,
+          role: loc.role || 'venue',
+          name: loc.name?.trim() || 'Location',
+          fullAddress: loc.fullAddress?.trim() || null,
+          description: loc.description?.trim() || null,
+          link: loc.link?.trim() || null,
+          googlePlaceId: loc.googlePlaceId?.trim() || null,
+          googleMapsUri: loc.googleMapsUri?.trim() || null,
+        })),
       };
 
       if (isEdit) {
@@ -213,6 +269,29 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
             multiline
             rows={3}
           />
+
+          <Box>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+                Locations
+              </Typography>
+              <IconButton size="small" onClick={addLocation} aria-label="Add location">
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+
+            <Stack spacing={2}>
+              {form.locations.map((loc, idx) => (
+                <LocationForm
+                  key={loc.locationId}
+                  values={loc}
+                  onChange={(field, value) => setLocationField(idx, field, value)}
+                  onRemove={() => removeLocation(idx)}
+                  index={idx}
+                />
+              ))}
+            </Stack>
+          </Box>
 
           {errors._submit && (
             <Typography variant="body2" color="error">

@@ -33,7 +33,15 @@ const LOCATION_ROLES = [
  *   onRemove — () => void
  *   index    — number (for display label)
  */
-export default function LocationForm({ values, onChange, onRemove, index }) {
+export default function LocationForm({
+  values,
+  onChange,
+  onRemove,
+  index,
+  roleEditable = true,
+  hideRemove = false,
+  title,
+}) {
   const mapsApiKey = useSelector(selectMapsApiKey);
 
   const [suggestions, setSuggestions] = useState([]);
@@ -79,27 +87,40 @@ export default function LocationForm({ values, onChange, onRemove, index }) {
       {/* Header row */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
         <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-          Location {index + 1}
+          {title || `Location ${index + 1}`}
         </Typography>
-        <IconButton size="small" onClick={onRemove} aria-label="Remove location">
-          <DeleteOutlineIcon fontSize="small" />
-        </IconButton>
+        {!hideRemove && (
+          <IconButton size="small" onClick={onRemove} aria-label="Remove location">
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        )}
       </Stack>
 
       {/* Role selector */}
-      <Stack direction="row" flexWrap="wrap" gap={1} mb={2}>
-        {LOCATION_ROLES.map((r) => (
+      {roleEditable ? (
+        <Stack direction="row" flexWrap="wrap" gap={1} mb={2}>
+          {LOCATION_ROLES.map((r) => (
+            <Chip
+              key={r.value}
+              label={r.label}
+              clickable
+              color={values.role === r.value ? 'primary' : 'default'}
+              variant={values.role === r.value ? 'filled' : 'outlined'}
+              onClick={() => onChange('role', r.value)}
+              size="small"
+            />
+          ))}
+        </Stack>
+      ) : (
+        <Stack direction="row" flexWrap="wrap" gap={1} mb={2}>
           <Chip
-            key={r.value}
-            label={r.label}
-            clickable
-            color={values.role === r.value ? 'primary' : 'default'}
-            variant={values.role === r.value ? 'filled' : 'outlined'}
-            onClick={() => onChange('role', r.value)}
+            label={LOCATION_ROLES.find((r) => r.value === values.role)?.label || values.role}
+            color="primary"
+            variant="filled"
             size="small"
           />
-        ))}
-      </Stack>
+        </Stack>
+      )}
 
       <Stack spacing={2}>
         {/* Name — grouped Places autocomplete */}
