@@ -8,10 +8,13 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
-import Drawer from '@mui/material/Drawer';
+import Dialog from '@mui/material/Dialog';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useCallback, useEffect, useState } from 'react';
 
 import client from '../../api/client';
@@ -258,34 +261,22 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
   const isEdit = Boolean(initialValues?.pointId);
 
   return (
-    <Drawer
-      anchor="bottom"
-      open={open}
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          maxHeight: '92dvh',
-          display: 'flex',
-          flexDirection: 'column',
-        },
-      }}
-    >
-      {/* Drag handle */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1, pb: 0.5 }}>
-        <Box sx={{ width: 36, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
-      </Box>
+    <Dialog fullScreen open={open} onClose={onClose}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* Title bar */}
+        <Box sx={{ px: 2, py: 1 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6">{isEdit ? 'Edit Point' : 'New Point'}</Typography>
+            <IconButton onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </Box>
 
-      {/* Title bar */}
-      <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
-        <Typography variant="h6">{isEdit ? 'Edit Point' : 'New Point'}</Typography>
-      </Box>
+        <Divider />
 
-      <Divider />
-
-      {/* Scrollable body */}
-      <Box sx={{ overflowY: 'auto', flex: 1, px: 2, py: 2 }}>
+        {/* Scrollable body */}
+        <Box sx={{ overflowY: 'auto', flex: 1, px: 2, py: 2 }}>
         <Stack spacing={3}>
 
           {/* Title */}
@@ -427,38 +418,34 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
             </Typography>
           )}
 
-          {/* Delete — edit mode only */}
+          </Stack>
+        </Box>
+
+        {/* Sticky footer */}
+        <Divider />
+        <Stack direction="row" spacing={1} sx={{ p: 2 }} alignItems="center">
           {isEdit && (
-            <Button
-              variant="outlined"
+            <IconButton
               color="error"
-              fullWidth
               onClick={handleDelete}
-              disabled={deleting || saving}
-              startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : null}
+              disabled={saving || deleting}
+              aria-label="Delete point"
+              sx={{ border: 1, borderColor: 'error.main' }}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
-            </Button>
+              {deleting ? <CircularProgress size={18} color="inherit" /> : <DeleteOutlineIcon />}
+            </IconButton>
           )}
+          <Button
+            variant="contained"
+            sx={{ flex: 1 }}
+            onClick={handleSave}
+            disabled={saving || deleting}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Point'}
+          </Button>
         </Stack>
       </Box>
-
-      {/* Sticky footer */}
-      <Divider />
-      <Stack direction="row" spacing={1} sx={{ p: 2 }}>
-        <Button variant="outlined" fullWidth onClick={onClose} disabled={saving || deleting}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          fullWidth
-          onClick={handleSave}
-          disabled={saving || deleting}
-          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
-        >
-          {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Point'}
-        </Button>
-      </Stack>
-    </Drawer>
+    </Dialog>
   );
 }

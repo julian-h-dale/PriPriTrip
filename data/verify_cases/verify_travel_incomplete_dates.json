@@ -1,0 +1,47 @@
+{
+  "tripId": "8c68b436-cb58-47a7-a4a5-e0f9e83fa848",
+  "tripName": "Verify Case - TRAVEL_INCOMPLETE_DATES",
+  "startDate": "2026-09-02",
+  "endDate": "2026-09-02",
+  "stays": [
+    {
+      "stayDetailId": "85d65808-b761-451a-a319-9d5a62f23f53",
+      "name": "Coverage Stay",
+      "stayType": "hotel",
+      "checkIn": "2026-09-02T00:00:00+02:00",
+      "checkOut": "2026-09-02T23:59:00+02:00",
+      "locations": [
+        { "locationId": "9dfdf067-02b6-49c7-95d5-f302ec8fddfb", "role": "venue", "name": "Coverage Hotel" }
+      ]
+    }
+  ],
+  "travels": [
+    {
+      "travelDetailId": "9f16f4e9-5884-4ee9-9f58-39ccdc6a6c2f",
+      "name": "Broken Flight",
+      "mode": "flight",
+      "departureDateTime": "2026-09-02T09:00:00+02:00",
+      "arrivalDateTime": null,
+      "locations": [
+        { "locationId": "dcae0bfd-c640-44cd-8e8f-96b08f9ed009", "role": "origin", "name": "Origin Airport" },
+        { "locationId": "2d6d6cf5-9dcd-4fca-9f3e-0fcac88d3e5a", "role": "destination", "name": "Destination Airport" }
+      ]
+    }
+  ],
+  "days": [
+    {
+      "dayId": "5ed71da5-2f34-4339-b3bf-1511f88ce76f",
+      "title": "Day 1",
+      "date": "2026-09-02",
+      "points": [
+        {
+          "pointId": "f129a259-9958-4e67-a05a-e950bb6f9518",
+          "type": "activity",
+          "title": "Museum Visit",
+          "startDateTime": "2026-09-02T12:00:00+02:00",
+          "endDateTime": "2026-09-02T13:00:00+02:00"
+        }
+      ]
+    }
+  ]
+}

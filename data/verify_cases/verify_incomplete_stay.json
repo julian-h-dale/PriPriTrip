@@ -1,0 +1,45 @@
+{
+  "tripId": "2f0e8c7b-b95d-4b4b-a4f9-3e3b3dfbf1a1",
+  "tripName": "Verify Case - INCOMPLETE_STAY",
+  "startDate": "2026-09-01",
+  "endDate": "2026-09-01",
+  "stays": [
+    {
+      "stayDetailId": "8f9de26f-5dd6-443f-b59d-fbb86d8c208b",
+      "name": "Coverage Stay",
+      "stayType": "hotel",
+      "checkIn": "2026-09-01T00:00:00+02:00",
+      "checkOut": "2026-09-01T23:59:00+02:00",
+      "locations": [
+        { "locationId": "e0f2c2f3-7a7b-44e5-87b3-a16bdbf8b362", "role": "venue", "name": "Coverage Hotel" }
+      ]
+    },
+    {
+      "stayDetailId": "94323c84-c86f-48c8-90f3-6037d8feff2f",
+      "name": "Broken Stay",
+      "stayType": "hotel",
+      "checkIn": "2026-09-01T15:00:00+02:00",
+      "checkOut": null,
+      "locations": [
+        { "locationId": "c6b9cb12-0bc9-4937-8bd4-5f983d1f6d3e", "role": "venue", "name": "Broken Hotel" }
+      ]
+    }
+  ],
+  "travels": [],
+  "days": [
+    {
+      "dayId": "99ba9157-0b9c-4567-96a8-5cb6cf938a53",
+      "title": "Day 1",
+      "date": "2026-09-01",
+      "points": [
+        {
+          "pointId": "07189369-e95f-4da6-ae84-cfcc9ba3faf5",
+          "type": "activity",
+          "title": "City Walk",
+          "startDateTime": "2026-09-01T10:00:00+02:00",
+          "endDateTime": "2026-09-01T11:00:00+02:00"
+        }
+      ]
+    }
+  ]
+}

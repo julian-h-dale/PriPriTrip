@@ -1,0 +1,24 @@
+{
+  "tripId": "1728556a-f886-4936-b4d1-c11747d0399e",
+  "tripName": "Verify Case - MISSING_STAY",
+  "startDate": "2026-09-05",
+  "endDate": "2026-09-05",
+  "stays": [],
+  "travels": [],
+  "days": [
+    {
+      "dayId": "49af39d6-af09-4760-9fd3-e96f84851f34",
+      "title": "Planned Day",
+      "date": "2026-09-05",
+      "points": [
+        {
+          "pointId": "7d27dc8f-9de3-452a-ad56-e2c4e643b30c",
+          "type": "activity",
+          "title": "Dinner",
+          "startDateTime": "2026-09-05T20:00:00+02:00",
+          "endDateTime": "2026-09-05T21:30:00+02:00"
+        }
+      ]
+    }
+  ]
+}

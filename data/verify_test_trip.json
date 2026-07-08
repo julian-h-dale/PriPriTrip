@@ -33,7 +33,7 @@
       "mode": "flight",
       "operator": "Test Air",
       "departureDateTime": "2026-08-01T09:00:00+02:00",
-      "arrivalDateTime": "2026-08-01T11:00:00+02:00",
+      "arrivalDateTime": null,
       "locations": [
         { "locationId": "a0f85e80-7e9f-43b8-b275-f44d61bcf6bd", "role": "origin", "name": "Home Airport" },
         { "locationId": "dff20db3-9ff1-4908-833c-9247a8f2dbd8", "role": "destination", "name": "City Airport" }

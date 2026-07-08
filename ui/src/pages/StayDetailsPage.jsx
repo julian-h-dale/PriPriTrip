@@ -4,7 +4,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
   Container,
   IconButton,
@@ -83,7 +82,10 @@ export default function StayDetailsPage() {
   const isLoading = status === 'loading';
 
   return (
-    <AppLayout title={trip?.tripName ?? 'Stay Details'}>
+    <AppLayout
+      title={trip?.tripName ?? 'Stay Details'}
+      onBack={() => navigate(`/trip/${tripId}`)}
+    >
       <Container maxWidth="sm" disableGutters>
         <Box sx={{ px: 2, pt: 2.5, pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -173,12 +175,6 @@ export default function StayDetailsPage() {
             })}
           </MuiTimeline>
         )}
-
-        <Box sx={{ px: 2, pb: 3 }}>
-          <Button fullWidth variant="contained" onClick={() => navigate(`/trip/${tripId}`)}>
-            Back to trip
-          </Button>
-        </Box>
 
         {!!trip && (
           <StayForm

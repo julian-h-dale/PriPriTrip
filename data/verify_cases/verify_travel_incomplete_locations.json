@@ -1,0 +1,46 @@
+{
+  "tripId": "cf7475ac-f8d6-48af-9f3d-bad9ea7dbc0d",
+  "tripName": "Verify Case - TRAVEL_INCOMPLETE_LOCATIONS",
+  "startDate": "2026-09-03",
+  "endDate": "2026-09-03",
+  "stays": [
+    {
+      "stayDetailId": "023d95d6-f664-4bd8-b901-c5d95f9f5ce4",
+      "name": "Coverage Stay",
+      "stayType": "hotel",
+      "checkIn": "2026-09-03T00:00:00+02:00",
+      "checkOut": "2026-09-03T23:59:00+02:00",
+      "locations": [
+        { "locationId": "04c67589-2db7-4f8a-ab4e-a8bb94cc663b", "role": "venue", "name": "Coverage Hotel" }
+      ]
+    }
+  ],
+  "travels": [
+    {
+      "travelDetailId": "8486dc95-2ab9-4c9f-9e44-2f5b4f8ad705",
+      "name": "Missing Destination Leg",
+      "mode": "train",
+      "departureDateTime": "2026-09-03T09:00:00+02:00",
+      "arrivalDateTime": "2026-09-03T11:00:00+02:00",
+      "locations": [
+        { "locationId": "37e21fb3-bf28-4971-a4f6-5c3f54f62f25", "role": "origin", "name": "Central Station" }
+      ]
+    }
+  ],
+  "days": [
+    {
+      "dayId": "cadb5fa4-d0b9-4a02-8be6-767e282f42c1",
+      "title": "Day 1",
+      "date": "2026-09-03",
+      "points": [
+        {
+          "pointId": "4ec82153-9017-43ff-ac16-8ec79eaac277",
+          "type": "activity",
+          "title": "Evening Walk",
+          "startDateTime": "2026-09-03T18:00:00+02:00",
+          "endDateTime": "2026-09-03T19:00:00+02:00"
+        }
+      ]
+    }
+  ]
+}

@@ -5,10 +5,12 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
-import Drawer from '@mui/material/Drawer';
+import Dialog from '@mui/material/Dialog';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
 import LocationForm from './LocationForm';
@@ -203,34 +205,23 @@ export default function TravelForm({
   }
 
   return (
-    <Drawer
-      anchor="bottom"
-      open={open}
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          maxHeight: '92dvh',
-          display: 'flex',
-          flexDirection: 'column',
-        },
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1, pb: 0.5 }}>
-        <Box sx={{ width: 36, height: 4, borderRadius: 2, bgcolor: 'divider' }} />
-      </Box>
+    <Dialog fullScreen open={open} onClose={onClose}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <EditIcon fontSize="small" color="action" />
+              <Typography variant="h6">{isEdit ? 'Edit Travel' : 'New Travel'}</Typography>
+            </Stack>
+            <IconButton onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+        </Box>
 
-      <Box sx={{ px: 2, pt: 1, pb: 0.5 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <EditIcon fontSize="small" color="action" />
-          <Typography variant="h6">{isEdit ? 'Edit Travel' : 'New Travel'}</Typography>
-        </Stack>
-      </Box>
+        <Divider />
 
-      <Divider />
-
-      <Box sx={{ overflowY: 'auto', flex: 1, px: 2, py: 2 }}>
+        <Box sx={{ overflowY: 'auto', flex: 1, px: 2, py: 2 }}>
         <Stack spacing={2.5}>
           <TextField
             label="Travel name"
@@ -364,36 +355,33 @@ export default function TravelForm({
               {errors._submit}
             </Typography>
           )}
+          </Stack>
+        </Box>
+
+        <Divider />
+        <Stack direction="row" spacing={1} sx={{ p: 2 }} alignItems="center">
+          {isEdit && (
+            <IconButton
+              color="error"
+              onClick={handleDelete}
+              disabled={saving || deleting}
+              aria-label="Delete travel"
+              sx={{ border: 1, borderColor: 'error.main' }}
+            >
+              {deleting ? <CircularProgress size={18} color="inherit" /> : <DeleteOutlineIcon />}
+            </IconButton>
+          )}
+          <Button
+            variant="contained"
+            sx={{ flex: 1 }}
+            onClick={handleSave}
+            disabled={saving || deleting}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Travel'}
+          </Button>
         </Stack>
       </Box>
-
-      <Divider />
-      <Stack direction="row" spacing={1} sx={{ p: 2 }}>
-        {isEdit && (
-          <Button
-            variant="outlined"
-            color="error"
-            fullWidth
-            onClick={handleDelete}
-            disabled={saving || deleting}
-            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : null}
-          >
-            {deleting ? 'Deleting…' : 'Delete'}
-          </Button>
-        )}
-        <Button variant="outlined" fullWidth onClick={onClose} disabled={saving || deleting} startIcon={<CloseIcon />}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          fullWidth
-          onClick={handleSave}
-          disabled={saving || deleting}
-          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
-        >
-          {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Travel'}
-        </Button>
-      </Stack>
-    </Drawer>
+    </Dialog>
   );
 }
