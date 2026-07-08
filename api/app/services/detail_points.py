@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord
+from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
+
+
+CHECK_IN_DEFAULT_TIME = "16:00"
+CHECK_OUT_DEFAULT_TIME = "11:00"
+
+
+def normalize_stay_wall_clock(value: str | None, *, default_time: str) -> str | None:
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    if "T" not in text:
+        return f"{text}T{default_time}"
+    return text
+
+
+async def _get_or_create_day_for_date(db: AsyncSession, *, trip_id: str, date_text: str) -> TripDayRecord:
+    result = await db.execute(
+        select(TripDayRecord).where(
+            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.date == date_text,
+            TripDayRecord.is_deleted.is_(False),
+            TripDayRecord.deleted_at.is_(None),
+        )
+    )
+    day = result.scalars().all()
+    if day:
+        return day[0]
+
+    created = TripDayRecord(
+        day_id=str(uuid.uuid4()),
+        trip_id=trip_id,
+        title=date_text,
+        date=date_text,
+        description=None,
+        is_alternate=False,
+        completed=False,
+    )
+    db.add(created)
+    await db.flush()
+    return created
+
+
+async def _load_generated_points(
+    db: AsyncSession,
+    *,
+    stay_detail_id: str | None = None,
+    travel_detail_id: str | None = None,
+) -> dict[str, TripPointRecord]:
+    conditions = [
+        TripPointRecord.is_system_created.is_(True),
+    ]
+    if stay_detail_id is not None:
+        conditions.append(TripPointRecord.stay_detail_id == stay_detail_id)
+    if travel_detail_id is not None:
+        conditions.append(TripPointRecord.travel_detail_id == travel_detail_id)
+
+    result = await db.execute(select(TripPointRecord).where(*conditions))
+    return {point.type: point for point in result.scalars().all()}
+
+
+async def _soft_delete_point(point: TripPointRecord) -> None:
+    point.is_deleted = True
+    point.deleted_at = datetime.now(timezone.utc)
+    point.updated_at = datetime.now(timezone.utc)
+
+
+async def sync_travel_generated_points(
+    db: AsyncSession,
+    *,
+    travel: TravelDetailRecord,
+) -> None:
+    existing = await _load_generated_points(db, travel_detail_id=travel.travel_detail_id)
+    events = [
+        ("departure", wall_clock_to_text(travel.departure_local) or travel.departure_date_time, travel.departure_tzid),
+        ("arrival", wall_clock_to_text(travel.arrival_local) or travel.arrival_date_time, travel.arrival_tzid),
+    ]
+
+    for point_type, time_text, tzid in events:
+        point = existing.get(point_type)
+        if not time_text:
+            if point and point.deleted_at is None:
+                await _soft_delete_point(point)
+            continue
+
+        local_dt = parse_wall_clock(time_text)
+        if local_dt is None:
+            continue
+        day = await _get_or_create_day_for_date(db, trip_id=travel.trip_id, date_text=time_text[:10])
+        title = f"{point_type.replace('-', ' ').title()}: {travel.name}" if travel.name else point_type.replace('-', ' ').title()
+
+        if point is None:
+            point = TripPointRecord(
+                point_id=str(uuid.uuid4()),
+                trip_id=travel.trip_id,
+                day_id=day.day_id,
+                type=point_type,
+                title=title,
+                stay_detail_id=None,
+                travel_detail_id=travel.travel_detail_id,
+                is_system_created=True,
+                completed=False,
+            )
+            db.add(point)
+        point.day_id = day.day_id
+        point.title = title
+        point.travel_detail_id = travel.travel_detail_id
+        point.stay_detail_id = None
+        point.start_local = local_dt
+        point.start_tzid = tzid
+        point.start_utc = derive_utc(local_dt, tzid)
+        point.end_local = local_dt
+        point.end_tzid = tzid
+        point.end_utc = derive_utc(local_dt, tzid)
+        point.start_date_time = wall_clock_to_text(local_dt)
+        point.end_date_time = wall_clock_to_text(local_dt)
+        point.confirmation_number = travel.confirmation_number
+        point.description = None
+        point.image_url = None
+        point.logo_url = None
+        point.is_system_created = True
+        point.is_deleted = False
+        point.deleted_at = None
+        point.updated_at = datetime.now(timezone.utc)
+
+
+async def sync_stay_generated_points(
+    db: AsyncSession,
+    *,
+    stay: StayDetailRecord,
+) -> None:
+    existing = await _load_generated_points(db, stay_detail_id=stay.stay_detail_id)
+    events = [
+        ("check-in", wall_clock_to_text(stay.check_in_local) or stay.check_in, stay.check_in_tzid),
+        ("check-out", wall_clock_to_text(stay.check_out_local) or stay.check_out, stay.check_out_tzid),
+    ]
+
+    for point_type, time_text, tzid in events:
+        point = existing.get(point_type)
+        if not time_text:
+            if point and point.deleted_at is None:
+                await _soft_delete_point(point)
+            continue
+
+        local_dt = parse_wall_clock(time_text)
+        if local_dt is None:
+            continue
+        day = await _get_or_create_day_for_date(db, trip_id=stay.trip_id, date_text=time_text[:10])
+        title = f"{point_type.replace('-', ' ').title()}: {stay.name}" if stay.name else point_type.replace('-', ' ').title()
+
+        if point is None:
+            point = TripPointRecord(
+                point_id=str(uuid.uuid4()),
+                trip_id=stay.trip_id,
+                day_id=day.day_id,
+                type=point_type,
+                title=title,
+                stay_detail_id=stay.stay_detail_id,
+                travel_detail_id=None,
+                is_system_created=True,
+                completed=False,
+            )
+            db.add(point)
+        point.day_id = day.day_id
+        point.title = title
+        point.stay_detail_id = stay.stay_detail_id
+        point.travel_detail_id = None
+        point.start_local = local_dt
+        point.start_tzid = tzid
+        point.start_utc = derive_utc(local_dt, tzid)
+        point.end_local = local_dt
+        point.end_tzid = tzid
+        point.end_utc = derive_utc(local_dt, tzid)
+        point.start_date_time = wall_clock_to_text(local_dt)
+        point.end_date_time = wall_clock_to_text(local_dt)
+        point.confirmation_number = stay.confirmation_number
+        point.description = None
+        point.image_url = None
+        point.logo_url = None
+        point.is_system_created = True
+        point.is_deleted = False
+        point.deleted_at = None
+        point.updated_at = datetime.now(timezone.utc)
+
+
+async def soft_delete_generated_points_for_travel(db: AsyncSession, *, travel_detail_id: str) -> None:
+    points = (await _load_generated_points(db, travel_detail_id=travel_detail_id)).values()
+    for point in points:
+        if point.deleted_at is None:
+            await _soft_delete_point(point)
+
+
+async def soft_delete_generated_points_for_stay(db: AsyncSession, *, stay_detail_id: str) -> None:
+    points = (await _load_generated_points(db, stay_detail_id=stay_detail_id)).values()
+    for point in points:
+        if point.deleted_at is None:
+            await _soft_delete_point(point)

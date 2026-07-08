@@ -63,3 +63,18 @@ export async function saveAiDocumentRecords(documentId, payload) {
   const { data } = await client.post(`/trip/ai-document/${documentId}/save`, payload);
   return data;
 }
+
+export async function listAiDocuments(tripId) {
+  const { data } = await client.get(`/trips/${tripId}/ai-documents`);
+  return data;
+}
+
+export async function getAiDocumentExtraction(documentId) {
+  const { data } = await client.get(`/trip/ai-document/${documentId}`);
+  return data;
+}
+
+export async function regenAiDocumentExtraction(documentId) {
+  const { data } = await client.post(`/trip/ai-document/${documentId}/regen`);
+  return data;
+}

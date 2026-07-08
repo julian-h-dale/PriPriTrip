@@ -21,7 +21,14 @@ from starlette.concurrency import run_in_threadpool
 from app.auth import require_auth
 from app.database import get_db
 from app.models import AIDocumentRecord, LocationRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
-from app.schemas import AIDocumentExtraction, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
+from app.schemas import AIDocumentExtraction, AIDocumentListItem, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
+from app.services.detail_points import (
+    CHECK_IN_DEFAULT_TIME,
+    CHECK_OUT_DEFAULT_TIME,
+    normalize_stay_wall_clock,
+    sync_stay_generated_points,
+    sync_travel_generated_points,
+)
 from app.services import document_ingest, trip_ai
 from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
 
@@ -44,6 +51,14 @@ def _infer_tzid(locations, role=None, fallback=None):
         if tzid:
             return tzid
     return fallback
+
+
+def _document_payload(rec: AIDocumentRecord) -> AIDocumentExtraction:
+    payload = AIDocumentExtraction.model_validate_json(rec.extracted_payload)
+    payload.documentId = rec.document_id
+    payload.tripId = rec.trip_id
+    payload.filename = rec.filename
+    return payload
 
 
 @router.post("/trip/ai-import", response_model=TripImport)
@@ -215,6 +230,90 @@ async def ai_document_import(
     return payload
 
 
+@router.get("/trips/{trip_id}/ai-documents", response_model=list[AIDocumentListItem])
+async def list_ai_documents(
+    trip_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    trip = await db.get(TripRecord, trip_id)
+    if trip is None or trip.user_id != str(user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+
+    result = await db.execute(
+        select(AIDocumentRecord).where(
+            AIDocumentRecord.user_id == str(user.id),
+            AIDocumentRecord.trip_id == trip_id,
+        )
+    )
+    out = []
+    for rec in result.scalars().all():
+        payload = _document_payload(rec) if rec.extracted_payload else None
+        out.append(
+            AIDocumentListItem(
+                documentId=rec.document_id,
+                tripId=rec.trip_id,
+                filename=rec.filename,
+                staysExtracted=len(payload.stays) if payload else 0,
+                travelsExtracted=len(payload.travels) if payload else 0,
+                createdAt=rec.created_at.isoformat() if rec.created_at else None,
+                updatedAt=rec.updated_at.isoformat() if rec.updated_at else None,
+            )
+        )
+    return out
+
+
+@router.get("/trip/ai-document/{document_id}", response_model=AIDocumentExtraction)
+async def get_ai_document_extraction(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    rec = await db.get(AIDocumentRecord, document_id)
+    if rec is None or rec.user_id != str(user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if not rec.extracted_payload:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Document has no extracted payload")
+    payload = _document_payload(rec)
+    payload.cached = True
+    return payload
+
+
+@router.post("/trip/ai-document/{document_id}/regen", response_model=AIDocumentExtraction)
+async def regen_ai_document_extraction(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    rec = await db.get(AIDocumentRecord, document_id)
+    if rec is None or rec.user_id != str(user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    try:
+        draft = await run_in_threadpool(trip_ai.extract_document_records, rec.body_contents)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("ai-document regen failed for %s", rec.filename)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="AI document regen failed. See server logs for details.",
+        )
+
+    payload = AIDocumentExtraction(
+        documentId=rec.document_id,
+        tripId=rec.trip_id,
+        filename=rec.filename,
+        cached=False,
+        stays=draft.stays,
+        travels=draft.travels,
+    )
+    rec.extracted_payload = payload.model_dump_json()
+    rec.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    return payload
+
+
 @router.post("/trip/ai-document/{document_id}/save", response_model=AIDocumentSaveResult)
 async def save_ai_document_records(
     document_id: str,
@@ -266,8 +365,10 @@ async def save_ai_document_records(
             stay.locations, role="venue", fallback=trip.default_timezone_id
         )
         check_out_tzid = stay.checkOutTimezoneId or check_in_tzid
-        check_in_local = parse_wall_clock(stay.checkIn)
-        check_out_local = parse_wall_clock(stay.checkOut)
+        check_in_text = normalize_stay_wall_clock(stay.checkIn, default_time=CHECK_IN_DEFAULT_TIME)
+        check_out_text = normalize_stay_wall_clock(stay.checkOut, default_time=CHECK_OUT_DEFAULT_TIME)
+        check_in_local = parse_wall_clock(check_in_text)
+        check_out_local = parse_wall_clock(check_out_text)
 
         db.add(
             StayDetailRecord(
@@ -289,6 +390,7 @@ async def save_ai_document_records(
             )
         )
         await db.flush()
+        rec_stay = await db.get(StayDetailRecord, stay_id)
         for i, loc in enumerate(stay.locations):
             db.add(
                 LocationRecord(
@@ -309,6 +411,8 @@ async def save_ai_document_records(
                     timezone_id=_location_tzid(loc),
                 )
             )
+        if rec_stay is not None:
+            await sync_stay_generated_points(db, stay=rec_stay)
         stays_saved += 1
 
     for travel in travels_to_save:
@@ -347,6 +451,7 @@ async def save_ai_document_records(
             )
         )
         await db.flush()
+        rec_travel = await db.get(TravelDetailRecord, travel_id)
         for i, loc in enumerate(travel.locations):
             db.add(
                 LocationRecord(
@@ -367,6 +472,8 @@ async def save_ai_document_records(
                     timezone_id=_location_tzid(loc),
                 )
             )
+        if rec_travel is not None:
+            await sync_travel_generated_points(db, travel=rec_travel)
         travels_saved += 1
 
     rec.updated_at = datetime.now(timezone.utc)

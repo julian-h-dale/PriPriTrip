@@ -97,6 +97,7 @@ def point_to_response(
         imageUrl=point.image_url,
         logoUrl=point.logo_url,
         locations=[location_to_response(l) for l in _sorted_locs(locations)],
+        isSystemCreated=point.is_system_created,
         travelDetail=travel,
         stayDetail=stay,
         completed=point.completed,

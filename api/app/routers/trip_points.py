@@ -256,6 +256,7 @@ async def create_point(
         description=body.description,
         image_url=body.imageUrl,
         logo_url=body.logoUrl,
+        is_system_created=body.isSystemCreated,
         completed=body.completed,
         completed_date_time=body.completedDateTime,
     )
@@ -327,6 +328,7 @@ async def update_point(
     point.description = body.description
     point.image_url = body.imageUrl
     point.logo_url = body.logoUrl
+    point.is_system_created = body.isSystemCreated
     point.completed = body.completed
     point.completed_date_time = body.completedDateTime
     point.updated_at = datetime.now(timezone.utc)
@@ -362,6 +364,7 @@ async def patch_point(
         "description": "description",
         "imageUrl": "image_url",
         "logoUrl": "logo_url",
+        "isSystemCreated": "is_system_created",
         "completed": "completed",
         "completedDateTime": "completed_date_time",
     }

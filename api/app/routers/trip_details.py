@@ -32,6 +32,15 @@ from app.schemas import (
     TravelDetailPatch,
 )
 from app.serializers import stay_to_response, travel_to_response
+from app.services.detail_points import (
+    CHECK_IN_DEFAULT_TIME,
+    CHECK_OUT_DEFAULT_TIME,
+    normalize_stay_wall_clock,
+    soft_delete_generated_points_for_stay,
+    soft_delete_generated_points_for_travel,
+    sync_stay_generated_points,
+    sync_travel_generated_points,
+)
 from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["trip details"])
@@ -104,6 +113,8 @@ def _apply_stay_times(
     check_in_tzid: str | None,
     check_out_tzid: str | None,
 ) -> None:
+    check_in_text = normalize_stay_wall_clock(check_in_text, default_time=CHECK_IN_DEFAULT_TIME)
+    check_out_text = normalize_stay_wall_clock(check_out_text, default_time=CHECK_OUT_DEFAULT_TIME)
     rec.check_in_local = parse_wall_clock(check_in_text)
     rec.check_in_tzid = check_in_tzid
     rec.check_in_utc = derive_utc(rec.check_in_local, check_in_tzid)
@@ -199,6 +210,7 @@ async def create_travel_detail(
     db.add(rec)
     await db.flush()
     await _replace_detail_locations(db, body.locations, travel_id=detail_id)
+    await sync_travel_generated_points(db, travel=rec)
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, travel_id=detail_id)
@@ -287,6 +299,8 @@ async def patch_travel_detail(
     if "locations" in body.model_fields_set:
         await _replace_detail_locations(db, body.locations or [], travel_id=travel_detail_id)
 
+    await sync_travel_generated_points(db, travel=rec)
+
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, travel_id=travel_detail_id)
@@ -308,6 +322,7 @@ async def delete_travel_detail(
     rec.is_deleted = True
     rec.deleted_at = datetime.now(timezone.utc)
     rec.updated_at = datetime.now(timezone.utc)
+    await soft_delete_generated_points_for_travel(db, travel_detail_id=travel_detail_id)
     await db.commit()
 
 
@@ -372,6 +387,7 @@ async def create_stay_detail(
     db.add(rec)
     await db.flush()
     await _replace_detail_locations(db, body.locations, stay_id=detail_id)
+    await sync_stay_generated_points(db, stay=rec)
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, stay_id=detail_id)
@@ -458,6 +474,8 @@ async def patch_stay_detail(
     if "locations" in body.model_fields_set:
         await _replace_detail_locations(db, body.locations or [], stay_id=stay_detail_id)
 
+    await sync_stay_generated_points(db, stay=rec)
+
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, stay_id=stay_detail_id)
@@ -479,4 +497,5 @@ async def delete_stay_detail(
     rec.is_deleted = True
     rec.deleted_at = datetime.now(timezone.utc)
     rec.updated_at = datetime.now(timezone.utc)
+    await soft_delete_generated_points_for_stay(db, stay_detail_id=stay_detail_id)
     await db.commit()

@@ -211,6 +211,7 @@ class TripPointCreate(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationCreate] = []
+    isSystemCreated: bool = False
     completed: bool = False
     completedDateTime: Optional[str] = None
 
@@ -230,6 +231,7 @@ class TripPointUpdate(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationCreate] = []
+    isSystemCreated: bool = False
     completed: bool = False
     completedDateTime: Optional[str] = None
 
@@ -249,6 +251,7 @@ class TripPointPatch(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: Optional[List[LocationCreate]] = None
+    isSystemCreated: Optional[bool] = None
     completed: Optional[bool] = None
     completedDateTime: Optional[str] = None
 
@@ -270,6 +273,7 @@ class TripPointResponse(BaseModel):
     imageUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     locations: List[LocationResponse] = []
+    isSystemCreated: bool = False
     # The referenced first-class detail, embedded for convenience.
     travelDetail: Optional[TravelDetail] = None
     stayDetail: Optional[StayDetail] = None
@@ -358,6 +362,16 @@ class AIDocumentSaveResult(BaseModel):
     documentId: str
     staysSaved: int
     travelsSaved: int
+
+
+class AIDocumentListItem(BaseModel):
+    documentId: str
+    tripId: str
+    filename: str
+    staysExtracted: int = 0
+    travelsExtracted: int = 0
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
 
 # ── Verify ───────────────────────────────────────────────────────────────────

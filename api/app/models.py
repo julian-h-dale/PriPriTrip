@@ -95,6 +95,7 @@ class TripPointRecord(SoftDeleteMixin, Base):
     description = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
+    is_system_created = Column(Boolean, nullable=False, default=False, server_default="false")
     completed = Column(Boolean, nullable=False, default=False, server_default="false")
     completed_date_time = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))

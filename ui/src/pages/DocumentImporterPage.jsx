@@ -1,16 +1,25 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
+  Button,
   CircularProgress,
   Container,
+  List,
+  ListItem,
+  ListItemText,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AppLayout from '../components/AppLayout';
-import { aiImportTripDocument } from '../api/tripImportService';
+import {
+  aiImportTripDocument,
+  getAiDocumentExtraction,
+  listAiDocuments,
+  regenAiDocumentExtraction,
+} from '../api/tripImportService';
 
 const ACCEPT = '.xlsx,.pdf,.docx';
 
@@ -22,8 +31,41 @@ export default function DocumentImporterPage() {
   const [status, setStatus] = useState('idle'); // idle | extracting
   const [fileName, setFileName] = useState(null);
   const [error, setError] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [workingDocumentId, setWorkingDocumentId] = useState(null);
 
   const busy = status !== 'idle';
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDocuments() {
+      if (!tripId) return;
+      setLoadingDocs(true);
+      try {
+        const data = await listAiDocuments(tripId);
+        if (active) setDocuments(data);
+      } catch (err) {
+        if (active) {
+          setError(err?.response?.data?.detail ?? 'Could not load previous documents.');
+        }
+      } finally {
+        if (active) setLoadingDocs(false);
+      }
+    }
+
+    loadDocuments();
+    return () => {
+      active = false;
+    };
+  }, [tripId]);
+
+  async function refreshDocuments() {
+    if (!tripId) return;
+    const data = await listAiDocuments(tripId);
+    setDocuments(data);
+  }
 
   async function handleFile(file) {
     if (!file || !tripId) return;
@@ -32,6 +74,7 @@ export default function DocumentImporterPage() {
     setStatus('extracting');
     try {
       const extraction = await aiImportTripDocument(tripId, file);
+      await refreshDocuments();
       navigate(`/trip/${tripId}/document-import/review`, {
         state: {
           extraction,
@@ -41,6 +84,41 @@ export default function DocumentImporterPage() {
     } catch (err) {
       setError(err?.response?.data?.detail ?? 'Could not extract details from this document.');
       setStatus('idle');
+    }
+  }
+
+  async function handleReview(documentId) {
+    setError(null);
+    setWorkingDocumentId(documentId);
+    try {
+      const extraction = await getAiDocumentExtraction(documentId);
+      navigate(`/trip/${tripId}/document-import/review`, {
+        state: {
+          extraction,
+          fileName: extraction.filename,
+        },
+      });
+    } catch (err) {
+      setError(err?.response?.data?.detail ?? 'Could not load extracted details.');
+      setWorkingDocumentId(null);
+    }
+  }
+
+  async function handleRegen(documentId) {
+    setError(null);
+    setWorkingDocumentId(documentId);
+    try {
+      const extraction = await regenAiDocumentExtraction(documentId);
+      await refreshDocuments();
+      navigate(`/trip/${tripId}/document-import/review`, {
+        state: {
+          extraction,
+          fileName: extraction.filename,
+        },
+      });
+    } catch (err) {
+      setError(err?.response?.data?.detail ?? 'Could not regenerate extracted details.');
+      setWorkingDocumentId(null);
     }
   }
 
@@ -92,6 +170,56 @@ export default function DocumentImporterPage() {
               </Typography>
             </Stack>
           )}
+        </Paper>
+
+        <Paper variant="outlined" sx={{ mt: 3 }}>
+          <List disablePadding>
+            <ListItem>
+              <ListItemText
+                primary="Previous documents"
+                secondary="Stored extracted uploads for this trip"
+                primaryTypographyProps={{ fontWeight: 700 }}
+              />
+            </ListItem>
+            {loadingDocs && (
+              <ListItem>
+                <ListItemText secondary="Loading documents..." />
+              </ListItem>
+            )}
+            {!loadingDocs && documents.length === 0 && (
+              <ListItem>
+                <ListItemText secondary="No previous documents yet." />
+              </ListItem>
+            )}
+            {!loadingDocs && documents.map((doc) => (
+              <ListItem
+                key={doc.documentId}
+                secondaryAction={(
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      onClick={() => handleReview(doc.documentId)}
+                      disabled={workingDocumentId === doc.documentId}
+                    >
+                      Review
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => handleRegen(doc.documentId)}
+                      disabled={workingDocumentId === doc.documentId}
+                    >
+                      Regen details
+                    </Button>
+                  </Stack>
+                )}
+              >
+                <ListItemText
+                  primary={doc.filename}
+                  secondary={`${doc.travelsExtracted} travel, ${doc.staysExtracted} stays`}
+                />
+              </ListItem>
+            ))}
+          </List>
         </Paper>
       </Container>
     </AppLayout>
