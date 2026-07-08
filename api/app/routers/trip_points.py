@@ -46,7 +46,7 @@ async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> Trip
     travel_detail = None
     if point.travel_detail_id:
         travel = await db.get(TravelDetailRecord, point.travel_detail_id)
-        if travel:
+        if travel and not travel.is_deleted and travel.deleted_at is None:
             tlocs = (
                 await db.execute(
                     select(LocationRecord).where(
@@ -59,7 +59,7 @@ async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> Trip
     stay_detail = None
     if point.stay_detail_id:
         stay = await db.get(StayDetailRecord, point.stay_detail_id)
-        if stay:
+        if stay and not stay.is_deleted and stay.deleted_at is None:
             slocs = (
                 await db.execute(
                     select(LocationRecord).where(
@@ -102,13 +102,13 @@ async def _validate_detail_refs(
     """Ensure referenced stay/travel details exist and belong to this trip."""
     if stay_detail_id:
         stay = await db.get(StayDetailRecord, stay_detail_id)
-        if stay is None or stay.trip_id != trip_id:
+        if stay is None or stay.trip_id != trip_id or stay.is_deleted or stay.deleted_at is not None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found"
             )
     if travel_detail_id:
         travel = await db.get(TravelDetailRecord, travel_detail_id)
-        if travel is None or travel.trip_id != trip_id:
+        if travel is None or travel.trip_id != trip_id or travel.is_deleted or travel.deleted_at is not None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found"
             )
@@ -123,7 +123,11 @@ async def list_points(
     _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
     result = await db.execute(
         select(TripPointRecord)
-        .where(TripPointRecord.trip_id == trip_id, TripPointRecord.deleted_at.is_(None))
+        .where(
+            TripPointRecord.trip_id == trip_id,
+            TripPointRecord.is_deleted.is_(False),
+            TripPointRecord.deleted_at.is_(None),
+        )
         .order_by(TripPointRecord.start_date_time)
     )
     points = result.scalars().all()
@@ -141,6 +145,7 @@ async def list_deleted_points(
         select(TripPointRecord)
         .where(
             TripPointRecord.trip_id == trip_id,
+            TripPointRecord.is_deleted.is_(True),
             TripPointRecord.deleted_at.isnot(None),
         )
         .order_by(TripPointRecord.start_date_time)
@@ -160,7 +165,7 @@ async def create_point(
     if await db.get(TripPointRecord, body.pointId) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Point already exists")
     day = await db.get(TripDayRecord, body.dayId)
-    if day is None or day.deleted_at is not None:
+    if day is None or day.is_deleted or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     await _validate_detail_refs(trip_id, body.stayDetailId, body.travelDetailId, db)
 
@@ -198,15 +203,15 @@ async def update_point(
     user: UserRecord = Depends(require_auth),
 ):
     point = await db.get(TripPointRecord, point_id)
-    if point is None or point.deleted_at is not None or point.trip_id != trip_id:
+    if point is None or point.is_deleted or point.deleted_at is not None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
     _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
     day = await db.get(TripDayRecord, body.dayId)
-    if day is None or day.deleted_at is not None:
+    if day is None or day.is_deleted or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
 
     day = await db.get(TripDayRecord, body.dayId)
-    if day is None or day.deleted_at is not None:
+    if day is None or day.is_deleted or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     await _validate_detail_refs(trip_id, body.stayDetailId, body.travelDetailId, db)
 
@@ -240,7 +245,7 @@ async def patch_point(
     user: UserRecord = Depends(require_auth),
 ):
     point = await db.get(TripPointRecord, point_id)
-    if point is None or point.deleted_at is not None or point.trip_id != trip_id:
+    if point is None or point.is_deleted or point.deleted_at is not None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
     _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
 
@@ -286,9 +291,10 @@ async def delete_point(
     user: UserRecord = Depends(require_auth),
 ):
     point = await db.get(TripPointRecord, point_id)
-    if point is None or point.deleted_at is not None or point.trip_id != trip_id:
+    if point is None or point.is_deleted or point.deleted_at is not None or point.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
     _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
+    point.is_deleted = True
     point.deleted_at = datetime.now(timezone.utc)
     point.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -307,6 +313,7 @@ async def restore_point(
     _require_trip(await db.get(TripRecord, trip_id), trip_id, user)
     if point.deleted_at is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Point is not deleted")
+    point.is_deleted = False
     point.deleted_at = None
     point.updated_at = datetime.now(timezone.utc)
     await db.commit()

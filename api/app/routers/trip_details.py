@@ -6,6 +6,7 @@ clients create, list, read, update, and delete them directly, including their
 own locations.
 """
 
+from datetime import datetime, timezone
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -90,7 +91,9 @@ async def list_travel_details(
     _require_trip(await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(TravelDetailRecord).where(
-            TravelDetailRecord.trip_id == trip_id, TravelDetailRecord.deleted_at.is_(None)
+            TravelDetailRecord.trip_id == trip_id,
+            TravelDetailRecord.is_deleted.is_(False),
+            TravelDetailRecord.deleted_at.is_(None),
         )
     )
     out = []
@@ -140,7 +143,7 @@ async def get_travel_detail(
 ):
     _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(TravelDetailRecord, travel_detail_id)
-    if rec is None or rec.trip_id != trip_id:
+    if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
     locs = await _detail_locations(db, travel_id=travel_detail_id)
     return travel_to_response(rec, locs)
@@ -156,7 +159,7 @@ async def patch_travel_detail(
 ):
     _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(TravelDetailRecord, travel_detail_id)
-    if rec is None or rec.trip_id != trip_id:
+    if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
 
     field_map = {
@@ -192,21 +195,12 @@ async def delete_travel_detail(
 ):
     _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(TravelDetailRecord, travel_detail_id)
-    if rec is None or rec.trip_id != trip_id:
+    if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
 
-    # Explicitly detach referenced points before deleting the detail. This keeps
-    # timeline points intact even if DB-level ON DELETE behavior differs.
-    await db.execute(
-        update(TripPointRecord)
-        .where(
-            TripPointRecord.trip_id == trip_id,
-            TripPointRecord.travel_detail_id == travel_detail_id,
-        )
-        .values(travel_detail_id=None)
-    )
-
-    await db.delete(rec)
+    rec.is_deleted = True
+    rec.deleted_at = datetime.now(timezone.utc)
+    rec.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
 
@@ -221,7 +215,9 @@ async def list_stay_details(
     _require_trip(await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(StayDetailRecord).where(
-            StayDetailRecord.trip_id == trip_id, StayDetailRecord.deleted_at.is_(None)
+            StayDetailRecord.trip_id == trip_id,
+            StayDetailRecord.is_deleted.is_(False),
+            StayDetailRecord.deleted_at.is_(None),
         )
     )
     out = []
@@ -269,7 +265,7 @@ async def get_stay_detail(
 ):
     _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(StayDetailRecord, stay_detail_id)
-    if rec is None or rec.trip_id != trip_id:
+    if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")
     locs = await _detail_locations(db, stay_id=stay_detail_id)
     return stay_to_response(rec, locs)
@@ -285,7 +281,7 @@ async def patch_stay_detail(
 ):
     _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(StayDetailRecord, stay_detail_id)
-    if rec is None or rec.trip_id != trip_id:
+    if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")
 
     field_map = {
@@ -319,19 +315,10 @@ async def delete_stay_detail(
 ):
     _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(StayDetailRecord, stay_detail_id)
-    if rec is None or rec.trip_id != trip_id:
+    if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")
 
-    # Explicitly detach referenced points before deleting the detail. This keeps
-    # timeline points intact even if DB-level ON DELETE behavior differs.
-    await db.execute(
-        update(TripPointRecord)
-        .where(
-            TripPointRecord.trip_id == trip_id,
-            TripPointRecord.stay_detail_id == stay_detail_id,
-        )
-        .values(stay_detail_id=None)
-    )
-
-    await db.delete(rec)
+    rec.is_deleted = True
+    rec.deleted_at = datetime.now(timezone.utc)
+    rec.updated_at = datetime.now(timezone.utc)
     await db.commit()

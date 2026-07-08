@@ -56,6 +56,7 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isEdit = Boolean(initialValues?.stayDetailId);
 
   useEffect(() => {
@@ -154,6 +155,20 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
       setErrors({ _submit: err?.response?.data?.detail ?? 'Save failed. Please try again.' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!isEdit) return;
+    try {
+      setDeleting(true);
+      await client.delete(`/trips/${tripId}/stay-details/${initialValues.stayDetailId}`);
+      onSaved?.();
+      onClose?.();
+    } catch (err) {
+      setErrors({ _submit: err?.response?.data?.detail ?? 'Delete failed. Please try again.' });
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -303,14 +318,26 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
 
       <Divider />
       <Stack direction="row" spacing={1} sx={{ p: 2 }}>
-        <Button variant="outlined" fullWidth onClick={onClose} disabled={saving} startIcon={<CloseIcon />}>
+        {isEdit && (
+          <Button
+            variant="outlined"
+            color="error"
+            fullWidth
+            onClick={handleDelete}
+            disabled={saving || deleting}
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        )}
+        <Button variant="outlined" fullWidth onClick={onClose} disabled={saving || deleting} startIcon={<CloseIcon />}>
           Cancel
         </Button>
         <Button
           variant="contained"
           fullWidth
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || deleting}
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
         >
           {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Stay'}

@@ -15,6 +15,13 @@ from sqlalchemy import (
 from app.database import Base
 
 
+class SoftDeleteMixin:
+    """Reusable soft-delete fields for entities we mark deleted in place."""
+
+    is_deleted = Column(Boolean, nullable=False, default=False, server_default="false")
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     """
     Extends the fastapi-users base table (id, email, hashed_password,
@@ -39,7 +46,7 @@ class TripRecord(Base):
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
 
 
-class TripDayRecord(Base):
+class TripDayRecord(SoftDeleteMixin, Base):
     __tablename__ = "trip_days"
 
     day_id = Column(Uuid(as_uuid=False), primary_key=True)
@@ -51,10 +58,9 @@ class TripDayRecord(Base):
     completed = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
-class TripPointRecord(Base):
+class TripPointRecord(SoftDeleteMixin, Base):
     __tablename__ = "trip_points"
 
     point_id = Column(Uuid(as_uuid=False), primary_key=True)
@@ -84,7 +90,6 @@ class TripPointRecord(Base):
     completed_date_time = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class LocationRecord(Base):
@@ -126,7 +131,7 @@ class LocationRecord(Base):
     )
 
 
-class TravelDetailRecord(Base):
+class TravelDetailRecord(SoftDeleteMixin, Base):
     __tablename__ = "travel_details"
 
     travel_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
@@ -142,10 +147,9 @@ class TravelDetailRecord(Base):
     description = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
-class StayDetailRecord(Base):
+class StayDetailRecord(SoftDeleteMixin, Base):
     __tablename__ = "stay_details"
 
     stay_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
@@ -159,4 +163,3 @@ class StayDetailRecord(Base):
     description = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)

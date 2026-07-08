@@ -45,7 +45,11 @@ async def list_days(
     _require_trip(trip_id, await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(TripDayRecord)
-        .where(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
+        .where(
+            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.is_deleted.is_(False),
+            TripDayRecord.deleted_at.is_(None),
+        )
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
     )
     return [_day_to_response(d) for d in result.scalars().all()]
@@ -60,7 +64,11 @@ async def list_deleted_days(
     _require_trip(trip_id, await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(TripDayRecord)
-        .where(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.isnot(None))
+        .where(
+            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.is_deleted.is_(True),
+            TripDayRecord.deleted_at.isnot(None),
+        )
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
     )
     return [_day_to_response(d) for d in result.scalars().all()]
@@ -100,7 +108,7 @@ async def update_day(
     user: UserRecord = Depends(require_auth),
 ):
     day = await db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is not None or day.trip_id != trip_id:
+    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     trip = await db.get(TripRecord, trip_id)
     _require_trip(trip_id, trip, user)
@@ -124,7 +132,7 @@ async def patch_day(
     user: UserRecord = Depends(require_auth),
 ):
     day = await db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is not None or day.trip_id != trip_id:
+    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     trip = await db.get(TripRecord, trip_id)
     _require_trip(trip_id, trip, user)
@@ -152,10 +160,11 @@ async def delete_day(
     user: UserRecord = Depends(require_auth),
 ):
     day = await db.get(TripDayRecord, day_id)
-    if day is None or day.deleted_at is not None or day.trip_id != trip_id:
+    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
     trip = await db.get(TripRecord, trip_id)
     _require_trip(trip_id, trip, user)
+    day.is_deleted = True
     day.deleted_at = datetime.now(timezone.utc)
     day.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -175,6 +184,7 @@ async def restore_day(
     _require_trip(trip_id, trip, user)
     if day.deleted_at is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day is not deleted")
+    day.is_deleted = False
     day.deleted_at = None
     day.updated_at = datetime.now(timezone.utc)
     await db.commit()

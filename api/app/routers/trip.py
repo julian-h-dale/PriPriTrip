@@ -72,13 +72,17 @@ async def _load_trip(
     # ── Trip-level stays & travels (with their own locations) ────────────────
     stays_result = await db.execute(
         select(StayDetailRecord).where(
-            StayDetailRecord.trip_id == trip_id, StayDetailRecord.deleted_at.is_(None)
+            StayDetailRecord.trip_id == trip_id,
+            StayDetailRecord.is_deleted.is_(False),
+            StayDetailRecord.deleted_at.is_(None),
         )
     )
     stay_records = stays_result.scalars().all()
     travels_result = await db.execute(
         select(TravelDetailRecord).where(
-            TravelDetailRecord.trip_id == trip_id, TravelDetailRecord.deleted_at.is_(None)
+            TravelDetailRecord.trip_id == trip_id,
+            TravelDetailRecord.is_deleted.is_(False),
+            TravelDetailRecord.deleted_at.is_(None),
         )
     )
     travel_records = travels_result.scalars().all()
@@ -115,7 +119,11 @@ async def _load_trip(
     # ── Days & points ────────────────────────────────────────────────────────
     days_result = await db.execute(
         select(TripDayRecord)
-        .where(TripDayRecord.trip_id == trip_id, TripDayRecord.deleted_at.is_(None))
+        .where(
+            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.is_deleted.is_(False),
+            TripDayRecord.deleted_at.is_(None),
+        )
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
     )
     days = days_result.scalars().all()
@@ -125,7 +133,11 @@ async def _load_trip(
     if day_ids:
         pts_result = await db.execute(
             select(TripPointRecord)
-            .where(TripPointRecord.day_id.in_(day_ids), TripPointRecord.deleted_at.is_(None))
+            .where(
+                TripPointRecord.day_id.in_(day_ids),
+                TripPointRecord.is_deleted.is_(False),
+                TripPointRecord.deleted_at.is_(None),
+            )
             .order_by(TripPointRecord.start_date_time)
         )
         points = pts_result.scalars().all()
