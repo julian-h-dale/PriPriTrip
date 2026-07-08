@@ -22,6 +22,8 @@ class AuthResponse(BaseModel):
 class TripHeader(BaseModel):
     tripId: str
     tripName: str
+    startLocationName: Optional[str] = None
+    destinationLocationName: Optional[str] = None
     defaultTimezoneId: Optional[str] = None
     startDate: str
     endDate: str
@@ -300,6 +302,8 @@ class TripListItem(BaseModel):
 class TripResponse(BaseModel):
     tripId: str
     tripName: str
+    startLocationName: Optional[str] = None
+    destinationLocationName: Optional[str] = None
     defaultTimezoneId: Optional[str] = None
     startDate: str
     endDate: str
@@ -407,4 +411,7 @@ class ChatReplyRequest(BaseModel):
 
 class ChatReplyResponse(BaseModel):
     tripId: str
+    complete: bool = False
+    tripName: Optional[str] = None
+    verify: Optional[VerifyResult] = None
     messages: List[ChatMessageResponse] = []

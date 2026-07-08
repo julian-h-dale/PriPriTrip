@@ -497,6 +497,15 @@ export default function NewTripPage() {
         tripId={chatTripId}
         workflowName="trip:new_trip"
         onTripIdChange={setChatTripId}
+        onComplete={(response) => {
+          setChatOpen(false);
+          navigate(`/trip-inspection/${response.tripId}`, {
+            state: {
+              verify: response.verify,
+              tripName: response.tripName,
+            },
+          });
+        }}
       />
         {step > 0 && !isLast && (
           <Button

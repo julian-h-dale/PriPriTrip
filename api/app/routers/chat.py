@@ -11,6 +11,7 @@ from app.auth import require_auth
 from app.database import get_db
 from app.models import ChatMessageRecord, TripRecord, UserRecord
 from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
+from app.services.new_trip_workflow import handle_new_trip_chat_turn
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -82,15 +83,49 @@ async def reply_in_chat(
         message=body.message.strip(),
         is_bot=False,
     )
+    db.add(user_message)
+    await db.flush()
+
+    transcript_result = await db.execute(
+        select(ChatMessageRecord)
+        .where(
+            ChatMessageRecord.trip_id == trip_id,
+            ChatMessageRecord.user_id == str(user.id),
+            ChatMessageRecord.workflow_name == body.workflowName,
+        )
+        .order_by(ChatMessageRecord.created_at)
+    )
+    transcript = [
+        {
+            "role": "assistant" if rec.is_bot else "user",
+            "message": rec.message,
+        }
+        for rec in transcript_result.scalars().all()
+    ]
+
+    if body.workflowName == "trip:new_trip":
+        outcome = await handle_new_trip_chat_turn(
+            db,
+            trip=trip,
+            transcript=transcript,
+            latest_message=body.message.strip(),
+        )
+        bot_text = outcome.assistantMessage
+        complete = outcome.complete
+        verify = outcome.verify
+    else:
+        bot_text = f"Hello world - {date.today().isoformat()}"
+        complete = False
+        verify = None
+
     bot_message = ChatMessageRecord(
         message_id=str(uuid.uuid4()),
         user_id=str(user.id),
         trip_id=trip_id,
         workflow_name=body.workflowName,
-        message=f"Hello world - {date.today().isoformat()}",
+        message=bot_text,
         is_bot=True,
     )
-    db.add(user_message)
     db.add(bot_message)
     await db.commit()
     await db.refresh(user_message)
@@ -98,5 +133,8 @@ async def reply_in_chat(
 
     return ChatReplyResponse(
         tripId=trip_id,
+        complete=complete,
+        tripName=trip.trip_name,
+        verify=verify,
         messages=[_message_to_response(user_message), _message_to_response(bot_message)],
     )

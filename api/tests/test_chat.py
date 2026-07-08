@@ -6,6 +6,8 @@ from app.auth import require_auth
 from app.database import get_db
 from app.main import app
 from app.models import ChatMessageRecord, TripRecord
+from app.routers import chat as chat_router
+from app.services.new_trip_workflow import WorkflowOutcome
 
 
 client = TestClient(app)
@@ -73,10 +75,16 @@ class TestChat:
         app.dependency_overrides.clear()
 
     def test_reply_creates_shell_trip_and_messages(self):
+        async def _fake_workflow(_db, *, trip, transcript, latest_message, client=None):
+            return WorkflowOutcome(assistantMessage="Hello world - 2026-07-08", complete=False)
+
+        original = chat_router.handle_new_trip_chat_turn
+        chat_router.handle_new_trip_chat_turn = _fake_workflow
         resp = client.post(
             "/chat/reply",
             json={"workflowName": "trip:new_trip", "message": "help me plan a trip"},
         )
+        chat_router.handle_new_trip_chat_turn = original
         assert resp.status_code == 200
         body = resp.json()
         assert body["tripId"]

@@ -11,6 +11,8 @@ import {
   Button,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { aiImportTripDocument, saveAiDocumentRecords } from '../../api/tripImportService';
 import { listChatMessages, sendChatMessage } from '../../api/chatService';
 
 export default function NewTripChatOverlay({
@@ -19,11 +21,13 @@ export default function NewTripChatOverlay({
   tripId,
   workflowName,
   onTripIdChange,
+  onComplete,
 }) {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -63,10 +67,44 @@ export default function NewTripChatOverlay({
       onTripIdChange?.(response.tripId);
       setMessages((prev) => [...prev, ...(response.messages ?? [])]);
       setDraft('');
+      if (response.complete) {
+        onComplete?.(response);
+      }
     } catch (err) {
       setError(err?.response?.data?.detail ?? 'Could not send message.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDocumentUpload(file) {
+    if (!file) return;
+    if (!tripId) {
+      setError('Send your first message to create the trip shell before uploading a document.');
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const extraction = await aiImportTripDocument(tripId, file);
+      const result = await saveAiDocumentRecords(extraction.documentId, {
+        stays: extraction.stays,
+        travels: extraction.travels,
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          messageId: `local-upload-${Date.now()}`,
+          tripId,
+          workflowName,
+          isBot: true,
+          message: `Imported ${result.travelsSaved} travel and ${result.staysSaved} stay records from ${file.name}.`,
+        },
+      ]);
+    } catch (err) {
+      setError(err?.response?.data?.detail ?? 'Could not import that document into the trip.');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -141,6 +179,12 @@ export default function NewTripChatOverlay({
             bgcolor: 'background.paper',
           }}
         >
+          <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={uploading || loading}>
+              {uploading ? 'Uploading…' : 'Upload document'}
+              <input hidden type="file" accept=".xlsx,.pdf,.docx" onChange={(e) => handleDocumentUpload(e.target.files?.[0])} />
+            </Button>
+          </Stack>
           <Stack direction="row" spacing={1} alignItems="flex-end">
             <TextField
               value={draft}

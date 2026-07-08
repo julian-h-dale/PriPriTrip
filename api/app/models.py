@@ -41,6 +41,8 @@ class TripRecord(Base):
     user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
     trip_name = Column(String, nullable=False)
     status = Column(String, nullable=False, default="draft", server_default="draft")
+    start_location_name = Column(String, nullable=True)
+    destination_location_name = Column(String, nullable=True)
     default_timezone_id = Column(String, nullable=True)
     start_date = Column(String, nullable=False)
     end_date = Column(String, nullable=False)
