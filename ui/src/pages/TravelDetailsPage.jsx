@@ -21,7 +21,7 @@ import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineOppositeContent, {
   timelineOppositeContentClasses,
 } from '@mui/lab/TimelineOppositeContent';
-import dayjs from 'dayjs';
+import dayjs, { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
 import {
   clearError,
@@ -34,7 +34,7 @@ import TravelForm from '../components/Forms/TravelForm';
 
 function fmtDateTime(value) {
   if (!value) return 'No departure date';
-  const d = dayjs(value);
+  const d = parseWallClock(value);
   return d.isValid() ? d.format('MMM D, YYYY h:mm A') : 'No departure date';
 }
 

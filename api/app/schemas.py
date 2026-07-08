@@ -22,6 +22,7 @@ class AuthResponse(BaseModel):
 class TripHeader(BaseModel):
     tripId: str
     tripName: str
+    defaultTimezoneId: Optional[str] = None
     startDate: str
     endDate: str
 
@@ -39,6 +40,7 @@ class LocationCreate(BaseModel):
     link: Optional[str] = None
     googlePlaceId: Optional[str] = None
     googleMapsUri: Optional[str] = None
+    timezoneId: Optional[str] = None
 
 
 class LocationResponse(BaseModel):
@@ -56,6 +58,7 @@ class LocationResponse(BaseModel):
     link: Optional[str] = None
     googlePlaceId: Optional[str] = None
     googleMapsUri: Optional[str] = None
+    timezoneId: Optional[str] = None
 
 
 # ── Travel / Stay details (first-class trip entities) ────────────────────────
@@ -69,7 +72,9 @@ class TravelDetail(BaseModel):
     vehicleNumber: Optional[str] = None
     cabinClass: Optional[str] = None
     departureDateTime: Optional[str] = None
+    departureTimezoneId: Optional[str] = None
     arrivalDateTime: Optional[str] = None
+    arrivalTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     locations: List[LocationResponse] = []
@@ -81,7 +86,9 @@ class StayDetail(BaseModel):
     name: Optional[str] = None
     stayType: StayType
     checkIn: Optional[str] = None
+    checkInTimezoneId: Optional[str] = None
     checkOut: Optional[str] = None
+    checkOutTimezoneId: Optional[str] = None
     roomType: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
@@ -96,7 +103,9 @@ class TravelDetailImport(BaseModel):
     vehicleNumber: Optional[str] = None
     cabinClass: Optional[str] = None
     departureDateTime: Optional[str] = None
+    departureTimezoneId: Optional[str] = None
     arrivalDateTime: Optional[str] = None
+    arrivalTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     locations: List[LocationCreate] = []
@@ -107,7 +116,9 @@ class StayDetailImport(BaseModel):
     name: Optional[str] = None
     stayType: StayType
     checkIn: Optional[str] = None
+    checkInTimezoneId: Optional[str] = None
     checkOut: Optional[str] = None
+    checkOutTimezoneId: Optional[str] = None
     roomType: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
@@ -121,7 +132,9 @@ class TravelDetailPatch(BaseModel):
     vehicleNumber: Optional[str] = None
     cabinClass: Optional[str] = None
     departureDateTime: Optional[str] = None
+    departureTimezoneId: Optional[str] = None
     arrivalDateTime: Optional[str] = None
+    arrivalTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     locations: Optional[List[LocationCreate]] = None
@@ -131,7 +144,9 @@ class StayDetailPatch(BaseModel):
     name: Optional[str] = None
     stayType: Optional[StayType] = None
     checkIn: Optional[str] = None
+    checkInTimezoneId: Optional[str] = None
     checkOut: Optional[str] = None
+    checkOutTimezoneId: Optional[str] = None
     roomType: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
@@ -188,7 +203,9 @@ class TripPointCreate(BaseModel):
     stayDetailId: Optional[str] = None
     travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
+    startTimezoneId: Optional[str] = None
     endDateTime: Optional[str] = None
+    endTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -205,7 +222,9 @@ class TripPointUpdate(BaseModel):
     stayDetailId: Optional[str] = None
     travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
+    startTimezoneId: Optional[str] = None
     endDateTime: Optional[str] = None
+    endTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -222,7 +241,9 @@ class TripPointPatch(BaseModel):
     stayDetailId: Optional[str] = None
     travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
+    startTimezoneId: Optional[str] = None
     endDateTime: Optional[str] = None
+    endTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -241,7 +262,9 @@ class TripPointResponse(BaseModel):
     stayDetailId: Optional[str] = None
     travelDetailId: Optional[str] = None
     startDateTime: Optional[str] = None
+    startTimezoneId: Optional[str] = None
     endDateTime: Optional[str] = None
+    endTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
@@ -273,6 +296,7 @@ class TripListItem(BaseModel):
 class TripResponse(BaseModel):
     tripId: str
     tripName: str
+    defaultTimezoneId: Optional[str] = None
     startDate: str
     endDate: str
     stays: List[StayDetail] = []
@@ -295,6 +319,7 @@ class TripDayImport(BaseModel):
 class TripImport(BaseModel):
     tripId: str = Field(default_factory=_uuid)
     tripName: str
+    defaultTimezoneId: Optional[str] = None
     startDate: str
     endDate: str
     stays: List[StayDetailImport] = []

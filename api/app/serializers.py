@@ -12,6 +12,7 @@ from app.schemas import (
     TravelDetail,
     TripPointResponse,
 )
+from app.services.timezones import wall_clock_to_text
 
 
 def location_to_response(loc: LocationRecord) -> LocationResponse:
@@ -29,6 +30,7 @@ def location_to_response(loc: LocationRecord) -> LocationResponse:
         link=loc.link,
         googlePlaceId=loc.google_place_id,
         googleMapsUri=loc.google_maps_uri,
+        timezoneId=loc.timezone_id,
     )
 
 
@@ -45,8 +47,10 @@ def travel_to_response(rec: TravelDetailRecord, locations: list | None = None) -
         operator=rec.operator,
         vehicleNumber=rec.vehicle_number,
         cabinClass=rec.cabin_class,
-        departureDateTime=rec.departure_date_time,
-        arrivalDateTime=rec.arrival_date_time,
+        departureDateTime=wall_clock_to_text(rec.departure_local) or rec.departure_date_time,
+        departureTimezoneId=rec.departure_tzid,
+        arrivalDateTime=wall_clock_to_text(rec.arrival_local) or rec.arrival_date_time,
+        arrivalTimezoneId=rec.arrival_tzid,
         confirmationNumber=rec.confirmation_number,
         description=rec.description,
         locations=[location_to_response(l) for l in _sorted_locs(locations or [])],
@@ -59,8 +63,10 @@ def stay_to_response(rec: StayDetailRecord, locations: list | None = None) -> St
         tripId=rec.trip_id,
         name=rec.name,
         stayType=rec.stay_type,
-        checkIn=rec.check_in,
-        checkOut=rec.check_out,
+        checkIn=wall_clock_to_text(rec.check_in_local) or rec.check_in,
+        checkInTimezoneId=rec.check_in_tzid,
+        checkOut=wall_clock_to_text(rec.check_out_local) or rec.check_out,
+        checkOutTimezoneId=rec.check_out_tzid,
         roomType=rec.room_type,
         confirmationNumber=rec.confirmation_number,
         description=rec.description,
@@ -82,8 +88,10 @@ def point_to_response(
         title=point.title,
         stayDetailId=point.stay_detail_id,
         travelDetailId=point.travel_detail_id,
-        startDateTime=point.start_date_time,
-        endDateTime=point.end_date_time,
+        startDateTime=wall_clock_to_text(point.start_local) or point.start_date_time,
+        startTimezoneId=point.start_tzid,
+        endDateTime=wall_clock_to_text(point.end_local) or point.end_date_time,
+        endTimezoneId=point.end_tzid,
         confirmationNumber=point.confirmation_number,
         description=point.description,
         imageUrl=point.image_url,

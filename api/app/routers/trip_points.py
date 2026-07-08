@@ -22,6 +22,7 @@ from app.schemas import (
     TripPointUpdate,
 )
 from app.serializers import point_to_response, stay_to_response, travel_to_response
+from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
 
 router = APIRouter(
     prefix="/trips/{trip_id}/points",
@@ -89,8 +90,80 @@ async def _replace_locations(point_id: str, locations_payload: list, db: AsyncSe
                 link=loc.link,
                 google_place_id=loc.googlePlaceId,
                 google_maps_uri=loc.googleMapsUri,
+                timezone_id=loc.timezoneId or tzid_from_coords(loc.lat, loc.lng),
             )
         )
+
+
+def _location_tzid(loc) -> str | None:
+    return getattr(loc, "timezoneId", None) or tzid_from_coords(getattr(loc, "lat", None), getattr(loc, "lng", None))
+
+
+def _infer_tzid_from_locations(locations: list, fallback: str | None = None) -> str | None:
+    for loc in locations or []:
+        tzid = _location_tzid(loc)
+        if tzid:
+            return tzid
+    return fallback
+
+
+async def _infer_tzid_from_day_stay(
+    db: AsyncSession,
+    *,
+    trip_id: str,
+    day_id: str,
+    fallback: str | None,
+) -> str | None:
+    day = await db.get(TripDayRecord, day_id)
+    if day is None:
+        return fallback
+
+    stays_result = await db.execute(
+        select(StayDetailRecord).where(
+            StayDetailRecord.trip_id == trip_id,
+            StayDetailRecord.is_deleted.is_(False),
+            StayDetailRecord.deleted_at.is_(None),
+        )
+    )
+    for stay in stays_result.scalars().all():
+        if stay.check_in_local is None or stay.check_out_local is None:
+            continue
+        if stay.check_in_local.date() <= datetime.fromisoformat(day.date).date() <= stay.check_out_local.date():
+            locs = await db.execute(
+                select(LocationRecord).where(LocationRecord.stay_detail_id == stay.stay_detail_id)
+            )
+            for loc in locs.scalars().all():
+                tzid = loc.timezone_id or tzid_from_coords(loc.lat, loc.lng)
+                if tzid:
+                    return tzid
+            if stay.check_in_tzid:
+                return stay.check_in_tzid
+    return fallback
+
+
+async def _infer_point_tzid(
+    db: AsyncSession,
+    *,
+    trip_id: str,
+    day_id: str,
+    locations_payload: list,
+    explicit_tzid: str | None,
+) -> str:
+    if explicit_tzid:
+        return explicit_tzid
+
+    trip = await db.get(TripRecord, trip_id)
+    fallback = trip.default_timezone_id if trip else None
+
+    tzid = _infer_tzid_from_locations(locations_payload, fallback=None)
+    if tzid:
+        return tzid
+
+    tzid = await _infer_tzid_from_day_stay(db, trip_id=trip_id, day_id=day_id, fallback=None)
+    if tzid:
+        return tzid
+
+    return fallback or "UTC"
 
 
 async def _validate_detail_refs(
@@ -177,8 +250,8 @@ async def create_point(
         title=body.title,
         stay_detail_id=body.stayDetailId,
         travel_detail_id=body.travelDetailId,
-        start_date_time=body.startDateTime,
-        end_date_time=body.endDateTime,
+        start_date_time=None,
+        end_date_time=None,
         confirmation_number=body.confirmationNumber,
         description=body.description,
         image_url=body.imageUrl,
@@ -188,6 +261,21 @@ async def create_point(
     )
     db.add(point)
     await db.flush()
+    inferred_tzid = await _infer_point_tzid(
+        db,
+        trip_id=trip_id,
+        day_id=body.dayId,
+        locations_payload=body.locations,
+        explicit_tzid=body.startTimezoneId or body.endTimezoneId,
+    )
+    point.start_local = parse_wall_clock(body.startDateTime)
+    point.start_tzid = body.startTimezoneId or inferred_tzid
+    point.start_utc = derive_utc(point.start_local, point.start_tzid)
+    point.end_local = parse_wall_clock(body.endDateTime)
+    point.end_tzid = body.endTimezoneId or inferred_tzid
+    point.end_utc = derive_utc(point.end_local, point.end_tzid)
+    point.start_date_time = wall_clock_to_text(point.start_local)
+    point.end_date_time = wall_clock_to_text(point.end_local)
     await _replace_locations(body.pointId, body.locations, db)
     await db.commit()
     await db.refresh(point)
@@ -220,8 +308,21 @@ async def update_point(
     point.title = body.title
     point.stay_detail_id = body.stayDetailId
     point.travel_detail_id = body.travelDetailId
-    point.start_date_time = body.startDateTime
-    point.end_date_time = body.endDateTime
+    inferred_tzid = await _infer_point_tzid(
+        db,
+        trip_id=trip_id,
+        day_id=body.dayId,
+        locations_payload=body.locations,
+        explicit_tzid=body.startTimezoneId or body.endTimezoneId,
+    )
+    point.start_local = parse_wall_clock(body.startDateTime)
+    point.start_tzid = body.startTimezoneId or inferred_tzid
+    point.start_utc = derive_utc(point.start_local, point.start_tzid)
+    point.end_local = parse_wall_clock(body.endDateTime)
+    point.end_tzid = body.endTimezoneId or inferred_tzid
+    point.end_utc = derive_utc(point.end_local, point.end_tzid)
+    point.start_date_time = wall_clock_to_text(point.start_local)
+    point.end_date_time = wall_clock_to_text(point.end_local)
     point.confirmation_number = body.confirmationNumber
     point.description = body.description
     point.image_url = body.imageUrl
@@ -273,6 +374,50 @@ async def patch_point(
     for pydantic_field, orm_field in _scalar_field_map.items():
         if pydantic_field in body.model_fields_set:
             setattr(point, orm_field, getattr(body, pydantic_field))
+
+    effective_day_id = point.day_id
+    effective_locations = body.locations if "locations" in body.model_fields_set else (
+        (await db.execute(select(LocationRecord).where(LocationRecord.point_id == point_id))).scalars().all()
+    )
+    inferred_tzid = await _infer_point_tzid(
+        db,
+        trip_id=trip_id,
+        day_id=effective_day_id,
+        locations_payload=effective_locations,
+        explicit_tzid=(
+            body.startTimezoneId
+            if "startTimezoneId" in body.model_fields_set
+            else point.start_tzid
+        ) or (
+            body.endTimezoneId
+            if "endTimezoneId" in body.model_fields_set
+            else point.end_tzid
+        ),
+    )
+
+    start_text = (
+        body.startDateTime
+        if "startDateTime" in body.model_fields_set
+        else (wall_clock_to_text(point.start_local) or point.start_date_time)
+    )
+    end_text = (
+        body.endDateTime
+        if "endDateTime" in body.model_fields_set
+        else (wall_clock_to_text(point.end_local) or point.end_date_time)
+    )
+
+    point.start_local = parse_wall_clock(start_text)
+    point.start_tzid = (
+        body.startTimezoneId if "startTimezoneId" in body.model_fields_set else point.start_tzid
+    ) or inferred_tzid
+    point.start_utc = derive_utc(point.start_local, point.start_tzid)
+    point.end_local = parse_wall_clock(end_text)
+    point.end_tzid = (
+        body.endTimezoneId if "endTimezoneId" in body.model_fields_set else point.end_tzid
+    ) or inferred_tzid
+    point.end_utc = derive_utc(point.end_local, point.end_tzid)
+    point.start_date_time = wall_clock_to_text(point.start_local)
+    point.end_date_time = wall_clock_to_text(point.end_local)
 
     if "locations" in body.model_fields_set:
         await _replace_locations(point_id, body.locations or [], db)

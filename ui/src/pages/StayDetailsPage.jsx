@@ -21,7 +21,7 @@ import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineOppositeContent, {
   timelineOppositeContentClasses,
 } from '@mui/lab/TimelineOppositeContent';
-import dayjs from 'dayjs';
+import dayjs, { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
 import {
   clearError,
@@ -34,13 +34,15 @@ import StayForm from '../components/Forms/StayForm';
 
 function fmtDateTime(value) {
   if (!value) return 'No check-in date';
-  const d = dayjs(value);
+  const d = parseWallClock(value);
   return d.isValid() ? d.format('MMM D, YYYY h:mm A') : 'No check-in date';
 }
 
 function fmtDateRange(checkIn, checkOut) {
-  const inDate = checkIn && dayjs(checkIn).isValid() ? dayjs(checkIn).format('MMM D, YYYY') : '—';
-  const outDate = checkOut && dayjs(checkOut).isValid() ? dayjs(checkOut).format('MMM D, YYYY') : '—';
+  const inDt = checkIn ? parseWallClock(checkIn) : null;
+  const outDt = checkOut ? parseWallClock(checkOut) : null;
+  const inDate = inDt && inDt.isValid() ? inDt.format('MMM D, YYYY') : '—';
+  const outDate = outDt && outDt.isValid() ? outDt.format('MMM D, YYYY') : '—';
   return `${inDate} - ${outDate}`;
 }
 

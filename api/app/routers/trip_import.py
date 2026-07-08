@@ -15,6 +15,7 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import ImportResult, TripImport
+from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
 
 router = APIRouter(tags=["import"])
 
@@ -42,9 +43,39 @@ async def import_trip(
     elif trip.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     trip.trip_name = body.tripName
+    trip.default_timezone_id = body.defaultTimezoneId
     trip.start_date = body.startDate
     trip.end_date = body.endDate
     await db.flush()
+
+    def _location_tzid(loc):
+        return loc.timezoneId or tzid_from_coords(loc.lat, loc.lng)
+
+    def _infer_tzid(locations, role=None, fallback=None):
+        for loc in locations or []:
+            if role and loc.role != role:
+                continue
+            tzid = _location_tzid(loc)
+            if tzid:
+                return tzid
+        return fallback
+
+    def _infer_stay_tzid_for_date(day_date_text: str):
+        day_date = parse_wall_clock(f"{day_date_text}T00:00")
+        if day_date is None:
+            return None
+        for stay in body.stays:
+            in_local = parse_wall_clock(stay.checkIn)
+            out_local = parse_wall_clock(stay.checkOut)
+            if in_local is None or out_local is None:
+                continue
+            if in_local.date() <= day_date.date() <= out_local.date():
+                tzid = stay.checkInTimezoneId or stay.checkOutTimezoneId or _infer_tzid(
+                    stay.locations, role="venue", fallback=None
+                )
+                if tzid:
+                    return tzid
+        return None
 
     def _add_locations(locations, *, point_id=None, stay_id=None, travel_id=None):
         for i, loc in enumerate(locations):
@@ -64,20 +95,33 @@ async def import_trip(
                     link=loc.link,
                     google_place_id=loc.googlePlaceId,
                     google_maps_uri=loc.googleMapsUri,
+                    timezone_id=_location_tzid(loc),
                 )
             )
 
     # ── 3. Insert trip-level stays & travels (with their locations) ──────────
     stays_inserted = 0
     for stay in body.stays:
+        check_in_tzid = stay.checkInTimezoneId or _infer_tzid(
+            stay.locations, role="venue", fallback=trip.default_timezone_id
+        )
+        check_out_tzid = stay.checkOutTimezoneId or check_in_tzid
+        check_in_local = parse_wall_clock(stay.checkIn)
+        check_out_local = parse_wall_clock(stay.checkOut)
         db.add(
             StayDetailRecord(
                 stay_detail_id=stay.stayDetailId,
                 trip_id=trip_id,
                 name=stay.name,
                 stay_type=stay.stayType,
-                check_in=stay.checkIn,
-                check_out=stay.checkOut,
+                check_in_local=check_in_local,
+                check_in_tzid=check_in_tzid,
+                check_in_utc=derive_utc(check_in_local, check_in_tzid),
+                check_out_local=check_out_local,
+                check_out_tzid=check_out_tzid,
+                check_out_utc=derive_utc(check_out_local, check_out_tzid),
+                check_in=wall_clock_to_text(check_in_local),
+                check_out=wall_clock_to_text(check_out_local),
                 room_type=stay.roomType,
                 confirmation_number=stay.confirmationNumber,
                 description=stay.description,
@@ -89,6 +133,14 @@ async def import_trip(
 
     travels_inserted = 0
     for travel in body.travels:
+        departure_tzid = travel.departureTimezoneId or _infer_tzid(
+            travel.locations, role="origin", fallback=trip.default_timezone_id
+        )
+        arrival_tzid = travel.arrivalTimezoneId or _infer_tzid(
+            travel.locations, role="destination", fallback=trip.default_timezone_id
+        )
+        departure_local = parse_wall_clock(travel.departureDateTime)
+        arrival_local = parse_wall_clock(travel.arrivalDateTime)
         db.add(
             TravelDetailRecord(
                 travel_detail_id=travel.travelDetailId,
@@ -98,8 +150,14 @@ async def import_trip(
                 operator=travel.operator,
                 vehicle_number=travel.vehicleNumber,
                 cabin_class=travel.cabinClass,
-                departure_date_time=travel.departureDateTime,
-                arrival_date_time=travel.arrivalDateTime,
+                departure_local=departure_local,
+                departure_tzid=departure_tzid,
+                departure_utc=derive_utc(departure_local, departure_tzid),
+                arrival_local=arrival_local,
+                arrival_tzid=arrival_tzid,
+                arrival_utc=derive_utc(arrival_local, arrival_tzid),
+                departure_date_time=wall_clock_to_text(departure_local),
+                arrival_date_time=wall_clock_to_text(arrival_local),
                 confirmation_number=travel.confirmationNumber,
                 description=travel.description,
             )
@@ -127,6 +185,15 @@ async def import_trip(
         days_inserted += 1
 
         for pt in day_data.points:
+            point_tzid = pt.startTimezoneId or pt.endTimezoneId or _infer_tzid(
+                pt.locations, fallback=None
+            )
+            if not point_tzid:
+                point_tzid = _infer_stay_tzid_for_date(day_data.date)
+            if not point_tzid:
+                point_tzid = trip.default_timezone_id
+            start_local = parse_wall_clock(pt.startDateTime)
+            end_local = parse_wall_clock(pt.endDateTime)
             point = TripPointRecord(
                 point_id=pt.pointId,
                 trip_id=trip_id,
@@ -135,8 +202,14 @@ async def import_trip(
                 title=pt.title,
                 stay_detail_id=pt.stayDetailId,
                 travel_detail_id=pt.travelDetailId,
-                start_date_time=pt.startDateTime,
-                end_date_time=pt.endDateTime,
+                start_local=start_local,
+                start_tzid=pt.startTimezoneId or point_tzid,
+                start_utc=derive_utc(start_local, pt.startTimezoneId or point_tzid),
+                end_local=end_local,
+                end_tzid=pt.endTimezoneId or point_tzid,
+                end_utc=derive_utc(end_local, pt.endTimezoneId or point_tzid),
+                start_date_time=wall_clock_to_text(start_local),
+                end_date_time=wall_clock_to_text(end_local),
                 confirmation_number=pt.confirmationNumber,
                 description=pt.description,
                 image_url=pt.imageUrl,

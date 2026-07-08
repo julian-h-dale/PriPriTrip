@@ -182,6 +182,7 @@ async def _load_trip(
     return TripResponse(
         tripId=record.trip_id,
         tripName=record.trip_name,
+        defaultTimezoneId=record.default_timezone_id,
         startDate=record.start_date,
         endDate=record.end_date,
         stays=list(stays.values()),
@@ -214,6 +215,7 @@ async def upsert_trip(
                     trip_id=body.tripId,
                     user_id=str(user.id),
                     trip_name=body.tripName,
+                    default_timezone_id=body.defaultTimezoneId,
                     start_date=body.startDate,
                     end_date=body.endDate,
                 )
@@ -222,6 +224,7 @@ async def upsert_trip(
             if record.user_id != str(user.id):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
             record.trip_name = body.tripName
+            record.default_timezone_id = body.defaultTimezoneId
             record.start_date = body.startDate
             record.end_date = body.endDate
             record.updated_at = datetime.now(timezone.utc)

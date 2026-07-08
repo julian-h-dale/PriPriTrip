@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import dayjs from 'dayjs';
+import { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
 import { getTrip, verifyTrip } from '../api/tripImportService';
 
@@ -26,13 +27,13 @@ function fmtDate(dateStr) {
 
 function fmtDateTime(dateTimeStr) {
   if (!dateTimeStr) return '—';
-  const dt = dayjs(dateTimeStr);
+  const dt = parseWallClock(dateTimeStr);
   return dt.isValid() ? dt.format('MMM D, YYYY h:mm A') : '—';
 }
 
 function fmtDateRange(startStr, endStr) {
-  const start = startStr ? dayjs(startStr) : null;
-  const end = endStr ? dayjs(endStr) : null;
+  const start = startStr ? parseWallClock(startStr) : null;
+  const end = endStr ? parseWallClock(endStr) : null;
   const startText = start?.isValid() ? start.format('MMM D, YYYY') : '—';
   const endText = end?.isValid() ? end.format('MMM D, YYYY') : '—';
   return `${startText} - ${endText}`;

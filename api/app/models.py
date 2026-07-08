@@ -40,6 +40,7 @@ class TripRecord(Base):
     user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
     trip_name = Column(String, nullable=False)
     status = Column(String, nullable=False, default="draft", server_default="draft")
+    default_timezone_id = Column(String, nullable=True)
     start_date = Column(String, nullable=False)
     end_date = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
@@ -80,6 +81,13 @@ class TripPointRecord(SoftDeleteMixin, Base):
         ForeignKey("travel_details.travel_detail_id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Wall-clock source of truth and derived UTC instant.
+    start_local = Column(DateTime(timezone=False), nullable=True)
+    start_tzid = Column(String, nullable=True)
+    start_utc = Column(DateTime(timezone=True), nullable=True)
+    end_local = Column(DateTime(timezone=False), nullable=True)
+    end_tzid = Column(String, nullable=True)
+    end_utc = Column(DateTime(timezone=True), nullable=True)
     start_date_time = Column(String, nullable=True)
     end_date_time = Column(String, nullable=True)
     confirmation_number = Column(String, nullable=True)
@@ -122,6 +130,7 @@ class LocationRecord(Base):
     link = Column(String, nullable=True)
     google_place_id = Column(String, nullable=True)
     google_maps_uri = Column(String, nullable=True)
+    timezone_id = Column(String, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -141,6 +150,12 @@ class TravelDetailRecord(SoftDeleteMixin, Base):
     operator = Column(String, nullable=True)
     vehicle_number = Column(String, nullable=True)
     cabin_class = Column(String, nullable=True)
+    departure_local = Column(DateTime(timezone=False), nullable=True)
+    departure_tzid = Column(String, nullable=True)
+    departure_utc = Column(DateTime(timezone=True), nullable=True)
+    arrival_local = Column(DateTime(timezone=False), nullable=True)
+    arrival_tzid = Column(String, nullable=True)
+    arrival_utc = Column(DateTime(timezone=True), nullable=True)
     departure_date_time = Column(String, nullable=True)
     arrival_date_time = Column(String, nullable=True)
     confirmation_number = Column(String, nullable=True)
@@ -156,6 +171,12 @@ class StayDetailRecord(SoftDeleteMixin, Base):
     trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
     name = Column(String, nullable=True)
     stay_type = Column(String, nullable=False)
+    check_in_local = Column(DateTime(timezone=False), nullable=True)
+    check_in_tzid = Column(String, nullable=True)
+    check_in_utc = Column(DateTime(timezone=True), nullable=True)
+    check_out_local = Column(DateTime(timezone=False), nullable=True)
+    check_out_tzid = Column(String, nullable=True)
+    check_out_utc = Column(DateTime(timezone=True), nullable=True)
     check_in = Column(String, nullable=True)
     check_out = Column(String, nullable=True)
     room_type = Column(String, nullable=True)

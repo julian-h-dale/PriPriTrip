@@ -201,7 +201,7 @@ class TestStayDetails:
         assert resp.status_code == 200
         body = resp.json()
         assert body["roomType"] == "suite"
-        assert body["checkIn"] == "2026-01-01T16:00:00Z"
+        assert body["checkIn"] == "2026-01-01T16:00"
 
     def test_patch_locations(self):
         rec = _stay("sd-1")
