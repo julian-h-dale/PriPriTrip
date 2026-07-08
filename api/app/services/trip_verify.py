@@ -1,13 +1,11 @@
 """Deterministic, offline trip verification (no OpenAI).
 
-Checks a fully-assembled trip against two criteria over its date range:
-  - EMPTY_DAY  (error):   a date in [startDate, endDate] with no day record, or a
-                          day whose points are empty -> no plans found for that day.
-  - MISSING_STAY (warning): a date not covered by any trip-level stay
-                          (check-in..check-out), surfaced so the user can confirm
-                          accommodation coverage manually.
-
-De-duplication: an empty day only yields EMPTY_DAY (no stay warning).
+Checks a fully-assembled trip against stay and travel criteria:
+    - INCOMPLETE_STAY (error): a stay is missing check-in or check-out.
+    - MISSING_STAY (warning): a date in [startDate, endDate] is not covered by any stay.
+    - EMPTY_DAY (warning): a date in [startDate, endDate] has no day record or no points.
+    - TRAVEL_INCOMPLETE_DATES (error): a travel leg is missing departure or arrival time.
+    - TRAVEL_INCOMPLETE_LOCATIONS (error): a travel leg is missing origin or destination.
 """
 
 from __future__ import annotations
@@ -71,6 +69,62 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
     issues: list[VerifyIssue] = []
     all_dates = _date_range(trip.startDate, trip.endDate)
 
+    # Stay completeness checks.
+    for stay in getattr(trip, "stays", []) or []:
+        if stay.checkIn and stay.checkOut:
+            continue
+        stay_date = trip.startDate
+        if stay.checkIn:
+            stay_date = stay.checkIn[:10]
+        elif stay.checkOut:
+            stay_date = stay.checkOut[:10]
+        issues.append(
+            VerifyIssue(
+                code="INCOMPLETE_STAY",
+                severity="error",
+                date=stay_date,
+                message=(
+                    "INCOMPLETE_STAY: Stay is missing check-in or check-out date. "
+                    "Provide both dates."
+                ),
+            )
+        )
+
+    # Travel completeness checks.
+    for travel in getattr(trip, "travels", []) or []:
+        travel_date = trip.startDate
+        if travel.departureDateTime:
+            travel_date = travel.departureDateTime[:10]
+        elif travel.arrivalDateTime:
+            travel_date = travel.arrivalDateTime[:10]
+
+        if not (travel.departureDateTime and travel.arrivalDateTime):
+            issues.append(
+                VerifyIssue(
+                    code="TRAVEL_INCOMPLETE_DATES",
+                    severity="error",
+                    date=travel_date,
+                    message=(
+                        "TRAVEL_INCOMPLETE_DATES: Travel leg is missing departure "
+                        "or arrival time. Provide both times."
+                    ),
+                )
+            )
+
+        roles = {getattr(loc, "role", None) for loc in (travel.locations or [])}
+        if not ({"origin", "destination"} <= roles):
+            issues.append(
+                VerifyIssue(
+                    code="TRAVEL_INCOMPLETE_LOCATIONS",
+                    severity="error",
+                    date=travel_date,
+                    message=(
+                        "TRAVEL_INCOMPLETE_LOCATIONS: Travel leg is missing origin "
+                        "or destination location. Provide both locations."
+                    ),
+                )
+            )
+
     for d in all_dates:
         iso = d.isoformat()
         day_records = days_by_date.get(d, [])
@@ -81,13 +135,12 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
             issues.append(
                 VerifyIssue(
                     code="EMPTY_DAY",
-                    severity="error",
+                    severity="warning",
                     date=iso,
                     dayId=first_day_id,
-                    message="No plans found for this day.",
+                    message="EMPTY_DAY: No plans found for this day.",
                 )
             )
-            continue
 
         if d not in covered:
             issues.append(
@@ -96,7 +149,7 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                     severity="warning",
                     date=iso,
                     dayId=first_day_id,
-                    message="No accommodation (stay) covers this day. Confirm coverage.",
+                    message="MISSING_STAY: No stay covers this trip day.",
                 )
             )
 

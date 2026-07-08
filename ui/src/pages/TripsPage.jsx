@@ -1,20 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
+  Alert,
   Box,
   Card,
-  CardActionArea,
   CardContent,
   CircularProgress,
   Container,
   IconButton,
+  Stack,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
 import {
+  deleteTripById,
   fetchTrips,
   selectTrips,
   selectTripsStatus,
@@ -35,10 +39,24 @@ export default function TripsPage() {
   const navigate = useNavigate();
   const trips = useSelector(selectTrips);
   const status = useSelector(selectTripsStatus);
+  const [deletingTripId, setDeletingTripId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     dispatch(fetchTrips());
   }, [dispatch]);
+
+  async function handleDeleteTrip(tripId) {
+    setDeleteError(null);
+    setDeletingTripId(tripId);
+    try {
+      await dispatch(deleteTripById(tripId)).unwrap();
+    } catch (err) {
+      setDeleteError(err?.message ?? 'Could not delete trip. Please try again.');
+    } finally {
+      setDeletingTripId(null);
+    }
+  }
 
   return (
     <AppLayout
@@ -59,6 +77,8 @@ export default function TripsPage() {
           Your Trips
         </Typography>
 
+        {deleteError && <Alert severity="error" sx={{ mb: 2 }}>{deleteError}</Alert>}
+
         {status === 'loading' && trips.length === 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
             <CircularProgress />
@@ -71,16 +91,47 @@ export default function TripsPage() {
 
         {trips.map((trip) => (
           <Card key={trip.tripId} sx={{ mb: 2 }}>
-            <CardActionArea onClick={() => navigate(`/trip/${trip.tripId}`)}>
-              <CardContent>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                <Box
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/trip/${trip.tripId}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/trip/${trip.tripId}`);
+                    }
+                  }}
+                  sx={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
+                >
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {trip.tripName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {fmtDate(trip.startDate)} – {fmtDate(trip.endDate)}
                 </Typography>
-              </CardContent>
-            </CardActionArea>
+                </Box>
+
+                <Stack direction="row" spacing={0.5}>
+                  <IconButton
+                    aria-label={`Inspect ${trip.tripName}`}
+                    onClick={() => navigate(`/trip-inspection/${trip.tripId}`)}
+                    sx={{ color: 'success.main' }}
+                  >
+                    <CheckCircleIcon />
+                  </IconButton>
+                  <IconButton
+                    aria-label={`Delete ${trip.tripName}`}
+                    onClick={() => handleDeleteTrip(trip.tripId)}
+                    disabled={deletingTripId === trip.tripId}
+                    sx={{ color: 'error.main' }}
+                  >
+                    {deletingTripId === trip.tripId ? <CircularProgress size={20} color="inherit" /> : <DeleteIcon />}
+                  </IconButton>
+                </Stack>
+              </Box>
+            </CardContent>
           </Card>
         ))}
       </Container>

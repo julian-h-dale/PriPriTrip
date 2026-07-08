@@ -19,6 +19,11 @@ export const fetchTrip = createAsyncThunk('trip/fetch', async (tripId) => {
   }
 });
 
+export const deleteTripById = createAsyncThunk('trip/delete', async (tripId) => {
+  await client.delete(`/trips/${tripId}`);
+  return tripId;
+});
+
 const tripSlice = createSlice({
   name: 'trip',
   initialState: {
@@ -63,6 +68,9 @@ const tripSlice = createSlice({
       .addCase(fetchTrip.rejected, (state, action) => {
         state.status = 'error';
         state.error = action.error.message ?? 'Failed to load trip';
+      })
+      .addCase(deleteTripById.fulfilled, (state, action) => {
+        state.trips = state.trips.filter((trip) => trip.tripId !== action.payload);
       });
   },
 });

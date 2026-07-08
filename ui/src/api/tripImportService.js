@@ -25,6 +25,18 @@ export async function enhanceTrip(draft) {
 
 /** Persist a draft trip via the existing import endpoint. */
 export async function saveImportedTrip(draft) {
-  await client.post('/trip/import', draft);
-  return draft;
+  const { data } = await client.post('/trip/import', draft);
+  return data;
+}
+
+/** Load a persisted trip by id. */
+export async function getTrip(tripId) {
+  const { data } = await client.get(`/trips/${tripId}`);
+  return data;
+}
+
+/** Run deterministic trip verification checks. */
+export async function verifyTrip(tripId) {
+  const { data } = await client.get(`/trips/${tripId}/verify`);
+  return data;
 }

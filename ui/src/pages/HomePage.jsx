@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Box,
   Chip,
   CircularProgress,
   Container,
+  IconButton,
   Snackbar,
 } from '@mui/material';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
+import HouseIcon from '@mui/icons-material/House';
 import AppLayout from '../components/AppLayout';
 import Timeline from '../components/Timeline/Timeline';
 import TripMapModal from '../components/Map/TripMapModal';
@@ -25,6 +27,7 @@ import { useOnlineStatus } from '../utils/useOnlineStatus';
 
 export default function HomePage() {
   const { tripId } = useParams();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const trip = useSelector(selectTrip);
   const status = useSelector(selectTripStatus);
@@ -48,20 +51,30 @@ export default function HomePage() {
       title={trip?.tripName ?? 'PriPriTrip'}
       onOpenMapView={() => setMapOpen(true)}
       actions={
-        !isOnline && (
-          <Chip
-            icon={<WifiOffIcon sx={{ fontSize: 14 }} />}
-            label="Offline"
-            size="small"
-            sx={{
-              height: 22,
-              fontSize: '0.7rem',
-              bgcolor: 'rgba(255,255,255,0.15)',
-              color: 'inherit',
-              '& .MuiChip-icon': { color: 'inherit' },
-            }}
-          />
-        )
+        <>
+          {!isOnline && (
+            <Chip
+              icon={<WifiOffIcon sx={{ fontSize: 14 }} />}
+              label="Offline"
+              size="small"
+              sx={{
+                mr: 1,
+                height: 22,
+                fontSize: '0.7rem',
+                bgcolor: 'rgba(255,255,255,0.15)',
+                color: 'inherit',
+                '& .MuiChip-icon': { color: 'inherit' },
+              }}
+            />
+          )}
+          <IconButton
+            color="inherit"
+            aria-label="Stay details"
+            onClick={() => navigate(`/trip/${tripId}/stays`)}
+          >
+            <HouseIcon />
+          </IconButton>
+        </>
       }
     >
       <Container maxWidth="sm" disableGutters>

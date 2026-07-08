@@ -3,9 +3,12 @@ import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import HomePage from './pages/HomePage';
 import ImportTripPage from './pages/ImportTripPage';
+import ImportSummaryPage from './pages/ImportSummaryPage';
 import LoginPage from './pages/LoginPage';
 import NewTripPage from './pages/NewTripPage';
 import RegisterPage from './pages/RegisterPage';
+import StayDetailsPage from './pages/StayDetailsPage';
+import TripInspectionPage from './pages/TripInspectionPage';
 import TripsPage from './pages/TripsPage';
 import { selectIsAuthenticated } from './store/authSlice';
 
@@ -44,6 +47,14 @@ export default function App() {
         }
       />
       <Route
+        path="/trip/:tripId/stays"
+        element={
+          <ProtectedRoute>
+            <StayDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/new-trip"
         element={
           <ProtectedRoute>
@@ -56,6 +67,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ImportTripPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/import-summary/:tripId"
+        element={
+          <ProtectedRoute>
+            <ImportSummaryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip-inspection/:tripId"
+        element={
+          <ProtectedRoute>
+            <TripInspectionPage />
           </ProtectedRoute>
         }
       />
