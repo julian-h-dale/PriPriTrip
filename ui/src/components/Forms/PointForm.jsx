@@ -11,15 +11,11 @@ import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useCallback, useEffect, useState } from 'react';
 
 import client from '../../api/client';
 import LocationForm from './LocationForm';
-import StayDetailForm from './StayDetailForm';
-import TravelDetailForm from './TravelDetailForm';
 
 // ── timezone helpers ──────────────────────────────────────────────────────────
 
@@ -105,7 +101,6 @@ function buildInitialState(values = {}) {
   const { localValue: startLocal, timezone: startTZ } = parseStoredDateTime(values.startDateTime);
   const { localValue: endLocal } = parseStoredDateTime(values.endDateTime);
   return {
-    type: values.type ?? 'activity',
     title: values.title ?? '',
     startDateTime: startLocal,
     endDateTime: endLocal,
@@ -115,25 +110,13 @@ function buildInitialState(values = {}) {
     imageUrl: values.imageUrl ?? '',
     logoUrl: values.logoUrl ?? '',
     locations: values.locations ?? [],
-    travelDetail: values.travelDetail ?? {
-      mode: 'flight',
-      operator: '',
-      vehicleNumber: '',
-      cabinClass: '',
-    },
-    stayDetail: values.stayDetail ?? {
-      stayType: 'hotel',
-      checkInTime: '',
-      checkOutTime: '',
-      roomType: '',
-    },
   };
 }
 
 function buildPayload(form, dayId) {
   const payload = {
     dayId,
-    type: form.type,
+    type: 'activity',
     title: form.title.trim(),
     startDateTime: buildISOWithTZ(form.startDateTime, form.timezone),
     endDateTime: buildISOWithTZ(form.endDateTime, form.timezone),
@@ -150,8 +133,6 @@ function buildPayload(form, dayId) {
       googlePlaceId: loc.googlePlaceId?.trim() || null,
       googleMapsUri: loc.googleMapsUri?.trim() || null,
     })),
-    travelDetail: form.type === 'travel' ? { ...form.travelDetail } : null,
-    stayDetail: form.type === 'stay' ? { ...form.stayDetail } : null,
   };
 
   return payload;
@@ -194,14 +175,6 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
   const setTimezone = useCallback((tz) => {
     setForm((prev) => ({ ...prev, timezone: tz }));
     saveLastTimezone(tz);
-  }, []);
-
-  const setTravelDetail = useCallback((field, value) => {
-    setForm((prev) => ({ ...prev, travelDetail: { ...prev.travelDetail, [field]: value } }));
-  }, []);
-
-  const setStayDetail = useCallback((field, value) => {
-    setForm((prev) => ({ ...prev, stayDetail: { ...prev.stayDetail, [field]: value } }));
   }, []);
 
   const addLocation = useCallback(() => {
@@ -315,24 +288,6 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
       <Box sx={{ overflowY: 'auto', flex: 1, px: 2, py: 2 }}>
         <Stack spacing={3}>
 
-          {/* Point type */}
-          <Box>
-            <Typography variant="subtitle2" gutterBottom sx={{ color: 'text.secondary' }}>
-              Type
-            </Typography>
-            <ToggleButtonGroup
-              value={form.type}
-              exclusive
-              onChange={(_, val) => val && setField('type', val)}
-              size="small"
-              fullWidth
-            >
-              <ToggleButton value="travel">Travel</ToggleButton>
-              <ToggleButton value="stay">Stay</ToggleButton>
-              <ToggleButton value="activity">Activity</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-
           {/* Title */}
           <TextField
             label="Title"
@@ -437,21 +392,6 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
               )}
             </Stack>
           </Box>
-
-          {/* Conditional detail sub-forms */}
-          {form.type === 'travel' && (
-            <>
-              <Divider />
-              <TravelDetailForm values={form.travelDetail} onChange={setTravelDetail} />
-            </>
-          )}
-
-          {form.type === 'stay' && (
-            <>
-              <Divider />
-              <StayDetailForm values={form.stayDetail} onChange={setStayDetail} />
-            </>
-          )}
 
           {/* Advanced — image / logo URLs */}
           <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>

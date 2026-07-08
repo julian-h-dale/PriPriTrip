@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import NewTripPage from './pages/NewTripPage';
 import RegisterPage from './pages/RegisterPage';
 import StayDetailsPage from './pages/StayDetailsPage';
+import TravelDetailsPage from './pages/TravelDetailsPage';
 import TripInspectionPage from './pages/TripInspectionPage';
 import TripsPage from './pages/TripsPage';
 import { selectIsAuthenticated } from './store/authSlice';
@@ -51,6 +52,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <StayDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trip/:tripId/travels"
+        element={
+          <ProtectedRoute>
+            <TravelDetailsPage />
           </ProtectedRoute>
         }
       />

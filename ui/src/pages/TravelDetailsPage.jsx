@@ -31,18 +31,12 @@ import {
   selectTripError,
   selectTripStatus,
 } from '../store/tripSlice';
-import StayForm from '../components/Forms/StayForm';
+import TravelForm from '../components/Forms/TravelForm';
 
 function fmtDateTime(value) {
-  if (!value) return 'No check-in date';
+  if (!value) return 'No departure date';
   const d = dayjs(value);
-  return d.isValid() ? d.format('MMM D, YYYY h:mm A') : 'No check-in date';
-}
-
-function fmtDateRange(checkIn, checkOut) {
-  const inDate = checkIn && dayjs(checkIn).isValid() ? dayjs(checkIn).format('MMM D, YYYY') : '—';
-  const outDate = checkOut && dayjs(checkOut).isValid() ? dayjs(checkOut).format('MMM D, YYYY') : '—';
-  return `${inDate} - ${outDate}`;
+  return d.isValid() ? d.format('MMM D, YYYY h:mm A') : 'No departure date';
 }
 
 function localityLabel(location) {
@@ -58,24 +52,32 @@ function localityLabel(location) {
   return parts[0] || location?.name || '—';
 }
 
-export default function StayDetailsPage() {
+function firstLocationByRole(locations, role) {
+  return (locations ?? []).find((loc) => loc.role === role) || null;
+}
+
+export default function TravelDetailsPage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const trip = useSelector(selectTrip);
   const status = useSelector(selectTripStatus);
   const error = useSelector(selectTripError);
-  const [editingStay, setEditingStay] = useState(null);
+  const [editingTravel, setEditingTravel] = useState(null);
 
   useEffect(() => {
     if (tripId) dispatch(fetchTrip(tripId));
   }, [dispatch, tripId]);
 
-  const stays = useMemo(() => {
-    const items = trip?.stays ?? [];
+  const travels = useMemo(() => {
+    const items = trip?.travels ?? [];
     return [...items].sort((a, b) => {
-      const aTime = a?.checkIn && dayjs(a.checkIn).isValid() ? dayjs(a.checkIn).valueOf() : Number.MAX_SAFE_INTEGER;
-      const bTime = b?.checkIn && dayjs(b.checkIn).isValid() ? dayjs(b.checkIn).valueOf() : Number.MAX_SAFE_INTEGER;
+      const aTime = a?.departureDateTime && dayjs(a.departureDateTime).isValid()
+        ? dayjs(a.departureDateTime).valueOf()
+        : Number.MAX_SAFE_INTEGER;
+      const bTime = b?.departureDateTime && dayjs(b.departureDateTime).isValid()
+        ? dayjs(b.departureDateTime).valueOf()
+        : Number.MAX_SAFE_INTEGER;
       return aTime - bTime;
     });
   }, [trip]);
@@ -83,23 +85,23 @@ export default function StayDetailsPage() {
   const isLoading = status === 'loading';
 
   return (
-    <AppLayout title={trip?.tripName ?? 'Stay Details'}>
+    <AppLayout title={trip?.tripName ?? 'Travel Details'}>
       <Container maxWidth="sm" disableGutters>
         <Box sx={{ px: 2, pt: 2.5, pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Typography variant="h5" component="h1" color="primary">
-              Stay details
+              Travel details
             </Typography>
             <IconButton
               size="small"
-              aria-label="Add stay"
-              onClick={() => setEditingStay({})}
+              aria-label="Add travel"
+              onClick={() => setEditingTravel({})}
             >
               <AddIcon />
             </IconButton>
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-            Read-only timeline ordered by check-in date/time.
+            Read-only timeline ordered by departure date/time.
           </Typography>
         </Box>
 
@@ -112,20 +114,20 @@ export default function StayDetailsPage() {
         {error && !trip && (
           <Box sx={{ p: 2 }}>
             <Alert severity="error" onClose={() => dispatch(clearError())}>
-              {error ?? 'Failed to load stay details.'}
+              {error ?? 'Failed to load travel details.'}
             </Alert>
           </Box>
         )}
 
-        {!!trip && stays.length === 0 && (
+        {!!trip && travels.length === 0 && (
           <Box sx={{ p: 2 }}>
             <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography color="text.secondary">No stays found for this trip.</Typography>
+              <Typography color="text.secondary">No travel legs found for this trip.</Typography>
             </Paper>
           </Box>
         )}
 
-        {!!trip && stays.length > 0 && (
+        {!!trip && travels.length > 0 && (
           <MuiTimeline
             sx={{
               [`& .${timelineOppositeContentClasses.root}`]: { flex: 0.38 },
@@ -134,13 +136,14 @@ export default function StayDetailsPage() {
               mt: 0,
             }}
           >
-            {stays.map((stay, index) => {
-              const venue = (stay.locations ?? []).find((loc) => loc.role === 'venue') || (stay.locations ?? [])[0];
-              const isLast = index === stays.length - 1;
+            {travels.map((travel, index) => {
+              const origin = firstLocationByRole(travel.locations, 'origin');
+              const destination = firstLocationByRole(travel.locations, 'destination');
+              const isLast = index === travels.length - 1;
               return (
-                <TimelineItem key={stay.stayDetailId || `${stay.name}-${index}`}>
+                <TimelineItem key={travel.travelDetailId || `${travel.name}-${index}`}>
                   <TimelineOppositeContent color="text.secondary" sx={{ fontSize: '0.8rem', pt: 2 }}>
-                    {fmtDateTime(stay.checkIn)}
+                    {fmtDateTime(travel.departureDateTime)}
                   </TimelineOppositeContent>
                   <TimelineSeparator>
                     <TimelineDot color="primary" />
@@ -150,21 +153,21 @@ export default function StayDetailsPage() {
                     <Paper variant="outlined" sx={{ p: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          {stay.name || 'Untitled stay'}
+                          {travel.name || 'Untitled travel leg'}
                         </Typography>
                         <IconButton
                           size="small"
-                          aria-label="Edit stay"
-                          onClick={() => setEditingStay(stay)}
+                          aria-label="Edit travel"
+                          onClick={() => setEditingTravel(travel)}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Box>
                       <Typography variant="body2" color="text.secondary">
-                        {fmtDateRange(stay.checkIn, stay.checkOut)}
+                        Mode: {travel.mode || '—'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {localityLabel(venue)}
+                        {localityLabel(origin)} - {localityLabel(destination)}
                       </Typography>
                     </Paper>
                   </TimelineContent>
@@ -181,14 +184,14 @@ export default function StayDetailsPage() {
         </Box>
 
         {!!trip && (
-          <StayForm
+          <TravelForm
             tripId={trip.tripId}
-            open={!!editingStay}
-            initialValues={editingStay || {}}
-            onClose={() => setEditingStay(null)}
+            open={!!editingTravel}
+            initialValues={editingTravel || {}}
+            onClose={() => setEditingTravel(null)}
             onSaved={() => {
               dispatch(fetchTrip(tripId));
-              setEditingStay(null);
+              setEditingTravel(null);
             }}
           />
         )}

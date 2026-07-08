@@ -11,6 +11,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
+import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import HouseIcon from '@mui/icons-material/House';
 import AppLayout from '../components/AppLayout';
 import Timeline from '../components/Timeline/Timeline';
@@ -73,6 +74,13 @@ export default function HomePage() {
             onClick={() => navigate(`/trip/${tripId}/stays`)}
           >
             <HouseIcon />
+          </IconButton>
+          <IconButton
+            color="inherit"
+            aria-label="Travel details"
+            onClick={() => navigate(`/trip/${tripId}/travels`)}
+          >
+            <FlightTakeoffIcon />
           </IconButton>
         </>
       }
