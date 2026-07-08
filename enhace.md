@@ -62,3 +62,29 @@ Step will have a "next" button on the bottom right of the card.
 after the user has fixed all the issues, take them to the trip inspection page.
 
 Ask any questions you have.
+
+
+
+AI DOCUMENT IMPORT
+
+We want the user to be able to add travel and stays by uploading documents.  We want a user to be able to send a pdf of a hotel reservation or plane ticket and have the import endpoint add that to the trip.  
+
+dependencies:
+- trip needs to already be imported
+
+backend changes:
+- we are going to create a new endpoint /trip/ai-document
+- endpoint needs to first extract the text from the document.
+- New document model. Track created date, user, trip id, last updated, then the body contents.  Also include the filename, we are going to use that to de dupe the files so we don't run the open ai calls repeatedly (save cost).
+- send the documents extracted text into the open ai api.  The goal here is to give the open ai api unstructured data, just the document contents, and have the ai return structured data in the form of our models (travel, stay).
+
+Front End Changes:
+- new button in the top right of the app bar.  To the left of the existing "stay" icon button.  Make this icon just a document icon.
+- clicking that takes you to a new page "document importer".
+- Page displays a file upload form
+- on file upload, send the file to the backend.
+- when a response is recieved, navigate to page that shows a list of the extracted models. page will have a save button, when that is clicked, save any of the found items.
+
+Ask any questions you have. 
+
+Ok, next I want to add another ai import feature.  this one is going to accept records (pdfs) of hotel reservation confirmations, travel confirmation (plane tickets).  Let's start with that and we can expand it.

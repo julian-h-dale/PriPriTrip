@@ -8,16 +8,19 @@ import {
   CardContent,
   CircularProgress,
   Container,
+  Fab,
   IconButton,
   Stack,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ChatIcon from '@mui/icons-material/Chat';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
 import { verifyTrip } from '../api/tripImportService';
+import NewTripChatOverlay from '../components/Chat/NewTripChatOverlay';
 import {
   deleteTripById,
   fetchTrips,
@@ -43,6 +46,8 @@ export default function TripsPage() {
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [inspectingTripId, setInspectingTripId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatTripId, setChatTripId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchTrips());
@@ -162,6 +167,32 @@ export default function TripsPage() {
           </Card>
         ))}
       </Container>
+
+      <Fab
+        color="primary"
+        aria-label="Open new trip chat"
+        onClick={() => setChatOpen(true)}
+        sx={{ position: 'fixed', right: 24, bottom: 24 }}
+      >
+        <ChatIcon />
+      </Fab>
+
+      <NewTripChatOverlay
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        tripId={chatTripId}
+        workflowName="trip:new_trip"
+        onTripIdChange={setChatTripId}
+        onComplete={(response) => {
+          setChatOpen(false);
+          navigate(`/trip-inspection/${response.tripId}`, {
+            state: {
+              verify: response.verify,
+              tripName: response.tripName,
+            },
+          });
+        }}
+      />
     </AppLayout>
   );
 }

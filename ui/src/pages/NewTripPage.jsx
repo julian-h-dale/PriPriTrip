@@ -9,7 +9,6 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Fab,
   IconButton,
   MobileStepper,
   Paper,
@@ -19,7 +18,6 @@ import {
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ChatIcon from '@mui/icons-material/Chat';
 import FlightIcon from '@mui/icons-material/Flight';
 import TrainIcon from '@mui/icons-material/Train';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
@@ -27,7 +25,6 @@ import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import dayjs from 'dayjs';
 import client from '../api/client';
-import NewTripChatOverlay from '../components/Chat/NewTripChatOverlay';
 import { fetchTrips } from '../store/tripSlice';
 
 const MODES = [
@@ -89,31 +86,6 @@ function buildTravelPoint({ leg, dayId }) {
 
 function buildImportPayload({ tripDetails, outbound, returnLeg }) {
   const tripId = crypto.randomUUID();
-  const start = dayjs(tripDetails.startDate);
-  const end = dayjs(tripDetails.endDate);
-
-  const days = [];
-  let current = start;
-  while (!current.isAfter(end)) {
-    const dateStr = current.format('YYYY-MM-DD');
-    days.push({
-      dayId: crypto.randomUUID(),
-      title: ordinalDay(dateStr),
-      date: dateStr,
-      description: null,
-      isAlternate: false,
-      completed: false,
-      points: [],
-    });
-    current = current.add(1, 'day');
-  }
-
-  const outboundPoint = buildTravelPoint({
-    leg: outbound,
-    dayId: days[0].dayId,
-  });
-  if (outboundPoint) days[0].points.push(outboundPoint);
-
   const returnPoint = buildTravelPoint({
     leg: returnLeg,
     dayId: days[days.length - 1].dayId,
@@ -293,8 +265,6 @@ export default function NewTripPage() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatTripId, setChatTripId] = useState(null);
 
   const [tripDetails, setTripDetails] = useState({
     tripName: '',
@@ -481,32 +451,6 @@ export default function NewTripPage() {
           bgcolor: 'background.paper',
         }}
       >
-
-      <Fab
-        color="primary"
-        aria-label="Open new trip chat"
-        onClick={() => setChatOpen(true)}
-        sx={{ position: 'fixed', right: 24, bottom: 88 }}
-      >
-        <ChatIcon />
-      </Fab>
-
-      <NewTripChatOverlay
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        tripId={chatTripId}
-        workflowName="trip:new_trip"
-        onTripIdChange={setChatTripId}
-        onComplete={(response) => {
-          setChatOpen(false);
-          navigate(`/trip-inspection/${response.tripId}`, {
-            state: {
-              verify: response.verify,
-              tripName: response.tripName,
-            },
-          });
-        }}
-      />
         {step > 0 && !isLast && (
           <Button
             variant="outlined"

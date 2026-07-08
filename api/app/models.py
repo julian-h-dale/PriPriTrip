@@ -233,6 +233,7 @@ class ChatMessageRecord(Base):
     trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
     workflow_name = Column(String, nullable=False)
     message = Column(String, nullable=False)
+    structure_content = Column(String, nullable=True)
     is_bot = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
 

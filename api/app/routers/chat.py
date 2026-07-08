@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -22,6 +23,7 @@ def _message_to_response(rec: ChatMessageRecord) -> ChatMessageResponse:
         tripId=rec.trip_id,
         workflowName=rec.workflow_name,
         message=rec.message,
+        structureContent=rec.structure_content,
         isBot=rec.is_bot,
         createdAt=rec.created_at.isoformat() if rec.created_at else None,
     )
@@ -113,10 +115,12 @@ async def reply_in_chat(
         bot_text = outcome.assistantMessage
         complete = outcome.complete
         verify = outcome.verify
+        structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
     else:
         bot_text = f"Hello world - {date.today().isoformat()}"
         complete = False
         verify = None
+        structure_content = None
 
     bot_message = ChatMessageRecord(
         message_id=str(uuid.uuid4()),
@@ -124,6 +128,7 @@ async def reply_in_chat(
         trip_id=trip_id,
         workflow_name=body.workflowName,
         message=bot_text,
+        structure_content=structure_content,
         is_bot=True,
     )
     db.add(bot_message)

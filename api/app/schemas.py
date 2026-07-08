@@ -399,6 +399,7 @@ class ChatMessageResponse(BaseModel):
     tripId: str
     workflowName: str
     message: str
+    structureContent: Optional[str] = None
     isBot: bool
     createdAt: Optional[str] = None
 

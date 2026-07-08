@@ -34,34 +34,45 @@ Stay narrowly focused on collecting and structuring the user's trip setup.
 
 Current stage: welcome.
 Your job:
-- extract trip name, origin, destination, start date, end date, and destination timezone when the user provides them
-- if any key fields are missing, ask for them in a fun but concise way
-- keep the conversation focused only on setting up the trip itinerary
-- do not mention internal schemas or implementation details
-- when you know the destination city/country, provide an IANA timezone id if you are confident
+- On every turn, extract as much structured trip info as you can from the user's natural language and return it in fields.
+- If the user does not provide a year, assume 2026.
+- Generate a concise trip name based on the destination when the user does not provide one explicitly.
+- Keep the assistant message tight and readable.
+- If key info is missing, ask for it clearly as a short bulleted list.
+- Use bullets like:
+    - where are we going?
+    - when do we leave?
+    - when do we return?
+- Keep the conversation focused only on setting up the trip itinerary.
+- Do not mention internal schemas or implementation details.
+- When you know the destination city/country, provide an IANA timezone id if you are confident.
 """
 
 _TRAVEL_SYSTEM = """You are the warm, helpful PriPriTrip assistant helping finish a new trip itinerary.
 Current stage: collect one travel leg.
 
 Your job:
-- extract one travel leg when the user provides enough information
-- use wall-clock local date-times without timezone offsets
-- keep unknown fields null
-- ask only for the missing travel information needed to make progress
-- keep the conversation focused on the itinerary
+- On every turn, extract as much structured travel info as you can from the user's natural language and return it in fields.
+- If the user does not provide a year, assume 2026.
+- Use wall-clock local date-times without timezone offsets.
+- Keep unknown fields null.
+- Keep the assistant message tight and readable.
+- If anything important is missing, ask for it as a short bulleted list.
+- Keep the conversation focused on the itinerary.
 """
 
 _STAY_SYSTEM = """You are the warm, helpful PriPriTrip assistant helping finish a new trip itinerary.
 Current stage: collect one stay.
 
 Your job:
-- extract one stay when the user provides enough information
-- use wall-clock local date-times without timezone offsets
-- if the user gives only a date for check-in/check-out, keep the date and let the backend apply default times
-- keep unknown fields null
-- ask only for the missing stay information needed to make progress
-- keep the conversation focused on the itinerary
+- On every turn, extract as much structured stay info as you can from the user's natural language and return it in fields.
+- If the user does not provide a year, assume 2026.
+- Use wall-clock local date-times without timezone offsets.
+- If the user gives only a date for check-in/check-out, keep the date and let the backend apply default times.
+- Keep unknown fields null.
+- Keep the assistant message tight and readable.
+- If anything important is missing, ask for it as a short bulleted list.
+- Keep the conversation focused on the itinerary.
 """
 
 
@@ -89,6 +100,13 @@ class WorkflowOutcome(BaseModel):
     assistantMessage: str
     complete: bool = False
     verify: Optional[VerifyResult] = None
+    structuredContent: Optional[dict] = None
+
+
+def _structured_turn_payload(model: BaseModel) -> dict:
+    data = model.model_dump(exclude_none=True)
+    data.pop("assistantMessage", None)
+    return data
 
 
 def _client():
@@ -253,6 +271,8 @@ async def _apply_welcome_updates(db: AsyncSession, trip: TripRecord, turn: Welco
         trip.start_date = turn.startDate
     if turn.endDate:
         trip.end_date = turn.endDate
+    if trip.trip_name == "New Trip Draft" and trip.destination_location_name:
+        trip.trip_name = f"{trip.destination_location_name} Trip"
     await _reconcile_trip_days(db, trip)
 
 
@@ -491,7 +511,11 @@ async def handle_new_trip_chat_turn(
             pass_name="new-trip-welcome",
         )
         await _apply_welcome_updates(db, trip, turn)
-        return WorkflowOutcome(assistantMessage=turn.assistantMessage, complete=False)
+        return WorkflowOutcome(
+            assistantMessage=turn.assistantMessage,
+            complete=False,
+            structuredContent=_structured_turn_payload(turn),
+        )
 
     if active_travels == 0:
         turn = _parse(
@@ -503,7 +527,11 @@ async def handle_new_trip_chat_turn(
         )
         if turn.travel is not None:
             await _create_travel(db, trip, turn.travel)
-        return WorkflowOutcome(assistantMessage=turn.assistantMessage, complete=False)
+        return WorkflowOutcome(
+            assistantMessage=turn.assistantMessage,
+            complete=False,
+            structuredContent=_structured_turn_payload(turn),
+        )
 
     if active_stays == 0:
         turn = _parse(
@@ -518,17 +546,29 @@ async def handle_new_trip_chat_turn(
             assembled = await _assembled_trip(db, trip)
             verify = verify_trip(assembled)
             summary_message = (
-                f"Your trip draft is ready: {assembled.tripName} from {assembled.startDate} to {assembled.endDate}. "
-                f"I found {len(assembled.travels)} travel leg and {len(assembled.stays)} stay. "
-                "I am sending you to inspection so you can review any remaining issues."
+                f"Your trip draft is ready: {assembled.tripName}.\n"
+                f"- dates: {assembled.startDate} to {assembled.endDate}\n"
+                f"- travel legs: {len(assembled.travels)}\n"
+                f"- stays: {len(assembled.stays)}\n"
+                "Opening inspection so you can review any remaining issues."
             )
-            return WorkflowOutcome(assistantMessage=summary_message, complete=True, verify=verify)
-        return WorkflowOutcome(assistantMessage=turn.assistantMessage, complete=False)
+            return WorkflowOutcome(
+                assistantMessage=summary_message,
+                complete=True,
+                verify=verify,
+                structuredContent=_structured_turn_payload(turn),
+            )
+        return WorkflowOutcome(
+            assistantMessage=turn.assistantMessage,
+            complete=False,
+            structuredContent=_structured_turn_payload(turn),
+        )
 
     assembled = await _assembled_trip(db, trip)
     verify = verify_trip(assembled)
     return WorkflowOutcome(
-        assistantMessage="Your trip already has the key pieces in place. I am opening inspection so you can review it.",
+        assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
         complete=True,
         verify=verify,
+        structuredContent={"status": "already-complete"},
     )

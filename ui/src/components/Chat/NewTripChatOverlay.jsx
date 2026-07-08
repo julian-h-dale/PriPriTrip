@@ -56,6 +56,26 @@ export default function NewTripChatOverlay({
   async function handleSend() {
     const text = draft.trim();
     if (!text) return;
+    const userTempId = `temp-user-${Date.now()}`;
+    const botTempId = `temp-bot-${Date.now()}`;
+    setDraft('');
+    setMessages((prev) => [
+      ...prev,
+      {
+        messageId: userTempId,
+        tripId: tripId || 'pending',
+        workflowName,
+        message: text,
+        isBot: false,
+      },
+      {
+        messageId: botTempId,
+        tripId: tripId || 'pending',
+        workflowName,
+        message: '...',
+        isBot: true,
+      },
+    ]);
     setLoading(true);
     setError(null);
     try {
@@ -65,12 +85,17 @@ export default function NewTripChatOverlay({
         message: text,
       });
       onTripIdChange?.(response.tripId);
-      setMessages((prev) => [...prev, ...(response.messages ?? [])]);
-      setDraft('');
+      const [userMessage, botMessage] = response.messages ?? [];
+      setMessages((prev) => prev.map((message) => {
+        if (message.messageId === userTempId && userMessage) return userMessage;
+        if (message.messageId === botTempId && botMessage) return botMessage;
+        return message;
+      }));
       if (response.complete) {
         onComplete?.(response);
       }
     } catch (err) {
+      setMessages((prev) => prev.filter((message) => message.messageId !== botTempId));
       setError(err?.response?.data?.detail ?? 'Could not send message.');
     } finally {
       setLoading(false);
@@ -158,7 +183,7 @@ export default function NewTripChatOverlay({
                 </Paper>
               </Box>
             ))}
-            {loading && (
+            {loading && messages.length === 0 && (
               <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2 }}>
                 <CircularProgress size={24} />
               </Box>
@@ -189,6 +214,12 @@ export default function NewTripChatOverlay({
             <TextField
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               label="Message"
               multiline
               minRows={2}

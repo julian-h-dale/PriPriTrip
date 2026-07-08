@@ -76,7 +76,11 @@ class TestChat:
 
     def test_reply_creates_shell_trip_and_messages(self):
         async def _fake_workflow(_db, *, trip, transcript, latest_message, client=None):
-            return WorkflowOutcome(assistantMessage="Hello world - 2026-07-08", complete=False)
+            return WorkflowOutcome(
+                assistantMessage="Hello world - 2026-07-08",
+                complete=False,
+                structuredContent={"tripName": "Paris Trip"},
+            )
 
         original = chat_router.handle_new_trip_chat_turn
         chat_router.handle_new_trip_chat_turn = _fake_workflow
@@ -91,6 +95,7 @@ class TestChat:
         assert len(body["messages"]) == 2
         assert body["messages"][0]["isBot"] is False
         assert body["messages"][1]["isBot"] is True
+        assert body["messages"][1]["structureContent"] == '{"tripName": "Paris Trip"}'
 
         list_resp = client.get(
             f"/chat/trips/{body['tripId']}",
