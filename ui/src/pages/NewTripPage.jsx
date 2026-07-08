@@ -9,6 +9,7 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Fab,
   IconButton,
   MobileStepper,
   Paper,
@@ -18,6 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ChatIcon from '@mui/icons-material/Chat';
 import FlightIcon from '@mui/icons-material/Flight';
 import TrainIcon from '@mui/icons-material/Train';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
@@ -25,6 +27,7 @@ import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import dayjs from 'dayjs';
 import client from '../api/client';
+import NewTripChatOverlay from '../components/Chat/NewTripChatOverlay';
 import { fetchTrips } from '../store/tripSlice';
 
 const MODES = [
@@ -290,6 +293,8 @@ export default function NewTripPage() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatTripId, setChatTripId] = useState(null);
 
   const [tripDetails, setTripDetails] = useState({
     tripName: '',
@@ -476,6 +481,23 @@ export default function NewTripPage() {
           bgcolor: 'background.paper',
         }}
       >
+
+      <Fab
+        color="primary"
+        aria-label="Open new trip chat"
+        onClick={() => setChatOpen(true)}
+        sx={{ position: 'fixed', right: 24, bottom: 88 }}
+      >
+        <ChatIcon />
+      </Fab>
+
+      <NewTripChatOverlay
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        tripId={chatTripId}
+        workflowName="trip:new_trip"
+        onTripIdChange={setChatTripId}
+      />
         {step > 0 && !isLast && (
           <Button
             variant="outlined"

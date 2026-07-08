@@ -388,3 +388,23 @@ class VerifyResult(BaseModel):
     ok: bool
     daysChecked: int
     issues: List[VerifyIssue] = []
+
+
+class ChatMessageResponse(BaseModel):
+    messageId: str
+    tripId: str
+    workflowName: str
+    message: str
+    isBot: bool
+    createdAt: Optional[str] = None
+
+
+class ChatReplyRequest(BaseModel):
+    tripId: Optional[str] = None
+    workflowName: str
+    message: str
+
+
+class ChatReplyResponse(BaseModel):
+    tripId: str
+    messages: List[ChatMessageResponse] = []

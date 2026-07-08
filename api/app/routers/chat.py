@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+from datetime import date
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth import require_auth
+from app.database import get_db
+from app.models import ChatMessageRecord, TripRecord, UserRecord
+from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
+
+router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def _message_to_response(rec: ChatMessageRecord) -> ChatMessageResponse:
+    return ChatMessageResponse(
+        messageId=rec.message_id,
+        tripId=rec.trip_id,
+        workflowName=rec.workflow_name,
+        message=rec.message,
+        isBot=rec.is_bot,
+        createdAt=rec.created_at.isoformat() if rec.created_at else None,
+    )
+
+
+@router.get("/trips/{trip_id}", response_model=list[ChatMessageResponse])
+async def list_trip_chat_messages(
+    trip_id: str,
+    workflow_name: str = Query(..., alias="workflowName"),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    trip = await db.get(TripRecord, trip_id)
+    if trip is None or trip.user_id != str(user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+
+    result = await db.execute(
+        select(ChatMessageRecord)
+        .where(
+            ChatMessageRecord.trip_id == trip_id,
+            ChatMessageRecord.user_id == str(user.id),
+            ChatMessageRecord.workflow_name == workflow_name,
+        )
+        .order_by(ChatMessageRecord.created_at)
+    )
+    return [_message_to_response(rec) for rec in result.scalars().all()]
+
+
+@router.post("/reply", response_model=ChatReplyResponse)
+async def reply_in_chat(
+    body: ChatReplyRequest,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    trip_id = body.tripId
+    if trip_id:
+        trip = await db.get(TripRecord, trip_id)
+        if trip is None or trip.user_id != str(user.id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    else:
+        today = date.today().isoformat()
+        trip_id = str(uuid.uuid4())
+        trip = TripRecord(
+            trip_id=trip_id,
+            user_id=str(user.id),
+            trip_name="New Trip Draft",
+            start_date=today,
+            end_date=today,
+            status="draft",
+        )
+        db.add(trip)
+        await db.flush()
+
+    user_message = ChatMessageRecord(
+        message_id=str(uuid.uuid4()),
+        user_id=str(user.id),
+        trip_id=trip_id,
+        workflow_name=body.workflowName,
+        message=body.message.strip(),
+        is_bot=False,
+    )
+    bot_message = ChatMessageRecord(
+        message_id=str(uuid.uuid4()),
+        user_id=str(user.id),
+        trip_id=trip_id,
+        workflow_name=body.workflowName,
+        message=f"Hello world - {date.today().isoformat()}",
+        is_bot=True,
+    )
+    db.add(user_message)
+    db.add(bot_message)
+    await db.commit()
+    await db.refresh(user_message)
+    await db.refresh(bot_message)
+
+    return ChatReplyResponse(
+        tripId=trip_id,
+        messages=[_message_to_response(user_message), _message_to_response(bot_message)],
+    )
