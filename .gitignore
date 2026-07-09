@@ -53,3 +53,5 @@ AzuriteConfig
 .DS_Store
 Thumbs.db
 .api.pid
+
+**/*.log

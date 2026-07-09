@@ -21,6 +21,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 
 from app.enums import LocationRole, PointType, StayType, TravelMode
+from app.services.ai_trace import log_ai_event
 from app.schemas import (
     LocationCreate,
     StayDetailImport,
@@ -202,6 +203,15 @@ def _client():
 
 
 def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
+    log_ai_event(
+        "ai.trip_import.openai.request",
+        passName=pass_name,
+        model=_DEFAULT_MODEL,
+        requestTimeoutSeconds=_REQUEST_TIMEOUT,
+        maxRetries=_MAX_RETRIES,
+        systemPrompt=system,
+        userPrompt=user,
+    )
     logger.info(
         "OpenAI %s pass: model=%s prompt_chars=%d timeout=%.0fs",
         pass_name, _DEFAULT_MODEL, len(user), _REQUEST_TIMEOUT,
@@ -218,6 +228,12 @@ def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
         )
     except Exception as exc:  # network / API errors / timeout
         logger.exception("OpenAI %s pass failed after %.1fs", pass_name, time.monotonic() - started)
+        log_ai_event(
+            "ai.trip_import.openai.error",
+            passName=pass_name,
+            elapsedSeconds=round(time.monotonic() - started, 3),
+            error=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI request failed: {exc}",
@@ -231,10 +247,22 @@ def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
         pass_name, elapsed, finish,
         getattr(usage, "total_tokens", None) if usage else None,
     )
+    log_ai_event(
+        "ai.trip_import.openai.response_meta",
+        passName=pass_name,
+        elapsedSeconds=round(elapsed, 3),
+        finishReason=finish,
+        usage=(getattr(usage, "total_tokens", None) if usage else None),
+    )
 
     message = completion.choices[0].message
     if getattr(message, "refusal", None):
         logger.warning("OpenAI %s pass refused: %s", pass_name, message.refusal)
+        log_ai_event(
+            "ai.trip_import.openai.refusal",
+            passName=pass_name,
+            refusal=message.refusal,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI refused the request: {message.refusal}",
@@ -246,10 +274,24 @@ def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="OpenAI did not return a parseable trip.",
         )
+    log_ai_event(
+        "ai.trip_import.openai.parsed",
+        passName=pass_name,
+        parsed=parsed,
+    )
     return parsed
 
 
 def _parse_document(client, system: str, user: str, *, pass_name: str) -> AIDocumentExtract:
+    log_ai_event(
+        "ai.document_import.openai.request",
+        passName=pass_name,
+        model=_DEFAULT_MODEL,
+        requestTimeoutSeconds=_REQUEST_TIMEOUT,
+        maxRetries=_MAX_RETRIES,
+        systemPrompt=system,
+        userPrompt=user,
+    )
     logger.info(
         "OpenAI %s pass: model=%s prompt_chars=%d timeout=%.0fs",
         pass_name, _DEFAULT_MODEL, len(user), _REQUEST_TIMEOUT,
@@ -266,13 +308,35 @@ def _parse_document(client, system: str, user: str, *, pass_name: str) -> AIDocu
         )
     except Exception as exc:
         logger.exception("OpenAI %s pass failed after %.1fs", pass_name, time.monotonic() - started)
+        log_ai_event(
+            "ai.document_import.openai.error",
+            passName=pass_name,
+            elapsedSeconds=round(time.monotonic() - started, 3),
+            error=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI request failed: {exc}",
         ) from exc
 
+    elapsed = time.monotonic() - started
+    usage = getattr(completion, "usage", None)
+    finish = completion.choices[0].finish_reason if completion.choices else None
+    log_ai_event(
+        "ai.document_import.openai.response_meta",
+        passName=pass_name,
+        elapsedSeconds=round(elapsed, 3),
+        finishReason=finish,
+        usage=(getattr(usage, "total_tokens", None) if usage else None),
+    )
+
     message = completion.choices[0].message
     if getattr(message, "refusal", None):
+        log_ai_event(
+            "ai.document_import.openai.refusal",
+            passName=pass_name,
+            refusal=message.refusal,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI refused the request: {message.refusal}",
@@ -283,6 +347,11 @@ def _parse_document(client, system: str, user: str, *, pass_name: str) -> AIDocu
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="OpenAI did not return parseable document records.",
         )
+    log_ai_event(
+        "ai.document_import.openai.parsed",
+        passName=pass_name,
+        parsed=parsed,
+    )
     return parsed
 
 

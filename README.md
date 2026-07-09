@@ -1,70 +1,59 @@
 # PriPriTrip
 
-A Progressive Web App for tracking a single vacation trip as an expand/collapse timeline. A React + Vite frontend talks to a FastAPI backend backed by PostgreSQL. Trip data is stored relationally — a `trips` header table and a `trip_items` table — giving individual items their own lifecycle including soft deletes.
-
----
+PriPriTrip is a trip-planning application with a React + Vite frontend and a FastAPI backend backed by PostgreSQL.
 
 ## Architecture
 
-```
-Browser (React + Vite PWA)
-        │  HTTPS / JSON
-        ▼
-  FastAPI (Python)           ← Docker container / Azure Container Apps
-        │  SQLAlchemy ORM
-        ▼
-  PostgreSQL                 ← Azure Database for PostgreSQL / local Docker
+```text
+UI (React + Vite PWA)
+        |
+        | HTTP/JSON
+        v
+API (FastAPI + SQLAlchemy async)
+        |
+        | SQL
+        v
+PostgreSQL 16
 ```
 
-Terraform manages all Azure infrastructure. The frontend is deployed as an Azure Static Web App; the API runs as a containerised service.
+## Repository Layout
 
----
+```text
+PriPriTrip/
+├── api/                 # FastAPI backend
+├── ui/                  # React frontend
+├── infrastructure/      # Terraform
+├── data/                # Fixtures and helper scripts
+├── docs/                # Project docs/assets
+└── README.md
+```
 
 ## Prerequisites
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Python | 3.11+ | API backend + tests |
-| Node.js | 20+ | Frontend dev server + build |
-| Docker / Docker Compose | latest | Local PostgreSQL + API container |
-| Terraform | ≥ 1.9 | Infrastructure provisioning |
-| Azure CLI | latest | Auth for Terraform + deployment |
+| Tool | Version |
+|---|---|
+| Python | 3.12+ |
+| Node.js | 20+ |
+| Docker / Docker Compose | recent |
 
----
+## Quickstart (Full Stack)
 
-## Local Development
-
-### 1. Start the database
+### 1. Start backend
 
 ```bash
 cd api
-docker compose up db -d
-```
-
-This starts a Postgres 16 container on port `5432` with database `pripritrip`.
-
-### 2. Run database migrations
-
-```bash
-cd api
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pripritrip \
-  alembic upgrade head
+cp .env.example .env
+./dev.sh --clean
 ```
 
-### 3. Start the API
+Backend URLs:
+- API: http://localhost:8000
+- Swagger: http://localhost:8000/docs
 
-```bash
-cd api
-APP_PASSWORD=honeymoon \
-TOKEN_SECRET=dev-secret-change-me \
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pripritrip \
-  uvicorn main:app --reload --port 8000
-```
-
-The interactive docs are available at `http://localhost:8000/docs`.
-
-### 4. Start the frontend
+### 2. Start frontend
 
 ```bash
 cd ui
@@ -72,352 +61,76 @@ npm install
 npm run dev
 ```
 
-The app opens at `http://localhost:5173`.
+Frontend URL:
+- http://localhost:5173
 
-### Environment Variables
+## Authentication
 
-#### API
+The backend uses JWT bearer auth via fastapi-users.
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5432/pripritrip` | PostgreSQL connection string |
-| `APP_PASSWORD` | Yes | `honeymoon` | Password for `POST /auth` |
-| `TOKEN_SECRET` | Yes | `dev-secret-change-me` | HMAC-SHA256 salt for bearer tokens |
-| `MAPS_API_KEY` | No | `` | Google Maps API key returned to the client on auth |
+For local development, `./dev.sh --clean` seeds a superuser:
+- email: julian.h.dale@gmail.com
+- password: honeymoon
 
----
+## AI Workflows
 
-## API Reference
+PriPriTrip includes AI-assisted chat and import flows:
+- New trip staged workflow (welcome -> travel -> stay)
+- Action-oriented trip CRUD chat workflow
+- AI itinerary/document extraction and enrichment endpoints
 
-All endpoints except `/health` and `/auth` require a `Bearer` token obtained from `POST /auth`.
+Prompt configuration is centralized in:
+- `api/pripritrip_system_prompt.md`
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/health` | No | Liveness check |
-| `POST` | `/auth` | No | Exchange password for bearer token |
-| `GET` | `/trip` | Yes | Get trip header + all active items (assembled view) |
-| `POST` | `/trip` | Yes | Create or update the trip header |
-| `GET` | `/trip/items` | Yes | List all active (non-deleted) trip items |
-| `GET` | `/trip/items/deleted` | Yes | List soft-deleted items |
-| `POST` | `/trip/items` | Yes | Create a new trip item |
-| `PUT` | `/trip/items/{item_id}` | Yes | Full replace of a trip item |
-| `PATCH` | `/trip/items/{item_id}` | Yes | Partial update of a trip item |
-| `DELETE` | `/trip/items/{item_id}` | Yes | Soft-delete a trip item |
-| `POST` | `/trip/items/{item_id}/restore` | Yes | Restore a soft-deleted item |
+Prompt composition/parsing is implemented in:
+- `api/app/services/prompt_composer.py`
 
----
+## AI Trace Logging
 
-## Running Tests
+Structured AI traces are written to:
+- `api/ai.log`
 
-### API
+Example:
 
 ```bash
 cd api
-pip install -r requirements.txt pytest httpx
-pytest tests/ -v
+tail -f ai.log
+```
+
+Note: the command is `tail`, not `tails`.
+
+## Tests
+
+### Backend
+
+```bash
+cd api
+source .venv/bin/activate
+pytest -q
 ```
 
 ### Frontend
 
 ```bash
 cd ui
-npm run test
+npm run build
 ```
 
----
+## Documentation
 
-## Database Migrations
-
-Migrations are managed with [Alembic](https://alembic.sqlalchemy.org/).
-
-```bash
-# Apply all pending migrations
-alembic upgrade head
-
-# Roll back one migration
-alembic downgrade -1
-
-# Generate a new migration (auto-detect from ORM models)
-alembic revision --autogenerate -m "describe your change"
-```
-
-Run all Alembic commands from the `api/` directory.
-
----
+Service-specific details are in:
+- `api/README.md` for backend endpoints, env vars, AI logging, and prompt system
 
 ## Deployment
 
-Infrastructure is defined in `infrastructure/` using Terraform.
+Infrastructure is managed with Terraform in `infrastructure/`.
 
 ```bash
 cd infrastructure
 terraform init
-terraform apply -var-file=env/prod.tfvars
+terraform plan
+terraform apply
 ```
-
-Key resources provisioned:
-- **Azure Static Web App** — hosts the React frontend
-- **Azure Container Apps** — runs the FastAPI container
-- **Azure Database for PostgreSQL Flexible Server** — managed Postgres
-
-After infrastructure is up, push the API container image to the Azure Container Registry and trigger a new revision on the Container App. The Static Web App is deployed automatically via a GitHub Actions workflow on push to `main`.
-
-| `environment` | Environment suffix (e.g. `prod`). |
-| `location` | Azure region. Default: `centralus` |
-| `app_password` | Deployed app password. Default: `honeymoon` — **change for production** |
-| `token_secret` | Random secret for HMAC token signing |
-| `maps_api_key` | Google Maps API key (optional) |
-
-`prod.tfvars` is gitignored. A template is at `infrastructure/env/prod.tfvars`.
-
----
-
-## Project Structure
-
-```
-PriPriTrip/
-├── function/                  # Python Azure Functions backend
-│   ├── function_app.py        # All HTTP trigger handlers
-│   ├── host.json              # Functions v2 host config
-│   ├── local.settings.json    # Local dev env vars (gitignored)
-│   ├── requirements.txt       # Python dependencies
-│   └── tests/
-│       ├── conftest.py
-│       ├── test_auth.py       # Auth handler + token helper tests
-│       └── test_trip.py       # Blob read/write + trip handler tests
-├── infrastructure/            # Terraform IaC
-│   ├── main.tf                # Provider, remote state, resource group
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── storage.tf             # Storage account + blob containers
-│   ├── function.tf            # App Service Plan + Function App + RBAC
-│   ├── swa.tf                 # Static Web App
-│   └── env/
-│       └── prod.tfvars        # Environment values (gitignored)
-├── ui/                        # React frontend (Phase 2+)
-├── new_app.md                 # App design spec
-├── trip_model_spec.md         # Trip JSON data model spec
-└── README.md
-```
-
----
-
-## API
-
-All endpoints are Azure Functions HTTP triggers. Base URL locally: `http://localhost:7071/api`.
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/auth` | No | Verify password, return session token + Maps API key |
-| `GET` | `/api/trip` | Yes | Return trip JSON with SAS URLs resolved for documents |
-| `PUT` | `/api/trip` | Yes | Overwrite trip JSON in blob storage |
-
-**Auth flow:**
-- `POST /api/auth` with `{ "password": "honeymoon" }` → returns `{ "token": "<hmac>", "mapsApiKey": "..." }`
-- All subsequent requests: `Authorization: Bearer <token>`
-- `POST /api/auth?logout=1` — client discards token (server is stateless, no revocation needed)
-
----
-
-## Section 1 — Local Development (First-Time Setup)
-
-Run the backend locally against Azurite. No Azure account needed.
-
-### Step 1 — Install tools
-
-```bash
-# Azure Functions Core Tools v4
-npm install -g azure-functions-core-tools@4 --unsafe-perm true
-
-# Azurite (local blob emulator)
-npm install -g azurite
-```
-
-### Step 2 — Create the Python virtual environment
-
-```bash
-cd function
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Step 3 — Start Azurite
-
-Open a separate terminal and leave it running:
-
-```bash
-azurite --silent --skipApiVersionCheck
-```
-
-> The `--skipApiVersionCheck` flag is required when using a recent Azure CLI (2026+) against an older Azurite install. Alternatively, upgrade Azurite: `npm install -g azurite@latest`
-
-### Step 4 — Create blob containers in Azurite
-
-Run once. Azurite must be running first.
-
-```bash
-CONN="UseDevelopmentStorage=true"
-az storage container create --name trip      --connection-string "$CONN"
-az storage container create --name documents --connection-string "$CONN"
-```
-
-### Step 5 — Seed an initial `trip.json`
-
-The function returns a 500 on `GET /api/trip` if no blob exists yet.
-
-```bash
-az storage blob upload \
-  --container-name trip \
-  --name trip.json \
-  --file data/trip.json \
-  --connection-string "UseDevelopmentStorage=true" \
-  --overwrite
-```
-
-The sample trip (`data/trip.json`) is the Switzerland and Croatia Honeymoon fixture from `trip_model_spec.md`.
-
-### Step 6 — Start the function
-
-`local.settings.json` is already configured for Azurite with default dev secrets. No changes needed to run locally.
-
-```bash
-# from the function/ directory, with .venv active
-func start
-```
-
-Function is available at `http://localhost:7071/api`.
-
-### Step 7 — Smoke test the running function
-
-```bash
-# 1. Auth — get a token
-curl -s -X POST http://localhost:7071/api/auth \
-  -H "Content-Type: application/json" \
-  -d '{"password":"honeymoon"}' | jq .
-
-# Copy the token value from the response, then:
-
-TOKEN="<paste token here>"
-
-# 2. Read trip
-curl -s http://localhost:7071/api/trip \
-  -H "Authorization: Bearer $TOKEN" | jq .
-
-# 3. Write trip (round-trip the same document)
-curl -s -X PUT http://localhost:7071/api/trip \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @<path-to-your-trip.json>
-```
-
----
-
-## Running the UI Locally (Phase 4+)
-
-The UI dev server and the function must run simultaneously. Vite proxies all `/api` requests to the function — no environment variables are needed for local dev.
-
-### Step 1 — Install UI dependencies (first time only)
-
-```bash
-cd ui
-npm ci
-```
-
-### Step 2 — Start both servers
-
-Terminal 1 — function backend (Azurite must already be running per Section 1):
-
-```bash
-cd function
-source .venv/bin/activate
-func start
-```
-
-Terminal 2 — Vite dev server:
-
-```bash
-cd ui
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). Log in with the password from `local.settings.json` (default: `honeymoon`). The trip is loaded live from Azurite on every page load. The **Save** button in the app bar writes the current trip JSON back to blob storage.
-
-> **Note — PWA / service worker in dev:** The service worker is only active in production builds (`npm run build && npm run preview`). In `npm run dev` mode the app still uses IndexedDB for offline caching, but the service worker precaching of the app shell is not active. To test the full PWA install flow locally, run `npm run build && npm run preview`.
-
----
-
-## Section 2 — Running Tests
-
-No live Azure or Azurite connection required — all tests use mocks.
-
-```bash
-cd function
-source .venv/bin/activate   # if not already active
-pytest tests/ -v
-```
-
-Expected output: **31 passed**.
-
----
-
-## Section 3 — Deployment
-
-### Prerequisites
-
-- Azure CLI installed and logged in: `az login`
-- Terraform >= 1.9 installed
-- The shared Terraform state backend already exists (see note below)
-
-### 3a — One-time Azure setup (manual, do once)
-
-These resources are not managed by Terraform and must exist before `terraform init` will work.
-
-**Terraform remote state backend** (shared with PriPriNote — skip if it already exists):
-
-```bash
-# Only run this if the terraform-infrastructure resource group does not exist yet
-az group create --name terraform-infrastructure --location centralus
-az storage account create \
-  --name priprinotetfstate \
-  --resource-group terraform-infrastructure \
-  --sku Standard_LRS \
-  --allow-blob-public-access false
-az storage container create \
-  --name tfstate \
-  --account-name priprinotetfstate \
-  --auth-mode login
-```
-
-### 3b — Configure Terraform variables
-
-Copy the template and fill in real values:
-
-```bash
-cp infrastructure/env/prod.tfvars infrastructure/env/prod.tfvars.local
-# Edit prod.tfvars.local — never commit this file
-```
-
-Required values to fill in:
-
-| Variable | Where to get it |
-|----------|----------------|
-| `subscription_id` | `az account show --query id -o tsv` |
-| `token_secret` | Generate: `openssl rand -hex 32` |
-| `maps_api_key` | Google Cloud Console → Maps JavaScript API |
-| `app_password` | Choose a strong password (replaces `honeymoon` in prod) |
-
-### 3c — Provision infrastructure with Terraform
-
-```bash
-cd infrastructure
-
-# Authenticate Terraform to Azure
-az login
-az account set --subscription "<your-subscription-id>"
-
-# Init (downloads provider, connects to remote state)
-terraform init
 
 # Preview changes
 terraform plan -var-file=env/prod.tfvars

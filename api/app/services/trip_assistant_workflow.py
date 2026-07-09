@@ -21,6 +21,7 @@ from app.models import (
     TripRecord,
 )
 from app.schemas import StayDetailImport, StayDetailPatch, TravelDetailImport, TravelDetailPatch, TripPointCreate, TripPointPatch
+from app.services.ai_trace import log_ai_event
 from app.services.detail_points import (
     soft_delete_generated_points_for_stay,
     soft_delete_generated_points_for_travel,
@@ -70,6 +71,15 @@ def _client():
 
 def _parse(client, *, system: str, user: str, response_format, pass_name: str):
     started = time.monotonic()
+    log_ai_event(
+        "ai.trip_assistant.openai.request",
+        passName=pass_name,
+        model=_DEFAULT_MODEL,
+        requestTimeoutSeconds=_REQUEST_TIMEOUT,
+        maxRetries=_MAX_RETRIES,
+        systemPrompt=system,
+        userPrompt=user,
+    )
     try:
         completion = client.beta.chat.completions.parse(
             model=_DEFAULT_MODEL,
@@ -80,16 +90,27 @@ def _parse(client, *, system: str, user: str, response_format, pass_name: str):
             response_format=response_format,
         )
     except Exception as exc:
+        log_ai_event(
+            "ai.trip_assistant.openai.error",
+            passName=pass_name,
+            elapsedSeconds=round(time.monotonic() - started, 3),
+            error=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI request failed: {exc}",
         ) from exc
 
-    elapsed = time.monotonic() - started
-    if elapsed > 20:
-        pass
-
     message = completion.choices[0].message
+    usage = getattr(completion, "usage", None)
+    log_ai_event(
+        "ai.trip_assistant.openai.response_meta",
+        passName=pass_name,
+        elapsedSeconds=round(time.monotonic() - started, 3),
+        finishReason=(completion.choices[0].finish_reason if completion.choices else None),
+        usage=(getattr(usage, "total_tokens", None) if usage else None),
+        refusal=getattr(message, "refusal", None),
+    )
     if getattr(message, "refusal", None):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -101,6 +122,11 @@ def _parse(client, *, system: str, user: str, response_format, pass_name: str):
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI did not return a parseable {pass_name} response.",
         )
+    log_ai_event(
+        "ai.trip_assistant.openai.parsed",
+        passName=pass_name,
+        parsed=parsed,
+    )
     return parsed
 
 
@@ -244,6 +270,11 @@ def _trip_tz(trip: TripRecord) -> str:
 
 
 async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: AssistantAction) -> ActionResult:
+    log_ai_event(
+        "ai.trip_assistant.action.start",
+        tripId=trip.trip_id,
+        action=action,
+    )
     if action.target == "trip":
         if action.op != "update":
             return ActionResult(op=action.op, target=action.target, status="error", detail="Only update is supported for trip")
@@ -266,7 +297,9 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
             return ActionResult(op=action.op, target=action.target, status="error", detail="No supported trip fields provided")
         trip.updated_at = datetime.now(timezone.utc)
         await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=trip.trip_id, status="ok", detail=f"Updated {applied} trip field(s)")
+        result = ActionResult(op=action.op, target=action.target, id=trip.trip_id, status="ok", detail=f"Updated {applied} trip field(s)")
+        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+        return result
 
     if action.target == "day":
         if action.op == "create":
@@ -289,7 +322,9 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
                 )
             )
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=day_id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=day_id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         if not action.id:
             return ActionResult(op=action.op, target=action.target, status="error", detail="Day id is required")
@@ -310,13 +345,17 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
                     setattr(rec, orm_field, action.fields[key])
             rec.updated_at = datetime.now(timezone.utc)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
         rec.updated_at = datetime.now(timezone.utc)
         await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+        return result
 
     if action.target == "point":
         if action.op == "create":
@@ -362,7 +401,9 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
             await db.flush()
             await _replace_point_locations(db, body.pointId, [loc.model_dump() for loc in body.locations])
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=body.pointId, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=body.pointId, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         if not action.id:
             return ActionResult(op=action.op, target=action.target, status="error", detail="Point id is required")
@@ -415,13 +456,17 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
 
             rec.updated_at = datetime.now(timezone.utc)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
         rec.updated_at = datetime.now(timezone.utc)
         await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+        return result
 
     if action.target == "stay":
         if action.op == "create":
@@ -455,7 +500,9 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
             await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump() for loc in body.locations])
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=rec.stay_detail_id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=rec.stay_detail_id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         if not action.id:
             return ActionResult(op=action.op, target=action.target, status="error", detail="Stay id is required")
@@ -501,14 +548,18 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
             rec.updated_at = datetime.now(timezone.utc)
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
         rec.updated_at = datetime.now(timezone.utc)
         await soft_delete_generated_points_for_stay(db, stay_detail_id=rec.stay_detail_id)
         await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+        return result
 
     if action.target == "travel":
         if action.op == "create":
@@ -544,7 +595,9 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
             await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump() for loc in body.locations])
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=rec.travel_detail_id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=rec.travel_detail_id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         if not action.id:
             return ActionResult(op=action.op, target=action.target, status="error", detail="Travel id is required")
@@ -592,14 +645,18 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
             rec.updated_at = datetime.now(timezone.utc)
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+            return result
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
         rec.updated_at = datetime.now(timezone.utc)
         await soft_delete_generated_points_for_travel(db, travel_detail_id=rec.travel_detail_id)
         await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
+        return result
 
     return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Unsupported action target")
 
@@ -618,6 +675,17 @@ async def handle_trip_assistant_chat_turn(
 
     summary = await _trip_summary(db, trip)
     trip_snapshot = (await _assembled_trip(db, trip)).model_dump(mode="json")
+    log_ai_event(
+        "ai.trip_assistant.turn.start",
+        tripId=trip.trip_id,
+        tripStatus=trip.status,
+        summary=summary,
+        tripSnapshot=trip_snapshot,
+        transcript=transcript,
+        latestMessage=latest_message,
+        conversationSummary=conversation_summary,
+        uiContext=ui_context,
+    )
     turn = _parse(
         client,
         system=build_trip_assistant_prompt(),
@@ -651,6 +719,12 @@ async def handle_trip_assistant_chat_turn(
         "actions": [action.model_dump() for action in turn.actions],
         "results": [result.model_dump() for result in results],
     }
+    log_ai_event(
+        "ai.trip_assistant.turn.outcome",
+        tripId=trip.trip_id,
+        assistantMessage=turn.assistantMessage,
+        payload=payload,
+    )
 
     return WorkflowOutcome(
         assistantMessage=turn.assistantMessage,

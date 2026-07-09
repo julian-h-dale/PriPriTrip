@@ -12,6 +12,7 @@ from app.auth import require_auth
 from app.database import get_db
 from app.models import ChatMessageRecord, TripRecord, UserRecord
 from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
+from app.services.ai_trace import log_ai_event
 from app.services.new_trip_workflow import handle_new_trip_chat_turn
 from app.services.trip_assistant_workflow import handle_trip_assistant_chat_turn
 
@@ -123,6 +124,13 @@ async def reply_in_chat(
     user: UserRecord = Depends(require_auth),
 ):
     trip_id = body.tripId
+    log_ai_event(
+        "chat.reply.received",
+        workflowName=body.workflowName,
+        tripId=trip_id,
+        message=body.message.strip(),
+        uiContext=body.context,
+    )
     if trip_id:
         trip = await db.get(TripRecord, trip_id)
         if trip is None or trip.user_id != str(user.id):
@@ -197,6 +205,18 @@ async def reply_in_chat(
         )
         await db.flush()
 
+    log_ai_event(
+        "chat.reply.context",
+        workflowName=body.workflowName,
+        tripId=trip_id,
+        totalWorkflowMessages=len(workflow_messages),
+        transcriptWindowTurns=len(transcript),
+        olderTurnCount=len(older_messages),
+        coveredTurns=covered_turns,
+        summaryCoveredTurns=desired_covered_turns,
+        conversationSummary=conversation_summary,
+    )
+
     if body.workflowName == "trip:new_trip":
         outcome = await handle_new_trip_chat_turn(
             db,
@@ -242,6 +262,16 @@ async def reply_in_chat(
     await db.commit()
     await db.refresh(user_message)
     await db.refresh(bot_message)
+
+    log_ai_event(
+        "chat.reply.outcome",
+        workflowName=body.workflowName,
+        tripId=trip_id,
+        complete=complete,
+        verify=verify.model_dump(mode="json") if verify else None,
+        structuredContent=json.loads(structure_content) if structure_content else None,
+        botMessage=bot_text,
+    )
 
     return ChatReplyResponse(
         tripId=trip_id,

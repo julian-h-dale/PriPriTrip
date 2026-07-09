@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import LocationRecord, StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord, TripRecord
 from app.schemas import StayDetailImport, TravelDetailImport, TripResponse, VerifyResult
 from app.serializers import point_to_response, stay_to_response, travel_to_response
+from app.services.ai_trace import log_ai_event
 from app.services.detail_points import (
     CHECK_IN_DEFAULT_TIME,
     CHECK_OUT_DEFAULT_TIME,
@@ -77,6 +78,15 @@ def _client():
 
 def _parse(client, *, system: str, user: str, response_format, pass_name: str):
     started = time.monotonic()
+    log_ai_event(
+        "ai.new_trip.openai.request",
+        passName=pass_name,
+        model=_DEFAULT_MODEL,
+        requestTimeoutSeconds=_REQUEST_TIMEOUT,
+        maxRetries=_MAX_RETRIES,
+        systemPrompt=system,
+        userPrompt=user,
+    )
     try:
         completion = client.beta.chat.completions.parse(
             model=_DEFAULT_MODEL,
@@ -87,12 +97,27 @@ def _parse(client, *, system: str, user: str, response_format, pass_name: str):
             response_format=response_format,
         )
     except Exception as exc:
+        log_ai_event(
+            "ai.new_trip.openai.error",
+            passName=pass_name,
+            elapsedSeconds=round(time.monotonic() - started, 3),
+            error=str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI request failed: {exc}",
         ) from exc
 
     message = completion.choices[0].message
+    usage = getattr(completion, "usage", None)
+    log_ai_event(
+        "ai.new_trip.openai.response_meta",
+        passName=pass_name,
+        elapsedSeconds=round(time.monotonic() - started, 3),
+        finishReason=(completion.choices[0].finish_reason if completion.choices else None),
+        usage=(getattr(usage, "total_tokens", None) if usage else None),
+        refusal=getattr(message, "refusal", None),
+    )
     if getattr(message, "refusal", None):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -104,6 +129,11 @@ def _parse(client, *, system: str, user: str, response_format, pass_name: str):
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI did not return a parseable {pass_name} response.",
         )
+    log_ai_event(
+        "ai.new_trip.openai.parsed",
+        passName=pass_name,
+        parsed=parsed,
+    )
     return parsed
 
 
@@ -470,6 +500,17 @@ async def handle_new_trip_chat_turn(
     client = client or _client()
     summary = await _trip_state_summary(db, trip)
     trip_snapshot = (await _assembled_trip(db, trip)).model_dump(mode="json")
+    log_ai_event(
+        "ai.new_trip.turn.start",
+        tripId=trip.trip_id,
+        tripStatus=trip.status,
+        summary=summary,
+        tripSnapshot=trip_snapshot,
+        transcript=transcript,
+        latestMessage=latest_message,
+        conversationSummary=conversation_summary,
+        uiContext=ui_context,
+    )
 
     active_stays = summary["staysCount"]
     active_travels = summary["travelsCount"]
@@ -482,6 +523,7 @@ async def handle_new_trip_chat_turn(
     )
 
     if missing_welcome:
+        log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage="welcome")
         turn = _parse(
             client,
             system=build_new_trip_stage_prompt("welcome"),
@@ -497,6 +539,14 @@ async def handle_new_trip_chat_turn(
             pass_name="new-trip-welcome",
         )
         await _apply_welcome_updates(db, trip, turn)
+        log_ai_event(
+            "ai.new_trip.turn.outcome",
+            tripId=trip.trip_id,
+            stage="welcome",
+            complete=False,
+            structured=_structured_turn_payload(turn),
+            assistantMessage=turn.assistantMessage,
+        )
         return WorkflowOutcome(
             assistantMessage=turn.assistantMessage,
             complete=False,
@@ -504,6 +554,7 @@ async def handle_new_trip_chat_turn(
         )
 
     if active_travels == 0:
+        log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage="travel")
         turn = _parse(
             client,
             system=build_new_trip_stage_prompt("travel"),
@@ -520,6 +571,19 @@ async def handle_new_trip_chat_turn(
         )
         if turn.travel is not None:
             await _create_travel(db, trip, turn.travel)
+            log_ai_event(
+                "ai.new_trip.turn.travel_created",
+                tripId=trip.trip_id,
+                travel=turn.travel,
+            )
+        log_ai_event(
+            "ai.new_trip.turn.outcome",
+            tripId=trip.trip_id,
+            stage="travel",
+            complete=False,
+            structured=_structured_turn_payload(turn),
+            assistantMessage=turn.assistantMessage,
+        )
         return WorkflowOutcome(
             assistantMessage=turn.assistantMessage,
             complete=False,
@@ -527,6 +591,7 @@ async def handle_new_trip_chat_turn(
         )
 
     if active_stays == 0:
+        log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage="stay")
         turn = _parse(
             client,
             system=build_new_trip_stage_prompt("stay"),
@@ -553,12 +618,29 @@ async def handle_new_trip_chat_turn(
                 f"- stays: {len(assembled.stays)}\n"
                 "Opening inspection so you can review any remaining issues."
             )
+            log_ai_event(
+                "ai.new_trip.turn.outcome",
+                tripId=trip.trip_id,
+                stage="stay",
+                complete=True,
+                verify=verify,
+                structured=_structured_turn_payload(turn),
+                assistantMessage=summary_message,
+            )
             return WorkflowOutcome(
                 assistantMessage=summary_message,
                 complete=True,
                 verify=verify,
                 structuredContent=_structured_turn_payload(turn),
             )
+        log_ai_event(
+            "ai.new_trip.turn.outcome",
+            tripId=trip.trip_id,
+            stage="stay",
+            complete=False,
+            structured=_structured_turn_payload(turn),
+            assistantMessage=turn.assistantMessage,
+        )
         return WorkflowOutcome(
             assistantMessage=turn.assistantMessage,
             complete=False,
@@ -568,6 +650,14 @@ async def handle_new_trip_chat_turn(
     assembled = await _assembled_trip(db, trip)
     _mark_trip_draft_after_chat_completion(trip)
     verify = verify_trip(assembled)
+    log_ai_event(
+        "ai.new_trip.turn.outcome",
+        tripId=trip.trip_id,
+        stage="already_complete",
+        complete=True,
+        verify=verify,
+        assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
+    )
     return WorkflowOutcome(
         assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
         complete=True,
