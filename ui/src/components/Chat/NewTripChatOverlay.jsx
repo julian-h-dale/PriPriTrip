@@ -184,6 +184,12 @@ export default function NewTripChatOverlay({
         tripId,
         workflowName,
         message: text,
+        context: {
+          page: 'trips',
+          chatOverlay: 'new_trip',
+          selectedTripId: tripId || null,
+          workflowName,
+        },
       });
       onTripIdChange?.(response.tripId);
       const [userMessage, botMessage] = response.messages ?? [];

@@ -444,6 +444,7 @@ class ChatReplyRequest(BaseModel):
     tripId: Optional[str] = None
     workflowName: str
     message: str
+    context: Optional[dict] = None
 
 
 class ChatReplyResponse(BaseModel):

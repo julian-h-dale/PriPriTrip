@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+import uuid
 
 from fastapi.testclient import TestClient
 
@@ -75,7 +76,16 @@ class TestChat:
         app.dependency_overrides.clear()
 
     def test_reply_creates_shell_trip_and_messages(self):
-        async def _fake_workflow(_db, *, trip, transcript, latest_message, client=None):
+        async def _fake_workflow(
+            _db,
+            *,
+            trip,
+            transcript,
+            latest_message,
+            conversation_summary=None,
+            ui_context=None,
+            client=None,
+        ):
             return WorkflowOutcome(
                 assistantMessage="Hello world - 2026-07-08",
                 complete=False,
@@ -105,3 +115,59 @@ class TestChat:
         messages = list_resp.json()
         assert len(messages) == 2
         assert messages[0]["message"] == "help me plan a trip"
+
+    def test_reply_routes_trip_manage_workflow(self):
+        async def _fake_manage_workflow(
+            _db,
+            *,
+            trip,
+            transcript,
+            latest_message,
+            conversation_summary=None,
+            ui_context=None,
+            client=None,
+        ):
+            return WorkflowOutcome(
+                assistantMessage="Updated your trip day.",
+                complete=False,
+                structuredContent={
+                    "actions": [{"op": "update", "target": "day", "id": "d1", "fields": {"title": "Day 1"}}],
+                    "results": [{"op": "update", "target": "day", "id": "d1", "status": "ok", "detail": None}],
+                },
+            )
+
+        original = chat_router.handle_trip_assistant_chat_turn
+        chat_router.handle_trip_assistant_chat_turn = _fake_manage_workflow
+        resp = client.post(
+            "/chat/reply",
+            json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": str(uuid.uuid4())},
+        )
+        chat_router.handle_trip_assistant_chat_turn = original
+
+        assert resp.status_code == 404
+
+        existing_trip_id = str(uuid.uuid4())
+        self.session.add(
+            TripRecord(
+                trip_id=existing_trip_id,
+                user_id=USER_ID,
+                trip_name="Existing",
+                start_date="2026-07-01",
+                end_date="2026-07-05",
+                status="draft",
+            )
+        )
+
+        original = chat_router.handle_trip_assistant_chat_turn
+        chat_router.handle_trip_assistant_chat_turn = _fake_manage_workflow
+        resp = client.post(
+            "/chat/reply",
+            json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": existing_trip_id},
+        )
+        chat_router.handle_trip_assistant_chat_turn = original
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["tripId"] == existing_trip_id
+        assert body["messages"][1]["message"] == "Updated your trip day."
+        assert body["messages"][1]["structureContent"] is not None

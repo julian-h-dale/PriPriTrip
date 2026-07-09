@@ -22,66 +22,13 @@ from app.services.detail_points import (
     sync_stay_generated_points,
     sync_travel_generated_points,
 )
+from app.services.prompt_composer import build_new_trip_stage_prompt
 from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
 from app.services.trip_verify import verify_trip
 
 _DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
 _REQUEST_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", "120"))
 _MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
-
-_WELCOME_SYSTEM = """You are the warm, helpful PriPriTrip assistant helping a user build a vacation itinerary.
-Stay narrowly focused on collecting and structuring the user's trip setup.
-
-Current stage: welcome.
-Your job:
-- On every turn, capture the best available trip data and keep the draft moving forward.
-- Prioritize the trip record first, then trip days, then stays and travels.
-- If the user does not provide a year, assume 2026.
-- Generate a concise trip name based on the destination when the user does not provide one explicitly.
-- Prefer best-effort assumptions over asking for confirmation unless there is a real conflict.
-- Ask at most one or two short follow-up questions and keep them focused on the next missing high-value fields.
-- If a detail is missing, record what you can now and move on to the next useful piece of the itinerary.
-- Keep the assistant message tight, confident, and readable.
-- Use short bullets only when they help the user supply the next missing field.
-- Keep the conversation focused only on setting up the trip itinerary.
-- Do not mention internal schemas or implementation details.
-- Verification is a separate downstream flow, so do not block on validation here.
-- When you know the destination city/country, provide an IANA timezone id if you are confident.
-"""
-
-_TRAVEL_SYSTEM = """You are the warm, helpful PriPriTrip assistant helping finish a new trip itinerary.
-Current stage: collect one travel leg.
-
-Your job:
-- On every turn, capture the best available travel data and keep moving.
-- Prioritize the trip record first, then trip days, then stays and travels.
-- If the user does not provide a year, assume 2026.
-- Use wall-clock local date-times without timezone offsets.
-- Keep unknown fields null.
-- Prefer a best-effort draft over requesting confirmation.
-- If anything important is missing, ask only for the next most useful missing fields.
-- Keep the assistant message tight, confident, and readable.
-- Keep the conversation focused on the itinerary.
-- Verification is separate, so do not hold up the draft for completeness.
-"""
-
-_STAY_SYSTEM = """You are the warm, helpful PriPriTrip assistant helping finish a new trip itinerary.
-Current stage: collect one stay.
-
-Your job:
-- On every turn, capture the best available stay data and keep the draft moving.
-- Prioritize the trip record first, then trip days, then stays and travels.
-- If the user does not provide a year, assume 2026.
-- Use wall-clock local date-times without timezone offsets.
-- If the user gives only a date for check-in/check-out, keep the date and let the backend apply default times.
-- Keep unknown fields null.
-- Prefer a best-effort draft over requesting confirmation.
-- If anything important is missing, ask only for the next most useful missing fields.
-- Keep the assistant message tight, confident, and readable.
-- Keep the conversation focused on the itinerary.
-- Verification is separate, so do not hold up the draft for completeness.
-"""
-
 
 class WelcomeTurn(BaseModel):
     assistantMessage: str
@@ -188,12 +135,25 @@ async def _trip_state_summary(db: AsyncSession, trip: TripRecord) -> dict:
     }
 
 
-def _conversation_prompt(summary: dict, transcript: list[dict], latest_message: str) -> str:
+def _conversation_prompt(
+    summary: dict,
+    trip_snapshot: dict,
+    transcript: list[dict],
+    latest_message: str,
+    conversation_summary: str | None = None,
+    ui_context: dict | None = None,
+) -> str:
     return (
         "Current trip state:\n"
         f"{json.dumps(summary, indent=2)}\n\n"
+        "Current full trip snapshot:\n"
+        f"{json.dumps(trip_snapshot, indent=2)}\n\n"
+        "Conversation summary of older turns (if any):\n"
+        f"{conversation_summary or ''}\n\n"
         "Conversation so far:\n"
         f"{json.dumps(transcript, indent=2)}\n\n"
+        "UI context (if any):\n"
+        f"{json.dumps(ui_context or {}, indent=2)}\n\n"
         "Latest user message:\n"
         f"{latest_message}"
     )
@@ -503,10 +463,13 @@ async def handle_new_trip_chat_turn(
     trip: TripRecord,
     transcript: list[dict],
     latest_message: str,
+    conversation_summary: str | None = None,
+    ui_context: dict | None = None,
     client=None,
 ) -> WorkflowOutcome:
     client = client or _client()
     summary = await _trip_state_summary(db, trip)
+    trip_snapshot = (await _assembled_trip(db, trip)).model_dump(mode="json")
 
     active_stays = summary["staysCount"]
     active_travels = summary["travelsCount"]
@@ -521,8 +484,15 @@ async def handle_new_trip_chat_turn(
     if missing_welcome:
         turn = _parse(
             client,
-            system=_WELCOME_SYSTEM,
-            user=_conversation_prompt(summary, transcript, latest_message),
+            system=build_new_trip_stage_prompt("welcome"),
+            user=_conversation_prompt(
+                summary,
+                trip_snapshot,
+                transcript,
+                latest_message,
+                conversation_summary,
+                ui_context,
+            ),
             response_format=WelcomeTurn,
             pass_name="new-trip-welcome",
         )
@@ -536,8 +506,15 @@ async def handle_new_trip_chat_turn(
     if active_travels == 0:
         turn = _parse(
             client,
-            system=_TRAVEL_SYSTEM,
-            user=_conversation_prompt(summary, transcript, latest_message),
+            system=build_new_trip_stage_prompt("travel"),
+            user=_conversation_prompt(
+                summary,
+                trip_snapshot,
+                transcript,
+                latest_message,
+                conversation_summary,
+                ui_context,
+            ),
             response_format=TravelTurn,
             pass_name="new-trip-travel",
         )
@@ -552,8 +529,15 @@ async def handle_new_trip_chat_turn(
     if active_stays == 0:
         turn = _parse(
             client,
-            system=_STAY_SYSTEM,
-            user=_conversation_prompt(summary, transcript, latest_message),
+            system=build_new_trip_stage_prompt("stay"),
+            user=_conversation_prompt(
+                summary,
+                trip_snapshot,
+                transcript,
+                latest_message,
+                conversation_summary,
+                ui_context,
+            ),
             response_format=StayTurn,
             pass_name="new-trip-stay",
         )
