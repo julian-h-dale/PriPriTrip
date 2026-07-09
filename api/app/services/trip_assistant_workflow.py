@@ -199,9 +199,17 @@ def _conversation_prompt(
     )
 
 
+def _coerce_uuid(value: str | None) -> str:
+    if value:
+        try:
+            return str(uuid.UUID(str(value)))
+        except ValueError:
+            pass
+    return str(uuid.uuid4())
+
+
 def _ensure_location_id(loc: dict[str, Any]) -> dict[str, Any]:
-    if not loc.get("locationId"):
-        loc["locationId"] = str(uuid.uuid4())
+    loc["locationId"] = _coerce_uuid(loc.get("locationId"))
     return loc
 
 
@@ -303,7 +311,7 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
 
     if action.target == "day":
         if action.op == "create":
-            day_id = action.id or str(uuid.uuid4())
+            day_id = _coerce_uuid(action.id)
             if await db.get(TripDayRecord, day_id):
                 return ActionResult(op=action.op, target=action.target, id=day_id, status="error", detail="Day already exists")
             title = action.fields.get("title")
@@ -360,7 +368,7 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
     if action.target == "point":
         if action.op == "create":
             payload = dict(action.fields)
-            payload["pointId"] = action.id or payload.get("pointId") or str(uuid.uuid4())
+            payload["pointId"] = _coerce_uuid(action.id or payload.get("pointId"))
             payload.setdefault("locations", [])
             day_id = payload.get("dayId")
             if not day_id:
@@ -471,7 +479,7 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
     if action.target == "stay":
         if action.op == "create":
             payload = dict(action.fields)
-            payload["stayDetailId"] = action.id or payload.get("stayDetailId") or str(uuid.uuid4())
+            payload["stayDetailId"] = _coerce_uuid(action.id or payload.get("stayDetailId"))
             payload.setdefault("locations", [])
             try:
                 body = StayDetailImport.model_validate(payload)
@@ -564,7 +572,7 @@ async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: Assista
     if action.target == "travel":
         if action.op == "create":
             payload = dict(action.fields)
-            payload["travelDetailId"] = action.id or payload.get("travelDetailId") or str(uuid.uuid4())
+            payload["travelDetailId"] = _coerce_uuid(action.id or payload.get("travelDetailId"))
             payload.setdefault("locations", [])
             try:
                 body = TravelDetailImport.model_validate(payload)

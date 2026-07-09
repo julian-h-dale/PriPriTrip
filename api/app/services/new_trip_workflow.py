@@ -58,6 +58,15 @@ class WorkflowOutcome(BaseModel):
     structuredContent: Optional[dict] = None
 
 
+def _coerce_uuid(value: str | None) -> str:
+    if value:
+        try:
+            return str(uuid.UUID(str(value)))
+        except ValueError:
+            pass
+    return str(uuid.uuid4())
+
+
 def _structured_turn_payload(model: BaseModel) -> dict:
     data = model.model_dump(exclude_none=True)
     data.pop("assistantMessage", None)
@@ -282,7 +291,7 @@ def _mark_trip_draft_after_chat_completion(trip: TripRecord) -> None:
 
 
 async def _create_travel(db: AsyncSession, trip: TripRecord, travel: TravelDetailImport) -> None:
-    detail_id = travel.travelDetailId or str(uuid.uuid4())
+    detail_id = _coerce_uuid(travel.travelDetailId)
     departure_tzid = travel.departureTimezoneId or trip.default_timezone_id
     arrival_tzid = travel.arrivalTimezoneId or trip.default_timezone_id
     departure_local = parse_wall_clock(travel.departureDateTime)
@@ -311,7 +320,7 @@ async def _create_travel(db: AsyncSession, trip: TripRecord, travel: TravelDetai
     for idx, loc in enumerate(travel.locations or []):
         db.add(
             LocationRecord(
-                location_id=loc.locationId,
+                location_id=_coerce_uuid(loc.locationId),
                 point_id=None,
                 stay_detail_id=None,
                 travel_detail_id=detail_id,
@@ -332,7 +341,7 @@ async def _create_travel(db: AsyncSession, trip: TripRecord, travel: TravelDetai
 
 
 async def _create_stay(db: AsyncSession, trip: TripRecord, stay: StayDetailImport) -> None:
-    detail_id = stay.stayDetailId or str(uuid.uuid4())
+    detail_id = _coerce_uuid(stay.stayDetailId)
     check_in_text = normalize_stay_wall_clock(stay.checkIn, default_time=CHECK_IN_DEFAULT_TIME)
     check_out_text = normalize_stay_wall_clock(stay.checkOut, default_time=CHECK_OUT_DEFAULT_TIME)
     check_in_tzid = stay.checkInTimezoneId or trip.default_timezone_id
@@ -361,7 +370,7 @@ async def _create_stay(db: AsyncSession, trip: TripRecord, stay: StayDetailImpor
     for idx, loc in enumerate(stay.locations or []):
         db.add(
             LocationRecord(
-                location_id=loc.locationId,
+                location_id=_coerce_uuid(loc.locationId),
                 point_id=None,
                 stay_detail_id=detail_id,
                 travel_detail_id=None,
