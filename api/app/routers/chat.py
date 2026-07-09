@@ -72,7 +72,7 @@ async def reply_in_chat(
             trip_name="New Trip Draft",
             start_date=today,
             end_date=today,
-            status="draft",
+            status="new",
         )
         db.add(trip)
         await db.flush()

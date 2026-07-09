@@ -5,12 +5,20 @@ import client from './client';
  * (TripImport shape) produced by the AI. Nothing is persisted server-side yet.
  * This runs the structure pass only — call enhanceTrip separately to enrich it.
  */
-export async function aiImportDocument(file) {
+export async function aiImportDocument(file, options = {}) {
   const form = new FormData();
   form.append('file', file);
+  if (options.tripId) {
+    form.append('tripId', options.tripId);
+  }
   const { data } = await client.post('/trip/ai-import', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return data;
+}
+
+export async function saveTripHeader(payload) {
+  const { data } = await client.post('/trips', payload);
   return data;
 }
 
@@ -47,10 +55,11 @@ export async function patchTravelDetail(tripId, travelDetailId, payload) {
   return data;
 }
 
-/** Extract stay/travel records from a single reservation/ticket document for an existing trip. */
-export async function aiImportTripDocument(tripId, file) {
+/** Extract records from a document for an existing trip or itinerary workflow mode. */
+export async function aiImportTripDocument(tripId, file, workflowMode = 'detail_import') {
   const form = new FormData();
   form.append('tripId', tripId);
+  form.append('workflowMode', workflowMode);
   form.append('file', file);
   const { data } = await client.post('/trip/ai-document', form, {
     headers: { 'Content-Type': 'multipart/form-data' },

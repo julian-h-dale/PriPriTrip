@@ -32,6 +32,16 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "users"
 
     name = Column(String, nullable=False, default="")
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    home_location_name = Column(String, nullable=True)
+    home_location_full_address = Column(String, nullable=True)
+    home_location_lat = Column(Float, nullable=True)
+    home_location_lng = Column(Float, nullable=True)
+    home_location_google_place_id = Column(String, nullable=True)
+    home_location_google_maps_uri = Column(String, nullable=True)
+    home_timezone_id = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
 
 
 class TripRecord(Base):
@@ -40,7 +50,7 @@ class TripRecord(Base):
     trip_id = Column(Uuid(as_uuid=False), primary_key=True)
     user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
     trip_name = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="draft", server_default="draft")
+    status = Column(String, nullable=False, default="new", server_default="new")
     start_location_name = Column(String, nullable=True)
     destination_location_name = Column(String, nullable=True)
     default_timezone_id = Column(String, nullable=True)
@@ -197,9 +207,12 @@ class AIDocumentRecord(Base):
     user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
     trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
     filename = Column(String, nullable=False)
+    document_type = Column(String, nullable=False, default="detail", server_default="detail")
+    workflow_mode = Column(String, nullable=False, default="detail_import", server_default="detail_import")
     content_hash = Column(String, nullable=False, index=True)
     body_contents = Column(String, nullable=False)
     extracted_payload = Column(String, nullable=True)
+    trip_import_payload = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
     updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
 
@@ -208,11 +221,20 @@ class AIDocumentRecord(Base):
             "user_id",
             "trip_id",
             "content_hash",
-            name="uq_ai_documents_user_trip_hash",
+            "document_type",
+            name="uq_ai_documents_user_trip_hash_type",
         ),
         CheckConstraint(
             "filename <> ''",
             name="ai_document_filename_nonempty",
+        ),
+        CheckConstraint(
+            "document_type IN ('itinerary', 'detail')",
+            name="ai_document_type_valid",
+        ),
+        CheckConstraint(
+            "workflow_mode IN ('itinerary_import', 'detail_import')",
+            name="ai_document_workflow_mode_valid",
         ),
         CheckConstraint(
             "content_hash <> ''",

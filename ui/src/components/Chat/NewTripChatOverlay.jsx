@@ -14,7 +14,15 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@mui/icons-material/Close';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { aiImportTripDocument, saveAiDocumentRecords } from '../../api/tripImportService';
+import {
+  aiImportDocument,
+  aiImportTripDocument,
+  getTrip,
+  saveAiDocumentRecords,
+  saveImportedTrip,
+  saveTripHeader,
+  verifyTrip,
+} from '../../api/tripImportService';
 import { listChatMessages, sendChatMessage } from '../../api/chatService';
 
 function MarkdownBubble({ text, isBot }) {
@@ -98,6 +106,7 @@ export default function NewTripChatOverlay({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [tripSnapshot, setTripSnapshot] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -122,6 +131,28 @@ export default function NewTripChatOverlay({
       active = false;
     };
   }, [open, tripId, workflowName]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadTripSnapshot() {
+      if (!open || !tripId) {
+        if (active) setTripSnapshot(null);
+        return;
+      }
+      try {
+        const trip = await getTrip(tripId);
+        if (active) setTripSnapshot(trip);
+      } catch {
+        if (active) setTripSnapshot(null);
+      }
+    }
+    loadTripSnapshot();
+    return () => {
+      active = false;
+    };
+  }, [open, tripId]);
+
+  const shouldUseItineraryUpload = !tripSnapshot || tripSnapshot.status === 'new';
 
   async function handleSend() {
     const text = draft.trim();
@@ -174,14 +205,44 @@ export default function NewTripChatOverlay({
 
   async function handleDocumentUpload(file) {
     if (!file) return;
-    if (!tripId) {
-      setError('Send your first message to create the trip shell before uploading a document.');
-      return;
-    }
     setUploading(true);
     setError(null);
     try {
-      const extraction = await aiImportTripDocument(tripId, file);
+      if (shouldUseItineraryUpload) {
+        let targetTripId = tripId;
+        if (!targetTripId) {
+          const today = new Date().toISOString().slice(0, 10);
+          targetTripId = crypto.randomUUID();
+          await saveTripHeader({
+            tripId: targetTripId,
+            tripName: 'New Trip Draft',
+            startDate: today,
+            endDate: today,
+          });
+          onTripIdChange?.(targetTripId);
+        }
+
+        const imported = await aiImportDocument(file, { tripId: targetTripId });
+        const draft = {
+          ...imported,
+          tripId: targetTripId,
+        };
+        const saveResult = await saveImportedTrip(draft);
+        const verify = await verifyTrip(saveResult.tripId);
+        onComplete?.({
+          tripId: saveResult.tripId,
+          tripName: draft.tripName,
+          verify,
+          complete: true,
+        });
+        return;
+      }
+
+      if (!tripId) {
+        throw new Error('Trip is not ready for detail document import yet.');
+      }
+
+      const extraction = await aiImportTripDocument(tripId, file, 'detail_import');
       const result = await saveAiDocumentRecords(extraction.documentId, {
         stays: extraction.stays,
         travels: extraction.travels,
@@ -197,7 +258,12 @@ export default function NewTripChatOverlay({
         },
       ]);
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not import that document into the trip.');
+      const blocked = err?.response?.data?.detail;
+      if (blocked?.errorCode === 'ITINERARY_REIMPORT_BLOCKED') {
+        setError('Itinerary import is already locked for this trip. Continue in inspection or upload detail documents.');
+      } else {
+        setError(err?.response?.data?.detail ?? err?.message ?? 'Could not import that document into the trip.');
+      }
     } finally {
       setUploading(false);
     }
@@ -292,8 +358,17 @@ export default function NewTripChatOverlay({
         >
           <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={uploading || loading}>
-              {uploading ? 'Uploading…' : 'Upload document'}
-              <input hidden type="file" accept=".xlsx,.pdf,.docx" onChange={(e) => handleDocumentUpload(e.target.files?.[0])} />
+              {uploading ? 'Uploading…' : (shouldUseItineraryUpload ? 'Upload itinerary (.xlsx, pdf)' : 'Upload document')}
+              <input
+                hidden
+                type="file"
+                accept=".xlsx,.pdf,.docx"
+                onChange={(e) => {
+                  const selected = e.target.files?.[0];
+                  handleDocumentUpload(selected);
+                  e.target.value = '';
+                }}
+              />
             </Button>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="flex-end">

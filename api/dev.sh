@@ -17,6 +17,10 @@ if [[ "${1:-}" == "--clean" ]]; then
   CLEAN=true
 fi
 
+SEED_EMAIL="julian.h.dale@gmail.com"
+SEED_PASSWORD="honeymoon"
+SEED_NAME="Julian Admin"
+
 # ── 1. Activate venv ─────────────────────────────────────────────────────────
 if [[ ! -f ".venv/bin/activate" ]]; then
   echo "ERROR: .venv not found. Run: python3 -m venv .venv && pip install -r requirements.txt"
@@ -62,7 +66,43 @@ echo ""
 echo "▶ Ensuring schema exists..."
 python3 init_db.py
 
-# ── 6. Start API ─────────────────────────────────────────────────────────────
+# ── 6. Seed default superuser (only on --clean) ─────────────────────────────
+if [[ "$CLEAN" == "true" ]]; then
+  echo ""
+  echo "▶ Seeding default superuser..."
+
+  SEED_USER_ID="$(python3 - <<'PY'
+import uuid
+print(uuid.uuid4())
+PY
+)"
+
+  SEED_HASHED_PASSWORD="$(python3 - <<'PY'
+from pwdlib import PasswordHash
+print(PasswordHash.recommended().hash("honeymoon"))
+PY
+)"
+
+  docker compose exec -T db psql -U postgres -d pripritrip \
+    -v seed_user_id="$SEED_USER_ID" \
+    -v seed_email="$SEED_EMAIL" \
+    -v seed_name="$SEED_NAME" \
+    -v seed_hash="$SEED_HASHED_PASSWORD" <<'SQL'
+INSERT INTO users (id, email, hashed_password, is_active, is_superuser, is_verified, name)
+VALUES (:'seed_user_id'::uuid, :'seed_email', :'seed_hash', true, true, true, :'seed_name')
+ON CONFLICT (email)
+DO UPDATE SET
+  hashed_password = EXCLUDED.hashed_password,
+  is_active = true,
+  is_superuser = true,
+  is_verified = true,
+  name = EXCLUDED.name;
+SQL
+
+  echo "  Seeded user: $SEED_EMAIL (superuser=true)"
+fi
+
+# ── 7. Start API ─────────────────────────────────────────────────────────────
 echo ""
 echo "▶ Starting API on http://localhost:8000 (Ctrl+C to stop)"
 echo ""

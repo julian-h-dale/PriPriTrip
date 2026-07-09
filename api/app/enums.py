@@ -34,3 +34,13 @@ class StayType(StrEnum):
     AIRBNB = "airbnb"
     RENTAL = "rental"
     OTHER = "other"
+
+
+class AIDocumentType(StrEnum):
+    ITINERARY = "itinerary"
+    DETAIL = "detail"
+
+
+class AIDocumentWorkflowMode(StrEnum):
+    ITINERARY_IMPORT = "itinerary_import"
+    DETAIL_IMPORT = "detail_import"

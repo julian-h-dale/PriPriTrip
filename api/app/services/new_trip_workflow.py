@@ -283,6 +283,14 @@ async def _apply_welcome_updates(db: AsyncSession, trip: TripRecord, turn: Welco
     await _reconcile_trip_days(db, trip)
 
 
+def _mark_trip_draft_after_chat_completion(trip: TripRecord) -> None:
+    # Completing the chat-driven new-trip flow moves the trip out of "new"
+    # so itinerary uploads are no longer allowed.
+    if trip.status != "draft":
+        trip.status = "draft"
+        trip.updated_at = datetime.now(timezone.utc)
+
+
 async def _create_travel(db: AsyncSession, trip: TripRecord, travel: TravelDetailImport) -> None:
     detail_id = travel.travelDetailId or str(uuid.uuid4())
     departure_tzid = travel.departureTimezoneId or trip.default_timezone_id
@@ -477,6 +485,7 @@ async def _assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
     return TripResponse(
         tripId=trip.trip_id,
         tripName=trip.trip_name,
+        status=trip.status,
         startLocationName=trip.start_location_name,
         destinationLocationName=trip.destination_location_name,
         defaultTimezoneId=trip.default_timezone_id,
@@ -550,6 +559,7 @@ async def handle_new_trip_chat_turn(
         )
         if turn.stay is not None:
             await _create_stay(db, trip, turn.stay)
+            _mark_trip_draft_after_chat_completion(trip)
             assembled = await _assembled_trip(db, trip)
             verify = verify_trip(assembled)
             summary_message = (
@@ -572,6 +582,7 @@ async def handle_new_trip_chat_turn(
         )
 
     assembled = await _assembled_trip(db, trip)
+    _mark_trip_draft_after_chat_completion(trip)
     verify = verify_trip(assembled)
     return WorkflowOutcome(
         assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",

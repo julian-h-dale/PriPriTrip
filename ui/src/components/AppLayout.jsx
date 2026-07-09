@@ -20,10 +20,12 @@ import HomeIcon from '@mui/icons-material/Home';
 import AddIcon from '@mui/icons-material/Add';
 import ExploreIcon from '@mui/icons-material/Explore';
 import MapIcon from '@mui/icons-material/Map';
+import PersonIcon from '@mui/icons-material/Person';
 
 const NAV_ITEMS = [
   { label: 'Home', icon: <HomeIcon />, path: '/' },
   { label: 'New Trip', icon: <AddIcon />, path: '/new-trip' },
+  { label: 'Profile', icon: <PersonIcon />, path: '/profile' },
 ];
 
 /**

@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from app.enums import LocationRole, PointType, StayType, TravelMode
+from app.enums import AIDocumentType, AIDocumentWorkflowMode, LocationRole, PointType, StayType, TravelMode
 
 
 def _uuid() -> str:
@@ -15,6 +15,37 @@ def _uuid() -> str:
 class AuthResponse(BaseModel):
     token: str
     mapsApiKey: str
+
+
+class UserProfileLocation(BaseModel):
+    name: Optional[str] = None
+    fullAddress: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    googlePlaceId: Optional[str] = None
+    googleMapsUri: Optional[str] = None
+
+
+class UserProfileResponse(BaseModel):
+    email: str
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    homeLocation: UserProfileLocation = UserProfileLocation()
+    homeTimezoneId: Optional[str] = None
+    phoneNumber: Optional[str] = None
+
+
+class UserProfileUpdate(BaseModel):
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    homeLocation: Optional[UserProfileLocation] = None
+    homeTimezoneId: Optional[str] = None
+    phoneNumber: Optional[str] = None
+
+
+class TimezoneLookupRequest(BaseModel):
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 
 # ── Trip header ─────────────────────────────────────────────────────────────
@@ -302,6 +333,7 @@ class TripListItem(BaseModel):
 class TripResponse(BaseModel):
     tripId: str
     tripName: str
+    status: str
     startLocationName: Optional[str] = None
     destinationLocationName: Optional[str] = None
     defaultTimezoneId: Optional[str] = None
@@ -348,6 +380,8 @@ class AIDocumentExtraction(BaseModel):
     documentId: str
     tripId: str
     filename: str
+    documentType: AIDocumentType = AIDocumentType.DETAIL
+    workflowMode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
     cached: bool = False
     stays: List[StayDetailImport] = []
     travels: List[TravelDetailImport] = []
@@ -372,6 +406,8 @@ class AIDocumentListItem(BaseModel):
     documentId: str
     tripId: str
     filename: str
+    documentType: AIDocumentType = AIDocumentType.DETAIL
+    workflowMode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
     staysExtracted: int = 0
     travelsExtracted: int = 0
     createdAt: Optional[str] = None

@@ -9,6 +9,7 @@ import ImportSummaryPage from './pages/ImportSummaryPage';
 import LoginPage from './pages/LoginPage';
 import NewTripPage from './pages/NewTripPage';
 import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
 import StayDetailsPage from './pages/StayDetailsPage';
 import TravelDetailsPage from './pages/TravelDetailsPage';
 import TripInspectionPage from './pages/TripInspectionPage';
@@ -87,6 +88,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <NewTripPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

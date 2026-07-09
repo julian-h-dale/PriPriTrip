@@ -43,6 +43,7 @@ async def import_trip(
     elif trip.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     trip.trip_name = body.tripName
+    trip.status = "draft"
     trip.default_timezone_id = body.defaultTimezoneId
     trip.start_date = body.startDate
     trip.end_date = body.endDate

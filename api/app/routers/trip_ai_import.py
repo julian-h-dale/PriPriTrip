@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.auth import require_auth
 from app.database import get_db
+from app.enums import AIDocumentType, AIDocumentWorkflowMode
 from app.models import AIDocumentRecord, LocationRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
 from app.schemas import AIDocumentExtraction, AIDocumentListItem, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
 from app.services.detail_points import (
@@ -58,12 +59,29 @@ def _document_payload(rec: AIDocumentRecord) -> AIDocumentExtraction:
     payload.documentId = rec.document_id
     payload.tripId = rec.trip_id
     payload.filename = rec.filename
+    payload.documentType = AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value))
+    payload.workflowMode = AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value))
     return payload
+
+
+def _itinerary_reimport_detail(*, trip: TripRecord) -> dict:
+    return {
+        "errorCode": "ITINERARY_REIMPORT_BLOCKED",
+        "tripId": trip.trip_id,
+        "existingStatus": trip.status,
+        "nextAllowedActions": ["go_to_inspection", "upload_detail_document"],
+    }
+
+
+def _itinerary_doc_locked(trip: TripRecord) -> bool:
+    return trip.status != "new"
 
 
 @router.post("/trip/ai-import", response_model=TripImport)
 async def ai_import(
     file: UploadFile = File(...),
+    tripId: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
     started = time.monotonic()
@@ -79,21 +97,108 @@ async def ai_import(
             detail="File is too large (max 15 MB).",
         )
 
-    document_text = document_ingest.extract_text(filename, data)
-    logger.info("ai-import extracted %d chars of text from %s", len(document_text), filename)
+    trip: TripRecord | None = None
+    if tripId:
+        trip = await db.get(TripRecord, tripId)
+        if trip is None or trip.user_id != str(user.id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        if _itinerary_doc_locked(trip):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_itinerary_reimport_detail(trip=trip),
+            )
 
-    # The OpenAI client is synchronous/blocking; run it off the event loop so it
-    # does not stall the whole server while waiting on the API.
-    try:
-        draft = await run_in_threadpool(trip_ai.structure_document, document_text)
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("ai-import failed during structure pass for %s", filename)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI import failed. See server logs for details.",
+    if trip is None:
+        document_text = document_ingest.extract_text(filename, data)
+        logger.info("ai-import extracted %d chars of text from %s", len(document_text), filename)
+        try:
+            draft = await run_in_threadpool(trip_ai.structure_document, document_text)
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("ai-import failed during structure pass for %s", filename)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="AI import failed. See server logs for details.",
+            )
+        elapsed = time.monotonic() - started
+        logger.info(
+            "ai-import done: file=%s trip=%r days=%d in %.1fs",
+            filename,
+            draft.tripName,
+            len(draft.days),
+            elapsed,
         )
+        return draft
+
+    content_hash = hashlib.sha256(data).hexdigest()
+
+    global_cached_result = await db.execute(
+        select(AIDocumentRecord)
+        .where(
+            AIDocumentRecord.content_hash == content_hash,
+            AIDocumentRecord.document_type == AIDocumentType.ITINERARY.value,
+            AIDocumentRecord.workflow_mode == AIDocumentWorkflowMode.ITINERARY_IMPORT.value,
+            AIDocumentRecord.trip_import_payload.is_not(None),
+        )
+        .order_by(AIDocumentRecord.updated_at.desc(), AIDocumentRecord.created_at.desc())
+        .limit(1)
+    )
+    global_cached_doc = global_cached_result.scalar_one_or_none()
+
+    if global_cached_doc is not None and global_cached_doc.trip_import_payload:
+        draft = TripImport.model_validate_json(global_cached_doc.trip_import_payload)
+        document_text = global_cached_doc.body_contents
+    else:
+        document_text = document_ingest.extract_text(filename, data)
+        logger.info("ai-import extracted %d chars of text from %s", len(document_text), filename)
+
+        # The OpenAI client is synchronous/blocking; run it off the event loop so it
+        # does not stall the whole server while waiting on the API.
+        try:
+            draft = await run_in_threadpool(trip_ai.structure_document, document_text)
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("ai-import failed during structure pass for %s", filename)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="AI import failed. See server logs for details.",
+            )
+
+    if tripId:
+        draft = draft.model_copy(update={"tripId": tripId})
+
+    if trip is not None:
+        now = datetime.now(timezone.utc)
+        doc_id = str(uuid.uuid4())
+        itinerary_payload = AIDocumentExtraction(
+            documentId=doc_id,
+            tripId=trip.trip_id,
+            filename=filename,
+            documentType=AIDocumentType.ITINERARY,
+            workflowMode=AIDocumentWorkflowMode.ITINERARY_IMPORT,
+            cached=global_cached_doc is not None,
+            stays=draft.stays,
+            travels=draft.travels,
+        )
+        db.add(
+            AIDocumentRecord(
+                document_id=doc_id,
+                user_id=str(user.id),
+                trip_id=trip.trip_id,
+                filename=filename,
+                document_type=AIDocumentType.ITINERARY.value,
+                workflow_mode=AIDocumentWorkflowMode.ITINERARY_IMPORT.value,
+                content_hash=content_hash,
+                body_contents=document_text,
+                extracted_payload=itinerary_payload.model_dump_json(),
+                trip_import_payload=draft.model_dump_json(),
+            )
+        )
+        trip.status = "draft"
+        trip.updated_at = now
+        await db.commit()
 
     elapsed = time.monotonic() - started
     logger.info(
@@ -140,6 +245,7 @@ async def ai_enhance(
 @router.post("/trip/ai-document", response_model=AIDocumentExtraction)
 async def ai_document_import(
     tripId: str = Form(...),
+    workflowMode: AIDocumentWorkflowMode = Form(AIDocumentWorkflowMode.DETAIL_IMPORT),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
@@ -151,6 +257,12 @@ async def ai_document_import(
     if trip is None or trip.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
+    if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT and _itinerary_doc_locked(trip):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_itinerary_reimport_detail(trip=trip),
+        )
+
     data = await file.read()
     if len(data) > _MAX_BYTES:
         raise HTTPException(
@@ -158,12 +270,18 @@ async def ai_document_import(
             detail="File is too large (max 15 MB).",
         )
     content_hash = hashlib.sha256(data).hexdigest()
+    document_type = (
+        AIDocumentType.ITINERARY
+        if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT
+        else AIDocumentType.DETAIL
+    )
 
     cached_result = await db.execute(
         select(AIDocumentRecord).where(
             AIDocumentRecord.user_id == str(user.id),
             AIDocumentRecord.trip_id == tripId,
             AIDocumentRecord.content_hash == content_hash,
+            AIDocumentRecord.document_type == document_type.value,
         )
     )
     cached_doc = cached_result.scalar_one_or_none()
@@ -173,13 +291,71 @@ async def ai_document_import(
         payload.documentId = cached_doc.document_id
         payload.tripId = tripId
         payload.filename = filename
+        payload.documentType = AIDocumentType(getattr(cached_doc, "document_type", document_type.value))
+        payload.workflowMode = AIDocumentWorkflowMode(getattr(cached_doc, "workflow_mode", workflowMode.value))
+        cached_doc.document_type = payload.documentType.value
+        cached_doc.workflow_mode = payload.workflowMode.value
+        if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
+            trip.status = "draft"
+            trip.updated_at = datetime.now(timezone.utc)
         cached_doc.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        return payload
+
+    global_cached_result = await db.execute(
+        select(AIDocumentRecord)
+        .where(
+            AIDocumentRecord.content_hash == content_hash,
+            AIDocumentRecord.document_type == document_type.value,
+            AIDocumentRecord.extracted_payload.is_not(None),
+        )
+        .order_by(AIDocumentRecord.updated_at.desc(), AIDocumentRecord.created_at.desc())
+        .limit(1)
+    )
+    global_cached_doc = global_cached_result.scalar_one_or_none()
+    if global_cached_doc is not None and global_cached_doc.extracted_payload:
+        document_id = str(uuid.uuid4())
+        payload = AIDocumentExtraction.model_validate_json(global_cached_doc.extracted_payload)
+        payload.documentId = document_id
+        payload.tripId = tripId
+        payload.filename = filename
+        payload.cached = True
+        payload.documentType = document_type
+        payload.workflowMode = workflowMode
+
+        db.add(
+            AIDocumentRecord(
+                document_id=document_id,
+                user_id=str(user.id),
+                trip_id=tripId,
+                filename=filename,
+                document_type=document_type.value,
+                workflow_mode=workflowMode.value,
+                content_hash=content_hash,
+                body_contents=global_cached_doc.body_contents,
+                extracted_payload=payload.model_dump_json(),
+                trip_import_payload=global_cached_doc.trip_import_payload,
+            )
+        )
+        if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
+            now = datetime.now(timezone.utc)
+            trip.status = "draft"
+            trip.updated_at = now
         await db.commit()
         return payload
 
     document_text = document_ingest.extract_text(filename, data)
     try:
-        draft = await run_in_threadpool(trip_ai.extract_document_records, document_text)
+        if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
+            draft_trip = await run_in_threadpool(trip_ai.structure_document, document_text)
+            draft_stays = draft_trip.stays
+            draft_travels = draft_trip.travels
+            trip_import_payload = draft_trip.model_dump_json()
+        else:
+            draft = await run_in_threadpool(trip_ai.extract_document_records, document_text)
+            draft_stays = draft.stays
+            draft_travels = draft.travels
+            trip_import_payload = None
     except HTTPException:
         raise
     except Exception:
@@ -194,9 +370,11 @@ async def ai_document_import(
         documentId=document_id,
         tripId=tripId,
         filename=filename,
+        documentType=document_type,
+        workflowMode=workflowMode,
         cached=False,
-        stays=draft.stays,
-        travels=draft.travels,
+        stays=draft_stays,
+        travels=draft_travels,
     )
 
     if cached_doc is None:
@@ -205,17 +383,28 @@ async def ai_document_import(
             user_id=str(user.id),
             trip_id=tripId,
             filename=filename,
+            document_type=document_type.value,
+            workflow_mode=workflowMode.value,
             content_hash=content_hash,
             body_contents=document_text,
             extracted_payload=payload.model_dump_json(),
+            trip_import_payload=trip_import_payload,
         )
         db.add(doc)
     else:
         cached_doc.filename = filename
+        cached_doc.document_type = document_type.value
+        cached_doc.workflow_mode = workflowMode.value
         cached_doc.content_hash = content_hash
         cached_doc.body_contents = document_text
         cached_doc.extracted_payload = payload.model_dump_json()
+        cached_doc.trip_import_payload = trip_import_payload
         cached_doc.updated_at = datetime.now(timezone.utc)
+
+    if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
+        now = datetime.now(timezone.utc)
+        trip.status = "draft"
+        trip.updated_at = now
 
     await db.commit()
     elapsed = time.monotonic() - started
@@ -254,6 +443,8 @@ async def list_ai_documents(
                 documentId=rec.document_id,
                 tripId=rec.trip_id,
                 filename=rec.filename,
+                documentType=AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value)),
+                workflowMode=AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value)),
                 staysExtracted=len(payload.stays) if payload else 0,
                 travelsExtracted=len(payload.travels) if payload else 0,
                 createdAt=rec.created_at.isoformat() if rec.created_at else None,
@@ -304,6 +495,8 @@ async def regen_ai_document_extraction(
         documentId=rec.document_id,
         tripId=rec.trip_id,
         filename=rec.filename,
+        documentType=AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value)),
+        workflowMode=AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value)),
         cached=False,
         stays=draft.stays,
         travels=draft.travels,

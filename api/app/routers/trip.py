@@ -182,6 +182,7 @@ async def _load_trip(
     return TripResponse(
         tripId=record.trip_id,
         tripName=record.trip_name,
+        status=record.status,
         startLocationName=record.start_location_name,
         destinationLocationName=record.destination_location_name,
         defaultTimezoneId=record.default_timezone_id,
