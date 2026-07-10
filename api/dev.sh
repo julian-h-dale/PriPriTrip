@@ -20,6 +20,16 @@ fi
 SEED_EMAIL="julian.h.dale@gmail.com"
 SEED_PASSWORD="honeymoon"
 SEED_NAME="Julian Admin"
+SEED_FIRST_NAME="Julian"
+SEED_LAST_NAME="Dale"
+SEED_HOME_LOCATION_NAME="Chicago, IL"
+SEED_HOME_LOCATION_FULL_ADDRESS="Chicago, IL, USA"
+SEED_HOME_LOCATION_LAT="41.8781"
+SEED_HOME_LOCATION_LNG="-87.6298"
+SEED_HOME_LOCATION_GOOGLE_PLACE_ID="ChIJ7cv00DwsDogRAMDACa2m4K8"
+SEED_HOME_LOCATION_GOOGLE_MAPS_URI="https://maps.google.com/?q=Chicago,+IL"
+SEED_HOME_TIMEZONE_ID="America/Chicago"
+SEED_PHONE_NUMBER="555-0100"
 
 # ── 1. Activate venv ─────────────────────────────────────────────────────────
 if [[ ! -f ".venv/bin/activate" ]]; then
@@ -87,16 +97,72 @@ PY
     -v seed_user_id="$SEED_USER_ID" \
     -v seed_email="$SEED_EMAIL" \
     -v seed_name="$SEED_NAME" \
+    -v seed_first_name="$SEED_FIRST_NAME" \
+    -v seed_last_name="$SEED_LAST_NAME" \
+    -v seed_home_location_name="$SEED_HOME_LOCATION_NAME" \
+    -v seed_home_location_full_address="$SEED_HOME_LOCATION_FULL_ADDRESS" \
+    -v seed_home_location_lat="$SEED_HOME_LOCATION_LAT" \
+    -v seed_home_location_lng="$SEED_HOME_LOCATION_LNG" \
+    -v seed_home_location_google_place_id="$SEED_HOME_LOCATION_GOOGLE_PLACE_ID" \
+    -v seed_home_location_google_maps_uri="$SEED_HOME_LOCATION_GOOGLE_MAPS_URI" \
+    -v seed_home_timezone_id="$SEED_HOME_TIMEZONE_ID" \
+    -v seed_phone_number="$SEED_PHONE_NUMBER" \
     -v seed_hash="$SEED_HASHED_PASSWORD" <<'SQL'
-INSERT INTO users (id, email, hashed_password, is_active, is_superuser, is_verified, name)
-VALUES (:'seed_user_id'::uuid, :'seed_email', :'seed_hash', true, true, true, :'seed_name')
+INSERT INTO users (
+  id,
+  email,
+  hashed_password,
+  is_active,
+  is_superuser,
+  is_verified,
+  name,
+  first_name,
+  last_name,
+  home_location_name,
+  home_location_full_address,
+  home_location_lat,
+  home_location_lng,
+  home_location_google_place_id,
+  home_location_google_maps_uri,
+  home_timezone_id,
+  phone_number
+)
+VALUES (
+  :'seed_user_id'::uuid,
+  :'seed_email',
+  :'seed_hash',
+  true,
+  true,
+  true,
+  :'seed_name',
+  :'seed_first_name',
+  :'seed_last_name',
+  :'seed_home_location_name',
+  :'seed_home_location_full_address',
+  :'seed_home_location_lat'::double precision,
+  :'seed_home_location_lng'::double precision,
+  :'seed_home_location_google_place_id',
+  :'seed_home_location_google_maps_uri',
+  :'seed_home_timezone_id',
+  :'seed_phone_number'
+)
 ON CONFLICT (email)
 DO UPDATE SET
   hashed_password = EXCLUDED.hashed_password,
   is_active = true,
   is_superuser = true,
   is_verified = true,
-  name = EXCLUDED.name;
+  name = EXCLUDED.name,
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  home_location_name = EXCLUDED.home_location_name,
+  home_location_full_address = EXCLUDED.home_location_full_address,
+  home_location_lat = EXCLUDED.home_location_lat,
+  home_location_lng = EXCLUDED.home_location_lng,
+  home_location_google_place_id = EXCLUDED.home_location_google_place_id,
+  home_location_google_maps_uri = EXCLUDED.home_location_google_maps_uri,
+  home_timezone_id = EXCLUDED.home_timezone_id,
+  phone_number = EXCLUDED.phone_number;
 SQL
 
   echo "  Seeded user: $SEED_EMAIL (superuser=true)"

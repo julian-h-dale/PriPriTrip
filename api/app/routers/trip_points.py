@@ -31,7 +31,12 @@ router = APIRouter(
 
 
 def _require_trip(trip: TripRecord | None, trip_id: str, user: UserRecord) -> TripRecord:
-    if trip is None or trip.user_id != str(user.id):
+    if (
+        trip is None
+        or trip.user_id != str(user.id)
+        or bool(getattr(trip, "is_deleted", False))
+        or getattr(trip, "deleted_at", None) is not None
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     return trip
 

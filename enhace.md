@@ -88,3 +88,8 @@ Front End Changes:
 Ask any questions you have. 
 
 Ok, next I want to add another ai import feature.  this one is going to accept records (pdfs) of hotel reservation confirmations, travel confirmation (plane tickets).  Let's start with that and we can expand it.
+
+
+7/9
+
+Ok we have made some progress but there are still some tweaks we need.  We lost the proactiveness though.  I want to know is there a way we could generate canned responses based off of what is missing

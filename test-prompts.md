@@ -1,0 +1,1 @@
+I am going to okinawa this oct. I leave the 30th and return home nov. 11th.  can you help me record this trip?

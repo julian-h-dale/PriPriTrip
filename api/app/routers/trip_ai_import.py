@@ -100,7 +100,12 @@ async def ai_import(
     trip: TripRecord | None = None
     if tripId:
         trip = await db.get(TripRecord, tripId)
-        if trip is None or trip.user_id != str(user.id):
+        if (
+            trip is None
+            or trip.user_id != str(user.id)
+            or trip.is_deleted
+            or trip.deleted_at is not None
+        ):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
         if _itinerary_doc_locked(trip):
             raise HTTPException(
@@ -254,7 +259,12 @@ async def ai_document_import(
     filename = file.filename or "unknown"
 
     trip = await db.get(TripRecord, tripId)
-    if trip is None or trip.user_id != str(user.id):
+    if (
+        trip is None
+        or trip.user_id != str(user.id)
+        or trip.is_deleted
+        or trip.deleted_at is not None
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
     if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT and _itinerary_doc_locked(trip):
@@ -426,7 +436,12 @@ async def list_ai_documents(
     user: UserRecord = Depends(require_auth),
 ):
     trip = await db.get(TripRecord, trip_id)
-    if trip is None or trip.user_id != str(user.id):
+    if (
+        trip is None
+        or trip.user_id != str(user.id)
+        or trip.is_deleted
+        or trip.deleted_at is not None
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
     result = await db.execute(
@@ -519,7 +534,12 @@ async def save_ai_document_records(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     trip = await db.get(TripRecord, rec.trip_id)
-    if trip is None or trip.user_id != str(user.id):
+    if (
+        trip is None
+        or trip.user_id != str(user.id)
+        or trip.is_deleted
+        or trip.deleted_at is not None
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     if not rec.extracted_payload:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No extracted payload to save")

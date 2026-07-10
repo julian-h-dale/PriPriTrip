@@ -23,8 +23,10 @@ from app.services.detail_points import (
     sync_stay_generated_points,
     sync_travel_generated_points,
 )
+from app.services.llm_contract import AssistantTurn
 from app.services.prompt_composer import build_new_trip_stage_prompt
 from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
+from app.services.trip_action_executor import apply_assistant_turn
 from app.services.trip_verify import verify_trip
 
 _DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
@@ -119,12 +121,16 @@ def _parse(client, *, system: str, user: str, response_format, pass_name: str):
 
     message = completion.choices[0].message
     usage = getattr(completion, "usage", None)
+    prompt_details = getattr(usage, "prompt_tokens_details", None) if usage else None
     log_ai_event(
         "ai.new_trip.openai.response_meta",
         passName=pass_name,
         elapsedSeconds=round(time.monotonic() - started, 3),
         finishReason=(completion.choices[0].finish_reason if completion.choices else None),
-        usage=(getattr(usage, "total_tokens", None) if usage else None),
+        totalTokens=(getattr(usage, "total_tokens", None) if usage else None),
+        promptTokens=(getattr(usage, "prompt_tokens", None) if usage else None),
+        completionTokens=(getattr(usage, "completion_tokens", None) if usage else None),
+        cachedPromptTokens=(getattr(prompt_details, "cached_tokens", None) if prompt_details else None),
         refusal=getattr(message, "refusal", None),
     )
     if getattr(message, "refusal", None):
@@ -183,6 +189,8 @@ def _conversation_prompt(
     ui_context: dict | None = None,
 ) -> str:
     return (
+        "Runtime context contract (backend authoritative context):\n"
+        f"{json.dumps(ui_context or {}, indent=2)}\n\n"
         "Current trip state:\n"
         f"{json.dumps(summary, indent=2)}\n\n"
         "Current full trip snapshot:\n"
@@ -191,8 +199,6 @@ def _conversation_prompt(
         f"{conversation_summary or ''}\n\n"
         "Conversation so far:\n"
         f"{json.dumps(transcript, indent=2)}\n\n"
-        "UI context (if any):\n"
-        f"{json.dumps(ui_context or {}, indent=2)}\n\n"
         "Latest user message:\n"
         f"{latest_message}"
     )
@@ -200,6 +206,21 @@ def _conversation_prompt(
 
 def _is_shell_trip(trip: TripRecord) -> bool:
     return trip.trip_name == "New Trip Draft" and trip.start_date == trip.end_date
+
+
+def _recent_assistant_questions(transcript: list[dict], limit: int = 5) -> list[str]:
+    questions: list[str] = []
+    for item in reversed(transcript):
+        if item.get("role") != "assistant":
+            continue
+        message = (item.get("message") or "").strip()
+        if not message:
+            continue
+        if "?" in message:
+            questions.append(message)
+        if len(questions) >= limit:
+            break
+    return list(reversed(questions))
 
 
 async def _reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
@@ -531,145 +552,113 @@ async def handle_new_trip_chat_turn(
         or not trip.end_date
     )
 
-    if missing_welcome:
-        log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage="welcome")
-        turn = _parse(
-            client,
-            system=build_new_trip_stage_prompt("welcome"),
-            user=_conversation_prompt(
-                summary,
-                trip_snapshot,
-                transcript,
-                latest_message,
-                conversation_summary,
-                ui_context,
-            ),
-            response_format=WelcomeTurn,
-            pass_name="new-trip-welcome",
-        )
-        await _apply_welcome_updates(db, trip, turn)
+    stage = "welcome" if missing_welcome else ("travel" if active_travels == 0 else ("stay" if active_stays == 0 else "already_complete"))
+
+    if stage == "already_complete":
+        assembled = await _assembled_trip(db, trip)
+        _mark_trip_draft_after_chat_completion(trip)
+        verify = verify_trip(assembled)
         log_ai_event(
             "ai.new_trip.turn.outcome",
             tripId=trip.trip_id,
-            stage="welcome",
-            complete=False,
-            structured=_structured_turn_payload(turn),
-            assistantMessage=turn.assistantMessage,
+            stage="already_complete",
+            complete=True,
+            verify=verify,
+            assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
         )
         return WorkflowOutcome(
-            assistantMessage=turn.assistantMessage,
-            complete=False,
-            structuredContent=_structured_turn_payload(turn),
+            assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
+            complete=True,
+            verify=verify,
+            structuredContent={"status": "already-complete"},
         )
 
-    if active_travels == 0:
-        log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage="travel")
-        turn = _parse(
-            client,
-            system=build_new_trip_stage_prompt("travel"),
-            user=_conversation_prompt(
-                summary,
-                trip_snapshot,
-                transcript,
-                latest_message,
-                conversation_summary,
-                ui_context,
-            ),
-            response_format=TravelTurn,
-            pass_name="new-trip-travel",
+    log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage=stage)
+    turn = _parse(
+        client,
+        system=build_new_trip_stage_prompt(stage),
+        user=_conversation_prompt(
+            summary,
+            trip_snapshot,
+            transcript,
+            latest_message,
+            conversation_summary,
+            ui_context,
+        ),
+        response_format=AssistantTurn,
+        pass_name=f"new-trip-{stage}",
+    )
+
+    applied = await apply_assistant_turn(
+        db,
+        trip=trip,
+        turn=turn,
+        latest_message=latest_message,
+        recent_assistant_questions=_recent_assistant_questions(transcript),
+    )
+
+    refreshed_summary = await _trip_state_summary(db, trip)
+    complete_now = (
+        refreshed_summary["staysCount"] > 0
+        and refreshed_summary["travelsCount"] > 0
+        and bool(trip.destination_location_name)
+        and bool(trip.start_date)
+        and bool(trip.end_date)
+    )
+
+    payload = {
+        "actions": [action.model_dump(mode="json") for action in turn.actions],
+        "persistedActions": [action.model_dump(mode="json") for action in applied.persistedActions],
+        "suppressedActions": applied.suppressedActions,
+        "results": [result.model_dump(mode="json") for result in applied.results],
+        "assumptions": [item.model_dump(mode="json") for item in applied.assumptions],
+        "unresolvedItems": [item.model_dump(mode="json") for item in applied.unresolvedItems],
+        "followUpQuestion": applied.followUpQuestion,
+        "confidence": turn.confidence,
+        "stage": stage,
+    }
+
+    assistant_text = applied.assistantMessage
+    if applied.followUpQuestion:
+        assistant_text = f"{assistant_text}\n\n{applied.followUpQuestion}".strip()
+
+    if complete_now:
+        _mark_trip_draft_after_chat_completion(trip)
+        assembled = await _assembled_trip(db, trip)
+        verify = verify_trip(assembled)
+        summary_message = (
+            f"Your trip draft is ready: {assembled.tripName}.\n"
+            f"- dates: {assembled.startDate} to {assembled.endDate}\n"
+            f"- travel legs: {len(assembled.travels)}\n"
+            f"- stays: {len(assembled.stays)}\n"
+            "Opening inspection so you can review any remaining issues."
         )
-        if turn.travel is not None:
-            await _create_travel(db, trip, turn.travel)
-            log_ai_event(
-                "ai.new_trip.turn.travel_created",
-                tripId=trip.trip_id,
-                travel=turn.travel,
-            )
         log_ai_event(
             "ai.new_trip.turn.outcome",
             tripId=trip.trip_id,
-            stage="travel",
-            complete=False,
-            structured=_structured_turn_payload(turn),
-            assistantMessage=turn.assistantMessage,
+            stage=stage,
+            complete=True,
+            verify=verify,
+            structured=payload,
+            assistantMessage=summary_message,
         )
         return WorkflowOutcome(
-            assistantMessage=turn.assistantMessage,
-            complete=False,
-            structuredContent=_structured_turn_payload(turn),
+            assistantMessage=summary_message,
+            complete=True,
+            verify=verify,
+            structuredContent=payload,
         )
 
-    if active_stays == 0:
-        log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage="stay")
-        turn = _parse(
-            client,
-            system=build_new_trip_stage_prompt("stay"),
-            user=_conversation_prompt(
-                summary,
-                trip_snapshot,
-                transcript,
-                latest_message,
-                conversation_summary,
-                ui_context,
-            ),
-            response_format=StayTurn,
-            pass_name="new-trip-stay",
-        )
-        if turn.stay is not None:
-            await _create_stay(db, trip, turn.stay)
-            _mark_trip_draft_after_chat_completion(trip)
-            assembled = await _assembled_trip(db, trip)
-            verify = verify_trip(assembled)
-            summary_message = (
-                f"Your trip draft is ready: {assembled.tripName}.\n"
-                f"- dates: {assembled.startDate} to {assembled.endDate}\n"
-                f"- travel legs: {len(assembled.travels)}\n"
-                f"- stays: {len(assembled.stays)}\n"
-                "Opening inspection so you can review any remaining issues."
-            )
-            log_ai_event(
-                "ai.new_trip.turn.outcome",
-                tripId=trip.trip_id,
-                stage="stay",
-                complete=True,
-                verify=verify,
-                structured=_structured_turn_payload(turn),
-                assistantMessage=summary_message,
-            )
-            return WorkflowOutcome(
-                assistantMessage=summary_message,
-                complete=True,
-                verify=verify,
-                structuredContent=_structured_turn_payload(turn),
-            )
-        log_ai_event(
-            "ai.new_trip.turn.outcome",
-            tripId=trip.trip_id,
-            stage="stay",
-            complete=False,
-            structured=_structured_turn_payload(turn),
-            assistantMessage=turn.assistantMessage,
-        )
-        return WorkflowOutcome(
-            assistantMessage=turn.assistantMessage,
-            complete=False,
-            structuredContent=_structured_turn_payload(turn),
-        )
-
-    assembled = await _assembled_trip(db, trip)
-    _mark_trip_draft_after_chat_completion(trip)
-    verify = verify_trip(assembled)
     log_ai_event(
         "ai.new_trip.turn.outcome",
         tripId=trip.trip_id,
-        stage="already_complete",
-        complete=True,
-        verify=verify,
-        assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
+        stage=stage,
+        complete=False,
+        structured=payload,
+        assistantMessage=assistant_text,
     )
     return WorkflowOutcome(
-        assistantMessage="Your trip already has the key pieces in place. Opening inspection now.",
-        complete=True,
-        verify=verify,
-        structuredContent={"status": "already-complete"},
+        assistantMessage=assistant_text,
+        complete=False,
+        structuredContent=payload,
     )

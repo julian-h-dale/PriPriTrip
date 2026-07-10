@@ -7,14 +7,12 @@ from typing import Literal
 
 
 PromptStage = Literal["welcome", "travel", "stay", "assistant_actions"]
-
-_FALLBACK_BASE = "You are PriPriTrip Assistant for trip-planning tasks only."
-
-_FALLBACK_STAGE: dict[str, str] = {
-    "welcome": "Skill Card: Welcome Intake. Capture trip shell fields with best effort and ask one focused follow-up when needed.",
-    "travel": "Skill Card: Collect One Travel Leg. Capture mode, departureDateTime, arrivalDateTime and ask for the next missing required field.",
-    "stay": "Skill Card: Collect One Stay. Capture stayType, checkIn, checkOut and ask for the next missing required field.",
-    "assistant_actions": "Skill Card: Trip CRUD Actions. Return assistantMessage and zero or more structured CRUD actions.",
+_REQUIRED_SECTIONS = {
+    "base",
+    "stage:welcome",
+    "stage:travel",
+    "stage:stay",
+    "stage:assistant_actions",
 }
 
 _SECTION_PATTERN = re.compile(r"^##\s*\[(?P<name>[^\]]+)\]\s*$", re.MULTILINE)
@@ -41,27 +39,43 @@ def _split_sections(text: str) -> dict[str, str]:
     return sections
 
 
+def _validate_sections(sections: dict[str, str]) -> None:
+    missing = sorted(name for name in _REQUIRED_SECTIONS if not sections.get(name))
+    if missing:
+        missing_text = ", ".join(missing)
+        raise RuntimeError(
+            "Prompt file is missing required machine-readable section markers: "
+            f"{missing_text}. Expected markers like '## [base]' and '## [stage:welcome]'."
+        )
+
+
 @lru_cache(maxsize=1)
 def _load_prompt_sections() -> dict[str, str]:
     prompt_path = _prompt_path()
     try:
         text = prompt_path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        return {}
+        raise RuntimeError(f"Prompt file not found at {prompt_path}")
     cleaned = text.strip()
     if not cleaned:
-        return {}
-    return _split_sections(cleaned)
+        raise RuntimeError(f"Prompt file is empty at {prompt_path}")
+    sections = _split_sections(cleaned)
+    _validate_sections(sections)
+    return sections
 
 
 def load_base_prompt() -> str:
     sections = _load_prompt_sections()
-    return sections.get("base", _FALLBACK_BASE)
+    return sections["base"]
 
 
 def _load_stage_overlay(stage: PromptStage) -> str:
     sections = _load_prompt_sections()
-    return sections.get(f"stage:{stage}", _FALLBACK_STAGE[stage])
+    return sections[f"stage:{stage}"]
+
+
+def validate_prompt_sections() -> None:
+    _load_prompt_sections()
 
 
 def build_new_trip_stage_prompt(stage: Literal["welcome", "travel", "stay"]) -> str:

@@ -7,10 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import get_db
 from app.routers import chat, profile, trip, trip_ai_import, trip_days, trip_details, trip_import, trip_points
 from app.schemas import AuthResponse
+from app.services.prompt_composer import validate_prompt_sections
 from app.users import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, get_user_manager
 
 
 def create_app() -> FastAPI:
+    validate_prompt_sections()
+
     # Ensure our app.* loggers emit at INFO and reach a handler even under
     # uvicorn (which does not configure the root logger).
     app_logger = logging.getLogger("app")

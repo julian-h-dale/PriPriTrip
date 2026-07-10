@@ -42,6 +42,8 @@ async def import_trip(
         db.add(trip)
     elif trip.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    elif trip.is_deleted or trip.deleted_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     trip.trip_name = body.tripName
     trip.status = "draft"
     trip.default_timezone_id = body.defaultTimezoneId

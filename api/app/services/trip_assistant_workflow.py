@@ -1,60 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
 import os
 import time
-import uuid
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import HTTPException, status
-from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import (
-    LocationRecord,
-    StayDetailRecord,
-    TravelDetailRecord,
-    TripDayRecord,
-    TripPointRecord,
-    TripRecord,
-)
-from app.schemas import StayDetailImport, StayDetailPatch, TravelDetailImport, TravelDetailPatch, TripPointCreate, TripPointPatch
+from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord, TripRecord
 from app.services.ai_trace import log_ai_event
-from app.services.detail_points import (
-    soft_delete_generated_points_for_stay,
-    soft_delete_generated_points_for_travel,
-    sync_stay_generated_points,
-    sync_travel_generated_points,
-)
+from app.services.llm_contract import AssistantTurn
 from app.services.new_trip_workflow import WorkflowOutcome
 from app.services.new_trip_workflow import _assembled_trip
 from app.services.prompt_composer import build_trip_assistant_prompt
-from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
+from app.services.trip_action_executor import apply_assistant_turn
 
 _DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
 _REQUEST_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", "120"))
 _MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
-
-class AssistantAction(BaseModel):
-    op: Literal["create", "update", "delete"]
-    target: Literal["trip", "day", "point", "stay", "travel"]
-    id: str | None = None
-    fields: dict[str, Any] = Field(default_factory=dict)
-
-
-class AssistantTurn(BaseModel):
-    assistantMessage: str
-    actions: list[AssistantAction] = Field(default_factory=list)
-
-
-class ActionResult(BaseModel):
-    op: str
-    target: str
-    id: str | None = None
-    status: Literal["ok", "error"]
-    detail: str | None = None
 
 
 def _client():
@@ -103,12 +68,16 @@ def _parse(client, *, system: str, user: str, response_format, pass_name: str):
 
     message = completion.choices[0].message
     usage = getattr(completion, "usage", None)
+    prompt_details = getattr(usage, "prompt_tokens_details", None) if usage else None
     log_ai_event(
         "ai.trip_assistant.openai.response_meta",
         passName=pass_name,
         elapsedSeconds=round(time.monotonic() - started, 3),
         finishReason=(completion.choices[0].finish_reason if completion.choices else None),
-        usage=(getattr(usage, "total_tokens", None) if usage else None),
+        totalTokens=(getattr(usage, "total_tokens", None) if usage else None),
+        promptTokens=(getattr(usage, "prompt_tokens", None) if usage else None),
+        completionTokens=(getattr(usage, "completion_tokens", None) if usage else None),
+        cachedPromptTokens=(getattr(prompt_details, "cached_tokens", None) if prompt_details else None),
         refusal=getattr(message, "refusal", None),
     )
     if getattr(message, "refusal", None):
@@ -184,6 +153,8 @@ def _conversation_prompt(
     ui_context: dict | None = None,
 ) -> str:
     return (
+        "Runtime context contract (backend authoritative context):\n"
+        f"{json.dumps(ui_context or {}, indent=2)}\n\n"
         "Current trip state:\n"
         f"{json.dumps(summary, indent=2)}\n\n"
         "Current full trip snapshot:\n"
@@ -192,481 +163,24 @@ def _conversation_prompt(
         f"{conversation_summary or ''}\n\n"
         "Conversation so far:\n"
         f"{json.dumps(transcript, indent=2)}\n\n"
-        "UI context (if any):\n"
-        f"{json.dumps(ui_context or {}, indent=2)}\n\n"
         "Latest user message:\n"
         f"{latest_message}"
     )
 
 
-def _coerce_uuid(value: str | None) -> str:
-    if value:
-        try:
-            return str(uuid.UUID(str(value)))
-        except ValueError:
-            pass
-    return str(uuid.uuid4())
-
-
-def _ensure_location_id(loc: dict[str, Any]) -> dict[str, Any]:
-    loc["locationId"] = _coerce_uuid(loc.get("locationId"))
-    return loc
-
-
-async def _replace_point_locations(db: AsyncSession, point_id: str, locations: list[dict[str, Any]]) -> None:
-    await db.execute(delete(LocationRecord).where(LocationRecord.point_id == point_id))
-    for index, raw_loc in enumerate(locations):
-        loc = _ensure_location_id(dict(raw_loc))
-        db.add(
-            LocationRecord(
-                location_id=loc["locationId"],
-                point_id=point_id,
-                stay_detail_id=None,
-                travel_detail_id=None,
-                role=loc["role"],
-                sort_order=index,
-                name=loc["name"],
-                lat=loc.get("lat"),
-                lng=loc.get("lng"),
-                full_address=loc.get("fullAddress"),
-                description=loc.get("description"),
-                link=loc.get("link"),
-                google_place_id=loc.get("googlePlaceId"),
-                google_maps_uri=loc.get("googleMapsUri"),
-                timezone_id=loc.get("timezoneId") or tzid_from_coords(loc.get("lat"), loc.get("lng")),
-            )
-        )
-
-
-async def _replace_detail_locations(
-    db: AsyncSession,
-    *,
-    stay_id: str | None = None,
-    travel_id: str | None = None,
-    locations: list[dict[str, Any]],
-) -> None:
-    if stay_id is not None:
-        await db.execute(delete(LocationRecord).where(LocationRecord.stay_detail_id == stay_id))
-    if travel_id is not None:
-        await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id == travel_id))
-
-    for index, raw_loc in enumerate(locations):
-        loc = _ensure_location_id(dict(raw_loc))
-        db.add(
-            LocationRecord(
-                location_id=loc["locationId"],
-                point_id=None,
-                stay_detail_id=stay_id,
-                travel_detail_id=travel_id,
-                role=loc["role"],
-                sort_order=index,
-                name=loc["name"],
-                lat=loc.get("lat"),
-                lng=loc.get("lng"),
-                full_address=loc.get("fullAddress"),
-                description=loc.get("description"),
-                link=loc.get("link"),
-                google_place_id=loc.get("googlePlaceId"),
-                google_maps_uri=loc.get("googleMapsUri"),
-                timezone_id=loc.get("timezoneId") or tzid_from_coords(loc.get("lat"), loc.get("lng")),
-            )
-        )
-
-
-def _trip_tz(trip: TripRecord) -> str:
-    return trip.default_timezone_id or "UTC"
-
-
-async def _execute_action(db: AsyncSession, *, trip: TripRecord, action: AssistantAction) -> ActionResult:
-    log_ai_event(
-        "ai.trip_assistant.action.start",
-        tripId=trip.trip_id,
-        action=action,
-    )
-    if action.target == "trip":
-        if action.op != "update":
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Only update is supported for trip")
-
-        field_map = {
-            "tripName": "trip_name",
-            "status": "status",
-            "startLocationName": "start_location_name",
-            "destinationLocationName": "destination_location_name",
-            "defaultTimezoneId": "default_timezone_id",
-            "startDate": "start_date",
-            "endDate": "end_date",
-        }
-        applied = 0
-        for key, orm_field in field_map.items():
-            if key in action.fields:
-                setattr(trip, orm_field, action.fields[key])
-                applied += 1
-        if applied == 0:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="No supported trip fields provided")
-        trip.updated_at = datetime.now(timezone.utc)
-        await db.flush()
-        result = ActionResult(op=action.op, target=action.target, id=trip.trip_id, status="ok", detail=f"Updated {applied} trip field(s)")
-        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-        return result
-
-    if action.target == "day":
-        if action.op == "create":
-            day_id = _coerce_uuid(action.id)
-            if await db.get(TripDayRecord, day_id):
-                return ActionResult(op=action.op, target=action.target, id=day_id, status="error", detail="Day already exists")
-            title = action.fields.get("title")
-            day_date = action.fields.get("date")
-            if not title or not day_date:
-                return ActionResult(op=action.op, target=action.target, status="error", detail="Day create requires title and date")
-            db.add(
-                TripDayRecord(
-                    day_id=day_id,
-                    trip_id=trip.trip_id,
-                    title=title,
-                    date=day_date,
-                    description=action.fields.get("description"),
-                    is_alternate=bool(action.fields.get("isAlternate", False)),
-                    completed=bool(action.fields.get("completed", False)),
-                )
-            )
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=day_id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Day id is required")
-        rec = await db.get(TripDayRecord, action.id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Day not found")
-
-        if action.op == "update":
-            field_map = {
-                "title": "title",
-                "date": "date",
-                "description": "description",
-                "isAlternate": "is_alternate",
-                "completed": "completed",
-            }
-            for key, orm_field in field_map.items():
-                if key in action.fields:
-                    setattr(rec, orm_field, action.fields[key])
-            rec.updated_at = datetime.now(timezone.utc)
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
-        await db.flush()
-        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-        return result
-
-    if action.target == "point":
-        if action.op == "create":
-            payload = dict(action.fields)
-            payload["pointId"] = _coerce_uuid(action.id or payload.get("pointId"))
-            payload.setdefault("locations", [])
-            day_id = payload.get("dayId")
-            if not day_id:
-                return ActionResult(op=action.op, target=action.target, status="error", detail="Point create requires dayId")
-            day = await db.get(TripDayRecord, day_id)
-            if day is None or day.trip_id != trip.trip_id or day.is_deleted or day.deleted_at is not None:
-                return ActionResult(op=action.op, target=action.target, id=payload["pointId"], status="error", detail="Day not found")
-            try:
-                body = TripPointCreate.model_validate(payload)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=payload["pointId"], status="error", detail=str(exc))
-
-            rec = TripPointRecord(
-                point_id=body.pointId,
-                trip_id=trip.trip_id,
-                day_id=body.dayId,
-                type=body.type,
-                title=body.title,
-                stay_detail_id=body.stayDetailId,
-                travel_detail_id=body.travelDetailId,
-                confirmation_number=body.confirmationNumber,
-                description=body.description,
-                image_url=body.imageUrl,
-                logo_url=body.logoUrl,
-                is_system_created=body.isSystemCreated,
-                completed=body.completed,
-                completed_date_time=body.completedDateTime,
-            )
-            rec.start_local = parse_wall_clock(body.startDateTime)
-            rec.start_tzid = body.startTimezoneId or _trip_tz(trip)
-            rec.start_utc = derive_utc(rec.start_local, rec.start_tzid)
-            rec.end_local = parse_wall_clock(body.endDateTime)
-            rec.end_tzid = body.endTimezoneId or rec.start_tzid
-            rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
-            rec.start_date_time = wall_clock_to_text(rec.start_local)
-            rec.end_date_time = wall_clock_to_text(rec.end_local)
-            db.add(rec)
-            await db.flush()
-            await _replace_point_locations(db, body.pointId, [loc.model_dump() for loc in body.locations])
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=body.pointId, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Point id is required")
-        rec = await db.get(TripPointRecord, action.id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Point not found")
-
-        if action.op == "update":
-            try:
-                patch = TripPointPatch.model_validate(action.fields)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
-
-            field_map = {
-                "dayId": "day_id",
-                "type": "type",
-                "title": "title",
-                "stayDetailId": "stay_detail_id",
-                "travelDetailId": "travel_detail_id",
-                "confirmationNumber": "confirmation_number",
-                "description": "description",
-                "imageUrl": "image_url",
-                "logoUrl": "logo_url",
-                "isSystemCreated": "is_system_created",
-                "completed": "completed",
-                "completedDateTime": "completed_date_time",
-            }
-            for key, orm_field in field_map.items():
-                if key in patch.model_fields_set:
-                    setattr(rec, orm_field, getattr(patch, key))
-
-            if "startDateTime" in patch.model_fields_set:
-                rec.start_local = parse_wall_clock(patch.startDateTime)
-                rec.start_date_time = wall_clock_to_text(rec.start_local)
-            if "endDateTime" in patch.model_fields_set:
-                rec.end_local = parse_wall_clock(patch.endDateTime)
-                rec.end_date_time = wall_clock_to_text(rec.end_local)
-
-            if "startTimezoneId" in patch.model_fields_set:
-                rec.start_tzid = patch.startTimezoneId or _trip_tz(trip)
-            if "endTimezoneId" in patch.model_fields_set:
-                rec.end_tzid = patch.endTimezoneId or rec.start_tzid or _trip_tz(trip)
-
-            rec.start_utc = derive_utc(rec.start_local, rec.start_tzid)
-            rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
-
-            if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump() for loc in (patch.locations or [])]
-                await _replace_point_locations(db, rec.point_id, locs)
-
-            rec.updated_at = datetime.now(timezone.utc)
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
-        await db.flush()
-        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-        return result
-
-    if action.target == "stay":
-        if action.op == "create":
-            payload = dict(action.fields)
-            payload["stayDetailId"] = _coerce_uuid(action.id or payload.get("stayDetailId"))
-            payload.setdefault("locations", [])
-            try:
-                body = StayDetailImport.model_validate(payload)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=payload["stayDetailId"], status="error", detail=str(exc))
-
-            rec = StayDetailRecord(
-                stay_detail_id=body.stayDetailId,
-                trip_id=trip.trip_id,
-                name=body.name,
-                stay_type=body.stayType,
-                room_type=body.roomType,
-                confirmation_number=body.confirmationNumber,
-                description=body.description,
-            )
-            rec.check_in_local = parse_wall_clock(body.checkIn)
-            rec.check_in_tzid = body.checkInTimezoneId or _trip_tz(trip)
-            rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
-            rec.check_in = wall_clock_to_text(rec.check_in_local)
-            rec.check_out_local = parse_wall_clock(body.checkOut)
-            rec.check_out_tzid = body.checkOutTimezoneId or rec.check_in_tzid
-            rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
-            rec.check_out = wall_clock_to_text(rec.check_out_local)
-            db.add(rec)
-            await db.flush()
-            await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump() for loc in body.locations])
-            await sync_stay_generated_points(db, stay=rec)
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=rec.stay_detail_id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Stay id is required")
-        rec = await db.get(StayDetailRecord, action.id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Stay not found")
-
-        if action.op == "update":
-            try:
-                patch = StayDetailPatch.model_validate(action.fields)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
-
-            field_map = {
-                "name": "name",
-                "stayType": "stay_type",
-                "roomType": "room_type",
-                "confirmationNumber": "confirmation_number",
-                "description": "description",
-            }
-            for key, orm_field in field_map.items():
-                if key in patch.model_fields_set:
-                    setattr(rec, orm_field, getattr(patch, key))
-
-            if "checkIn" in patch.model_fields_set:
-                rec.check_in_local = parse_wall_clock(patch.checkIn)
-                rec.check_in = wall_clock_to_text(rec.check_in_local)
-            if "checkOut" in patch.model_fields_set:
-                rec.check_out_local = parse_wall_clock(patch.checkOut)
-                rec.check_out = wall_clock_to_text(rec.check_out_local)
-            if "checkInTimezoneId" in patch.model_fields_set:
-                rec.check_in_tzid = patch.checkInTimezoneId or _trip_tz(trip)
-            if "checkOutTimezoneId" in patch.model_fields_set:
-                rec.check_out_tzid = patch.checkOutTimezoneId or rec.check_in_tzid
-
-            rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
-            rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
-
-            if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump() for loc in (patch.locations or [])]
-                await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=locs)
-
-            rec.updated_at = datetime.now(timezone.utc)
-            await sync_stay_generated_points(db, stay=rec)
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
-        await soft_delete_generated_points_for_stay(db, stay_detail_id=rec.stay_detail_id)
-        await db.flush()
-        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-        return result
-
-    if action.target == "travel":
-        if action.op == "create":
-            payload = dict(action.fields)
-            payload["travelDetailId"] = _coerce_uuid(action.id or payload.get("travelDetailId"))
-            payload.setdefault("locations", [])
-            try:
-                body = TravelDetailImport.model_validate(payload)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=payload["travelDetailId"], status="error", detail=str(exc))
-
-            rec = TravelDetailRecord(
-                travel_detail_id=body.travelDetailId,
-                trip_id=trip.trip_id,
-                name=body.name,
-                mode=body.mode,
-                operator=body.operator,
-                vehicle_number=body.vehicleNumber,
-                cabin_class=body.cabinClass,
-                confirmation_number=body.confirmationNumber,
-                description=body.description,
-            )
-            rec.departure_local = parse_wall_clock(body.departureDateTime)
-            rec.departure_tzid = body.departureTimezoneId or _trip_tz(trip)
-            rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
-            rec.departure_date_time = wall_clock_to_text(rec.departure_local)
-            rec.arrival_local = parse_wall_clock(body.arrivalDateTime)
-            rec.arrival_tzid = body.arrivalTimezoneId or rec.departure_tzid
-            rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
-            rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
-            db.add(rec)
-            await db.flush()
-            await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump() for loc in body.locations])
-            await sync_travel_generated_points(db, travel=rec)
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=rec.travel_detail_id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Travel id is required")
-        rec = await db.get(TravelDetailRecord, action.id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Travel not found")
-
-        if action.op == "update":
-            try:
-                patch = TravelDetailPatch.model_validate(action.fields)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
-
-            field_map = {
-                "name": "name",
-                "mode": "mode",
-                "operator": "operator",
-                "vehicleNumber": "vehicle_number",
-                "cabinClass": "cabin_class",
-                "confirmationNumber": "confirmation_number",
-                "description": "description",
-            }
-            for key, orm_field in field_map.items():
-                if key in patch.model_fields_set:
-                    setattr(rec, orm_field, getattr(patch, key))
-
-            if "departureDateTime" in patch.model_fields_set:
-                rec.departure_local = parse_wall_clock(patch.departureDateTime)
-                rec.departure_date_time = wall_clock_to_text(rec.departure_local)
-            if "arrivalDateTime" in patch.model_fields_set:
-                rec.arrival_local = parse_wall_clock(patch.arrivalDateTime)
-                rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
-            if "departureTimezoneId" in patch.model_fields_set:
-                rec.departure_tzid = patch.departureTimezoneId or _trip_tz(trip)
-            if "arrivalTimezoneId" in patch.model_fields_set:
-                rec.arrival_tzid = patch.arrivalTimezoneId or rec.departure_tzid
-
-            rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
-            rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
-
-            if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump() for loc in (patch.locations or [])]
-                await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=locs)
-
-            rec.updated_at = datetime.now(timezone.utc)
-            await sync_travel_generated_points(db, travel=rec)
-            await db.flush()
-            result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-            log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-            return result
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
-        await soft_delete_generated_points_for_travel(db, travel_detail_id=rec.travel_detail_id)
-        await db.flush()
-        result = ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-        log_ai_event("ai.trip_assistant.action.result", tripId=trip.trip_id, result=result)
-        return result
-
-    return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Unsupported action target")
+def _recent_assistant_questions(transcript: list[dict], limit: int = 5) -> list[str]:
+    questions: list[str] = []
+    for item in reversed(transcript):
+        if item.get("role") != "assistant":
+            continue
+        message = (item.get("message") or "").strip()
+        if not message:
+            continue
+        if "?" in message:
+            questions.append(message)
+        if len(questions) >= limit:
+            break
+    return list(reversed(questions))
 
 
 async def handle_trip_assistant_chat_turn(
@@ -709,33 +223,38 @@ async def handle_trip_assistant_chat_turn(
         pass_name="trip-assistant",
     )
 
-    results: list[ActionResult] = []
-    for action in turn.actions:
-        try:
-            result = await _execute_action(db, trip=trip, action=action)
-        except Exception as exc:
-            result = ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
-                status="error",
-                detail=str(exc),
-            )
-        results.append(result)
+    applied = await apply_assistant_turn(
+        db,
+        trip=trip,
+        turn=turn,
+        latest_message=latest_message,
+        recent_assistant_questions=_recent_assistant_questions(transcript),
+    )
 
     payload = {
-        "actions": [action.model_dump() for action in turn.actions],
-        "results": [result.model_dump() for result in results],
+        "actions": [action.model_dump(mode="json") for action in turn.actions],
+        "persistedActions": [action.model_dump(mode="json") for action in applied.persistedActions],
+        "suppressedActions": applied.suppressedActions,
+        "results": [result.model_dump(mode="json") for result in applied.results],
+        "assumptions": [item.model_dump(mode="json") for item in applied.assumptions],
+        "unresolvedItems": [item.model_dump(mode="json") for item in applied.unresolvedItems],
+        "followUpQuestion": applied.followUpQuestion,
+        "confidence": turn.confidence,
     }
+
+    assistant_text = applied.assistantMessage
+    if applied.followUpQuestion:
+        assistant_text = f"{assistant_text}\n\n{applied.followUpQuestion}".strip()
+
     log_ai_event(
         "ai.trip_assistant.turn.outcome",
         tripId=trip.trip_id,
-        assistantMessage=turn.assistantMessage,
+        assistantMessage=assistant_text,
         payload=payload,
     )
 
     return WorkflowOutcome(
-        assistantMessage=turn.assistantMessage,
+        assistantMessage=assistant_text,
         complete=False,
         structuredContent=payload,
     )

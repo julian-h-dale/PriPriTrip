@@ -44,7 +44,7 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     phone_number = Column(String, nullable=True)
 
 
-class TripRecord(Base):
+class TripRecord(SoftDeleteMixin, Base):
     __tablename__ = "trips"
 
     trip_id = Column(Uuid(as_uuid=False), primary_key=True)

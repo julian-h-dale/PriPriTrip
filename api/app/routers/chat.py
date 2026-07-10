@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models import ChatMessageRecord, TripRecord, UserRecord
 from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
 from app.services.ai_trace import log_ai_event
+from app.services.llm_contract import AssistantRuntimeContext, UserHomeLocationContext
 from app.services.new_trip_workflow import handle_new_trip_chat_turn
 from app.services.trip_assistant_workflow import handle_trip_assistant_chat_turn
 
@@ -94,6 +95,30 @@ def _message_to_response(rec: ChatMessageRecord) -> ChatMessageResponse:
     )
 
 
+def _safe_str(value) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _safe_float(value) -> float | None:
+    return value if isinstance(value, (float, int)) else None
+
+
+def _runtime_context_for_user(user: UserRecord, ui_context: dict | None) -> dict:
+    ctx = AssistantRuntimeContext(
+        userHomeLocation=UserHomeLocationContext(
+            name=_safe_str(getattr(user, "home_location_name", None)),
+            fullAddress=_safe_str(getattr(user, "home_location_full_address", None)),
+            lat=_safe_float(getattr(user, "home_location_lat", None)),
+            lng=_safe_float(getattr(user, "home_location_lng", None)),
+            googlePlaceId=_safe_str(getattr(user, "home_location_google_place_id", None)),
+            googleMapsUri=_safe_str(getattr(user, "home_location_google_maps_uri", None)),
+        ),
+        userHomeTimezoneId=_safe_str(getattr(user, "home_timezone_id", None)),
+        uiContext=ui_context or {},
+    )
+    return ctx.model_dump(mode="json")
+
+
 @router.get("/trips/{trip_id}", response_model=list[ChatMessageResponse])
 async def list_trip_chat_messages(
     trip_id: str,
@@ -102,7 +127,12 @@ async def list_trip_chat_messages(
     user: UserRecord = Depends(require_auth),
 ):
     trip = await db.get(TripRecord, trip_id)
-    if trip is None or trip.user_id != str(user.id):
+    if (
+        trip is None
+        or trip.user_id != str(user.id)
+        or trip.is_deleted
+        or trip.deleted_at is not None
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
     result = await db.execute(
@@ -124,16 +154,23 @@ async def reply_in_chat(
     user: UserRecord = Depends(require_auth),
 ):
     trip_id = body.tripId
+    runtime_context = _runtime_context_for_user(user, body.context)
     log_ai_event(
         "chat.reply.received",
         workflowName=body.workflowName,
         tripId=trip_id,
         message=body.message.strip(),
         uiContext=body.context,
+        runtimeContext=runtime_context,
     )
     if trip_id:
         trip = await db.get(TripRecord, trip_id)
-        if trip is None or trip.user_id != str(user.id):
+        if (
+            trip is None
+            or trip.user_id != str(user.id)
+            or trip.is_deleted
+            or trip.deleted_at is not None
+        ):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     else:
         today = date.today().isoformat()
@@ -215,6 +252,7 @@ async def reply_in_chat(
         coveredTurns=covered_turns,
         summaryCoveredTurns=desired_covered_turns,
         conversationSummary=conversation_summary,
+        runtimeContext=runtime_context,
     )
 
     if body.workflowName == "trip:new_trip":
@@ -224,7 +262,7 @@ async def reply_in_chat(
             transcript=transcript,
             latest_message=body.message.strip(),
             conversation_summary=conversation_summary or None,
-            ui_context=body.context,
+            ui_context=runtime_context,
         )
         bot_text = outcome.assistantMessage
         complete = outcome.complete
@@ -237,7 +275,7 @@ async def reply_in_chat(
             transcript=transcript,
             latest_message=body.message.strip(),
             conversation_summary=conversation_summary or None,
-            ui_context=body.context,
+            ui_context=runtime_context,
         )
         bot_text = outcome.assistantMessage
         complete = outcome.complete

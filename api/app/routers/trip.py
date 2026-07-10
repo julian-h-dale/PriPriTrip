@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
@@ -29,6 +29,15 @@ from app.services.trip_verify import verify_trip
 router = APIRouter(prefix="/trips", tags=["trips"])
 
 
+def _is_active_trip(trip: TripRecord | None, user: UserRecord) -> bool:
+    return (
+        trip is not None
+        and trip.user_id == str(user.id)
+        and not bool(getattr(trip, "is_deleted", False))
+        and getattr(trip, "deleted_at", None) is None
+    )
+
+
 @router.get("", response_model=list[TripListItem])
 async def list_trips(
     db: AsyncSession = Depends(get_db),
@@ -36,7 +45,11 @@ async def list_trips(
 ):
     result = await db.execute(
         select(TripRecord)
-        .where(TripRecord.user_id == str(user.id))
+        .where(
+            TripRecord.user_id == str(user.id),
+            TripRecord.is_deleted.is_(False),
+            TripRecord.deleted_at.is_(None),
+        )
         .order_by(TripRecord.start_date)
     )
     records = result.scalars().all()
@@ -66,7 +79,7 @@ async def _load_trip(
     user: UserRecord,
 ) -> TripResponse:
     record = await db.get(TripRecord, trip_id)
-    if record is None or record.user_id != str(user.id):
+    if not _is_active_trip(record, user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
     # ── Trip-level stays & travels (with their own locations) ────────────────
@@ -228,6 +241,9 @@ async def upsert_trip(
         else:
             if record.user_id != str(user.id):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if bool(getattr(record, "is_deleted", False)) or getattr(record, "deleted_at", None) is not None:
+                record.is_deleted = False
+                record.deleted_at = None
             record.trip_name = body.tripName
             record.start_location_name = body.startLocationName
             record.destination_location_name = body.destinationLocationName
@@ -253,38 +269,60 @@ async def delete_trip(
     user: UserRecord = Depends(require_auth),
 ):
     trip = await db.get(TripRecord, trip_id)
-    if trip is None or trip.user_id != str(user.id):
+    if not _is_active_trip(trip, user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
-    # Delete in FK order: locations → travel/stay details → points → days → trip
-    point_ids_result = await db.execute(
-        select(TripPointRecord.point_id).where(TripPointRecord.trip_id == trip_id)
+    now = datetime.now(timezone.utc)
+    trip.is_deleted = True
+    trip.deleted_at = now
+    trip.updated_at = now
+
+    travel_result = await db.execute(
+        select(TravelDetailRecord).where(
+            TravelDetailRecord.trip_id == trip_id,
+            TravelDetailRecord.is_deleted.is_(False),
+            TravelDetailRecord.deleted_at.is_(None),
+        )
     )
-    point_ids = list(point_ids_result.scalars().all())
+    for travel in travel_result.scalars().all():
+        travel.is_deleted = True
+        travel.deleted_at = now
+        travel.updated_at = now
 
-    stay_ids_result = await db.execute(
-        select(StayDetailRecord.stay_detail_id).where(StayDetailRecord.trip_id == trip_id)
+    stay_result = await db.execute(
+        select(StayDetailRecord).where(
+            StayDetailRecord.trip_id == trip_id,
+            StayDetailRecord.is_deleted.is_(False),
+            StayDetailRecord.deleted_at.is_(None),
+        )
     )
-    stay_ids = list(stay_ids_result.scalars().all())
+    for stay in stay_result.scalars().all():
+        stay.is_deleted = True
+        stay.deleted_at = now
+        stay.updated_at = now
 
-    travel_ids_result = await db.execute(
-        select(TravelDetailRecord.travel_detail_id).where(TravelDetailRecord.trip_id == trip_id)
+    point_result = await db.execute(
+        select(TripPointRecord).where(
+            TripPointRecord.trip_id == trip_id,
+            TripPointRecord.is_deleted.is_(False),
+            TripPointRecord.deleted_at.is_(None),
+        )
     )
-    travel_ids = list(travel_ids_result.scalars().all())
+    for point in point_result.scalars().all():
+        point.is_deleted = True
+        point.deleted_at = now
+        point.updated_at = now
 
-    if point_ids:
-        await db.execute(delete(LocationRecord).where(LocationRecord.point_id.in_(point_ids)))
+    day_result = await db.execute(
+        select(TripDayRecord).where(
+            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.is_deleted.is_(False),
+            TripDayRecord.deleted_at.is_(None),
+        )
+    )
+    for day in day_result.scalars().all():
+        day.is_deleted = True
+        day.deleted_at = now
+        day.updated_at = now
 
-    if stay_ids:
-        await db.execute(delete(LocationRecord).where(LocationRecord.stay_detail_id.in_(stay_ids)))
-
-    if travel_ids:
-        await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id.in_(travel_ids)))
-
-    await db.execute(delete(TravelDetailRecord).where(TravelDetailRecord.trip_id == trip_id))
-    await db.execute(delete(StayDetailRecord).where(StayDetailRecord.trip_id == trip_id))
-
-    await db.execute(delete(TripPointRecord).where(TripPointRecord.trip_id == trip_id))
-    await db.execute(delete(TripDayRecord).where(TripDayRecord.trip_id == trip_id))
-    await db.delete(trip)
     await db.commit()
