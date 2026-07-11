@@ -193,6 +193,17 @@ cd api
 tail -f ai.log
 ```
 
+For a tabular view (filter/sort/export to CSV or Excel), use `ai_log_to_df.py`:
+
+```bash
+python ai_log_to_df.py                          # print a table of ai.log
+python ai_log_to_df.py --grep chat.reply.outcome --tail 20
+python ai_log_to_df.py --out ai_log.xlsx         # open in Excel/Numbers
+python ai_log_to_df.py --interactive             # drop into a REPL with `df` loaded
+```
+
+Requires `pandas` (`pip install pandas`); standalone, no `app` package imports. Run `python ai_log_to_df.py --help` for all options.
+
 ## Project layout
 
 ```text
@@ -237,6 +248,7 @@ api/
 ├── pripritrip_system_prompt.md  # System prompt ([base] + stage overlays)
 ├── ai.log                       # AI trace output (gitignored, rotated)
 ├── view_ai_log.sh               # Pretty-print / follow ai.log (jq)
+├── ai_log_to_df.py              # Load ai.log into a pandas DataFrame (table view, CSV/Excel export)
 ├── dev.sh                       # DB + schema + API dev loop
 ├── docker-compose.yml           # PostgreSQL 16
 ├── init_db.py                   # create_all schema bootstrap (no migrations yet)
