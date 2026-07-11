@@ -34,6 +34,11 @@ class APIModel(BaseModel):
 
 # ── Auth ────────────────────────────────────────────────────────────────────
 
+class LoginRequest(APIModel):
+    email: str
+    password: str
+
+
 class AuthResponse(APIModel):
     token: str
     maps_api_key: str

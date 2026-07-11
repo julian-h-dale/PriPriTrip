@@ -83,6 +83,8 @@ The frontend uses /auth/session and /auth/register/session which return:
 - token
 - mapsApiKey
 
+`/auth/login`, `/auth/logout`, and `/auth/register` are the stock fastapi-users routers (mounted in `main.py`). The two `*/session` endpoints are custom (`app/routers/auth.py`) and go through `Depends(get_user_manager)` like every other route, so `app.dependency_overrides` works in tests (review.md 1C-1). Failures are distinguished: bad credentials → 401, duplicate email or weak password → 400, an actual backend failure → 500 (it is never disguised as "invalid password").
+
 ## Major API areas
 
 Ownership is enforced by a shared `get_owned_trip` dependency (`app/dependencies.py`); all trip-scoped routes 404 for missing/foreign/soft-deleted trips. Wire format is camelCase (snake_case Pydantic fields with `to_camel` aliases).
@@ -218,6 +220,7 @@ api/
 │   ├── auth.py / users.py       # fastapi-users setup, JWT strategy
 │   ├── database.py              # Async engine/session
 │   ├── routers/
+│   │   ├── auth.py              # /auth/session + /auth/register/session
 │   │   ├── trip.py              # Trip CRUD + /verify
 │   │   ├── trip_days.py         # Day CRUD + restore
 │   │   ├── trip_points.py       # Point CRUD + restore
