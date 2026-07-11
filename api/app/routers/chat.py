@@ -14,10 +14,24 @@ from app.auth import require_auth
 from app.database import get_db
 from app.dependencies import get_owned_trip, require_owned_trip
 from app.models import ChatMessageRecord, TripRecord, UserRecord
-from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
+from app.schemas import (
+    ChatFormSubmitRequest,
+    ChatMessageResponse,
+    ChatReplyRequest,
+    ChatReplyResponse,
+)
 from app.services.ai_trace import log_ai_event
+from app.services.chat_forms import FormError, describe_submission, validate_submission
 from app.services.chat_tool_loop import stream_chat_tool_loop
-from app.services.llm_contract import AssistantRuntimeContext, UserHomeLocationContext
+from app.services.llm_contract import (
+    AssistantAction,
+    AssistantActionFields,
+    AssistantRuntimeContext,
+    UserHomeLocationContext,
+)
+from app.services.trip_action_executor import execute_action
+from app.services.trip_state import assembled_trip
+from app.services.trip_verify import verify_trip
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -412,3 +426,115 @@ async def reply_in_chat(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/forms/submit", response_model=ChatReplyResponse)
+async def submit_chat_form(
+    body: ChatFormSubmitRequest,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    """Apply a filled-in chat form (review.md 3F-2).
+
+    Deliberately *not* a chat turn: the values go straight through the executor,
+    so a plain save costs no model call and is instant. The exchange is still
+    recorded in the transcript so the assistant has the context next turn.
+    """
+    trip = await require_owned_trip(db, body.trip_id, user)
+
+    replay = await _stored_reply(db, user=user, request_id=body.request_id)
+    if replay is not None:
+        return ChatReplyResponse.model_validate(replay)
+
+    try:
+        values = validate_submission(body.target, body.values)
+    except FormError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    action = AssistantAction(
+        op="update" if (body.record_id or body.target == "trip") else "create",
+        target=body.target,
+        id=body.record_id if body.target != "trip" else None,
+        fields=AssistantActionFields.model_validate(values),
+    )
+
+    log_ai_event(
+        "chat.form.submitted",
+        workflowName=body.workflow_name,
+        tripId=body.trip_id,
+        requestId=body.request_id,
+        formId=body.form_id,
+        target=body.target,
+        recordId=body.record_id,
+        values=values,
+    )
+
+    result = await execute_action(db, trip=trip, action=action)
+    if result.status != "ok":
+        # Nothing is persisted; the user keeps the form and can correct it.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=result.detail or "Those details could not be saved.",
+        )
+
+    filled = describe_submission(body.target, values)
+    user_message = ChatMessageRecord(
+        message_id=str(uuid.uuid4()),
+        user_id=str(user.id),
+        trip_id=body.trip_id,
+        workflow_name=body.workflow_name,
+        message=f"[form] {filled}",
+        is_bot=False,
+        request_id=body.request_id,
+    )
+    db.add(user_message)
+
+    verify = verify_trip(await assembled_trip(db, trip))
+    # Terse on purpose: the user's own message already carries the values, so
+    # repeating them here would print them twice in a row in the transcript.
+    saved_noun = {"point": "activity"}.get(body.target, body.target)
+    bot_message = ChatMessageRecord(
+        message_id=str(uuid.uuid4()),
+        user_id=str(user.id),
+        trip_id=body.trip_id,
+        workflow_name=body.workflow_name,
+        message=f"Saved the {saved_noun} details.",
+        structure_content=json.dumps(
+            {
+                "formSubmission": {
+                    "formId": body.form_id,
+                    "target": body.target,
+                    "recordId": result.id,
+                    "values": values,
+                },
+                "results": [result.model_dump(mode="json")],
+            }
+        ),
+        is_bot=True,
+        request_id=body.request_id,
+    )
+    db.add(bot_message)
+    await db.flush()
+    await db.refresh(user_message)
+    await db.refresh(bot_message)
+
+    response = ChatReplyResponse(
+        tripId=body.trip_id,
+        complete=False,
+        tripName=trip.trip_name,
+        verify=verify,
+        messages=[_message_to_response(user_message), _message_to_response(bot_message)],
+    )
+    bot_message.reply_payload = json.dumps(response.model_dump(mode="json", by_alias=True))
+    await db.commit()
+
+    log_ai_event(
+        "chat.form.saved",
+        tripId=body.trip_id,
+        formId=body.form_id,
+        target=body.target,
+        recordId=result.id,
+        verify=verify.model_dump(mode="json") if verify else None,
+    )
+    return response

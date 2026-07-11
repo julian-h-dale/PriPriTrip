@@ -144,8 +144,9 @@ Notes:
 ### Chat workflows
 - GET /chat/trips/{trip_id}?workflowName=...
 - POST /chat/reply  (responds with Server-Sent Events, not JSON)
+- POST /chat/forms/submit  (apply a filled-in chat form; no model call)
 
-Chat architecture: all `trip:*` workflows run a tool-calling agent loop (`services/chat_tool_loop.py` + `services/chat_tools.py`). The model gets 15 typed tools (trip/day/point/stay/travel CRUD, `resolve_location`, `get_trip_snapshot`), executes them through `trip_action_executor`, sees each result (including validation errors) and self-corrects, capped at 6 iterations. A `verify_trip` "what's missing" checklist is injected as context each turn.
+Chat architecture: all `trip:*` workflows run a tool-calling agent loop (`services/chat_tool_loop.py` + `services/chat_tools.py`). The model gets 16 typed tools (trip/day/point/stay/travel CRUD, `resolve_location`, `get_trip_snapshot`, `request_form`), executes them through `trip_action_executor`, sees each result (including validation errors) and self-corrects, capped at 6 iterations. A `verify_trip` "what's missing" checklist is injected as context each turn.
 
 `POST /chat/reply` streams `text/event-stream` (review.md 3F-4):
 - `status` — `{tool, label}` emitted before each tool call runs ("Adding a stay…")
@@ -153,7 +154,15 @@ Chat architecture: all `trip:*` workflows run a tool-calling agent loop (`servic
 - `done` — the full reply payload (tripId, complete, tripName, verify, messages)
 - `error` — `{detail}`; failures after the stream starts ride the stream instead of an HTTP error status. Pre-stream failures (401/404/422) are normal JSON errors.
 
-**`requestId` is required** on every `/chat/reply` call (review.md 3D-5). It is the idempotency key: repeating it replays the stored reply instead of running the model again, so a double-send or a network retry can't create duplicate stays/travels. Both rows of a turn carry it, and a unique constraint on `(user_id, request_id, is_bot)` serialises concurrent duplicates — the second one waits, then replays rather than running the pipeline. A turn that failed persists nothing, so retrying the same id runs for real. It is deliberately not optional: an optional key means the protection is off by default.
+### Dynamic chat forms (review.md 3F-2)
+
+The assistant can attach a small form to its reply instead of asking for fiddly structured details (confirmation numbers, flight numbers, cabin class, exact times) in prose.
+
+**The model does not build the form.** It calls `request_form` naming only a target, a recordId, and the field names it wants. Everything else — label, input type, dropdown options, current value — comes from `services/chat_forms.py`, whose registry is derived from the same enums and columns the REST API owns. A model that invents a field name or an option gets an error back and has to correct itself.
+
+The form travels in the bot message's `structureContent` as `uiPayload.kind = "form"`, so it survives a transcript reload. Submitting it hits `POST /chat/forms/submit`, which validates the values against the registry again (the submission comes from the client, so it is not trusted), applies them through `trip_action_executor.execute_action`, and records the exchange in the transcript. **No model call is involved** — a save takes ~75ms versus 4–8s for a chat turn.
+
+**`requestId` is required** on every `/chat/reply` and `/chat/forms/submit` call (review.md 3D-5). It is the idempotency key: repeating it replays the stored reply instead of running the model again, so a double-send or a network retry can't create duplicate stays/travels. Both rows of a turn carry it, and a unique constraint on `(user_id, request_id, is_bot)` serialises concurrent duplicates — the second one waits, then replays rather than running the pipeline. A turn that failed persists nothing, so retrying the same id runs for real. It is deliberately not optional: an optional key means the protection is off by default.
 
 Chat context behavior:
 - Sends runtime context (incl. appCurrentDate in the user's home timezone), trip snapshot/summary, recent transcript window, rolling conversation summary, and optional UI context.
@@ -234,6 +243,7 @@ api/
 │   └── services/
 │       ├── chat_tool_loop.py           # Tool-calling agent loop (the chat path)
 │       ├── chat_tools.py               # Per-target tool schemas + dispatch
+│       ├── chat_forms.py               # Server-owned form field registry (3F-2)
 │       ├── trip_state.py               # Shared trip snapshot/summary helpers
 │       ├── trip_action_executor.py     # Applies model-proposed actions to the DB
 │       ├── openai_client.py            # Shared AsyncOpenAI client + traced parse

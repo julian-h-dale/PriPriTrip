@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import TripRecord
 from app.services.ai_trace import log_ai_event
-from app.services.chat_tools import TOOL_REGISTRY, openai_tools
+from app.services.chat_tools import TOOL_REGISTRY, ToolOutcome, openai_tools
 from app.services.openai_client import get_async_client, get_model
 from app.services.prompt_composer import build_tool_loop_prompt
 from app.services.trip_state import (
@@ -152,6 +152,8 @@ def _tool_status_label(name: str) -> str:
         return "Looking up locations…"
     if name == "get_trip_snapshot":
         return "Reviewing the trip…"
+    if name == "request_form":
+        return "Preparing a form…"
     op, _, target = name.partition("_")
     verbs = {"create": "Adding", "update": "Updating", "delete": "Removing"}
     nouns = {
@@ -174,30 +176,30 @@ def _serialize_tool_call(tc) -> dict:
     }
 
 
-async def _dispatch_tool_call(db: AsyncSession, trip: TripRecord, tc) -> tuple[dict, object | None, object | None]:
+async def _dispatch_tool_call(db: AsyncSession, trip: TripRecord, tc):
     """Validate + execute one tool call.
 
-    Returns (json_result, AssistantAction | None, ActionResult | None).
+    Returns the tool's ToolOutcome (json result, plus the action/result for a
+    mutating tool and the form for request_form).
     Validation errors become the tool result instead of raising — errors are
     the model's feedback channel.
     """
     name = tc.function.name
     spec = TOOL_REGISTRY.get(name)
     if spec is None:
-        return {"status": "error", "detail": f"Unknown tool: {name}"}, None, None
+        return ToolOutcome(result={"status": "error", "detail": f"Unknown tool: {name}"})
 
     try:
         raw_args = json.loads(tc.function.arguments or "{}")
     except json.JSONDecodeError as exc:
-        return {"status": "error", "detail": f"Tool arguments were not valid JSON: {exc}"}, None, None
+        return ToolOutcome(result={"status": "error", "detail": f"Tool arguments were not valid JSON: {exc}"})
 
     try:
         args = spec.args_model.model_validate(raw_args)
     except ValidationError as exc:
-        return {"status": "error", "detail": f"Invalid arguments for {name}: {exc}"}, None, None
+        return ToolOutcome(result={"status": "error", "detail": f"Invalid arguments for {name}: {exc}"})
 
-    outcome = await spec.handler(db, trip, args)
-    return outcome.result, outcome.action, outcome.action_result
+    return await spec.handler(db, trip, args)
 
 
 async def stream_chat_tool_loop(
@@ -255,6 +257,7 @@ async def stream_chat_tool_loop(
 
     iterations = 0
     cap_hit = False
+    ui_form = None
     final_text = ""
     tool_call_log: list[dict] = []
     attempted_actions: list = []
@@ -310,7 +313,15 @@ async def stream_chat_tool_loop(
                 arguments=tc.function.arguments,
                 **_usage_fields(usage),
             )
-            result, action, action_result = await _dispatch_tool_call(db, trip, tc)
+            tool_outcome = await _dispatch_tool_call(db, trip, tc)
+            result, action, action_result = (
+                tool_outcome.result,
+                tool_outcome.action,
+                tool_outcome.action_result,
+            )
+            if tool_outcome.form is not None:
+                # Only one form can be shown per turn; the newest wins.
+                ui_form = tool_outcome.form
             if action is not None:
                 attempted_actions.append(action)
             if action_result is not None:
@@ -376,6 +387,9 @@ async def stream_chat_tool_loop(
         "suppressedActions": suppressed_actions,
         "results": [result.model_dump(mode="json") for result in action_results],
         "followUpQuestion": None,
+        # The form the assistant wants the user to fill in (review.md 3F-2).
+        # Stored with the message so it survives a transcript reload.
+        "uiPayload": {"kind": "form", "form": ui_form.model_dump(mode="json", by_alias=True)} if ui_form else None,
         "toolLoop": {
             "iterations": iterations,
             "capHit": cap_hit,

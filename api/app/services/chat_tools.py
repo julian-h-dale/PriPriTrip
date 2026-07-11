@@ -15,13 +15,15 @@ backend resolves place metadata server-side (review.md 3C-6).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums import PointType, StayType, TravelMode
 from app.models import TripRecord
+from app.schemas import ChatForm
+from app.services.chat_forms import FormError, build_form
 from app.services.llm_contract import (
     ActionLocationFields,
     ActionResult,
@@ -185,6 +187,26 @@ class GetTripSnapshotArgs(_ToolArgs):
     pass
 
 
+# ── Forms (review.md 3F-2) ───────────────────────────────────────────────────
+
+class RequestFormArgs(_ToolArgs):
+    """The model names the record and the fields — nothing else.
+
+    Types, labels, options and current values are filled in by the backend
+    from the schemas it owns, so the model cannot invent a field type or an
+    option that isn't real.
+    """
+
+    target: Literal["trip", "day", "point", "stay", "travel"]
+    fields: list[str] = Field(min_length=1)
+    recordId: Optional[str] = Field(
+        default=None,
+        description="Id of the record to edit. Omit to have the form create a new record.",
+    )
+    title: Optional[str] = None
+    submitLabel: Optional[str] = None
+
+
 # ── Handlers ─────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -193,12 +215,14 @@ class ToolOutcome:
 
     `result` is the JSON payload fed back to the model; `action`/
     `action_result` are set for mutating tools so the loop can build the
-    structuredContent payload chat.py stores.
+    structuredContent payload chat.py stores; `form` is set by request_form so
+    the loop can attach it to the reply (review.md 3F-2).
     """
 
     result: dict
     action: AssistantAction | None = None
     action_result: ActionResult | None = None
+    form: ChatForm | None = None
 
 
 def _to_action(op: str, target: str, args: _ToolArgs, *, id_field: str | None = None) -> AssistantAction:
@@ -241,6 +265,38 @@ async def _resolve_location_handler(db: AsyncSession, trip: TripRecord, args: Re
         for c in candidates
     ]
     return ToolOutcome(result={"query": args.query, "candidates": trimmed})
+
+
+async def _request_form_handler(db: AsyncSession, trip: TripRecord, args: RequestFormArgs) -> ToolOutcome:
+    try:
+        built = await build_form(
+            db,
+            trip=trip,
+            target=args.target,
+            record_id=args.recordId,
+            field_names=args.fields,
+            title=args.title,
+            submit_label=args.submitLabel,
+        )
+    except FormError as exc:
+        # A bad form request is the model's to fix — hand back the reason.
+        return ToolOutcome(result={"status": "error", "detail": str(exc)})
+
+    form = built.form
+    # The model gets a compact acknowledgement, not the whole form: it does not
+    # need the field types it did not choose, and the user sees the real thing.
+    return ToolOutcome(
+        result={
+            "status": "ok",
+            "detail": (
+                f"A form is now shown to the user with these fields: "
+                f"{', '.join(f.label for f in form.fields)}. "
+                "Do not also ask for these details in your message — invite them to fill the form."
+            ),
+            "formId": form.form_id,
+        },
+        form=form,
+    )
 
 
 async def _get_trip_snapshot_handler(db: AsyncSession, trip: TripRecord, args: GetTripSnapshotArgs) -> ToolOutcome:
@@ -352,6 +408,19 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
             "Return the full assembled trip JSON (trip fields, days, points, stays, travel legs, locations) for on-demand detail.",
             GetTripSnapshotArgs,
             _get_trip_snapshot_handler,
+        ),
+        ToolSpec(
+            "request_form",
+            (
+                "Show the user a small form to fill in structured details instead of asking them to type it "
+                "in prose. Use this for things people find tedious to say out loud — confirmation numbers, "
+                "flight/train numbers, operators, cabin class, exact check-in/check-out or departure/arrival "
+                "times. Name the target and the field names you want; the app supplies the labels, input "
+                "types, options and current values. Omit recordId to have the form create a new record. "
+                "Prefer one focused form over a long list of questions."
+            ),
+            RequestFormArgs,
+            _request_form_handler,
         ),
     ]
 }

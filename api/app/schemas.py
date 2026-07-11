@@ -551,6 +551,44 @@ class ChatMessageResponse(APIModel):
     created_at: Optional[str] = None
 
 
+# ── Dynamic chat forms (review.md 3F-2) ─────────────────────────────────────
+
+class ChatFormOption(APIModel):
+    value: str
+    label: str
+
+
+class ChatFormField(APIModel):
+    name: str
+    label: str
+    # text | textarea | date | datetime | select — the frontend renders by this.
+    type: str
+    value: Optional[str] = None
+    options: List[ChatFormOption] = []
+    help_text: Optional[str] = None
+
+
+class ChatForm(APIModel):
+    form_id: str
+    title: str
+    submit_label: str
+    # trip | day | point | stay | travel
+    target: str
+    # None means the form creates a new record.
+    record_id: Optional[str] = None
+    fields: List[ChatFormField] = []
+
+
+class ChatFormSubmitRequest(APIModel):
+    trip_id: str
+    workflow_name: str
+    request_id: str  # same idempotency contract as /chat/reply (review.md 3D-5)
+    form_id: str
+    target: str
+    record_id: Optional[str] = None
+    values: dict
+
+
 class ChatReplyRequest(APIModel):
     trip_id: Optional[str] = None
     workflow_name: str

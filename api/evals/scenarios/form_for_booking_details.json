@@ -1,0 +1,24 @@
+{
+  "name": "form-for-booking-details",
+  "description": "Asked for several fiddly booking details on one record, the assistant should hand over a form rather than interrogate the user in prose.",
+  "requirement": "review.md 3F-2 — dynamic forms in chat",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "travels": [
+    {"name": "Flight to Naha", "mode": "flight", "departureDateTime": "2026-10-30T09:00"}
+  ],
+  "message": "I have my flight booking email in front of me — where do I put the airline, flight number and confirmation code?",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "toolsCalledInclude": ["request_form"],
+    "toolsCalledExclude": ["delete_travel", "delete_stay"],
+    "countsMax": {"travels": 1},
+    "capHit": false
+  }
+}

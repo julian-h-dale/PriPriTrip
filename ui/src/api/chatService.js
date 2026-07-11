@@ -132,3 +132,25 @@ export async function listChatMessages(tripId, workflowName) {
   });
   return data;
 }
+
+/**
+ * Submit a filled-in chat form (review.md 3F-2).
+ *
+ * Not a chat turn: the backend applies the values through the executor with no
+ * model call, so this returns the usual reply payload immediately.
+ */
+export async function submitChatForm(payload) {
+  const { data } = await client.post('/chat/forms/submit', payload);
+  return data;
+}
+
+/** The form the assistant attached to a bot message, if any. */
+export function formFromMessage(message) {
+  if (!message?.structureContent) return null;
+  try {
+    const parsed = JSON.parse(message.structureContent);
+    return parsed?.uiPayload?.kind === 'form' ? parsed.uiPayload.form : null;
+  } catch {
+    return null;
+  }
+}

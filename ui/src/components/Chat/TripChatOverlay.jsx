@@ -26,7 +26,13 @@ import {
   useSaveTripHeaderMutation,
 } from '../../store/apiSlice';
 import { getErrorMessage } from '../../utils/errors';
-import { listChatMessages, sendChatMessage } from '../../api/chatService';
+import {
+  formFromMessage,
+  listChatMessages,
+  sendChatMessage,
+  submitChatForm,
+} from '../../api/chatService';
+import ChatFormCard from './ChatFormCard';
 
 function MarkdownBubble({ text, isBot }) {
   return (
@@ -110,6 +116,8 @@ export default function NewTripChatOverlay({
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(null);
+  // formId -> what was saved, so a submitted form collapses to a receipt.
+  const [savedForms, setSavedForms] = useState({});
 
   const messagesEndRef = useRef(null);
   const sendAbortRef = useRef(null);
@@ -263,6 +271,31 @@ export default function NewTripChatOverlay({
     }
   }
 
+  /**
+   * Save a form the assistant attached (review.md 3F-2). This is not a chat
+   * turn — the backend applies the values through the executor with no model
+   * call, so it returns immediately and costs nothing.
+   */
+  async function handleFormSubmit(form, values) {
+    const response = await submitChatForm({
+      tripId,
+      workflowName,
+      requestId: crypto.randomUUID(),
+      formId: form.formId,
+      target: form.target,
+      recordId: form.recordId ?? null,
+      values,
+    });
+
+    // Collapse the form into a receipt, then append the exchange.
+    const [userMessage, botMessage] = response.messages ?? [];
+    // The receipt stays short — the appended messages below already show
+    // exactly what was saved.
+    setSavedForms((prev) => ({ ...prev, [form.formId]: 'Saved.' }));
+    setMessages((prev) => [...prev, userMessage, botMessage].filter(Boolean));
+    if (response.complete) onComplete?.(response);
+  }
+
   async function handleDocumentUpload(file) {
     if (!file || busy) return;
     setUploading(true);
@@ -385,7 +418,14 @@ export default function NewTripChatOverlay({
                 </Paper>
               </Box>
             )}
-            {messages.map((message) => (
+            {messages.map((message) => {
+              const form = message.isBot ? formFromMessage(message) : null;
+              // Form submissions are recorded as "[form] Airline: ANA; …" —
+              // show the values, not the marker.
+              const text = message.message?.startsWith('[form] ')
+                ? message.message.slice('[form] '.length)
+                : message.message;
+              return (
               <Box
                 key={message.messageId}
                 sx={{
@@ -397,7 +437,8 @@ export default function NewTripChatOverlay({
                   sx={{
                     px: 1.5,
                     py: 1,
-                    maxWidth: '85%',
+                    maxWidth: form ? '95%' : '85%',
+                    minWidth: form ? '85%' : undefined,
                     bgcolor: message.isBot ? 'grey.100' : 'primary.main',
                     color: message.isBot ? 'text.primary' : 'primary.contrastText',
                   }}
@@ -405,7 +446,15 @@ export default function NewTripChatOverlay({
                   {message.isPending && !message.message ? (
                     <TypingBubble />
                   ) : (
-                    <MarkdownBubble text={message.message} isBot={message.isBot} />
+                    <MarkdownBubble text={text} isBot={message.isBot} />
+                  )}
+                  {form && (
+                    <ChatFormCard
+                      form={form}
+                      disabled={busy}
+                      savedSummary={savedForms[form.formId] ?? null}
+                      onSubmit={(values) => handleFormSubmit(form, values)}
+                    />
                   )}
                   {message.statusLabel && (
                     <Typography
@@ -418,7 +467,8 @@ export default function NewTripChatOverlay({
                   )}
                 </Paper>
               </Box>
-            ))}
+              );
+            })}
             {loading && messages.length === 0 && (
               <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2 }}>
                 <CircularProgress size={24} />
