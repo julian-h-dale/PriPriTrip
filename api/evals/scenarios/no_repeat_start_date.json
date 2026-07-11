@@ -1,0 +1,26 @@
+{
+  "name": "no-repeat-start-date",
+  "description": "Start and end dates are set; an unrelated detail must not re-trigger a start-date question.",
+  "requirement": "requirements doc Req 9 — No Repeat Question tests 2-3",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "transcript": [
+    {"role": "user", "message": "Trip to Okinawa Oct 30 through Nov 5."},
+    {"role": "assistant", "message": "Saved: Okinawa, Oct 30 to Nov 5. What date are you returning?"},
+    {"role": "user", "message": "I just said — Nov 5."},
+    {"role": "assistant", "message": "Got it, returning Nov 5."}
+  ],
+  "message": "We want to stay somewhere near the beach.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "finalMessageNotMatches": ["what date are you (leaving|departing|returning)", "when (do|are|will) you (leave|depart|return)"],
+    "toolsCalledExclude": ["delete_stay", "delete_travel", "delete_day"],
+    "capHit": false
+  }
+}

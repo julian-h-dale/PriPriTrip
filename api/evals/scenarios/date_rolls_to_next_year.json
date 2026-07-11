@@ -1,0 +1,17 @@
+{
+  "name": "date-rolls-to-next-year",
+  "description": "Bare 'Jan 1' with app date 2026-07-09 must roll forward to 2027-01-01, not backwards.",
+  "requirement": "requirements doc Req 9 — Date Tests row 2",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "New Year Trip",
+    "status": "draft",
+    "destinationLocationName": "Tokyo"
+  },
+  "message": "The trip starts Jan 1 and ends Jan 8.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "tripFieldEquals": {"start_date": "2027-01-01", "end_date": "2027-01-08"},
+    "capHit": false
+  }
+}

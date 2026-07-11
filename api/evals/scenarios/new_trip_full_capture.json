@@ -1,0 +1,21 @@
+{
+  "name": "new-trip-full-capture",
+  "description": "One rich message on an empty trip captures dates, destination, travel, and stay in a single turn.",
+  "requirement": "review.md 3A — the core natural-input goal",
+  "workflowName": "trip:new_trip",
+  "trip": {
+    "tripName": "New Trip Draft",
+    "status": "new",
+    "startDate": "2026-07-09",
+    "endDate": "2026-07-09"
+  },
+  "message": "We're going to Portland, Oregon October 17-19 2026 — driving down from Seattle on the 17th, staying at the Ace Hotel downtown, and driving back on the 19th.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "toolsCalledInclude": ["update_trip", "create_stay", "create_travel"],
+    "countsMin": {"stays": 1, "travels": 1},
+    "tripFieldEquals": {"start_date": "2026-10-17", "end_date": "2026-10-19"},
+    "complete": true,
+    "capHit": false
+  }
+}

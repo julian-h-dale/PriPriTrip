@@ -1,0 +1,21 @@
+{
+  "name": "conflict-destination-correction",
+  "description": "'Actually we're going to Tokyo' on an Okinawa trip is a correction — update the trip, don't ignore it.",
+  "requirement": "requirements doc Req 9 — Conflict test 1",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "message": "Actually we're going to Tokyo, not Okinawa.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "persistedInclude": [
+      {"op": "update", "target": "trip", "fieldsContain": {"destinationLocationName": "Tokyo"}}
+    ],
+    "capHit": false
+  }
+}

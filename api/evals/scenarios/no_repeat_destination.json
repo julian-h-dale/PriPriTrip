@@ -1,0 +1,24 @@
+{
+  "name": "no-repeat-destination",
+  "description": "Destination is already Okinawa; adding a flight detail must not trigger 'Where are you going?'.",
+  "requirement": "requirements doc Req 9 — No Repeat Question test 1",
+  "workflowName": "trip:new_trip",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "new",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "transcript": [
+    {"role": "user", "message": "We're going to Okinawa Oct 30 to Nov 5."},
+    {"role": "assistant", "message": "Okinawa from Oct 30 to Nov 5 — saved. How are you getting there?"}
+  ],
+  "message": "I'm flying into Naha airport.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "finalMessageNotMatches": ["where are you (going|headed|travel)", "what('s| is) (your |the )?destination"],
+    "toolsCalledExclude": ["delete_stay", "delete_travel"],
+    "capHit": false
+  }
+}

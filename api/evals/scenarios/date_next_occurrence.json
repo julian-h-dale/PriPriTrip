@@ -1,0 +1,20 @@
+{
+  "name": "date-next-occurrence",
+  "description": "Bare 'Oct 30' with app date 2026-07-09 must resolve to 2026-10-30 (next occurrence, current year).",
+  "requirement": "requirements doc Req 9 — Date Tests row 1",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa"
+  },
+  "message": "We fly out Oct 30 and get back Nov 5.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "persistedInclude": [
+      {"op": "update", "target": "trip", "fieldsContain": {"startDate": "2026-10-30", "endDate": "2026-11-05"}}
+    ],
+    "tripFieldEquals": {"start_date": "2026-10-30", "end_date": "2026-11-05"},
+    "capHit": false
+  }
+}

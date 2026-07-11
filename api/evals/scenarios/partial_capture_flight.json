@@ -1,0 +1,22 @@
+{
+  "name": "partial-capture-flight",
+  "description": "'I'm flying into Naha airport' must create a flight travel record immediately, not just chat about it.",
+  "requirement": "requirements doc Req 9 — Partial Capture test 1",
+  "workflowName": "trip:new_trip",
+  "trip": {
+    "tripName": "New Trip Draft",
+    "status": "new",
+    "startDate": "2026-07-09",
+    "endDate": "2026-07-09"
+  },
+  "message": "I'm flying into Naha airport.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "persistedInclude": [
+      {"op": "create", "target": "travel", "fieldsContain": {"mode": "flight"}}
+    ],
+    "finalMessageMatches": ["\\?"],
+    "complete": false,
+    "capHit": false
+  }
+}

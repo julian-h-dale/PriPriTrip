@@ -244,6 +244,7 @@ api/
 │       ├── trip_verify.py              # Deterministic itinerary verification
 │       └── ai_trace.py                 # JSONL AI trace logging
 ├── tests/
+├── evals/                       # LLM eval harness: scenarios + live runner (python -m evals)
 ├── pripritrip_system_prompt.md  # System prompt ([base] + stage overlays)
 ├── ai.log                       # AI trace output (gitignored, rotated)
 ├── view_ai_log.sh               # Pretty-print / follow ai.log (jq)
@@ -265,3 +266,37 @@ pytest -q
 ```
 
 Test dependencies live in `requirements-dev.txt` (`pip install -r requirements-dev.txt`). CI runs the suite plus frontend lint/build on every push (`.github/workflows/ci.yml`).
+
+## LLM eval harness (review.md 3D-8)
+
+`evals/` replays chat scenarios through the real tool loop and asserts on
+behavior shape (tools called, actions persisted, resulting trip state, message
+patterns) — never exact wording. Scenarios live in `evals/scenarios/*.json`
+and encode the regression cases from
+`pripritrip_llm_integration_requirements.md` Requirement 9 (date resolution,
+no-repeat-question, partial capture, conflicts) plus loop-behavior guards
+(read-only intent, no unprompted deletes).
+
+Two tiers:
+- **CI (free, every push):** `tests/test_eval_harness.py` runs the harness
+  machinery with a scripted client — catches harness/loop/executor breakage.
+- **Live (cents per run):** replays every scenario against the real model with
+  the current prompt and tools. Run it before and after any prompt or
+  tool-schema edit — this is what tells you whether the assistant got better
+  or worse:
+
+```bash
+cd api && source .venv/bin/activate
+python -m evals                          # full suite, live (needs OPENAI_API_KEY via .env)
+python -m evals --list                   # enumerate scenarios
+python -m evals --scenario repeat        # substring filter
+python -m evals --runs 3 --threshold 0.67  # flake tolerance for stochastic cases
+python -m evals --json eval_report.json  # machine-readable report (gitignored)
+python -m evals --verbose                # show tool calls + final messages
+```
+
+Runs use an in-memory DB fake (`evals/fake_db.py`) so no PostgreSQL is needed;
+location enrichment still hits Google Places when `MAPS_API_KEY` is set. A
+full live run takes ~30s and every turn is traced to `ai.log` as usual.
+Adding a scenario = adding a JSON file; the CI tier validates all scenario
+files automatically.

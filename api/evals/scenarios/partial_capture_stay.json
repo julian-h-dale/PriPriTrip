@@ -1,0 +1,23 @@
+{
+  "name": "partial-capture-stay",
+  "description": "'Staying at the Hyatt in Kyoto' must create a stay with inferred stayType=hotel.",
+  "requirement": "requirements doc Req 9 — Partial Capture test 2",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Kyoto Trip",
+    "status": "draft",
+    "destinationLocationName": "Kyoto",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "message": "We're staying at the Hyatt in Kyoto.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "persistedInclude": [
+      {"op": "create", "target": "stay", "fieldsContain": {"stayType": "hotel", "name": "Hyatt"}}
+    ],
+    "countsMin": {"stays": 1},
+    "countsMax": {"stays": 1},
+    "capHit": false
+  }
+}

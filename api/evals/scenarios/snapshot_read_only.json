@@ -1,0 +1,36 @@
+{
+  "name": "snapshot-read-only",
+  "description": "'What does my trip look like?' is a read — no mutating tool may run.",
+  "requirement": "review.md 3A — tools should match intent",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startLocationName": "Seattle",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "days": [
+    {"title": "Arrival", "date": "2026-10-30"}
+  ],
+  "stays": [
+    {"name": "Hyatt Regency Naha", "stayType": "hotel", "checkIn": "2026-10-30T15:00", "checkOut": "2026-11-05T11:00"}
+  ],
+  "travels": [
+    {"name": "Flight to Naha", "mode": "flight", "departureDateTime": "2026-10-30T09:00", "arrivalDateTime": "2026-10-30T14:00"}
+  ],
+  "message": "What does my trip look like so far?",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "toolsCalledExclude": [
+      "update_trip", "create_day", "update_day", "delete_day",
+      "create_point", "update_point", "delete_point",
+      "create_stay", "update_stay", "delete_stay",
+      "create_travel", "update_travel", "delete_travel"
+    ],
+    "finalMessageNotMatches": ["I've processed your request"],
+    "finalMessageMatches": ["okinawa"],
+    "capHit": false
+  }
+}

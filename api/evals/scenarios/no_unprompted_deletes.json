@@ -1,0 +1,29 @@
+{
+  "name": "no-unprompted-deletes",
+  "description": "Moving trip dates must not delete the existing stay or travel records.",
+  "requirement": "prompt [base] — deletions require clear user intent",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "stays": [
+    {"name": "Hyatt Regency Naha", "stayType": "hotel"}
+  ],
+  "travels": [
+    {"name": "Flight to Naha", "mode": "flight"}
+  ],
+  "message": "The whole trip moved — now it's Nov 5 through Nov 11.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "persistedInclude": [
+      {"op": "update", "target": "trip", "fieldsContain": {"startDate": "2026-11-05", "endDate": "2026-11-11"}}
+    ],
+    "toolsCalledExclude": ["delete_stay", "delete_travel"],
+    "countsMin": {"stays": 1, "travels": 1},
+    "capHit": false
+  }
+}

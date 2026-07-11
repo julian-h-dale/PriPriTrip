@@ -1,0 +1,26 @@
+{
+  "name": "conflict-arrival-update-not-duplicate",
+  "description": "Changing an existing flight's arrival date must update that record, not create a second flight.",
+  "requirement": "requirements doc Req 9 — Conflict test 2",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "travels": [
+    {"name": "Flight to Naha", "mode": "flight", "departureDateTime": "2026-10-30T09:00", "arrivalDateTime": "2026-10-30T14:00"}
+  ],
+  "message": "Small change — we arrive Oct 31 instead of Oct 30.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "persistedInclude": [
+      {"op": "update", "target": "travel"}
+    ],
+    "countsMax": {"travels": 1},
+    "toolsCalledExclude": ["create_travel"],
+    "capHit": false
+  }
+}

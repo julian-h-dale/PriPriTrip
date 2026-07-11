@@ -56,3 +56,6 @@ Thumbs.db
 **/*.bak
 api/.env.bak
 **/*.log
+
+# eval harness reports (generated)
+api/eval_report*.json
