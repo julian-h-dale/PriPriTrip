@@ -18,7 +18,7 @@ from app.models import (
     TripPointRecord,
     TripRecord,
 )
-from app.services.chat_tool_loop import run_chat_tool_loop
+from app.services.chat_tool_loop import run_chat_tool_loop, stream_chat_tool_loop
 
 USER_ID = "11111111-1111-1111-1111-111111111111"
 TRIP_ID = "22222222-2222-2222-2222-222222222222"
@@ -108,6 +108,51 @@ def _response(*, content=None, tool_calls=None):
     )
 
 
+def _as_chunks(response):
+    """Convert a scripted _response into the chunk sequence the streaming
+    API delivers: content deltas, tool-call deltas, then a usage-only chunk."""
+    msg = response.choices[0].message
+    chunks = []
+    if msg.content:
+        chunks.append(
+            SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=msg.content, tool_calls=None), finish_reason=None)],
+                usage=None,
+            )
+        )
+    if msg.tool_calls:
+        deltas = [
+            SimpleNamespace(
+                index=i,
+                id=tc.id,
+                type="function",
+                function=SimpleNamespace(name=tc.function.name, arguments=tc.function.arguments),
+            )
+            for i, tc in enumerate(msg.tool_calls)
+        ]
+        chunks.append(
+            SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=None, tool_calls=deltas), finish_reason=None)],
+                usage=None,
+            )
+        )
+    chunks.append(SimpleNamespace(choices=[], usage=response.usage))
+    return chunks
+
+
+class _FakeStream:
+    def __init__(self, chunks):
+        self._chunks = list(chunks)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if not self._chunks:
+            raise StopAsyncIteration
+        return self._chunks.pop(0)
+
+
 class _ScriptedClient:
     """Returns pre-scripted responses in order; records every request's kwargs."""
 
@@ -122,7 +167,7 @@ class _ScriptedClient:
             self.requests.append(recorded)
             if not self._responses:
                 raise AssertionError("Fake client ran out of scripted responses")
-            return self._responses.pop(0)
+            return _FakeStream(_as_chunks(self._responses.pop(0)))
 
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
 
@@ -328,3 +373,35 @@ class TestChatToolLoop:
         sc = outcome.structuredContent
         assert len(sc["persistedActions"]) == 2
         assert sc["toolLoop"]["iterations"] == 2
+
+    def test_stream_emits_status_and_delta_events_in_order(self):
+        session = _FakeSession()
+        trip = _trip()
+        session.add(trip)
+        client = _ScriptedClient(
+            [
+                _response(tool_calls=[_tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"})]),
+                _response(content="Saved the Hyatt Kyoto stay."),
+            ]
+        )
+
+        async def _collect():
+            events = []
+            async for event in stream_chat_tool_loop(
+                session,
+                trip=trip,
+                transcript=[],
+                latest_message="We're staying at the Hyatt Kyoto",
+                client=client,
+            ):
+                events.append(event)
+            return events
+
+        events = _run(_collect())
+
+        kinds = [e["type"] for e in events]
+        assert kinds == ["status", "delta", "outcome"]
+        assert events[0]["tool"] == "create_stay"
+        assert events[0]["label"] == "Adding a stay…"
+        assert events[1]["text"] == "Saved the Hyatt Kyoto stay."
+        assert events[2]["outcome"].assistantMessage == "Saved the Hyatt Kyoto stay."

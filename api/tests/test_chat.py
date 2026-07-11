@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+import json
 from unittest.mock import MagicMock
 import uuid
 
@@ -9,11 +9,37 @@ from app.database import get_db
 from app.main import app
 from app.models import ChatMessageRecord, TripRecord
 from app.routers import chat as chat_router
-from app.services.new_trip_workflow import WorkflowOutcome
+from app.services.trip_state import WorkflowOutcome
 
 
 client = TestClient(app)
 USER_ID = "11111111-1111-1111-1111-111111111111"
+
+
+def _sse_events(resp) -> list[dict]:
+    """Parse a text/event-stream body into [{"event": ..., "data": ...}]."""
+    events = []
+    for frame in resp.text.strip().split("\n\n"):
+        name = "message"
+        data_lines = []
+        for line in frame.split("\n"):
+            if line.startswith("event:"):
+                name = line[len("event:"):].strip()
+            elif line.startswith("data:"):
+                data_lines.append(line[len("data:"):].strip())
+        if data_lines:
+            events.append({"event": name, "data": json.loads("\n".join(data_lines))})
+    return events
+
+
+def _done_payload(resp) -> dict:
+    """Return the `done` event's data, failing loudly on an `error` event."""
+    events = _sse_events(resp)
+    errors = [e for e in events if e["event"] == "error"]
+    assert not errors, errors
+    done = [e for e in events if e["event"] == "done"]
+    assert done, events
+    return done[-1]["data"]
 
 
 def _fake_user():
@@ -80,7 +106,7 @@ class TestChat:
         app.dependency_overrides.clear()
 
     def test_reply_creates_shell_trip_and_messages(self, monkeypatch):
-        # Default mode is "loop": trip:* workflows dispatch to the tool loop.
+        # All trip:* workflows dispatch to the tool loop.
         async def _fake_loop(
             _db,
             *,
@@ -92,19 +118,29 @@ class TestChat:
             workflow_name="trip:manage",
             client=None,
         ):
-            return WorkflowOutcome(
-                assistantMessage="Hello world - 2026-07-08",
-                complete=False,
-                structuredContent={"tripName": "Paris Trip"},
-            )
+            yield {"type": "status", "tool": "create_stay", "label": "Adding a stay…"}
+            yield {"type": "delta", "text": "Hello world"}
+            yield {
+                "type": "outcome",
+                "outcome": WorkflowOutcome(
+                    assistantMessage="Hello world - 2026-07-08",
+                    complete=False,
+                    structuredContent={"tripName": "Paris Trip"},
+                ),
+            }
 
-        monkeypatch.setattr(chat_router, "run_chat_tool_loop", _fake_loop)
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _fake_loop)
         resp = client.post(
             "/chat/reply",
             json={"workflowName": "trip:new_trip", "message": "help me plan a trip"},
         )
         assert resp.status_code == 200
-        body = resp.json()
+        assert resp.headers["content-type"].startswith("text/event-stream")
+        events = _sse_events(resp)
+        assert [e["event"] for e in events] == ["status", "delta", "done"]
+        assert events[0]["data"] == {"tool": "create_stay", "label": "Adding a stay…"}
+        assert events[1]["data"] == {"text": "Hello world"}
+        body = _done_payload(resp)
         assert body["tripId"]
         assert len(body["messages"]) == 2
         assert body["messages"][0]["isBot"] is False
@@ -132,16 +168,19 @@ class TestChat:
             workflow_name="trip:manage",
             client=None,
         ):
-            return WorkflowOutcome(
-                assistantMessage="Updated your trip day.",
-                complete=False,
-                structuredContent={
-                    "actions": [{"op": "update", "target": "day", "id": "d1", "fields": {"title": "Day 1"}}],
-                    "results": [{"op": "update", "target": "day", "id": "d1", "status": "ok", "detail": None}],
-                },
-            )
+            yield {
+                "type": "outcome",
+                "outcome": WorkflowOutcome(
+                    assistantMessage="Updated your trip day.",
+                    complete=False,
+                    structuredContent={
+                        "actions": [{"op": "update", "target": "day", "id": "d1", "fields": {"title": "Day 1"}}],
+                        "results": [{"op": "update", "target": "day", "id": "d1", "status": "ok", "detail": None}],
+                    },
+                ),
+            }
 
-        monkeypatch.setattr(chat_router, "run_chat_tool_loop", _fake_loop)
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _fake_loop)
         resp = client.post(
             "/chat/reply",
             json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": str(uuid.uuid4())},
@@ -167,15 +206,14 @@ class TestChat:
         )
 
         assert resp.status_code == 200
-        body = resp.json()
+        body = _done_payload(resp)
         assert body["tripId"] == existing_trip_id
         assert body["messages"][1]["message"] == "Updated your trip day."
         assert body["messages"][1]["structureContent"] is not None
 
 
-class TestChatModeRouting:
-    """CHAT_ASSISTANT_MODE dispatch: "loop" -> run_chat_tool_loop for all
-    trip:* workflows; "batch" -> the legacy one-shot workflows."""
+class TestChatRouting:
+    """All trip:* workflows dispatch to run_chat_tool_loop."""
 
     def setup_method(self):
         self.session = _FakeSession()
@@ -185,14 +223,13 @@ class TestChatModeRouting:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @staticmethod
-    def _outcome(text):
-        return WorkflowOutcome(assistantMessage=text, complete=False)
-
     def _fake(self, calls, label):
         async def _workflow(_db, **kwargs):
             calls.append((label, kwargs.get("workflow_name")))
-            return self._outcome(f"from {label}")
+            yield {
+                "type": "outcome",
+                "outcome": WorkflowOutcome(assistantMessage=f"from {label}", complete=False),
+            }
 
         return _workflow
 
@@ -210,18 +247,13 @@ class TestChatModeRouting:
         )
         return trip_id
 
-    def test_loop_mode_routes_both_workflows_to_tool_loop(self, monkeypatch):
+    def test_routes_all_trip_workflows_to_tool_loop(self, monkeypatch):
         calls = []
-        monkeypatch.setattr(
-            chat_router, "get_settings", lambda: SimpleNamespace(chat_assistant_mode="loop")
-        )
-        monkeypatch.setattr(chat_router, "run_chat_tool_loop", self._fake(calls, "loop"))
-        monkeypatch.setattr(chat_router, "handle_new_trip_chat_turn", self._fake(calls, "legacy-new"))
-        monkeypatch.setattr(chat_router, "handle_trip_assistant_chat_turn", self._fake(calls, "legacy-manage"))
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._fake(calls, "loop"))
 
         resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi"})
         assert resp.status_code == 200
-        assert resp.json()["messages"][1]["message"] == "from loop"
+        assert _done_payload(resp)["messages"][1]["message"] == "from loop"
 
         trip_id = self._existing_trip()
         resp = client.post(
@@ -229,29 +261,29 @@ class TestChatModeRouting:
             json={"workflowName": "trip:manage", "message": "hi", "tripId": trip_id},
         )
         assert resp.status_code == 200
-        assert resp.json()["messages"][1]["message"] == "from loop"
+        assert _done_payload(resp)["messages"][1]["message"] == "from loop"
 
         assert calls == [("loop", "trip:new_trip"), ("loop", "trip:manage")]
 
-    def test_batch_mode_routes_to_legacy_workflows(self, monkeypatch):
+    def test_non_trip_workflow_skips_tool_loop(self, monkeypatch):
         calls = []
-        monkeypatch.setattr(
-            chat_router, "get_settings", lambda: SimpleNamespace(chat_assistant_mode="batch")
-        )
-        monkeypatch.setattr(chat_router, "run_chat_tool_loop", self._fake(calls, "loop"))
-        monkeypatch.setattr(chat_router, "handle_new_trip_chat_turn", self._fake(calls, "legacy-new"))
-        monkeypatch.setattr(chat_router, "handle_trip_assistant_chat_turn", self._fake(calls, "legacy-manage"))
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._fake(calls, "loop"))
+
+        resp = client.post("/chat/reply", json={"workflowName": "other", "message": "hi"})
+        assert resp.status_code == 200
+        assert _done_payload(resp)
+        assert calls == []
+
+    def test_loop_failure_becomes_error_event(self, monkeypatch):
+        async def _boom(_db, **_kwargs):
+            raise RuntimeError("kaboom")
+            yield  # pragma: no cover — makes this an async generator
+
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _boom)
 
         resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi"})
+        # The stream is already committed to 200; failures ride the stream.
         assert resp.status_code == 200
-        assert resp.json()["messages"][1]["message"] == "from legacy-new"
-
-        trip_id = self._existing_trip()
-        resp = client.post(
-            "/chat/reply",
-            json={"workflowName": "trip:manage", "message": "hi", "tripId": trip_id},
-        )
-        assert resp.status_code == 200
-        assert resp.json()["messages"][1]["message"] == "from legacy-manage"
-
-        assert [label for label, _ in calls] == ["legacy-new", "legacy-manage"]
+        events = _sse_events(resp)
+        assert [e["event"] for e in events] == ["error"]
+        assert "kaboom" not in events[0]["data"]["detail"]

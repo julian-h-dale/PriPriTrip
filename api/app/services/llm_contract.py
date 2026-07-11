@@ -6,14 +6,12 @@ and "Runtime Context Expected From App" sections were removed per review.md
 3E-6; they were developer docs shipping as prompt tokens and promised context
 keys the backend never sent):
 
-- `AssistantTurn` is the structured-output shape for the legacy batch chat
-  workflows, enforced via OpenAI structured outputs.
 - `AssistantRuntimeContext` is the runtime context the app sends every turn
   (chat.py `_runtime_context_for_user`): `appCurrentDate` (today in the
   user's home timezone — the prompt's date policy depends on it),
   `userHomeLocation`, `userHomeTimezoneId`, and the free-form `uiContext`
   from the client.
-- The tool-calling loop (chat_tool_loop.py) reuses `AssistantAction`/
+- The tool-calling loop (chat_tool_loop.py) uses `AssistantAction`/
   `ActionResult` internally; its per-tool argument schemas live in
   chat_tools.py.
 """
@@ -105,33 +103,6 @@ class AssistantAction(BaseModel):
     fields: AssistantActionFields = Field(default_factory=AssistantActionFields)
 
 
-class Assumption(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["date", "location", "record_match", "timezone", "other"]
-    description: str
-    confidence: Literal["high", "medium", "low"]
-
-
-class UnresolvedItem(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["date", "location", "record_match", "required_field", "other"]
-    description: str
-    blocking: bool
-
-
-class AssistantTurn(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    assistantMessage: str
-    actions: list[AssistantAction] = Field(default_factory=list)
-    assumptions: list[Assumption] = Field(default_factory=list)
-    unresolvedItems: list[UnresolvedItem] = Field(default_factory=list)
-    followUpQuestion: str | None = None
-    confidence: Literal["high", "medium", "low"] = "medium"
-
-
 class ActionResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -140,18 +111,6 @@ class ActionResult(BaseModel):
     id: str | None = None
     status: Literal["ok", "error"]
     detail: str | None = None
-
-
-class AppliedAssistantResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    assistantMessage: str
-    followUpQuestion: str | None
-    persistedActions: list[AssistantAction] = Field(default_factory=list)
-    suppressedActions: list[dict[str, Any]] = Field(default_factory=list)
-    assumptions: list[Assumption] = Field(default_factory=list)
-    unresolvedItems: list[UnresolvedItem] = Field(default_factory=list)
-    results: list[ActionResult] = Field(default_factory=list)
 
 
 class UserHomeLocationContext(BaseModel):

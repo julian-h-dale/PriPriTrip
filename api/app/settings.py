@@ -26,10 +26,6 @@ class Settings(BaseSettings):
     openai_timeout: float = 120.0
     openai_max_retries: int = 2
 
-    # Chat assistant dispatch: "loop" = tool-calling loop (chat_tool_loop.py),
-    # "batch" = legacy one-shot structured-output workflows (kill switch).
-    chat_assistant_mode: str = "loop"
-
     app_log_level: str = "INFO"
 
     ai_log_path: str = ""

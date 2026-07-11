@@ -1,15 +1,11 @@
 """Tool-calling loop for the chat assistant (review.md 3A target architecture).
 
-Replaces the one-shot structured-output workflows for interactive chat: the
-model gets per-target tools (app/services/chat_tools.py), calls them until it
-is done, and its final plain message is what the user sees. Executor errors
+The model gets per-target tools (app/services/chat_tools.py), calls them until
+it is done, and its final plain message is what the user sees. Executor errors
 come back as tool results, so the model observes and corrects its own
 failures within the turn (review.md 3C-3). A deterministic verify_trip
 checklist in the context replaces the welcome/travel/stay stage machine
 (review.md 3D-2).
-
-Enabled via Settings.chat_assistant_mode == "loop"; "batch" falls back to the
-legacy one-shot workflows (kill switch).
 """
 
 from __future__ import annotations
@@ -17,6 +13,8 @@ from __future__ import annotations
 import json
 import logging
 import time
+from types import SimpleNamespace
+from typing import AsyncIterator
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
@@ -25,14 +23,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import TripRecord
 from app.services.ai_trace import log_ai_event
 from app.services.chat_tools import TOOL_REGISTRY, openai_tools
-from app.services.new_trip_workflow import (
-    WorkflowOutcome,
-    _assembled_trip,
-    _mark_trip_draft_after_chat_completion,
-)
 from app.services.openai_client import get_async_client, get_model
 from app.services.prompt_composer import build_tool_loop_prompt
-from app.services.trip_assistant_workflow import _trip_summary
+from app.services.trip_state import (
+    WorkflowOutcome,
+    assembled_trip,
+    mark_trip_draft_after_chat_completion,
+    trip_summary,
+)
 from app.services.trip_verify import verify_trip
 
 logger = logging.getLogger("app.services.chat_tool_loop")
@@ -68,8 +66,7 @@ def _build_context_message(
     )
 
 
-def _usage_fields(completion) -> dict:
-    usage = getattr(completion, "usage", None)
+def _usage_fields(usage) -> dict:
     prompt_details = getattr(usage, "prompt_tokens_details", None) if usage else None
     return {
         "totalTokens": getattr(usage, "total_tokens", None) if usage else None,
@@ -79,14 +76,49 @@ def _usage_fields(completion) -> dict:
     }
 
 
-async def _create_completion(client, *, messages: list[dict], tools: list[dict] | None):
-    kwargs: dict = {"model": get_model(), "messages": messages}
+async def _stream_completion(client, *, messages: list[dict], tools: list[dict] | None):
+    """Stream one completion, yielding ("delta", text, None) for each content
+    chunk and finally ("message", assembled_message, usage).
+
+    Tool-call deltas are accumulated by index into the same message shape the
+    non-streaming API returns, so the loop below is agnostic to streaming.
+    """
+    kwargs: dict = {
+        "model": get_model(),
+        "messages": messages,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
     if tools is not None:
         kwargs["tools"] = tools
         kwargs["tool_choice"] = "auto"
     started = time.monotonic()
+    content_parts: list[str] = []
+    tool_slots: dict[int, dict] = {}
+    usage = None
     try:
-        completion = await client.chat.completions.create(**kwargs)
+        stream = await client.chat.completions.create(**kwargs)
+        async for chunk in stream:
+            if getattr(chunk, "usage", None):
+                usage = chunk.usage
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = choices[0].delta
+            text = getattr(delta, "content", None)
+            if text:
+                content_parts.append(text)
+                yield ("delta", text, None)
+            for tc in getattr(delta, "tool_calls", None) or []:
+                slot = tool_slots.setdefault(tc.index, {"id": None, "name": "", "arguments": ""})
+                if getattr(tc, "id", None):
+                    slot["id"] = tc.id
+                fn = getattr(tc, "function", None)
+                if fn is not None:
+                    if getattr(fn, "name", None):
+                        slot["name"] = fn.name
+                    if getattr(fn, "arguments", None):
+                        slot["arguments"] += fn.arguments
     except Exception as exc:
         log_ai_event(
             "ai.chat_loop.error",
@@ -98,7 +130,40 @@ async def _create_completion(client, *, messages: list[dict], tools: list[dict] 
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=_GENERIC_AI_ERROR,
         ) from exc
-    return completion
+
+    message = SimpleNamespace(
+        content="".join(content_parts) or None,
+        tool_calls=[
+            SimpleNamespace(
+                id=slot["id"] or f"call_{index}",
+                type="function",
+                function=SimpleNamespace(name=slot["name"], arguments=slot["arguments"]),
+            )
+            for index, slot in sorted(tool_slots.items())
+        ]
+        or None,
+    )
+    yield ("message", message, usage)
+
+
+def _tool_status_label(name: str) -> str:
+    """Human-readable interim status for a tool call ("Adding a stay…")."""
+    if name == "resolve_location":
+        return "Looking up locations…"
+    if name == "get_trip_snapshot":
+        return "Reviewing the trip…"
+    op, _, target = name.partition("_")
+    verbs = {"create": "Adding", "update": "Updating", "delete": "Removing"}
+    nouns = {
+        "trip": "trip details",
+        "day": "a day",
+        "point": "an activity",
+        "stay": "a stay",
+        "travel": "a travel leg",
+    }
+    if op in verbs and target in nouns:
+        return f"{verbs[op]} {nouns[target]}…"
+    return "Working…"
 
 
 def _serialize_tool_call(tc) -> dict:
@@ -135,7 +200,7 @@ async def _dispatch_tool_call(db: AsyncSession, trip: TripRecord, tc) -> tuple[d
     return outcome.result, outcome.action, outcome.action_result
 
 
-async def run_chat_tool_loop(
+async def stream_chat_tool_loop(
     db: AsyncSession,
     *,
     trip: TripRecord,
@@ -145,11 +210,18 @@ async def run_chat_tool_loop(
     ui_context: dict | None = None,
     workflow_name: str = "trip:manage",
     client=None,
-) -> WorkflowOutcome:
+) -> AsyncIterator[dict]:
+    """Run the tool loop, yielding UI events as they happen.
+
+    Event dicts:
+    - {"type": "status", "tool": name, "label": text} — before each tool runs
+    - {"type": "delta", "text": chunk} — assistant message tokens
+    - {"type": "outcome", "outcome": WorkflowOutcome} — always last
+    """
     client = client or get_async_client()
 
-    summary = await _trip_summary(db, trip)
-    verify_payload = verify_trip(await _assembled_trip(db, trip)).model_dump(mode="json", by_alias=True)
+    summary = await trip_summary(db, trip)
+    verify_payload = verify_trip(await assembled_trip(db, trip)).model_dump(mode="json", by_alias=True)
 
     messages: list[dict] = [
         {"role": "system", "content": build_tool_loop_prompt()},
@@ -198,31 +270,37 @@ async def run_chat_tool_loop(
             iteration=iterations,
             messageCount=len(messages),
         )
-        completion = await _create_completion(client, messages=messages, tools=tools)
-        msg = completion.choices[0].message
-        tool_calls = list(getattr(msg, "tool_calls", None) or [])
+        msg = None
+        usage = None
+        async for kind, payload, chunk_usage in _stream_completion(client, messages=messages, tools=tools):
+            if kind == "delta":
+                yield {"type": "delta", "text": payload}
+            else:
+                msg, usage = payload, chunk_usage
+        tool_calls = list(msg.tool_calls or [])
 
         if not tool_calls:
-            final_text = (getattr(msg, "content", None) or "").strip()
+            final_text = (msg.content or "").strip()
             log_ai_event(
                 "ai.chat_loop.final",
                 tripId=trip.trip_id,
                 iteration=iterations,
                 capHit=False,
                 assistantMessage=final_text,
-                **_usage_fields(completion),
+                **_usage_fields(usage),
             )
             break
 
         messages.append(
             {
                 "role": "assistant",
-                "content": getattr(msg, "content", None),
+                "content": msg.content,
                 "tool_calls": [_serialize_tool_call(tc) for tc in tool_calls],
             }
         )
 
         for tc in tool_calls:
+            yield {"type": "status", "tool": tc.function.name, "label": _tool_status_label(tc.function.name)}
             log_ai_event(
                 "ai.chat_loop.tool_call",
                 tripId=trip.trip_id,
@@ -230,7 +308,7 @@ async def run_chat_tool_loop(
                 toolCallId=tc.id,
                 toolName=tc.function.name,
                 arguments=tc.function.arguments,
-                **_usage_fields(completion),
+                **_usage_fields(usage),
             )
             result, action, action_result = await _dispatch_tool_call(db, trip, tc)
             if action is not None:
@@ -272,15 +350,21 @@ async def run_chat_tool_loop(
             # with an honest summary instead of an abandoned tool call.
             cap_hit = True
             messages.append({"role": "user", "content": _WRAP_UP_NUDGE})
-            completion = await _create_completion(client, messages=messages, tools=None)
-            final_text = (getattr(completion.choices[0].message, "content", None) or "").strip()
+            msg = None
+            usage = None
+            async for kind, payload, chunk_usage in _stream_completion(client, messages=messages, tools=None):
+                if kind == "delta":
+                    yield {"type": "delta", "text": payload}
+                else:
+                    msg, usage = payload, chunk_usage
+            final_text = (msg.content or "").strip()
             log_ai_event(
                 "ai.chat_loop.final",
                 tripId=trip.trip_id,
                 iteration=iterations,
                 capHit=True,
                 assistantMessage=final_text,
-                **_usage_fields(completion),
+                **_usage_fields(usage),
             )
             break
 
@@ -305,7 +389,7 @@ async def run_chat_tool_loop(
     complete = False
     verify = None
     if workflow_name == "trip:new_trip":
-        refreshed = await _trip_summary(db, trip)
+        refreshed = await trip_summary(db, trip)
         complete = (
             refreshed["staysCount"] > 0
             and refreshed["travelsCount"] > 0
@@ -314,8 +398,8 @@ async def run_chat_tool_loop(
             and bool(trip.end_date)
         )
         if complete:
-            _mark_trip_draft_after_chat_completion(trip)
-            verify = verify_trip(await _assembled_trip(db, trip))
+            mark_trip_draft_after_chat_completion(trip)
+            verify = verify_trip(await assembled_trip(db, trip))
 
     log_ai_event(
         "ai.chat_loop.outcome",
@@ -328,9 +412,41 @@ async def run_chat_tool_loop(
         assistantMessage=final_text,
     )
 
-    return WorkflowOutcome(
-        assistantMessage=final_text,
-        complete=complete,
-        verify=verify,
-        structuredContent=structured_content,
-    )
+    yield {
+        "type": "outcome",
+        "outcome": WorkflowOutcome(
+            assistantMessage=final_text,
+            complete=complete,
+            verify=verify,
+            structuredContent=structured_content,
+        ),
+    }
+
+
+async def run_chat_tool_loop(
+    db: AsyncSession,
+    *,
+    trip: TripRecord,
+    transcript: list[dict],
+    latest_message: str,
+    conversation_summary: str | None = None,
+    ui_context: dict | None = None,
+    workflow_name: str = "trip:manage",
+    client=None,
+) -> WorkflowOutcome:
+    """Drain stream_chat_tool_loop and return just the outcome."""
+    outcome: WorkflowOutcome | None = None
+    async for event in stream_chat_tool_loop(
+        db,
+        trip=trip,
+        transcript=transcript,
+        latest_message=latest_message,
+        conversation_summary=conversation_summary,
+        ui_context=ui_context,
+        workflow_name=workflow_name,
+        client=client,
+    ):
+        if event["type"] == "outcome":
+            outcome = event["outcome"]
+    assert outcome is not None
+    return outcome

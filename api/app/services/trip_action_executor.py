@@ -23,7 +23,6 @@ from app.schemas import (
     TripPointCreate,
     TripPointPatch,
 )
-from app.services.ai_trace import log_ai_event
 from app.services.date_normalizer import DateNormalizerInput, normalize_date
 from app.services.detail_points import (
     reconcile_trip_days,
@@ -32,7 +31,7 @@ from app.services.detail_points import (
     sync_stay_generated_points,
     sync_travel_generated_points,
 )
-from app.services.llm_contract import ActionResult, AppliedAssistantResult, AssistantAction, AssistantTurn
+from app.services.llm_contract import ActionResult, AssistantAction
 from app.services.location_resolver import enrich_location_dict
 from app.services.locations import location_rows
 from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
@@ -504,123 +503,3 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
         return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
     return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Unsupported action target")
-
-
-def should_suppress_follow_up(
-    *,
-    follow_up_question: str | None,
-    trip: TripRecord,
-    latest_message: str,
-    recent_assistant_questions: list[str],
-) -> bool:
-    if not follow_up_question:
-        return False
-
-    q = follow_up_question.strip().lower()
-    latest = (latest_message or "").lower()
-
-    if q in {text.strip().lower() for text in recent_assistant_questions if text}:
-        return True
-
-    field_heuristics: list[tuple[str, str | None]] = [
-        ("destination", trip.destination_location_name),
-        ("where are you going", trip.destination_location_name),
-        ("start date", trip.start_date),
-        ("end date", trip.end_date),
-        ("return", trip.end_date),
-    ]
-    for key, value in field_heuristics:
-        if key in q and value:
-            return True
-
-    if "destination" in q and trip.destination_location_name and trip.destination_location_name.lower() in latest:
-        return True
-
-    return False
-
-
-async def apply_assistant_turn(
-    db: AsyncSession,
-    *,
-    trip: TripRecord,
-    turn: AssistantTurn,
-    latest_message: str,
-    recent_assistant_questions: list[str],
-) -> AppliedAssistantResult:
-    results: list[ActionResult] = []
-    persisted: list[AssistantAction] = []
-    suppressed: list[dict[str, Any]] = []
-
-    for action in turn.actions:
-        try:
-            result = await execute_action(db, trip=trip, action=action)
-        except Exception as exc:
-            result = ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
-                status="error",
-                detail=str(exc),
-            )
-        results.append(result)
-        if result.status == "ok":
-            persisted.append(action)
-        else:
-            suppressed.append({"action": action.model_dump(mode="json"), "reason": result.detail})
-
-    follow_up_question = turn.followUpQuestion
-    assistant_message = turn.assistantMessage
-
-    # Honest failure reporting (review.md 3C-3): the model writes its message
-    # BEFORE actions execute, so on failure its text ("I've added your
-    # flight") would be a lie. Never let a claimed save stand when nothing
-    # was saved.
-    if suppressed and not persisted:
-        failure_summary = ", ".join(
-            f"{item['action'].get('op', '?')} {item['action'].get('target', '?')}"
-            for item in suppressed
-        )
-        assistant_message = (
-            "I wasn't able to save those changes just now "
-            f"(failed: {failure_summary}). Nothing was updated — could you "
-            "rephrase or give me the details again?"
-        )
-    elif suppressed:
-        failure_summary = ", ".join(
-            f"{item['action'].get('op', '?')} {item['action'].get('target', '?')}"
-            for item in suppressed
-        )
-        assistant_message = (
-            f"{assistant_message}\n\n"
-            f"Note: I saved most of that, but some updates failed ({failure_summary}) "
-            "and were not applied."
-        )
-
-    if should_suppress_follow_up(
-        follow_up_question=follow_up_question,
-        trip=trip,
-        latest_message=latest_message,
-        recent_assistant_questions=recent_assistant_questions,
-    ):
-        follow_up_question = None
-        if persisted and not suppressed:
-            assistant_message = "Saved your updates. I can keep refining details whenever you are ready."
-
-    outcome = AppliedAssistantResult(
-        assistantMessage=assistant_message,
-        followUpQuestion=follow_up_question,
-        persistedActions=persisted,
-        suppressedActions=suppressed,
-        assumptions=turn.assumptions,
-        unresolvedItems=turn.unresolvedItems,
-        results=results,
-    )
-    log_ai_event(
-        "ai.actions.applied",
-        tripId=trip.trip_id,
-        persistedActions=[item.model_dump(mode="json") for item in persisted],
-        suppressedActions=suppressed,
-        results=[item.model_dump(mode="json") for item in results],
-        followUpQuestion=follow_up_question,
-    )
-    return outcome

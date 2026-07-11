@@ -244,9 +244,9 @@ async def _resolve_location_handler(db: AsyncSession, trip: TripRecord, args: Re
 
 
 async def _get_trip_snapshot_handler(db: AsyncSession, trip: TripRecord, args: GetTripSnapshotArgs) -> ToolOutcome:
-    from app.services.new_trip_workflow import _assembled_trip
+    from app.services.trip_state import assembled_trip
 
-    snapshot = (await _assembled_trip(db, trip)).model_dump(mode="json", by_alias=True)
+    snapshot = (await assembled_trip(db, trip)).model_dump(mode="json", by_alias=True)
     return ToolOutcome(result={"trip": snapshot})
 
 

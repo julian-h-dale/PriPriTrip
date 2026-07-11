@@ -3,16 +3,10 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 import re
-from typing import Literal
 
 
-PromptStage = Literal["welcome", "travel", "stay", "assistant_actions", "assistant_tools"]
 _REQUIRED_SECTIONS = {
     "base",
-    "stage:welcome",
-    "stage:travel",
-    "stage:stay",
-    "stage:assistant_actions",
     "stage:assistant_tools",
 }
 
@@ -46,7 +40,7 @@ def _validate_sections(sections: dict[str, str]) -> None:
         missing_text = ", ".join(missing)
         raise RuntimeError(
             "Prompt file is missing required machine-readable section markers: "
-            f"{missing_text}. Expected markers like '## [base]' and '## [stage:welcome]'."
+            f"{missing_text}. Expected markers like '## [base]' and '## [stage:assistant_tools]'."
         )
 
 
@@ -65,32 +59,11 @@ def _load_prompt_sections() -> dict[str, str]:
     return sections
 
 
-def load_base_prompt() -> str:
-    sections = _load_prompt_sections()
-    return sections["base"]
-
-
-def _load_stage_overlay(stage: PromptStage) -> str:
-    sections = _load_prompt_sections()
-    return sections[f"stage:{stage}"]
-
-
 def validate_prompt_sections() -> None:
     _load_prompt_sections()
 
 
-def build_new_trip_stage_prompt(stage: Literal["welcome", "travel", "stay"]) -> str:
-    base = load_base_prompt()
-    overlay = _load_stage_overlay(stage)
-    return f"{base}\n\n{overlay}"
-
-
-def build_trip_assistant_prompt() -> str:
-    base = load_base_prompt()
-    return f"{base}\n\n{_load_stage_overlay('assistant_actions')}"
-
-
 def build_tool_loop_prompt() -> str:
     """System prompt for the tool-calling chat loop (chat_tool_loop.py)."""
-    base = load_base_prompt()
-    return f"{base}\n\n{_load_stage_overlay('assistant_tools')}"
+    sections = _load_prompt_sections()
+    return f"{sections['base']}\n\n{sections['stage:assistant_tools']}"

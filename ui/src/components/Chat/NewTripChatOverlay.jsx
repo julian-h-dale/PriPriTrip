@@ -172,6 +172,13 @@ export default function NewTripChatOverlay({
     ]);
     setLoading(true);
     setError(null);
+
+    const patchBotTemp = (patch) => {
+      setMessages((prev) => prev.map((message) => (
+        message.messageId === botTempId ? { ...message, ...patch(message) } : message
+      )));
+    };
+
     try {
       const response = await sendChatMessage({
         tripId,
@@ -182,6 +189,16 @@ export default function NewTripChatOverlay({
           chatOverlay: 'new_trip',
           selectedTripId: tripId || null,
           workflowName,
+        },
+      }, {
+        onStatus: (status) => {
+          patchBotTemp(() => ({ statusLabel: status.label }));
+        },
+        onDelta: (chunk) => {
+          patchBotTemp((message) => ({
+            message: (message.message === '...' ? '' : message.message) + chunk,
+            statusLabel: null,
+          }));
         },
       });
       onTripIdChange?.(response.tripId);
@@ -196,7 +213,7 @@ export default function NewTripChatOverlay({
       }
     } catch (err) {
       setMessages((prev) => prev.filter((message) => message.messageId !== botTempId));
-      setError(err?.response?.data?.detail ?? 'Could not send message.');
+      setError(err?.detail ?? err?.response?.data?.detail ?? 'Could not send message.');
     } finally {
       setLoading(false);
     }
@@ -333,6 +350,15 @@ export default function NewTripChatOverlay({
                     <TypingBubble />
                   ) : (
                     <MarkdownBubble text={message.message} isBot={message.isBot} />
+                  )}
+                  {message.statusLabel && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}
+                    >
+                      {message.statusLabel}
+                    </Typography>
                   )}
                 </Paper>
               </Box>

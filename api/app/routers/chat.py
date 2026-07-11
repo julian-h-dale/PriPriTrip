@@ -4,7 +4,8 @@ from datetime import date, datetime, timezone
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,15 +15,17 @@ from app.dependencies import get_owned_trip, require_owned_trip
 from app.models import ChatMessageRecord, TripRecord, UserRecord
 from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
 from app.services.ai_trace import log_ai_event
-from app.services.chat_tool_loop import run_chat_tool_loop
+from app.services.chat_tool_loop import stream_chat_tool_loop
 from app.services.llm_contract import AssistantRuntimeContext, UserHomeLocationContext
-from app.services.new_trip_workflow import handle_new_trip_chat_turn
-from app.services.trip_assistant_workflow import handle_trip_assistant_chat_turn
-from app.settings import get_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 _TRANSCRIPT_WINDOW_TURNS = 12
+_GENERIC_STREAM_ERROR = "The AI service request failed. Please try again."
+
+
+def _sse(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
 
 
 def _summary_workflow_name(workflow_name: str) -> str:
@@ -154,7 +157,7 @@ async def list_trip_chat_messages(
     return [_message_to_response(rec) for rec in result.scalars().all()]
 
 
-@router.post("/reply", response_model=ChatReplyResponse)
+@router.post("/reply")
 async def reply_in_chat(
     body: ChatReplyRequest,
     db: AsyncSession = Depends(get_db),
@@ -258,84 +261,88 @@ async def reply_in_chat(
         runtimeContext=runtime_context,
     )
 
-    assistant_mode = get_settings().chat_assistant_mode
-    if body.workflow_name.startswith("trip:") and assistant_mode == "loop":
-        # Tool-calling loop (review.md 3A): one runner for all trip:* chat
-        # workflows. "batch" mode below is the kill switch back to the
-        # legacy one-shot structured-output workflows.
-        outcome = await run_chat_tool_loop(
-            db,
-            trip=trip,
-            transcript=transcript,
-            latest_message=body.message.strip(),
-            conversation_summary=conversation_summary or None,
-            ui_context=runtime_context,
-            workflow_name=body.workflow_name,
-        )
-        bot_text = outcome.assistantMessage
-        complete = outcome.complete
-        verify = outcome.verify
-        structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
-    elif body.workflow_name == "trip:new_trip":
-        outcome = await handle_new_trip_chat_turn(
-            db,
-            trip=trip,
-            transcript=transcript,
-            latest_message=body.message.strip(),
-            conversation_summary=conversation_summary or None,
-            ui_context=runtime_context,
-        )
-        bot_text = outcome.assistantMessage
-        complete = outcome.complete
-        verify = outcome.verify
-        structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
-    elif body.workflow_name.startswith("trip:"):
-        outcome = await handle_trip_assistant_chat_turn(
-            db,
-            trip=trip,
-            transcript=transcript,
-            latest_message=body.message.strip(),
-            conversation_summary=conversation_summary or None,
-            ui_context=runtime_context,
-        )
-        bot_text = outcome.assistantMessage
-        complete = outcome.complete
-        verify = outcome.verify
-        structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
-    else:
-        bot_text = f"Hello world - {date.today().isoformat()}"
-        complete = False
-        verify = None
-        structure_content = None
+    async def event_stream():
+        # Runs while the SSE response streams; the get_db session stays open
+        # until this generator finishes. Nothing is committed on failure —
+        # the turn (including the user message) is discarded, same as the
+        # pre-streaming behavior on an exception.
+        try:
+            if body.workflow_name.startswith("trip:"):
+                # Tool-calling loop (review.md 3A): one runner for all trip:*
+                # chat workflows.
+                outcome = None
+                async for event in stream_chat_tool_loop(
+                    db,
+                    trip=trip,
+                    transcript=transcript,
+                    latest_message=body.message.strip(),
+                    conversation_summary=conversation_summary or None,
+                    ui_context=runtime_context,
+                    workflow_name=body.workflow_name,
+                ):
+                    if event["type"] == "delta":
+                        yield _sse("delta", {"text": event["text"]})
+                    elif event["type"] == "status":
+                        yield _sse("status", {"tool": event["tool"], "label": event["label"]})
+                    else:
+                        outcome = event["outcome"]
+                bot_text = outcome.assistantMessage
+                complete = outcome.complete
+                verify = outcome.verify
+                structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
+            else:
+                bot_text = f"Hello world - {date.today().isoformat()}"
+                complete = False
+                verify = None
+                structure_content = None
 
-    bot_message = ChatMessageRecord(
-        message_id=str(uuid.uuid4()),
-        user_id=str(user.id),
-        trip_id=trip_id,
-        workflow_name=body.workflow_name,
-        message=bot_text,
-        structure_content=structure_content,
-        is_bot=True,
-    )
-    db.add(bot_message)
-    await db.commit()
-    await db.refresh(user_message)
-    await db.refresh(bot_message)
+            bot_message = ChatMessageRecord(
+                message_id=str(uuid.uuid4()),
+                user_id=str(user.id),
+                trip_id=trip_id,
+                workflow_name=body.workflow_name,
+                message=bot_text,
+                structure_content=structure_content,
+                is_bot=True,
+            )
+            db.add(bot_message)
+            await db.commit()
+            await db.refresh(user_message)
+            await db.refresh(bot_message)
 
-    log_ai_event(
-        "chat.reply.outcome",
-        workflowName=body.workflow_name,
-        tripId=trip_id,
-        complete=complete,
-        verify=verify.model_dump(mode="json") if verify else None,
-        structuredContent=json.loads(structure_content) if structure_content else None,
-        botMessage=bot_text,
-    )
+            log_ai_event(
+                "chat.reply.outcome",
+                workflowName=body.workflow_name,
+                tripId=trip_id,
+                complete=complete,
+                verify=verify.model_dump(mode="json") if verify else None,
+                structuredContent=json.loads(structure_content) if structure_content else None,
+                botMessage=bot_text,
+            )
 
-    return ChatReplyResponse(
-        tripId=trip_id,
-        complete=complete,
-        tripName=trip.trip_name,
-        verify=verify,
-        messages=[_message_to_response(user_message), _message_to_response(bot_message)],
+            response = ChatReplyResponse(
+                tripId=trip_id,
+                complete=complete,
+                tripName=trip.trip_name,
+                verify=verify,
+                messages=[_message_to_response(user_message), _message_to_response(bot_message)],
+            )
+            yield _sse("done", response.model_dump(mode="json", by_alias=True))
+        except HTTPException as exc:
+            # Already logged at the source (e.g. ai.chat_loop.error). The SSE
+            # response is committed to 200 by now, so errors ride the stream.
+            yield _sse("error", {"detail": exc.detail})
+        except Exception as exc:
+            log_ai_event(
+                "chat.reply.error",
+                workflowName=body.workflow_name,
+                tripId=trip_id,
+                error=str(exc),
+            )
+            yield _sse("error", {"detail": _GENERIC_STREAM_ERROR})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

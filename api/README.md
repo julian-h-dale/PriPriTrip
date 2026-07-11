@@ -62,7 +62,6 @@ Configuration is loaded via pydantic-settings (`app/settings.py`, reads `.env`).
 | OPENAI_MODEL | gpt-5.4 | OpenAI model for AI flows |
 | OPENAI_TIMEOUT | 120 | OpenAI timeout in seconds |
 | OPENAI_MAX_RETRIES | 2 | OpenAI client retry count |
-| CHAT_ASSISTANT_MODE | loop | `loop` = tool-calling chat loop; `batch` = legacy one-shot workflows (kill switch) |
 | APP_LOG_LEVEL | INFO | App logger level |
 | AI_LOG_PATH | api/ai.log | AI trace log output path |
 | AI_LOG_LEVEL | INFO | AI trace logger level |
@@ -142,11 +141,15 @@ Notes:
 
 ### Chat workflows
 - GET /chat/trips/{trip_id}?workflowName=...
-- POST /chat/reply
+- POST /chat/reply  (responds with Server-Sent Events, not JSON)
 
-Chat architecture (CHAT_ASSISTANT_MODE):
-- `loop` (default): a tool-calling agent loop (`services/chat_tool_loop.py` + `services/chat_tools.py`). The model gets 15 typed tools (trip/day/point/stay/travel CRUD, `resolve_location`, `get_trip_snapshot`), executes them through `trip_action_executor`, sees each result (including validation errors) and self-corrects, capped at 6 iterations. A `verify_trip` "what's missing" checklist is injected as context each turn.
-- `batch` (kill switch): the legacy one-shot structured-output workflows — trip:new_trip staged welcome → travel → stay, and the trip:* CRUD assistant.
+Chat architecture: all `trip:*` workflows run a tool-calling agent loop (`services/chat_tool_loop.py` + `services/chat_tools.py`). The model gets 15 typed tools (trip/day/point/stay/travel CRUD, `resolve_location`, `get_trip_snapshot`), executes them through `trip_action_executor`, sees each result (including validation errors) and self-corrects, capped at 6 iterations. A `verify_trip` "what's missing" checklist is injected as context each turn.
+
+`POST /chat/reply` streams `text/event-stream` (review.md 3F-4):
+- `status` — `{tool, label}` emitted before each tool call runs ("Adding a stay…")
+- `delta` — `{text}` assistant-message tokens as OpenAI streams them
+- `done` — the full reply payload (tripId, complete, tripName, verify, messages)
+- `error` — `{detail}`; failures after the stream starts ride the stream instead of an HTTP error status. Pre-stream failures (401/404/422) are normal JSON errors.
 
 Chat context behavior:
 - Sends runtime context (incl. appCurrentDate in the user's home timezone), trip snapshot/summary, recent transcript window, rolling conversation summary, and optional UI context.
@@ -167,10 +170,7 @@ Prompt loading and composition:
 
 Sections parsed from markdown:
 - [base]
-- [stage:welcome]
-- [stage:travel]
-- [stage:stay]
-- [stage:assistant_actions]
+- [stage:assistant_tools]
 
 This means prompt updates are content-driven from a single markdown file.
 
@@ -227,10 +227,9 @@ api/
 │   │   ├── chat.py              # Chat workflows (/chat/reply)
 │   │   └── profile.py           # User profile + timezone lookup
 │   └── services/
-│       ├── chat_tool_loop.py           # Tool-calling agent loop (default chat path)
+│       ├── chat_tool_loop.py           # Tool-calling agent loop (the chat path)
 │       ├── chat_tools.py               # Per-target tool schemas + dispatch
-│       ├── new_trip_workflow.py        # Legacy staged workflow (batch mode)
-│       ├── trip_assistant_workflow.py  # Legacy CRUD assistant (batch mode)
+│       ├── trip_state.py               # Shared trip snapshot/summary helpers
 │       ├── trip_action_executor.py     # Applies model-proposed actions to the DB
 │       ├── openai_client.py            # Shared AsyncOpenAI client + traced parse
 │       ├── llm_contract.py             # Structured-output models (AssistantTurn, actions)
