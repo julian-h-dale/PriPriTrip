@@ -18,23 +18,7 @@ import {
 import AppLayout from '../components/AppLayout';
 import { useSaveAiDocumentRecordsMutation } from '../store/apiSlice';
 import { getErrorMessage } from '../utils/errors';
-
-function localityLabel(location) {
-  const fullAddress = location?.fullAddress;
-  if (!fullAddress) return location?.name || '—';
-  const parts = fullAddress
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
-  }
-  return parts[0] || location?.name || '—';
-}
-
-function firstLocationByRole(locations, role) {
-  return (locations ?? []).find((l) => l.role === role) || null;
-}
+import { firstLocationByRole, localityLabel } from '../utils/format';
 
 export default function DocumentImportReviewPage() {
   const { tripId } = useParams();

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -12,14 +12,11 @@ import {
   Typography,
 } from '@mui/material';
 import AppLayout from '../components/AppLayout';
-import { fetchPlaceDetails, fetchPlaceSuggestions } from '../api/placesService';
 import { getProfile, lookupTimezone, updateProfile } from '../api/profileService';
-import { selectMapsApiKey } from '../store/authSlice';
-import { useSelector } from 'react-redux';
+import { usePlacesAutocomplete } from '../hooks/usePlacesAutocomplete';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const mapsApiKey = useSelector(selectMapsApiKey);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,10 +39,14 @@ export default function ProfilePage() {
     homeTimezoneId: '',
   });
 
-  const [suggestions, setSuggestions] = useState([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const {
+    suggestions,
+    loading: loadingSuggestions,
+    search: searchPlaces,
+    resolvePlace,
+    reset: resetSuggestions,
+  } = usePlacesAutocomplete();
   const [locationInput, setLocationInput] = useState('');
-  const debounceRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -89,10 +90,10 @@ export default function ProfilePage() {
 
   const handleLocationInputChange = useCallback((_, newInput) => {
     setLocationInput(newInput);
-    clearTimeout(debounceRef.current);
 
     if (!newInput.trim()) {
-      setSuggestions([]);
+      resetSuggestions();
+      // Clearing the input clears the stored home location too.
       setValues((prev) => ({
         ...prev,
         homeLocation: {
@@ -109,20 +110,12 @@ export default function ProfilePage() {
       return;
     }
 
-    debounceRef.current = setTimeout(async () => {
-      setLoadingSuggestions(true);
-      try {
-        const results = await fetchPlaceSuggestions(newInput, mapsApiKey);
-        setSuggestions(results);
-      } finally {
-        setLoadingSuggestions(false);
-      }
-    }, 300);
-  }, [mapsApiKey]);
+    searchPlaces(newInput);
+  }, [resetSuggestions, searchPlaces]);
 
   const handleLocationSelect = useCallback(async (_, suggestion) => {
     if (!suggestion) return;
-    const details = await fetchPlaceDetails(suggestion.placeId, mapsApiKey);
+    const details = await resolvePlace(suggestion);
     if (!details) return;
 
     const tzid = await lookupTimezone(details.lat, details.lng);
@@ -139,7 +132,7 @@ export default function ProfilePage() {
       homeTimezoneId: tzid ?? '',
     }));
     setLocationInput(details.name);
-  }, [mapsApiKey]);
+  }, [resolvePlace]);
 
   function setField(field, value) {
     setValues((prev) => ({ ...prev, [field]: value }));

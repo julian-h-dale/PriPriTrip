@@ -23,7 +23,6 @@ import ChatIcon from '@mui/icons-material/Chat';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import dayjs from 'dayjs';
 import NewTripChatOverlay from '../components/Chat/NewTripChatOverlay';
 import {
   useDeleteTripMutation,
@@ -31,16 +30,8 @@ import {
   useLazyVerifyTripQuery,
 } from '../store/apiSlice';
 import { getErrorMessage } from '../utils/errors';
+import { formatDateOrdinal } from '../utils/format';
 import AppLayout from '../components/AppLayout';
-
-function fmtDate(dateStr) {
-  const d = dayjs(dateStr);
-  const day = d.date();
-  const suffix = ['th', 'st', 'nd', 'rd'][
-    day % 10 < 4 && (day < 11 || day > 13) ? day % 10 : 0
-  ];
-  return d.format('MMMM') + ' ' + day + suffix;
-}
 
 export default function TripsPage() {
   const navigate = useNavigate();
@@ -164,7 +155,7 @@ export default function TripsPage() {
                   {trip.tripName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {fmtDate(trip.startDate)} – {fmtDate(trip.endDate)}
+                  {formatDateOrdinal(trip.startDate)} – {formatDateOrdinal(trip.endDate)}
                 </Typography>
                 </Box>
 

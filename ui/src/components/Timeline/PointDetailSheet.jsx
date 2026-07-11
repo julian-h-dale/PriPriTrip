@@ -15,41 +15,8 @@ import { useState } from 'react';
 import { parseWallClock } from '../../utils/dayjs';
 import PointForm from '../Forms/PointForm';
 
-import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
-import TrainIcon from '@mui/icons-material/Train';
-import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
-import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
-import HotelIcon from '@mui/icons-material/Hotel';
-import LocalActivityIcon from '@mui/icons-material/LocalActivity';
-import ExploreIcon from '@mui/icons-material/Explore';
-import PlaceIcon from '@mui/icons-material/Place';
+import { ROYAL_BLUE, getChipLabel, getPointIcon } from '../../utils/pointIcons';
 
-const ROYAL_BLUE = '#4169e1';
-
-const TRAVEL_MODE_ICON = {
-  flight: FlightTakeoffIcon,
-  train: TrainIcon,
-  bus: DirectionsBusIcon,
-  car: DirectionsCarIcon,
-  ferry: DirectionsBoatIcon,
-  other: ExploreIcon,
-};
-
-function getPointIcon(point) {
-  if (point.travelDetail?.mode) {
-    return TRAVEL_MODE_ICON[point.travelDetail.mode] ?? PlaceIcon;
-  }
-  if (point.type === 'stay') return HotelIcon;
-  if (point.type === 'activity') return LocalActivityIcon;
-  return PlaceIcon;
-}
-
-function getChipLabel(point) {
-  if (point.travelDetail?.mode) return point.travelDetail.mode.replace('_', ' ');
-  if (point.stayDetail?.stayType) return point.stayDetail.stayType.replace('_', ' ');
-  return null;
-}
 
 // origin→From, destination→To, waypoint→Via, venue→null (no label)
 const ROLE_LABEL = { origin: 'From', destination: 'To', waypoint: 'Via', venue: null };

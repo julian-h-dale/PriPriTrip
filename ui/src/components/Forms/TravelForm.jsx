@@ -18,6 +18,7 @@ import {
   usePatchTravelDetailMutation,
 } from '../../store/apiSlice';
 import { getErrorMessage } from '../../utils/errors';
+import { toDateTimeLocal } from '../../utils/format';
 import LocationForm from './LocationForm';
 
 const TRAVEL_MODES = [
@@ -31,11 +32,6 @@ const TRAVEL_MODES = [
   { value: 'hike', label: 'Hike' },
   { value: 'other', label: 'Other' },
 ];
-
-function parseDateTimeLocal(value) {
-  if (!value) return '';
-  return value.slice(0, 16);
-}
 
 function findByRole(locations, role) {
   return (locations ?? []).find((loc) => loc.role === role) || null;
@@ -104,8 +100,8 @@ export default function TravelForm({
       operator: initialValues.operator ?? '',
       vehicleNumber: initialValues.vehicleNumber ?? '',
       cabinClass: initialValues.cabinClass ?? '',
-      departureDateTime: parseDateTimeLocal(initialValues.departureDateTime),
-      arrivalDateTime: parseDateTimeLocal(initialValues.arrivalDateTime),
+      departureDateTime: toDateTimeLocal(initialValues.departureDateTime),
+      arrivalDateTime: toDateTimeLocal(initialValues.arrivalDateTime),
       locations: buildTravelLocations(initialValues.locations),
       confirmationNumber: initialValues.confirmationNumber ?? '',
       description: initialValues.description ?? '',

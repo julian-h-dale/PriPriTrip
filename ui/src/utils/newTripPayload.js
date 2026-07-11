@@ -1,19 +1,12 @@
 import dayjs from 'dayjs';
 
+import { formatDateOrdinal } from './format';
+
 /**
  * Pure helpers for the New Trip wizard payload. Kept out of the page
  * component so they can be unit-tested (and so the page file only exports
  * a component, keeping react-refresh happy).
  */
-
-export function ordinalDay(dateStr) {
-  const d = dayjs(dateStr);
-  const day = d.date();
-  const suffix = ['th', 'st', 'nd', 'rd'][
-    day % 10 < 4 && (day < 11 || day > 13) ? day % 10 : 0
-  ];
-  return d.format('MMMM') + ' ' + day + suffix;
-}
 
 export function buildDays(startDate, endDate) {
   const days = [];
@@ -22,7 +15,7 @@ export function buildDays(startDate, endDate) {
   for (let i = 1; !current.isAfter(last, 'day'); i += 1) {
     days.push({
       dayId: crypto.randomUUID(),
-      title: `Day ${i} — ${ordinalDay(current.format('YYYY-MM-DD'))}`,
+      title: `Day ${i} — ${formatDateOrdinal(current.format('YYYY-MM-DD'))}`,
       date: current.format('YYYY-MM-DD'),
       points: [],
     });

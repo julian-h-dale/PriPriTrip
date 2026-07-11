@@ -51,14 +51,14 @@ Also done outside the phases: repo cleanup (dead notes deleted, `enhace.md`→`e
 ## Not done — remaining backlog (from review.md)
 
 High value next:
-- **3D-8 Eval harness** — replay scripted chat scenarios against the loop (mock client in CI, live nightly); do this before heavy prompt iteration
-- **3F-4 Streaming** — SSE for the final message + "Adding your stay…" interim events; biggest UX win at current latencies
+-DONE **3D-8 Eval harness** — replay scripted chat scenarios against the loop (mock client in CI, live nightly); do this before heavy prompt iteration
+-DONE **3F-4 Streaming** — SSE for the final message + "Adding your stay…" interim events; biggest UX win at current latencies
 - **3F-2 Dynamic forms in chat** — `uiPayload` form/choice contract (sketch in review.md §3F); pairs with `resolve_location` candidates
 - Delete the batch path + `should_suppress_follow_up` (3D-1) once the loop proves out in real use — compare `ai.chat_loop.*` vs legacy events in `ai.log`
 
 Medium:
-- 1C-3 SQLAlchemy 2.0 style (`Mapped`/`relationship`), FK indexes, date columns instead of strings, soft-delete helper, `onupdate` for `updated_at`, N+1 fixes in points/details list endpoints
-- 1C-1 move `/auth/session` endpoints onto proper DI (unlocks real auth tests)
+- DONE 1C-3 SQLAlchemy 2.0 style (`Mapped`/`relationship`), FK indexes, date columns instead of strings, soft-delete helper, `onupdate` for `updated_at`, N+1 fixes in points/details list endpoints
+-DONE 1C-1 move `/auth/session` endpoints onto proper DI (unlocks real auth tests)
 - 3D-5 idempotency key on `/chat/reply`; 3D-6 compact per-turn trip snapshot (loop has `get_trip_snapshot` tool, context can slim down); 3D-3 real LLM summarization for long chats
 - 2C-1 Stay/Travel page dedupe; 2C-2 `usePlacesAutocomplete` hook; 2C-3 chat overlay UX (auto-scroll, Enter guard, timeout)
 - 1C-7 ai.log PII redaction story (accepted for local-only)

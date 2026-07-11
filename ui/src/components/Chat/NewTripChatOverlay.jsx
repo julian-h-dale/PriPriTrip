@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   CircularProgress,
@@ -109,6 +109,11 @@ export default function NewTripChatOverlay({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState(null);
+
+  const messagesEndRef = useRef(null);
+  const sendAbortRef = useRef(null);
+  const busy = loading || uploading;
 
   const [saveTripHeader] = useSaveTripHeaderMutation();
   const [importTrip] = useImportTripMutation();
@@ -145,11 +150,23 @@ export default function NewTripChatOverlay({
     };
   }, [open, tripId, workflowName]);
 
+  // Keep the newest message (and streaming text) in view (review.md 2C-3).
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, loading]);
+
+  // Don't leave a stream running against a closed overlay.
+  useEffect(() => {
+    if (!open) sendAbortRef.current?.abort();
+  }, [open]);
+
+  useEffect(() => () => sendAbortRef.current?.abort(), []);
+
   const shouldUseItineraryUpload = !tripSnapshot || tripSnapshot.status === 'new';
 
   async function handleSend() {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || busy) return; // Enter-to-send must respect the same guard as the button
     const userTempId = `temp-user-${Date.now()}`;
     const botTempId = `temp-bot-${Date.now()}`;
     setDraft('');
@@ -166,7 +183,10 @@ export default function NewTripChatOverlay({
         messageId: botTempId,
         tripId: tripId || 'pending',
         workflowName,
-        message: '...',
+        message: '',
+        // A real flag, not a magic '...' string — a user typing "..." used to
+        // render as a typing indicator (review.md 2C-3).
+        isPending: true,
         isBot: true,
       },
     ]);
@@ -178,6 +198,9 @@ export default function NewTripChatOverlay({
         message.messageId === botTempId ? { ...message, ...patch(message) } : message
       )));
     };
+
+    const controller = new AbortController();
+    sendAbortRef.current = controller;
 
     try {
       const response = await sendChatMessage({
@@ -191,12 +214,14 @@ export default function NewTripChatOverlay({
           workflowName,
         },
       }, {
+        signal: controller.signal,
         onStatus: (status) => {
           patchBotTemp(() => ({ statusLabel: status.label }));
         },
         onDelta: (chunk) => {
           patchBotTemp((message) => ({
-            message: (message.message === '...' ? '' : message.message) + chunk,
+            message: message.message + chunk,
+            isPending: false, // first token arrived — swap the dots for text
             statusLabel: null,
           }));
         },
@@ -213,20 +238,28 @@ export default function NewTripChatOverlay({
       }
     } catch (err) {
       setMessages((prev) => prev.filter((message) => message.messageId !== botTempId));
-      setError(err?.detail ?? err?.response?.data?.detail ?? 'Could not send message.');
+      // An abort is us closing the overlay, not a failure worth reporting.
+      if (err?.name !== 'AbortError') {
+        setError(err?.detail ?? err?.response?.data?.detail ?? 'Could not send message.');
+        setDraft(text); // don't lose what they typed
+      }
     } finally {
+      if (sendAbortRef.current === controller) sendAbortRef.current = null;
       setLoading(false);
     }
   }
 
   async function handleDocumentUpload(file) {
-    if (!file) return;
+    if (!file || busy) return;
     setUploading(true);
     setError(null);
     try {
+      // The itinerary path chains four calls; say which one we're on rather
+      // than showing a static "Uploading…" for a minute (review.md 2C-3).
       if (shouldUseItineraryUpload) {
         let targetTripId = tripId;
         if (!targetTripId) {
+          setUploadStep('Creating your trip…');
           const today = new Date().toISOString().slice(0, 10);
           targetTripId = crypto.randomUUID();
           await saveTripHeader({
@@ -238,12 +271,17 @@ export default function NewTripChatOverlay({
           onTripIdChange?.(targetTripId);
         }
 
+        setUploadStep(`Reading ${file.name}…`);
         const imported = await aiImportDocument(file, { tripId: targetTripId });
         const draftTrip = {
           ...imported,
           tripId: targetTripId,
         };
+
+        setUploadStep('Saving your itinerary…');
         const saveResult = await importTrip(draftTrip).unwrap();
+
+        setUploadStep('Checking for gaps…');
         const verify = await triggerVerify(saveResult.tripId).unwrap();
         onComplete?.({
           tripId: saveResult.tripId,
@@ -258,7 +296,10 @@ export default function NewTripChatOverlay({
         throw new Error('Trip is not ready for detail document import yet.');
       }
 
+      setUploadStep(`Reading ${file.name}…`);
       const extraction = await aiImportTripDocument(tripId, file, 'detail_import');
+
+      setUploadStep('Saving the records…');
       const result = await saveAiDocumentRecords({
         documentId: extraction.documentId,
         tripId,
@@ -285,6 +326,7 @@ export default function NewTripChatOverlay({
       }
     } finally {
       setUploading(false);
+      setUploadStep(null);
     }
   }
 
@@ -346,7 +388,7 @@ export default function NewTripChatOverlay({
                     color: message.isBot ? 'text.primary' : 'primary.contrastText',
                   }}
                 >
-                  {message.message === '...' ? (
+                  {message.isPending && !message.message ? (
                     <TypingBubble />
                   ) : (
                     <MarkdownBubble text={message.message} isBot={message.isBot} />
@@ -368,11 +410,21 @@ export default function NewTripChatOverlay({
                 <CircularProgress size={24} />
               </Box>
             )}
+            {uploadStep && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 0.5 }}>
+                <CircularProgress size={14} />
+                <Typography variant="caption" color="text.secondary">
+                  {uploadStep}
+                </Typography>
+              </Box>
+            )}
             {error && (
               <Typography color="error" variant="body2">
                 {error}
               </Typography>
             )}
+            {/* Scroll anchor — keeps the newest message in view. */}
+            <Box ref={messagesEndRef} />
           </Stack>
         </Box>
 
@@ -385,7 +437,7 @@ export default function NewTripChatOverlay({
           }}
         >
           <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={uploading || loading}>
+            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={busy}>
               {uploading ? 'Uploading…' : (shouldUseItineraryUpload ? 'Upload itinerary (.xlsx, pdf)' : 'Upload document')}
               <input
                 hidden
@@ -406,7 +458,9 @@ export default function NewTripChatOverlay({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  // Gate Enter on `busy` too, or keyboard users can fire
+                  // overlapping sends while the button is disabled (2C-3).
+                  if (!busy) handleSend();
                 }
               }}
               label="Message"
@@ -415,7 +469,7 @@ export default function NewTripChatOverlay({
               maxRows={5}
               fullWidth
             />
-            <Button variant="contained" onClick={handleSend} disabled={loading || !draft.trim()}>
+            <Button variant="contained" onClick={handleSend} disabled={busy || !draft.trim()}>
               Send
             </Button>
           </Stack>

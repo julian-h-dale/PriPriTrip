@@ -1,57 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Alert,
-  Box,
-  CircularProgress,
-  Container,
-  IconButton,
-  Paper,
-  Typography,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import MuiTimeline from '@mui/lab/Timeline';
-import TimelineItem from '@mui/lab/TimelineItem';
-import TimelineSeparator from '@mui/lab/TimelineSeparator';
-import TimelineDot from '@mui/lab/TimelineDot';
-import TimelineConnector from '@mui/lab/TimelineConnector';
-import TimelineContent from '@mui/lab/TimelineContent';
-import TimelineOppositeContent, {
-  timelineOppositeContentClasses,
-} from '@mui/lab/TimelineOppositeContent';
-import dayjs, { parseWallClock } from '../utils/dayjs';
-import AppLayout from '../components/AppLayout';
-import { useGetTripQuery } from '../store/apiSlice';
-import { getErrorMessage } from '../utils/errors';
+import { Typography } from '@mui/material';
+
+import DetailTimelinePage from '../components/Timeline/DetailTimelinePage';
 import StayForm from '../components/Forms/StayForm';
-
-function fmtDateTime(value) {
-  if (!value) return 'No check-in date';
-  const d = parseWallClock(value);
-  return d.isValid() ? d.format('MMM D, YYYY h:mm A') : 'No check-in date';
-}
-
-function fmtDateRange(checkIn, checkOut) {
-  const inDt = checkIn ? parseWallClock(checkIn) : null;
-  const outDt = checkOut ? parseWallClock(checkOut) : null;
-  const inDate = inDt && inDt.isValid() ? inDt.format('MMM D, YYYY') : '—';
-  const outDate = outDt && outDt.isValid() ? outDt.format('MMM D, YYYY') : '—';
-  return `${inDate} - ${outDate}`;
-}
-
-function localityLabel(location) {
-  const fullAddress = location?.fullAddress;
-  if (!fullAddress) return location?.name || '—';
-  const parts = fullAddress
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
-  }
-  return parts[0] || location?.name || '—';
-}
+import { useGetTripQuery } from '../store/apiSlice';
+import {
+  byDateAsc,
+  firstLocationByRole,
+  formatDateRange,
+  formatDateTime,
+  localityLabel,
+} from '../utils/format';
 
 export default function StayDetailsPage() {
   const { tripId } = useParams();
@@ -59,120 +19,51 @@ export default function StayDetailsPage() {
   const { data: trip, isLoading, error } = useGetTripQuery(tripId, { skip: !tripId });
   const [editingStay, setEditingStay] = useState(null);
 
-  const stays = useMemo(() => {
-    const items = trip?.stays ?? [];
-    return [...items].sort((a, b) => {
-      const aTime = a?.checkIn && dayjs(a.checkIn).isValid() ? dayjs(a.checkIn).valueOf() : Number.MAX_SAFE_INTEGER;
-      const bTime = b?.checkIn && dayjs(b.checkIn).isValid() ? dayjs(b.checkIn).valueOf() : Number.MAX_SAFE_INTEGER;
-      return aTime - bTime;
-    });
-  }, [trip]);
+  const stays = useMemo(
+    () => [...(trip?.stays ?? [])].sort(byDateAsc('checkIn')),
+    [trip],
+  );
 
   return (
-    <AppLayout
-      title={trip?.tripName ?? 'Stay Details'}
+    <DetailTimelinePage
+      tripName={trip?.tripName}
+      title="Stay details"
+      subtitle="Read-only timeline ordered by check-in date/time."
+      noun="stay"
       onBack={() => navigate(`/trip/${tripId}`)}
-    >
-      <Container maxWidth="sm" disableGutters>
-        <Box sx={{ px: 2, pt: 2.5, pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h5" component="h1" color="primary">
-              Stay details
+      items={stays}
+      isLoading={isLoading}
+      error={error}
+      errorText="Failed to load stay details."
+      emptyText="No stays found for this trip."
+      getKey={(stay, index) => stay.stayDetailId || `${stay.name}-${index}`}
+      getTitle={(stay) => stay.name || 'Untitled stay'}
+      getTime={(stay) => formatDateTime(stay.checkIn, 'No check-in date')}
+      onAdd={() => setEditingStay({})}
+      onEdit={setEditingStay}
+      renderDetails={(stay) => {
+        const venue = firstLocationByRole(stay.locations, 'venue') ?? (stay.locations ?? [])[0];
+        return (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              {formatDateRange(stay.checkIn, stay.checkOut)}
             </Typography>
-            <IconButton
-              size="small"
-              aria-label="Add stay"
-              onClick={() => setEditingStay({})}
-            >
-              <AddIcon />
-            </IconButton>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-            Read-only timeline ordered by check-in date/time.
-          </Typography>
-        </Box>
-
-        {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {!!error && !trip && (
-          <Box sx={{ p: 2 }}>
-            <Alert severity="error">
-              {getErrorMessage(error, 'Failed to load stay details.')}
-            </Alert>
-          </Box>
-        )}
-
-        {!!trip && stays.length === 0 && (
-          <Box sx={{ p: 2 }}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography color="text.secondary">No stays found for this trip.</Typography>
-            </Paper>
-          </Box>
-        )}
-
-        {!!trip && stays.length > 0 && (
-          <MuiTimeline
-            sx={{
-              [`& .${timelineOppositeContentClasses.root}`]: { flex: 0.38 },
-              px: 1,
-              py: 1,
-              mt: 0,
-            }}
-          >
-            {stays.map((stay, index) => {
-              const venue = (stay.locations ?? []).find((loc) => loc.role === 'venue') || (stay.locations ?? [])[0];
-              const isLast = index === stays.length - 1;
-              return (
-                <TimelineItem key={stay.stayDetailId || `${stay.name}-${index}`}>
-                  <TimelineOppositeContent color="text.secondary" sx={{ fontSize: '0.8rem', pt: 2 }}>
-                    {fmtDateTime(stay.checkIn)}
-                  </TimelineOppositeContent>
-                  <TimelineSeparator>
-                    <TimelineDot color="primary" />
-                    {!isLast && <TimelineConnector />}
-                  </TimelineSeparator>
-                  <TimelineContent sx={{ pb: 2 }}>
-                    <Paper variant="outlined" sx={{ p: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          {stay.name || 'Untitled stay'}
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          aria-label="Edit stay"
-                          onClick={() => setEditingStay(stay)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        {fmtDateRange(stay.checkIn, stay.checkOut)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {localityLabel(venue)}
-                      </Typography>
-                    </Paper>
-                  </TimelineContent>
-                </TimelineItem>
-              );
-            })}
-          </MuiTimeline>
-        )}
-
-        {!!trip && (
-          <StayForm
-            tripId={trip.tripId}
-            open={!!editingStay}
-            initialValues={editingStay || {}}
-            onClose={() => setEditingStay(null)}
-            onSaved={() => setEditingStay(null)}
-          />
-        )}
-      </Container>
-    </AppLayout>
+            <Typography variant="body2" color="text.secondary">
+              {localityLabel(venue)}
+            </Typography>
+          </>
+        );
+      }}
+    >
+      {trip && (
+        <StayForm
+          tripId={trip.tripId}
+          open={!!editingStay}
+          initialValues={editingStay || {}}
+          onClose={() => setEditingStay(null)}
+          onSaved={() => setEditingStay(null)}
+        />
+      )}
+    </DetailTimelinePage>
   );
 }

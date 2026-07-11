@@ -22,19 +22,8 @@ import {
   usePatchPointMutation,
 } from '../../store/apiSlice';
 import { getErrorMessage } from '../../utils/errors';
+import { toDateTimeLocal } from '../../utils/format';
 import LocationForm from './LocationForm';
-
-/**
- * Extract the local datetime string (YYYY-MM-DDTHH:mm) from an ISO 8601
- * string with offset, e.g. "2026-05-11T14:15:00+02:00".
- * Falls back gracefully for bare strings like "2026-05-11T14:15".
- */
-function parseStoredDateTime(isoString) {
-  if (!isoString) return { localValue: '' };
-  // Slice to YYYY-MM-DDTHH:mm — works for both offset and bare strings
-  const bare = isoString.slice(0, 16);
-  return { localValue: bare };
-}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,12 +43,10 @@ function makeLocation() {
 }
 
 function buildInitialState(values = {}) {
-  const { localValue: startLocal } = parseStoredDateTime(values.startDateTime);
-  const { localValue: endLocal } = parseStoredDateTime(values.endDateTime);
   return {
     title: values.title ?? '',
-    startDateTime: startLocal,
-    endDateTime: endLocal,
+    startDateTime: toDateTimeLocal(values.startDateTime),
+    endDateTime: toDateTimeLocal(values.endDateTime),
     confirmationNumber: values.confirmationNumber ?? '',
     description: values.description ?? '',
     imageUrl: values.imageUrl ?? '',

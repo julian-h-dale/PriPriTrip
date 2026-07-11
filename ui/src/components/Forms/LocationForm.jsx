@@ -1,5 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useCallback, useState } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import CircularProgress from '@mui/material/CircularProgress';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -12,8 +11,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import { selectMapsApiKey } from '../../store/authSlice';
-import { fetchPlaceDetails, fetchPlaceSuggestions } from '../../api/placesService';
+import { usePlacesAutocomplete } from '../../hooks/usePlacesAutocomplete';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
@@ -42,36 +40,24 @@ export default function LocationForm({
   hideRemove = false,
   title,
 }) {
-  const mapsApiKey = useSelector(selectMapsApiKey);
-
-  const [suggestions, setSuggestions] = useState([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const {
+    suggestions,
+    loading: loadingSuggestions,
+    search,
+    resolvePlace,
+  } = usePlacesAutocomplete();
   const [inputValue, setInputValue] = useState(values.name ?? '');
-  const debounceRef = useRef(null);
 
   const handleInputChange = useCallback((_, newInput) => {
     setInputValue(newInput);
-    clearTimeout(debounceRef.current);
-    if (!newInput.trim()) {
-      setSuggestions([]);
-      return;
-    }
-    debounceRef.current = setTimeout(async () => {
-      setLoadingSuggestions(true);
-      try {
-        const results = await fetchPlaceSuggestions(newInput, mapsApiKey);
-        setSuggestions(results);
-      } finally {
-        setLoadingSuggestions(false);
-      }
-    }, 300);
-  }, [mapsApiKey]);
+    search(newInput);
+  }, [search]);
 
   const handleSelect = useCallback(async (_, suggestion) => {
     if (!suggestion) return;
     onChange('name', suggestion.mainText);
     setInputValue(suggestion.mainText);
-    const details = await fetchPlaceDetails(suggestion.placeId, mapsApiKey);
+    const details = await resolvePlace(suggestion);
     if (!details) return;
     onChange('name', details.name);
     onChange('fullAddress', details.fullAddress);
@@ -80,7 +66,7 @@ export default function LocationForm({
     onChange('googlePlaceId', details.googlePlaceId);
     onChange('googleMapsUri', details.googleMapsUri);
     setInputValue(details.name);
-  }, [mapsApiKey, onChange]);
+  }, [onChange, resolvePlace]);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, position: 'relative' }}>

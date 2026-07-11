@@ -16,44 +16,16 @@ import {
   Typography,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
-import dayjs from 'dayjs';
-import { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
 import { useGetTripQuery, useLazyVerifyTripQuery } from '../store/apiSlice';
 import { getErrorMessage } from '../utils/errors';
-
-function fmtDate(dateStr) {
-  return dayjs(dateStr).format('MMM D, YYYY');
-}
-
-function fmtDateTime(dateTimeStr) {
-  if (!dateTimeStr) return '—';
-  const dt = parseWallClock(dateTimeStr);
-  return dt.isValid() ? dt.format('MMM D, YYYY h:mm A') : '—';
-}
-
-function fmtDateRange(startStr, endStr) {
-  const start = startStr ? parseWallClock(startStr) : null;
-  const end = endStr ? parseWallClock(endStr) : null;
-  const startText = start?.isValid() ? start.format('MMM D, YYYY') : '—';
-  const endText = end?.isValid() ? end.format('MMM D, YYYY') : '—';
-  return `${startText} - ${endText}`;
-}
-
-function localityLabel(location) {
-  const fullAddress = location?.fullAddress;
-  if (!fullAddress) return location?.name || '—';
-  const parts = fullAddress
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length >= 2) return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
-  return parts[0] || location?.name || '—';
-}
-
-function firstLocationByRole(locations, role) {
-  return (locations ?? []).find((l) => l.role === role) || null;
-}
+import {
+  firstLocationByRole,
+  formatDate,
+  formatDateRange,
+  formatDateTime,
+  localityLabel,
+} from '../utils/format';
 
 export default function ImportSummaryPage() {
   const { tripId } = useParams();
@@ -134,7 +106,7 @@ export default function ImportSummaryPage() {
                 {trip.tripName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {fmtDate(trip.startDate)} - {fmtDate(trip.endDate)}
+                {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Chip size="small" label={`${trip.days?.length ?? 0} days`} />
@@ -165,7 +137,7 @@ export default function ImportSummaryPage() {
                           secondary={
                             <>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
-                                {fmtDateTime(travel.departureDateTime)}
+                                {formatDateTime(travel.departureDateTime)}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
                                 Mode: {travel.mode || '—'}
@@ -214,7 +186,7 @@ export default function ImportSummaryPage() {
                           secondary={
                             <>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
-                                {fmtDateRange(stay.checkIn, stay.checkOut)}
+                                {formatDateRange(stay.checkIn, stay.checkOut)}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
                                 {localityLabel(venue)}

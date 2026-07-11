@@ -19,6 +19,7 @@ import {
   usePatchStayDetailMutation,
 } from '../../store/apiSlice';
 import { getErrorMessage } from '../../utils/errors';
+import { toDateTimeLocal } from '../../utils/format';
 import LocationForm from './LocationForm';
 
 const STAY_TYPES = [
@@ -28,11 +29,6 @@ const STAY_TYPES = [
   { value: 'rental', label: 'Rental' },
   { value: 'other', label: 'Other' },
 ];
-
-function parseDateTimeLocal(value) {
-  if (!value) return '';
-  return value.slice(0, 16);
-}
 
 function makeLocation(overrides = {}) {
   return {
@@ -73,8 +69,8 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
     setForm({
       name: initialValues.name ?? '',
       stayType: initialValues.stayType ?? 'hotel',
-      checkIn: parseDateTimeLocal(initialValues.checkIn),
-      checkOut: parseDateTimeLocal(initialValues.checkOut),
+      checkIn: toDateTimeLocal(initialValues.checkIn),
+      checkOut: toDateTimeLocal(initialValues.checkOut),
       roomType: initialValues.roomType ?? '',
       confirmationNumber: initialValues.confirmationNumber ?? '',
       description: initialValues.description ?? '',
