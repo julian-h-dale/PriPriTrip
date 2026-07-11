@@ -17,7 +17,7 @@ Draft structuring persists nothing; the frontend saves via POST /trips/{trip_id}
 
 import logging
 import time
-from datetime import datetime, timezone
+
 import hashlib
 import uuid
 
@@ -177,7 +177,6 @@ async def _ai_import(
     draft = draft.model_copy(update={"trip_id": trip.trip_id})
 
     if trip is not None:
-        now = datetime.now(timezone.utc)
         doc_id = str(uuid.uuid4())
         itinerary_payload = AIDocumentExtraction(
             documentId=doc_id,
@@ -204,7 +203,6 @@ async def _ai_import(
             )
         )
         trip.status = "draft"
-        trip.updated_at = now
         await db.commit()
 
     elapsed = time.monotonic() - started
@@ -302,8 +300,6 @@ async def ai_document_import(
         cached_doc.workflow_mode = payload.workflow_mode.value
         if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
             trip.status = "draft"
-            trip.updated_at = datetime.now(timezone.utc)
-        cached_doc.updated_at = datetime.now(timezone.utc)
         await db.commit()
         return payload
 
@@ -343,9 +339,7 @@ async def ai_document_import(
             )
         )
         if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
-            now = datetime.now(timezone.utc)
             trip.status = "draft"
-            trip.updated_at = now
         await db.commit()
         return payload
 
@@ -404,12 +398,9 @@ async def ai_document_import(
         cached_doc.body_contents = document_text
         cached_doc.extracted_payload = payload.model_dump_json(by_alias=True)
         cached_doc.trip_import_payload = trip_import_payload
-        cached_doc.updated_at = datetime.now(timezone.utc)
 
     if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
-        now = datetime.now(timezone.utc)
         trip.status = "draft"
-        trip.updated_at = now
 
     await db.commit()
     elapsed = time.monotonic() - started
@@ -503,7 +494,6 @@ async def regen_ai_document_extraction(
         travels=draft.travels,
     )
     rec.extracted_payload = payload.model_dump_json(by_alias=True)
-    rec.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return payload
 
@@ -632,7 +622,6 @@ async def save_ai_document_records(
             await sync_travel_generated_points(db, travel=rec_travel)
         travels_saved += 1
 
-    rec.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
     return AIDocumentSaveResult(

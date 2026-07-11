@@ -245,6 +245,7 @@ api/
 │       └── ai_trace.py                 # JSONL AI trace logging
 ├── tests/
 ├── evals/                       # LLM eval harness: scenarios + live runner (python -m evals)
+├── sql/                         # Hand-written additive DDL (no Alembic yet)
 ├── pripritrip_system_prompt.md  # System prompt ([base] + stage overlays)
 ├── ai.log                       # AI trace output (gitignored, rotated)
 ├── view_ai_log.sh               # Pretty-print / follow ai.log (jq)
@@ -256,6 +257,22 @@ api/
 ```
 
 Note: there are no DB migrations yet by design — the schema is still moving fast. `dev.sh --clean` recreates the schema. Alembic is planned before any release (see `../review.md` 1B-4).
+
+### Model conventions (review.md 1C-3)
+
+`app/models.py` uses SQLAlchemy 2.0 declarative style: `Mapped[...]` + `mapped_column(...)`, where nullability comes from the annotation (`Mapped[str]` is NOT NULL, `Mapped[str | None]` is nullable).
+
+- **Soft deletes**: use `active(Model)` / `deleted(Model)` in a WHERE clause instead of repeating the `is_deleted` + `deleted_at` pair.
+- **`updated_at`**: carries `onupdate=func.now()`. Never set it by hand — the column maintains itself on every UPDATE.
+- **Indexes**: every FK a query filters on is indexed (Postgres does not do this automatically), plus partial indexes on `NOT is_deleted` for the hot list paths.
+
+`create_all` does **not** add indexes to tables that already exist. To pick up the indexes without wiping your data:
+
+```bash
+psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-11_add_indexes.sql
+```
+
+The script is idempotent (`CREATE INDEX IF NOT EXISTS`) and touches no data. `./dev.sh --clean` gets you the same schema from scratch.
 
 ## Tests
 

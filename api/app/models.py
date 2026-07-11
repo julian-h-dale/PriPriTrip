@@ -1,17 +1,37 @@
+"""SQLAlchemy 2.0 declarative models (review.md 1C-3).
+
+Conventions:
+- `Mapped[...]` + `mapped_column(...)`: nullability comes from the annotation
+  (`Mapped[str]` = NOT NULL, `Mapped[str | None]` = nullable).
+- `updated_at` carries `onupdate=func.now()`, so no call site sets it by hand.
+- Every FK column that a query filters on is indexed; Postgres does not index
+  FKs automatically. Soft-deleted rows are excluded from the hot-path indexes
+  via partial indexes on `NOT is_deleted`.
+- Use `active(Model)` in a WHERE clause instead of repeating the two-field
+  soft-delete filter.
+"""
+
+from datetime import datetime
+from uuid import UUID
+
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    Column,
+    ColumnElement,
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
     Uuid,
+    and_,
+    func,
     text,
 )
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
@@ -19,8 +39,21 @@ from app.database import Base
 class SoftDeleteMixin:
     """Reusable soft-delete fields for entities we mark deleted in place."""
 
-    is_deleted = Column(Boolean, nullable=False, default=False, server_default="false")
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+def active(model: type[SoftDeleteMixin]) -> ColumnElement[bool]:
+    """WHERE clause selecting rows that are not soft-deleted.
+
+    Both fields must agree; a row is only live when neither is set.
+    """
+    return and_(model.is_deleted.is_(False), model.deleted_at.is_(None))
+
+
+def deleted(model: type[SoftDeleteMixin]) -> ColumnElement[bool]:
+    """WHERE clause selecting soft-deleted rows (the /deleted listings)."""
+    return and_(model.is_deleted.is_(True), model.deleted_at.isnot(None))
 
 
 class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
@@ -31,120 +64,151 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
 
     __tablename__ = "users"
 
-    name = Column(String, nullable=False, default="")
-    first_name = Column(String, nullable=True)
-    last_name = Column(String, nullable=True)
-    home_location_name = Column(String, nullable=True)
-    home_location_full_address = Column(String, nullable=True)
-    home_location_lat = Column(Float, nullable=True)
-    home_location_lng = Column(Float, nullable=True)
-    home_location_google_place_id = Column(String, nullable=True)
-    home_location_google_maps_uri = Column(String, nullable=True)
-    home_timezone_id = Column(String, nullable=True)
-    phone_number = Column(String, nullable=True)
+    name: Mapped[str] = mapped_column(String, default="")
+    first_name: Mapped[str | None] = mapped_column(String)
+    last_name: Mapped[str | None] = mapped_column(String)
+    home_location_name: Mapped[str | None] = mapped_column(String)
+    home_location_full_address: Mapped[str | None] = mapped_column(String)
+    home_location_lat: Mapped[float | None] = mapped_column(Float)
+    home_location_lng: Mapped[float | None] = mapped_column(Float)
+    home_location_google_place_id: Mapped[str | None] = mapped_column(String)
+    home_location_google_maps_uri: Mapped[str | None] = mapped_column(String)
+    home_timezone_id: Mapped[str | None] = mapped_column(String)
+    phone_number: Mapped[str | None] = mapped_column(String)
 
 
 class TripRecord(SoftDeleteMixin, Base):
     __tablename__ = "trips"
 
-    trip_id = Column(Uuid(as_uuid=False), primary_key=True)
-    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
-    trip_name = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="new", server_default="new")
-    start_location_name = Column(String, nullable=True)
-    destination_location_name = Column(String, nullable=True)
-    default_timezone_id = Column(String, nullable=True)
-    start_date = Column(String, nullable=False)
-    end_date = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    trip_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=False), ForeignKey("users.id"), index=True)
+    trip_name: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="new", server_default="new")
+    start_location_name: Mapped[str | None] = mapped_column(String)
+    destination_location_name: Mapped[str | None] = mapped_column(String)
+    default_timezone_id: Mapped[str | None] = mapped_column(String)
+    start_date: Mapped[str] = mapped_column(String)
+    end_date: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_trips_user_active", "user_id", postgresql_where=text("NOT is_deleted")),
+    )
 
 
 class TripDayRecord(SoftDeleteMixin, Base):
     __tablename__ = "trip_days"
 
-    day_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
-    title = Column(String, nullable=False)
-    date = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    is_alternate = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed = Column(Boolean, nullable=False, default=False, server_default="false")
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    day_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
+    )
+    title: Mapped[str] = mapped_column(String)
+    date: Mapped[str] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(String)
+    is_alternate: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_trip_days_trip_active", "trip_id", postgresql_where=text("NOT is_deleted")),
+    )
 
 
 class TripPointRecord(SoftDeleteMixin, Base):
     __tablename__ = "trip_points"
 
-    point_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
-    day_id = Column(Uuid(as_uuid=False), ForeignKey("trip_days.day_id"), nullable=False)
-    type = Column(String, nullable=False)
-    title = Column(String, nullable=False)
+    point_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
+    )
+    day_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trip_days.day_id"), index=True
+    )
+    type: Mapped[str] = mapped_column(String)
+    title: Mapped[str] = mapped_column(String)
     # A check-in/check-out point links to a stay; a departure/arrival point links
     # to a travel. Activity points reference neither.
-    stay_detail_id = Column(
+    stay_detail_id: Mapped[str | None] = mapped_column(
         Uuid(as_uuid=False),
         ForeignKey("stay_details.stay_detail_id", ondelete="SET NULL"),
-        nullable=True,
+        index=True,
     )
-    travel_detail_id = Column(
+    travel_detail_id: Mapped[str | None] = mapped_column(
         Uuid(as_uuid=False),
         ForeignKey("travel_details.travel_detail_id", ondelete="SET NULL"),
-        nullable=True,
+        index=True,
     )
     # Wall-clock source of truth and derived UTC instant.
-    start_local = Column(DateTime(timezone=False), nullable=True)
-    start_tzid = Column(String, nullable=True)
-    start_utc = Column(DateTime(timezone=True), nullable=True)
-    end_local = Column(DateTime(timezone=False), nullable=True)
-    end_tzid = Column(String, nullable=True)
-    end_utc = Column(DateTime(timezone=True), nullable=True)
-    start_date_time = Column(String, nullable=True)
-    end_date_time = Column(String, nullable=True)
-    confirmation_number = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    image_url = Column(String, nullable=True)
-    logo_url = Column(String, nullable=True)
-    is_system_created = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed_date_time = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    start_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    start_tzid: Mapped[str | None] = mapped_column(String)
+    start_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    end_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    end_tzid: Mapped[str | None] = mapped_column(String)
+    end_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    start_date_time: Mapped[str | None] = mapped_column(String)
+    end_date_time: Mapped[str | None] = mapped_column(String)
+    confirmation_number: Mapped[str | None] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(String)
+    image_url: Mapped[str | None] = mapped_column(String)
+    logo_url: Mapped[str | None] = mapped_column(String)
+    is_system_created: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    completed_date_time: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_trip_points_trip_active", "trip_id", postgresql_where=text("NOT is_deleted")),
+        Index("ix_trip_points_day_active", "day_id", postgresql_where=text("NOT is_deleted")),
+    )
 
 
 class LocationRecord(Base):
     __tablename__ = "locations"
 
-    location_id = Column(Uuid(as_uuid=False), primary_key=True)
+    location_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
     # Exactly one owner FK is set (enforced by the check constraint below).
-    point_id = Column(
+    point_id: Mapped[str | None] = mapped_column(
         Uuid(as_uuid=False),
         ForeignKey("trip_points.point_id", ondelete="CASCADE"),
-        nullable=True,
+        index=True,
     )
-    stay_detail_id = Column(
+    stay_detail_id: Mapped[str | None] = mapped_column(
         Uuid(as_uuid=False),
         ForeignKey("stay_details.stay_detail_id", ondelete="CASCADE"),
-        nullable=True,
+        index=True,
     )
-    travel_detail_id = Column(
+    travel_detail_id: Mapped[str | None] = mapped_column(
         Uuid(as_uuid=False),
         ForeignKey("travel_details.travel_detail_id", ondelete="CASCADE"),
-        nullable=True,
+        index=True,
     )
-    role = Column(String, nullable=False)
-    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
-    name = Column(String, nullable=False)
-    lat = Column(Float, nullable=True)
-    lng = Column(Float, nullable=True)
-    full_address = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    link = Column(String, nullable=True)
-    google_place_id = Column(String, nullable=True)
-    google_maps_uri = Column(String, nullable=True)
-    timezone_id = Column(String, nullable=True)
+    role: Mapped[str] = mapped_column(String)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    name: Mapped[str] = mapped_column(String)
+    lat: Mapped[float | None] = mapped_column(Float)
+    lng: Mapped[float | None] = mapped_column(Float)
+    full_address: Mapped[str | None] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(String)
+    link: Mapped[str | None] = mapped_column(String)
+    google_place_id: Mapped[str | None] = mapped_column(String)
+    google_maps_uri: Mapped[str | None] = mapped_column(String)
+    timezone_id: Mapped[str | None] = mapped_column(String)
 
     __table_args__ = (
         CheckConstraint(
@@ -157,64 +221,92 @@ class LocationRecord(Base):
 class TravelDetailRecord(SoftDeleteMixin, Base):
     __tablename__ = "travel_details"
 
-    travel_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
-    name = Column(String, nullable=True)
-    mode = Column(String, nullable=False)
-    operator = Column(String, nullable=True)
-    vehicle_number = Column(String, nullable=True)
-    cabin_class = Column(String, nullable=True)
-    departure_local = Column(DateTime(timezone=False), nullable=True)
-    departure_tzid = Column(String, nullable=True)
-    departure_utc = Column(DateTime(timezone=True), nullable=True)
-    arrival_local = Column(DateTime(timezone=False), nullable=True)
-    arrival_tzid = Column(String, nullable=True)
-    arrival_utc = Column(DateTime(timezone=True), nullable=True)
-    departure_date_time = Column(String, nullable=True)
-    arrival_date_time = Column(String, nullable=True)
-    confirmation_number = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    travel_detail_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
+    )
+    name: Mapped[str | None] = mapped_column(String)
+    mode: Mapped[str] = mapped_column(String)
+    operator: Mapped[str | None] = mapped_column(String)
+    vehicle_number: Mapped[str | None] = mapped_column(String)
+    cabin_class: Mapped[str | None] = mapped_column(String)
+    departure_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    departure_tzid: Mapped[str | None] = mapped_column(String)
+    departure_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    arrival_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    arrival_tzid: Mapped[str | None] = mapped_column(String)
+    arrival_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    departure_date_time: Mapped[str | None] = mapped_column(String)
+    arrival_date_time: Mapped[str | None] = mapped_column(String)
+    confirmation_number: Mapped[str | None] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_travel_details_trip_active", "trip_id", postgresql_where=text("NOT is_deleted")),
+    )
 
 
 class StayDetailRecord(SoftDeleteMixin, Base):
     __tablename__ = "stay_details"
 
-    stay_detail_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
-    name = Column(String, nullable=True)
-    stay_type = Column(String, nullable=False)
-    check_in_local = Column(DateTime(timezone=False), nullable=True)
-    check_in_tzid = Column(String, nullable=True)
-    check_in_utc = Column(DateTime(timezone=True), nullable=True)
-    check_out_local = Column(DateTime(timezone=False), nullable=True)
-    check_out_tzid = Column(String, nullable=True)
-    check_out_utc = Column(DateTime(timezone=True), nullable=True)
-    check_in = Column(String, nullable=True)
-    check_out = Column(String, nullable=True)
-    room_type = Column(String, nullable=True)
-    confirmation_number = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    stay_detail_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
+    )
+    name: Mapped[str | None] = mapped_column(String)
+    stay_type: Mapped[str] = mapped_column(String)
+    check_in_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    check_in_tzid: Mapped[str | None] = mapped_column(String)
+    check_in_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    check_out_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
+    check_out_tzid: Mapped[str | None] = mapped_column(String)
+    check_out_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    check_in: Mapped[str | None] = mapped_column(String)
+    check_out: Mapped[str | None] = mapped_column(String)
+    room_type: Mapped[str | None] = mapped_column(String)
+    confirmation_number: Mapped[str | None] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_stay_details_trip_active", "trip_id", postgresql_where=text("NOT is_deleted")),
+    )
 
 
 class AIDocumentRecord(Base):
     __tablename__ = "ai_documents"
 
-    document_id = Column(Uuid(as_uuid=False), primary_key=True)
-    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
-    filename = Column(String, nullable=False)
-    document_type = Column(String, nullable=False, default="detail", server_default="detail")
-    workflow_mode = Column(String, nullable=False, default="detail_import", server_default="detail_import")
-    content_hash = Column(String, nullable=False, index=True)
-    body_contents = Column(String, nullable=False)
-    extracted_payload = Column(String, nullable=True)
-    trip_import_payload = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    document_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=False), ForeignKey("users.id"), index=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
+    )
+    filename: Mapped[str] = mapped_column(String)
+    document_type: Mapped[str] = mapped_column(String, default="detail", server_default="detail")
+    workflow_mode: Mapped[str] = mapped_column(
+        String, default="detail_import", server_default="detail_import"
+    )
+    content_hash: Mapped[str] = mapped_column(String, index=True)
+    body_contents: Mapped[str] = mapped_column(String)
+    extracted_payload: Mapped[str | None] = mapped_column(String)
+    trip_import_payload: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -250,15 +342,21 @@ class AIDocumentRecord(Base):
 class ChatMessageRecord(Base):
     __tablename__ = "chat_messages"
 
-    message_id = Column(Uuid(as_uuid=False), primary_key=True)
-    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False, index=True)
-    workflow_name = Column(String, nullable=False)
-    message = Column(String, nullable=False)
-    structure_content = Column(String, nullable=True)
-    is_bot = Column(Boolean, nullable=False, default=False, server_default="false")
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    message_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=False), ForeignKey("users.id"), index=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
+    )
+    workflow_name: Mapped[str] = mapped_column(String)
+    message: Mapped[str] = mapped_column(String)
+    structure_content: Mapped[str | None] = mapped_column(String)
+    is_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
 
     __table_args__ = (
         CheckConstraint("message <> ''", name="chat_message_nonempty"),
+        # Every chat read filters by this triple, ordered by created_at.
+        Index("ix_chat_messages_trip_workflow", "trip_id", "user_id", "workflow_name", "created_at"),
     )

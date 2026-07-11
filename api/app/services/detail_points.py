@@ -6,7 +6,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord, TripRecord
+from app.models import active, StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord, TripRecord
 from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
 
 
@@ -30,8 +30,7 @@ async def _get_or_create_day_for_date(db: AsyncSession, *, trip_id: str, date_te
         select(TripDayRecord).where(
             TripDayRecord.trip_id == trip_id,
             TripDayRecord.date == date_text,
-            TripDayRecord.is_deleted.is_(False),
-            TripDayRecord.deleted_at.is_(None),
+            active(TripDayRecord),
         )
     )
     day = result.scalars().all()
@@ -73,7 +72,6 @@ async def _load_generated_points(
 async def _soft_delete_point(point: TripPointRecord) -> None:
     point.is_deleted = True
     point.deleted_at = datetime.now(timezone.utc)
-    point.updated_at = datetime.now(timezone.utc)
 
 
 async def sync_travel_generated_points(
@@ -132,7 +130,6 @@ async def sync_travel_generated_points(
         point.is_system_created = True
         point.is_deleted = False
         point.deleted_at = None
-        point.updated_at = datetime.now(timezone.utc)
 
 
 async def sync_stay_generated_points(
@@ -191,7 +188,6 @@ async def sync_stay_generated_points(
         point.is_system_created = True
         point.is_deleted = False
         point.deleted_at = None
-        point.updated_at = datetime.now(timezone.utc)
 
 
 async def reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
@@ -211,8 +207,7 @@ async def reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
     existing_result = await db.execute(
         select(TripDayRecord).where(
             TripDayRecord.trip_id == trip.trip_id,
-            TripDayRecord.is_deleted.is_(False),
-            TripDayRecord.deleted_at.is_(None),
+            active(TripDayRecord),
         )
     )
     existing_days = existing_result.scalars().all()
@@ -241,8 +236,7 @@ async def reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
         points_result = await db.execute(
             select(TripPointRecord).where(
                 TripPointRecord.trip_id == trip.trip_id,
-                TripPointRecord.is_deleted.is_(False),
-                TripPointRecord.deleted_at.is_(None),
+                active(TripPointRecord),
             )
         )
         points_by_day: dict[str, list[TripPointRecord]] = {}
@@ -256,7 +250,6 @@ async def reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
                 continue
             day.is_deleted = True
             day.deleted_at = datetime.now(timezone.utc)
-            day.updated_at = datetime.now(timezone.utc)
 
     await db.flush()
 

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_owned_trip
-from app.models import TripDayRecord, TripRecord
+from app.models import active, deleted, TripDayRecord, TripRecord
 from app.schemas import TripDayCreate, TripDayPatch, TripDayResponse
 
 router = APIRouter(
@@ -35,8 +35,7 @@ async def list_days(
         select(TripDayRecord)
         .where(
             TripDayRecord.trip_id == trip.trip_id,
-            TripDayRecord.is_deleted.is_(False),
-            TripDayRecord.deleted_at.is_(None),
+            active(TripDayRecord),
         )
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
     )
@@ -52,8 +51,7 @@ async def list_deleted_days(
         select(TripDayRecord)
         .where(
             TripDayRecord.trip_id == trip.trip_id,
-            TripDayRecord.is_deleted.is_(True),
-            TripDayRecord.deleted_at.isnot(None),
+            deleted(TripDayRecord),
         )
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
     )
@@ -95,7 +93,6 @@ async def patch_day(
     for field in ("title", "date", "description", "is_alternate", "completed"):
         if field in body.model_fields_set:
             setattr(day, field, getattr(body, field))
-    day.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(day)
     return _day_to_response(day)
@@ -110,7 +107,6 @@ async def delete_day(
     day = await _require_day(db, day_id, trip)
     day.is_deleted = True
     day.deleted_at = datetime.now(timezone.utc)
-    day.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
 
@@ -127,7 +123,6 @@ async def restore_day(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day is not deleted")
     day.is_deleted = False
     day.deleted_at = None
-    day.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(day)
     return _day_to_response(day)

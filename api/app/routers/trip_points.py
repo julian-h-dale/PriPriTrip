@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, delete
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import (
+    active,
+    deleted,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
@@ -34,6 +36,92 @@ router = APIRouter(
     prefix="/trips/{trip_id}/points",
     tags=["trip points"],
 )
+
+
+async def _load_point_responses(
+    points: list[TripPointRecord], db: AsyncSession
+) -> list[TripPointResponse]:
+    """Batch-load a list of points: 4 queries total, not 5 per point (review.md 1C-3)."""
+    if not points:
+        return []
+
+    stay_ids = {p.stay_detail_id for p in points if p.stay_detail_id}
+    travel_ids = {p.travel_detail_id for p in points if p.travel_detail_id}
+
+    stays = {
+        s.stay_detail_id: s
+        for s in (
+            await db.execute(
+                select(StayDetailRecord).where(
+                    StayDetailRecord.stay_detail_id.in_(stay_ids),
+                    active(StayDetailRecord),
+                )
+            )
+        ).scalars().all()
+        if s.stay_detail_id in stay_ids and not s.is_deleted and s.deleted_at is None
+    } if stay_ids else {}
+
+    travels = {
+        t.travel_detail_id: t
+        for t in (
+            await db.execute(
+                select(TravelDetailRecord).where(
+                    TravelDetailRecord.travel_detail_id.in_(travel_ids),
+                    active(TravelDetailRecord),
+                )
+            )
+        ).scalars().all()
+        if t.travel_detail_id in travel_ids and not t.is_deleted and t.deleted_at is None
+    } if travel_ids else {}
+
+    point_ids = {p.point_id for p in points}
+    locs_by_point: dict[str, list[LocationRecord]] = {}
+    locs_by_stay: dict[str, list[LocationRecord]] = {}
+    locs_by_travel: dict[str, list[LocationRecord]] = {}
+    owner_filter = [LocationRecord.point_id.in_(point_ids)]
+    if stays:
+        owner_filter.append(LocationRecord.stay_detail_id.in_(stays))
+    if travels:
+        owner_filter.append(LocationRecord.travel_detail_id.in_(travels))
+
+    all_locations = (
+        await db.execute(
+            select(LocationRecord)
+            .where(or_(*owner_filter))
+            .order_by(LocationRecord.sort_order)
+        )
+    ).scalars().all()
+    for loc in all_locations:
+        if loc.point_id in point_ids:
+            locs_by_point.setdefault(loc.point_id, []).append(loc)
+        elif loc.stay_detail_id in stays:
+            locs_by_stay.setdefault(loc.stay_detail_id, []).append(loc)
+        elif loc.travel_detail_id in travels:
+            locs_by_travel.setdefault(loc.travel_detail_id, []).append(loc)
+
+    return [
+        TripPointResponse.from_record(
+            point,
+            locs_by_point.get(point.point_id, []),
+            (
+                TravelDetail.from_record(
+                    travels[point.travel_detail_id],
+                    locs_by_travel.get(point.travel_detail_id, []),
+                )
+                if point.travel_detail_id in travels
+                else None
+            ),
+            (
+                StayDetail.from_record(
+                    stays[point.stay_detail_id],
+                    locs_by_stay.get(point.stay_detail_id, []),
+                )
+                if point.stay_detail_id in stays
+                else None
+            ),
+        )
+        for point in points
+    ]
 
 
 async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> TripPointResponse:
@@ -93,8 +181,7 @@ async def _infer_tzid_from_day_stay(
     stays_result = await db.execute(
         select(StayDetailRecord).where(
             StayDetailRecord.trip_id == trip_id,
-            StayDetailRecord.is_deleted.is_(False),
-            StayDetailRecord.deleted_at.is_(None),
+            active(StayDetailRecord),
         )
     )
     for stay in stays_result.scalars().all():
@@ -167,13 +254,12 @@ async def list_points(
         select(TripPointRecord)
         .where(
             TripPointRecord.trip_id == trip.trip_id,
-            TripPointRecord.is_deleted.is_(False),
-            TripPointRecord.deleted_at.is_(None),
+            active(TripPointRecord),
         )
         .order_by(TripPointRecord.start_date_time)
     )
     points = result.scalars().all()
-    return [await _load_point_response(p, db) for p in points]
+    return await _load_point_responses(list(points), db)
 
 
 @router.get("/deleted", response_model=list[TripPointResponse])
@@ -185,13 +271,12 @@ async def list_deleted_points(
         select(TripPointRecord)
         .where(
             TripPointRecord.trip_id == trip.trip_id,
-            TripPointRecord.is_deleted.is_(True),
-            TripPointRecord.deleted_at.isnot(None),
+            deleted(TripPointRecord),
         )
         .order_by(TripPointRecord.start_date_time)
     )
     points = result.scalars().all()
-    return [await _load_point_response(p, db) for p in points]
+    return await _load_point_responses(list(points), db)
 
 
 @router.post("", response_model=TripPointResponse, status_code=status.HTTP_201_CREATED)
@@ -334,7 +419,6 @@ async def patch_point(
     if "locations" in body.model_fields_set:
         await _replace_locations(point_id, body.locations or [], db)
 
-    point.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)
@@ -351,7 +435,6 @@ async def delete_point(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
     point.is_deleted = True
     point.deleted_at = datetime.now(timezone.utc)
-    point.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
 
@@ -368,7 +451,6 @@ async def restore_point(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Point is not deleted")
     point.is_deleted = False
     point.deleted_at = None
-    point.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)

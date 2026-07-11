@@ -152,7 +152,6 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                     dates_changed = True
         if applied == 0:
             return ActionResult(op=action.op, target=action.target, status="error", detail="No supported trip fields provided")
-        trip.updated_at = datetime.now(timezone.utc)
         if dates_changed:
             # Keep day rows aligned with the new date range.
             await reconcile_trip_days(db, trip)
@@ -211,13 +210,11 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             for key, orm_field in field_map.items():
                 if key in fields:
                     setattr(rec, orm_field, fields[key])
-            rec.updated_at = datetime.now(timezone.utc)
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
         await db.flush()
         return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
@@ -316,13 +313,11 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
                 await _replace_point_locations(db, rec.point_id, locs)
 
-            rec.updated_at = datetime.now(timezone.utc)
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
         await db.flush()
         return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
@@ -397,14 +392,12 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
                 await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=locs)
 
-            rec.updated_at = datetime.now(timezone.utc)
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
         await soft_delete_generated_points_for_stay(db, stay_detail_id=rec.stay_detail_id)
         await db.flush()
         return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
@@ -490,14 +483,12 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
                 await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=locs)
 
-            rec.updated_at = datetime.now(timezone.utc)
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
-        rec.updated_at = datetime.now(timezone.utc)
         await soft_delete_generated_points_for_travel(db, travel_detail_id=rec.travel_detail_id)
         await db.flush()
         return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")

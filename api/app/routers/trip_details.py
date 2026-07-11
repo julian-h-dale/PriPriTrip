@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import (
+    active,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
@@ -54,6 +55,23 @@ async def _detail_locations(db: AsyncSession, *, stay_id=None, travel_id=None) -
         select(LocationRecord).where(cond).order_by(LocationRecord.sort_order)
     )
     return list(result.scalars().all())
+
+
+async def _locations_by_owner(db: AsyncSession, *, stay_ids=None, travel_ids=None) -> dict[str, list]:
+    """One query for a whole list's locations, grouped by owner id (review.md 1C-3)."""
+    owner_ids = set(stay_ids or travel_ids or ())
+    if not owner_ids:
+        return {}
+    column = LocationRecord.stay_detail_id if stay_ids else LocationRecord.travel_detail_id
+    result = await db.execute(
+        select(LocationRecord).where(column.in_(owner_ids)).order_by(LocationRecord.sort_order)
+    )
+    grouped: dict[str, list] = {}
+    for loc in result.scalars().all():
+        owner_id = loc.stay_detail_id if stay_ids else loc.travel_detail_id
+        if owner_id in owner_ids:
+            grouped.setdefault(owner_id, []).append(loc)
+    return grouped
 
 
 async def _replace_detail_locations(
@@ -118,15 +136,12 @@ async def list_travel_details(
     result = await db.execute(
         select(TravelDetailRecord).where(
             TravelDetailRecord.trip_id == trip_id,
-            TravelDetailRecord.is_deleted.is_(False),
-            TravelDetailRecord.deleted_at.is_(None),
+            active(TravelDetailRecord),
         )
     )
-    out = []
-    for rec in result.scalars().all():
-        locs = await _detail_locations(db, travel_id=rec.travel_detail_id)
-        out.append(TravelDetail.from_record(rec, locs))
-    return out
+    records = list(result.scalars().all())
+    locs = await _locations_by_owner(db, travel_ids=[r.travel_detail_id for r in records])
+    return [TravelDetail.from_record(r, locs.get(r.travel_detail_id, [])) for r in records]
 
 
 @router.post("/travel-details", response_model=TravelDetail, status_code=status.HTTP_201_CREATED)
@@ -276,7 +291,6 @@ async def delete_travel_detail(
 
     rec.is_deleted = True
     rec.deleted_at = datetime.now(timezone.utc)
-    rec.updated_at = datetime.now(timezone.utc)
     await soft_delete_generated_points_for_travel(db, travel_detail_id=travel_detail_id)
     await db.commit()
 
@@ -292,15 +306,12 @@ async def list_stay_details(
     result = await db.execute(
         select(StayDetailRecord).where(
             StayDetailRecord.trip_id == trip_id,
-            StayDetailRecord.is_deleted.is_(False),
-            StayDetailRecord.deleted_at.is_(None),
+            active(StayDetailRecord),
         )
     )
-    out = []
-    for rec in result.scalars().all():
-        locs = await _detail_locations(db, stay_id=rec.stay_detail_id)
-        out.append(StayDetail.from_record(rec, locs))
-    return out
+    records = list(result.scalars().all())
+    locs = await _locations_by_owner(db, stay_ids=[r.stay_detail_id for r in records])
+    return [StayDetail.from_record(r, locs.get(r.stay_detail_id, [])) for r in records]
 
 
 @router.post("/stay-details", response_model=StayDetail, status_code=status.HTTP_201_CREATED)
@@ -444,6 +455,5 @@ async def delete_stay_detail(
 
     rec.is_deleted = True
     rec.deleted_at = datetime.now(timezone.utc)
-    rec.updated_at = datetime.now(timezone.utc)
     await soft_delete_generated_points_for_stay(db, stay_detail_id=stay_detail_id)
     await db.commit()

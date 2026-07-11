@@ -7,7 +7,6 @@ only chat path now.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -15,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    active,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
@@ -44,7 +44,6 @@ def mark_trip_draft_after_chat_completion(trip: TripRecord) -> None:
     # so itinerary uploads are no longer allowed.
     if trip.status != "draft":
         trip.status = "draft"
-        trip.updated_at = datetime.now(timezone.utc)
 
 
 async def _count_active_rows(db: AsyncSession, model, trip_id: str) -> int:
@@ -53,8 +52,7 @@ async def _count_active_rows(db: AsyncSession, model, trip_id: str) -> int:
         .select_from(model)
         .where(
             model.trip_id == trip_id,
-            model.is_deleted.is_(False),
-            model.deleted_at.is_(None),
+            active(model),
         )
     )
     return int(result.scalar_one() or 0)
@@ -82,8 +80,7 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
         await db.execute(
             select(StayDetailRecord).where(
                 StayDetailRecord.trip_id == trip.trip_id,
-                StayDetailRecord.is_deleted.is_(False),
-                StayDetailRecord.deleted_at.is_(None),
+                active(StayDetailRecord),
             )
         )
     ).scalars().all()
@@ -91,8 +88,7 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
         await db.execute(
             select(TravelDetailRecord).where(
                 TravelDetailRecord.trip_id == trip.trip_id,
-                TravelDetailRecord.is_deleted.is_(False),
-                TravelDetailRecord.deleted_at.is_(None),
+                active(TravelDetailRecord),
             )
         )
     ).scalars().all()
@@ -100,8 +96,7 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
         await db.execute(
             select(TripDayRecord).where(
                 TripDayRecord.trip_id == trip.trip_id,
-                TripDayRecord.is_deleted.is_(False),
-                TripDayRecord.deleted_at.is_(None),
+                active(TripDayRecord),
             )
         )
     ).scalars().all()
@@ -123,8 +118,7 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
         await db.execute(
             select(TripPointRecord).where(
                 TripPointRecord.trip_id == trip.trip_id,
-                TripPointRecord.is_deleted.is_(False),
-                TripPointRecord.deleted_at.is_(None),
+                active(TripPointRecord),
             )
         )
     ).scalars().all()

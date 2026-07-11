@@ -7,6 +7,7 @@ Uses the same lightweight fake async session pattern as test_trip_details.py
 from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
+from sqlalchemy.sql.dml import Update
 
 from app.auth import require_auth
 from app.database import get_db
@@ -38,7 +39,12 @@ class _FakeResult:
 
 
 class _FakeSession:
-    """get() by (model, pk); execute() returns rows keyed by target table."""
+    """get() by (model, pk); execute() returns rows keyed by target table.
+
+    WHERE clauses are ignored — a SELECT returns every row of its table, and a
+    bulk UPDATE applies its SET values to every row of its table. Good enough
+    for these single-trip scenarios.
+    """
 
     def __init__(self, store: dict, rows_by_table: dict):
         self._store = store
@@ -46,15 +52,23 @@ class _FakeSession:
         self.added = []
         self.committed = False
 
-    async def get(self, model, pk):
-        return self._store.get((model, pk))
-
     async def execute(self, stmt):
+        if isinstance(stmt, Update):
+            table = stmt.table.name
+            # _values maps Column -> BindParameter for the SET clause.
+            values = {col.key: bind.value for col, bind in stmt._values.items()}
+            for row in self._rows.get(table, []):
+                for key, value in values.items():
+                    setattr(row, key, value)
+            return _FakeResult([])
         try:
             table = stmt.get_final_froms()[0].name
         except Exception:
             table = getattr(getattr(stmt, "table", None), "name", None)
         return _FakeResult(self._rows.get(table, []))
+
+    async def get(self, model, pk):
+        return self._store.get((model, pk))
 
     async def commit(self):
         self.committed = True

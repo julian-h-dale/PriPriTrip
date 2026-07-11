@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import (
+    active,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
@@ -41,8 +42,7 @@ async def list_trips(
         select(TripRecord)
         .where(
             TripRecord.user_id == str(user.id),
-            TripRecord.is_deleted.is_(False),
-            TripRecord.deleted_at.is_(None),
+            active(TripRecord),
         )
         .order_by(TripRecord.start_date)
     )
@@ -68,16 +68,14 @@ async def _load_trip(
     stays_result = await db.execute(
         select(StayDetailRecord).where(
             StayDetailRecord.trip_id == trip_id,
-            StayDetailRecord.is_deleted.is_(False),
-            StayDetailRecord.deleted_at.is_(None),
+            active(StayDetailRecord),
         )
     )
     stay_records = stays_result.scalars().all()
     travels_result = await db.execute(
         select(TravelDetailRecord).where(
             TravelDetailRecord.trip_id == trip_id,
-            TravelDetailRecord.is_deleted.is_(False),
-            TravelDetailRecord.deleted_at.is_(None),
+            active(TravelDetailRecord),
         )
     )
     travel_records = travels_result.scalars().all()
@@ -116,8 +114,7 @@ async def _load_trip(
         select(TripDayRecord)
         .where(
             TripDayRecord.trip_id == trip_id,
-            TripDayRecord.is_deleted.is_(False),
-            TripDayRecord.deleted_at.is_(None),
+            active(TripDayRecord),
         )
         .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
     )
@@ -130,8 +127,7 @@ async def _load_trip(
             select(TripPointRecord)
             .where(
                 TripPointRecord.day_id.in_(day_ids),
-                TripPointRecord.is_deleted.is_(False),
-                TripPointRecord.deleted_at.is_(None),
+                active(TripPointRecord),
             )
             .order_by(TripPointRecord.start_date_time)
         )
@@ -222,7 +218,6 @@ async def upsert_trip(
         record.default_timezone_id = body.default_timezone_id
         record.start_date = body.start_date
         record.end_date = body.end_date
-        record.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return TripHeaderResponse(
         trip_id=record.trip_id,
@@ -242,54 +237,16 @@ async def delete_trip(
     now = datetime.now(timezone.utc)
     trip.is_deleted = True
     trip.deleted_at = now
-    trip.updated_at = now
 
-    travel_result = await db.execute(
-        select(TravelDetailRecord).where(
-            TravelDetailRecord.trip_id == trip_id,
-            TravelDetailRecord.is_deleted.is_(False),
-            TravelDetailRecord.deleted_at.is_(None),
+    # One UPDATE per child table rather than a SELECT + row-by-row mutation
+    # (review.md 1C-3). The session is discarded right after the commit, so
+    # there is nothing in the identity map worth synchronizing.
+    for model in (TravelDetailRecord, StayDetailRecord, TripPointRecord, TripDayRecord):
+        await db.execute(
+            update(model)
+            .where(model.trip_id == trip_id, active(model))
+            .values(is_deleted=True, deleted_at=now, updated_at=now)
+            .execution_options(synchronize_session=False)
         )
-    )
-    for travel in travel_result.scalars().all():
-        travel.is_deleted = True
-        travel.deleted_at = now
-        travel.updated_at = now
-
-    stay_result = await db.execute(
-        select(StayDetailRecord).where(
-            StayDetailRecord.trip_id == trip_id,
-            StayDetailRecord.is_deleted.is_(False),
-            StayDetailRecord.deleted_at.is_(None),
-        )
-    )
-    for stay in stay_result.scalars().all():
-        stay.is_deleted = True
-        stay.deleted_at = now
-        stay.updated_at = now
-
-    point_result = await db.execute(
-        select(TripPointRecord).where(
-            TripPointRecord.trip_id == trip_id,
-            TripPointRecord.is_deleted.is_(False),
-            TripPointRecord.deleted_at.is_(None),
-        )
-    )
-    for point in point_result.scalars().all():
-        point.is_deleted = True
-        point.deleted_at = now
-        point.updated_at = now
-
-    day_result = await db.execute(
-        select(TripDayRecord).where(
-            TripDayRecord.trip_id == trip_id,
-            TripDayRecord.is_deleted.is_(False),
-            TripDayRecord.deleted_at.is_(None),
-        )
-    )
-    for day in day_result.scalars().all():
-        day.is_deleted = True
-        day.deleted_at = now
-        day.updated_at = now
 
     await db.commit()
