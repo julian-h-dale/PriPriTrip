@@ -38,12 +38,48 @@ from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_t
 
 
 def _coerce_uuid(value: str | None) -> str:
+    """Server id for a create: the client's id if it is a real UUID, else a new one."""
     if value:
         try:
             return str(uuid.UUID(str(value)))
         except ValueError:
             pass
     return str(uuid.uuid4())
+
+
+def _created_id_detail(target: str, requested: str | None, assigned: str) -> str | None:
+    """Tell the model when we ignored the id it invented (review.md 3D-5).
+
+    Silent regeneration meant the model believed it had named a record while
+    the DB had a different id — and the same invented id used twice mapped to
+    two different rows.
+    """
+    if requested and requested != assigned:
+        return f"Ignored the supplied id {requested!r}; this {target} was created as {assigned}."
+    return None
+
+
+def _existing_id(value: str | None) -> str | None:
+    """Canonical id for an update/delete, or None if it is not a server id.
+
+    Rejecting here is deliberate: a non-UUID like "stay-1" would otherwise be
+    handed straight to the UUID column and blow up the whole turn.
+    """
+    if not value:
+        return None
+    try:
+        return str(uuid.UUID(str(value)))
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def _bad_id_detail(target: str, value: str | None) -> str:
+    if not value:
+        return f"{target} id is required."
+    return (
+        f"{value!r} is not a valid {target.lower()} id. "
+        f"Use an id from get_trip_snapshot, or create the record instead."
+    )
 
 
 def _trip_tz(trip: TripRecord) -> str:
@@ -184,11 +220,21 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 )
             )
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=day_id, status="ok")
+            return ActionResult(
+                op=action.op, target=action.target, id=day_id, status="ok",
+                detail=_created_id_detail("day", action.id, day_id),
+            )
 
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Day id is required")
-        rec = await db.get(TripDayRecord, action.id)
+        record_id = _existing_id(action.id)
+        if record_id is None:
+            return ActionResult(
+                op=action.op,
+                target=action.target,
+                id=action.id,
+                status="error",
+                detail=_bad_id_detail("Day", action.id),
+            )
+        rec = await db.get(TripDayRecord, record_id)
         if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
             return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Day not found")
 
@@ -262,11 +308,21 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             await db.flush()
             await _replace_point_locations(db, body.point_id, [loc.model_dump(by_alias=True) for loc in body.locations])
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=body.point_id, status="ok")
+            return ActionResult(
+                op=action.op, target=action.target, id=body.point_id, status="ok",
+                detail=_created_id_detail("point", action.id, body.point_id),
+            )
 
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Point id is required")
-        rec = await db.get(TripPointRecord, action.id)
+        record_id = _existing_id(action.id)
+        if record_id is None:
+            return ActionResult(
+                op=action.op,
+                target=action.target,
+                id=action.id,
+                status="error",
+                detail=_bad_id_detail("Point", action.id),
+            )
+        rec = await db.get(TripPointRecord, record_id)
         if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
             return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Point not found")
 
@@ -355,11 +411,21 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=rec.stay_detail_id, status="ok")
+            return ActionResult(
+                op=action.op, target=action.target, id=rec.stay_detail_id, status="ok",
+                detail=_created_id_detail("stay", action.id, rec.stay_detail_id),
+            )
 
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Stay id is required")
-        rec = await db.get(StayDetailRecord, action.id)
+        record_id = _existing_id(action.id)
+        if record_id is None:
+            return ActionResult(
+                op=action.op,
+                target=action.target,
+                id=action.id,
+                status="error",
+                detail=_bad_id_detail("Stay", action.id),
+            )
+        rec = await db.get(StayDetailRecord, record_id)
         if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
             return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Stay not found")
 
@@ -438,11 +504,21 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=rec.travel_detail_id, status="ok")
+            return ActionResult(
+                op=action.op, target=action.target, id=rec.travel_detail_id, status="ok",
+                detail=_created_id_detail("travel", action.id, rec.travel_detail_id),
+            )
 
-        if not action.id:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Travel id is required")
-        rec = await db.get(TravelDetailRecord, action.id)
+        record_id = _existing_id(action.id)
+        if record_id is None:
+            return ActionResult(
+                op=action.op,
+                target=action.target,
+                id=action.id,
+                status="error",
+                detail=_bad_id_detail("Travel", action.id),
+            )
+        rec = await db.get(TravelDetailRecord, record_id)
         if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
             return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Travel not found")
 

@@ -312,21 +312,6 @@ def to_trip_import(trip: AITrip) -> TripImport:
     )
 
 
-async def build_trip_from_document(document_text: str, client=None) -> TripImport:
-    """Full pipeline: structure -> enhance -> TripImport with IDs."""
-    client = client or get_async_client()
-    logger.info("pipeline start: structuring itinerary (%d chars)", len(document_text))
-    structured = await structure_itinerary(document_text, client=client)
-    logger.info(
-        "pipeline: structured %d days, %d points; starting enhance pass",
-        len(structured.days),
-        sum(len(d.points) for d in structured.days),
-    )
-    enhanced = await enhance_trip(structured, client=client)
-    logger.info("pipeline: enhance pass complete; assembling TripImport")
-    return to_trip_import(enhanced)
-
-
 async def structure_document(document_text: str, client=None) -> TripImport:
     """Pass 1 only: structure a document into a TripImport draft (no enhance)."""
     client = client or get_async_client()

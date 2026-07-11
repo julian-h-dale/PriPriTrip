@@ -153,6 +153,8 @@ Chat architecture: all `trip:*` workflows run a tool-calling agent loop (`servic
 - `done` — the full reply payload (tripId, complete, tripName, verify, messages)
 - `error` — `{detail}`; failures after the stream starts ride the stream instead of an HTTP error status. Pre-stream failures (401/404/422) are normal JSON errors.
 
+**`requestId` is required** on every `/chat/reply` call (review.md 3D-5). It is the idempotency key: repeating it replays the stored reply instead of running the model again, so a double-send or a network retry can't create duplicate stays/travels. Both rows of a turn carry it, and a unique constraint on `(user_id, request_id, is_bot)` serialises concurrent duplicates — the second one waits, then replays rather than running the pipeline. A turn that failed persists nothing, so retrying the same id runs for real. It is deliberately not optional: an optional key means the protection is off by default.
+
 Chat context behavior:
 - Sends runtime context (incl. appCurrentDate in the user's home timezone), trip snapshot/summary, recent transcript window, rolling conversation summary, and optional UI context.
 
@@ -269,13 +271,14 @@ Note: there are no DB migrations yet by design — the schema is still moving fa
 - **`updated_at`**: carries `onupdate=func.now()`. Never set it by hand — the column maintains itself on every UPDATE.
 - **Indexes**: every FK a query filters on is indexed (Postgres does not do this automatically), plus partial indexes on `NOT is_deleted` for the hot list paths.
 
-`create_all` does **not** add indexes to tables that already exist. To pick up the indexes without wiping your data:
+`create_all` does **not** alter tables that already exist, so schema changes ship as additive scripts in `sql/` (no Alembic yet). Applied against an existing DB in filename order; each is idempotent and touches no data:
 
 ```bash
 psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-11_add_indexes.sql
+psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-11_chat_idempotency.sql
 ```
 
-The script is idempotent (`CREATE INDEX IF NOT EXISTS`) and touches no data. `./dev.sh --clean` gets you the same schema from scratch.
+`./dev.sh --clean` gets you the same schema from scratch.
 
 ## Tests
 

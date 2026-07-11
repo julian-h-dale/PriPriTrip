@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 import uuid
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList, False_, Null, True_
 
 from app.auth import require_auth
 from app.database import get_db
@@ -62,9 +64,34 @@ class _FakeResult:
         return self._items[0] if self._items else None
 
 
+def _matches(rec, criterion) -> bool:
+    """Evaluate a simple WHERE criterion (AND of ==, is_(True/False)) in Python.
+
+    The idempotency lookups filter on request_id and is_bot, so the fake has to
+    actually honour WHERE clauses rather than returning every row.
+    """
+    if isinstance(criterion, BooleanClauseList):
+        return all(_matches(rec, clause) for clause in criterion.clauses)
+    if isinstance(criterion, BinaryExpression):
+        column = getattr(criterion.left, "key", None)
+        if column is None:
+            return True
+        actual = getattr(rec, column, None)
+        right = criterion.right
+        if isinstance(right, True_):
+            return actual is True
+        if isinstance(right, False_):
+            return actual is False or actual is None
+        if isinstance(right, Null):
+            return actual is None
+        return actual == getattr(right, "value", right)
+    return True
+
+
 class _FakeSession:
     def __init__(self):
         self._store = {}
+        self.flush_error = None  # set to simulate a unique-constraint clash
 
     async def get(self, model, pk):
         return self._store.get((model, pk))
@@ -76,9 +103,16 @@ class _FakeSession:
                 rec for (model, _pk), rec in self._store.items()
                 if model is ChatMessageRecord
             ]
+            items = [
+                rec for rec in items
+                if all(_matches(rec, crit) for crit in stmt._where_criteria)
+            ]
             items.sort(key=lambda rec: rec.created_at or 0)
             return _FakeResult(items)
         return _FakeResult([])
+
+    async def rollback(self):
+        return None
 
     async def commit(self):
         return None
@@ -132,7 +166,7 @@ class TestChat:
         monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _fake_loop)
         resp = client.post(
             "/chat/reply",
-            json={"workflowName": "trip:new_trip", "message": "help me plan a trip"},
+            json={"workflowName": "trip:new_trip", "message": "help me plan a trip", "requestId": str(uuid.uuid4())},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -183,7 +217,7 @@ class TestChat:
         monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _fake_loop)
         resp = client.post(
             "/chat/reply",
-            json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": str(uuid.uuid4())},
+            json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": str(uuid.uuid4()), "requestId": str(uuid.uuid4())},
         )
 
         assert resp.status_code == 404
@@ -202,7 +236,7 @@ class TestChat:
 
         resp = client.post(
             "/chat/reply",
-            json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": existing_trip_id},
+            json={"workflowName": "trip:manage", "message": "Rename day one", "tripId": existing_trip_id, "requestId": str(uuid.uuid4())},
         )
 
         assert resp.status_code == 200
@@ -251,14 +285,14 @@ class TestChatRouting:
         calls = []
         monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._fake(calls, "loop"))
 
-        resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi"})
+        resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi", "requestId": str(uuid.uuid4())})
         assert resp.status_code == 200
         assert _done_payload(resp)["messages"][1]["message"] == "from loop"
 
         trip_id = self._existing_trip()
         resp = client.post(
             "/chat/reply",
-            json={"workflowName": "trip:manage", "message": "hi", "tripId": trip_id},
+            json={"workflowName": "trip:manage", "message": "hi", "tripId": trip_id, "requestId": str(uuid.uuid4())},
         )
         assert resp.status_code == 200
         assert _done_payload(resp)["messages"][1]["message"] == "from loop"
@@ -269,7 +303,7 @@ class TestChatRouting:
         calls = []
         monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._fake(calls, "loop"))
 
-        resp = client.post("/chat/reply", json={"workflowName": "other", "message": "hi"})
+        resp = client.post("/chat/reply", json={"workflowName": "other", "message": "hi", "requestId": str(uuid.uuid4())})
         assert resp.status_code == 200
         assert _done_payload(resp)
         assert calls == []
@@ -281,9 +315,159 @@ class TestChatRouting:
 
         monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _boom)
 
-        resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi"})
+        resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi", "requestId": str(uuid.uuid4())})
         # The stream is already committed to 200; failures ride the stream.
         assert resp.status_code == 200
         events = _sse_events(resp)
         assert [e["event"] for e in events] == ["error"]
         assert "kaboom" not in events[0]["data"]["detail"]
+
+
+class TestChatIdempotency:
+    """review.md 3D-5: a repeated requestId must not re-run the pipeline."""
+
+    def setup_method(self):
+        self.session = _FakeSession()
+        app.dependency_overrides[get_db] = lambda: self.session
+        app.dependency_overrides[require_auth] = _fake_user
+
+    def teardown_method(self):
+        app.dependency_overrides.clear()
+
+    @staticmethod
+    def _counting_loop(calls):
+        async def _loop(_db, **kwargs):
+            calls.append(kwargs.get("latest_message"))
+            yield {
+                "type": "outcome",
+                "outcome": WorkflowOutcome(
+                    assistantMessage=f"reply #{len(calls)}",
+                    complete=False,
+                    structuredContent={"actions": [{"op": "create", "target": "stay"}]},
+                ),
+            }
+
+        return _loop
+
+    def _send(self, **overrides):
+        payload = {
+            "workflowName": "trip:new_trip",
+            "message": "Book the Hyatt",
+            "requestId": str(uuid.uuid4()),
+        }
+        payload.update(overrides)
+        return client.post("/chat/reply", json=payload)
+
+    def test_repeat_request_id_replays_and_skips_the_model(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._counting_loop(calls))
+        request_id = str(uuid.uuid4())
+
+        first = self._send(requestId=request_id)
+        assert first.status_code == 200
+        first_payload = _done_payload(first)
+        assert first_payload["messages"][1]["message"] == "reply #1"
+        assert len(calls) == 1
+
+        # The impatient double-send / network retry.
+        second = self._send(requestId=request_id)
+        assert second.status_code == 200
+        second_payload = _done_payload(second)
+
+        # The model was NOT called again, and the reply is byte-identical —
+        # so no duplicate stay was created.
+        assert len(calls) == 1
+        assert second_payload == first_payload
+
+    def test_replay_emits_only_a_done_event(self, monkeypatch):
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._counting_loop([]))
+        request_id = str(uuid.uuid4())
+        self._send(requestId=request_id)
+
+        events = _sse_events(self._send(requestId=request_id))
+        assert [e["event"] for e in events] == ["done"]
+
+    def test_different_request_ids_run_the_model_each_time(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._counting_loop(calls))
+
+        self._send(requestId=str(uuid.uuid4()))
+        self._send(requestId=str(uuid.uuid4()))
+        assert len(calls) == 2
+
+    def test_request_id_is_required(self, monkeypatch):
+        """No optional key: a client that omits it is rejected, not silently
+        left unprotected (frontend and backend move together)."""
+        calls = []
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._counting_loop(calls))
+
+        resp = client.post("/chat/reply", json={"workflowName": "trip:new_trip", "message": "hi"})
+        assert resp.status_code == 422
+        assert calls == []
+
+    def test_failed_turn_is_not_replayed_so_a_retry_can_succeed(self, monkeypatch):
+        """A turn that errored persists nothing, so the same id may be retried."""
+        attempts = []
+
+        async def _flaky(_db, **kwargs):
+            attempts.append(kwargs.get("latest_message"))
+            if len(attempts) == 1:
+                raise RuntimeError("model exploded")
+            yield {
+                "type": "outcome",
+                "outcome": WorkflowOutcome(assistantMessage="recovered", complete=False),
+            }
+
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", _flaky)
+        request_id = str(uuid.uuid4())
+
+        first = self._send(requestId=request_id)
+        assert [e["event"] for e in _sse_events(first)] == ["error"]
+
+        # Nothing was committed, so the retry runs for real rather than
+        # replaying a reply that never existed.
+        second = self._send(requestId=request_id)
+        assert _done_payload(second)["messages"][1]["message"] == "recovered"
+        assert len(attempts) == 2
+
+    def test_concurrent_duplicate_loses_the_race_and_replays(self, monkeypatch):
+        """The unique constraint is what serialises simultaneous sends."""
+        calls = []
+        monkeypatch.setattr(chat_router, "stream_chat_tool_loop", self._counting_loop(calls))
+        request_id = str(uuid.uuid4())
+
+        trip_id = str(uuid.uuid4())
+        self.session.add(
+            TripRecord(
+                trip_id=trip_id,
+                user_id=USER_ID,
+                trip_name="Existing",
+                start_date="2026-07-01",
+                end_date="2026-07-05",
+                status="draft",
+            )
+        )
+        first_payload = _done_payload(self._send(requestId=request_id, tripId=trip_id))
+
+        # Simulate the loser of the race: when it looked, the winner had not
+        # committed yet, so it went on to claim the id — and the unique
+        # constraint rejected it.
+        real_stored_reply = chat_router._stored_reply
+        state = {"blind": True}
+
+        async def _blind_first_lookup(db, *, user, request_id):
+            if state["blind"]:
+                state["blind"] = False
+                return None  # the winner's row is not visible yet
+            return await real_stored_reply(db, user=user, request_id=request_id)
+
+        async def _claim_conflict():
+            raise IntegrityError("insert", {}, Exception("duplicate key"))
+
+        monkeypatch.setattr(chat_router, "_stored_reply", _blind_first_lookup)
+        monkeypatch.setattr(self.session, "flush", _claim_conflict)
+
+        resp = self._send(requestId=request_id, tripId=trip_id)
+        assert resp.status_code == 200
+        assert _done_payload(resp) == first_payload
+        assert len(calls) == 1  # the loser never called the model

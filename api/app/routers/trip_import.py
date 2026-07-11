@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text, select, delete
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
 
 from app.auth import require_auth
 from app.database import get_db

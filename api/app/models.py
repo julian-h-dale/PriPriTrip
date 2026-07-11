@@ -351,6 +351,14 @@ class ChatMessageRecord(Base):
     message: Mapped[str] = mapped_column(String)
     structure_content: Mapped[str | None] = mapped_column(String)
     is_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Idempotency (review.md 3D-5). The client stamps each send with a request
+    # id; both rows of the turn carry it. The unique constraint below is what
+    # actually blocks a double-send — the second insert waits on the first and
+    # then fails, instead of running the whole LLM pipeline again.
+    request_id: Mapped[str | None] = mapped_column(String)
+    # The bot row stores the exact ChatReplyResponse it produced, so a repeat
+    # of the same request replays it verbatim rather than recomputing.
+    reply_payload: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=text("NOW()")
     )
@@ -359,4 +367,7 @@ class ChatMessageRecord(Base):
         CheckConstraint("message <> ''", name="chat_message_nonempty"),
         # Every chat read filters by this triple, ordered by created_at.
         Index("ix_chat_messages_trip_workflow", "trip_id", "user_id", "workflow_name", "created_at"),
+        # NULL request_id repeats freely (Postgres treats NULLs as distinct),
+        # so clients that don't send one are unaffected.
+        UniqueConstraint("user_id", "request_id", "is_bot", name="uq_chat_messages_user_request"),
     )

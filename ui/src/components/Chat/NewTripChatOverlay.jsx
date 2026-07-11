@@ -113,6 +113,7 @@ export default function NewTripChatOverlay({
 
   const messagesEndRef = useRef(null);
   const sendAbortRef = useRef(null);
+  const requestIdRef = useRef(null);
   const busy = loading || uploading;
 
   const [saveTripHeader] = useSaveTripHeaderMutation();
@@ -169,6 +170,17 @@ export default function NewTripChatOverlay({
     if (!text || busy) return; // Enter-to-send must respect the same guard as the button
     const userTempId = `temp-user-${Date.now()}`;
     const botTempId = `temp-bot-${Date.now()}`;
+
+    // Idempotency key (review.md 3D-5). A retry of the *same* failed message
+    // reuses the key, so if the turn actually landed server-side and only the
+    // response was lost, the retry replays that reply instead of running the
+    // model again and duplicating stays/travels. Editing the text before
+    // retrying makes it a genuinely new request, so it gets a new key.
+    if (requestIdRef.current?.message !== text) {
+      requestIdRef.current = { id: crypto.randomUUID(), message: text };
+    }
+    const requestId = requestIdRef.current.id;
+
     setDraft('');
     setMessages((prev) => [
       ...prev,
@@ -207,6 +219,7 @@ export default function NewTripChatOverlay({
         tripId,
         workflowName,
         message: text,
+        requestId,
         context: {
           page: 'trips',
           chatOverlay: 'new_trip',
@@ -226,6 +239,7 @@ export default function NewTripChatOverlay({
           }));
         },
       });
+      requestIdRef.current = null; // answered — the next send is a new request
       onTripIdChange?.(response.tripId);
       const [userMessage, botMessage] = response.messages ?? [];
       setMessages((prev) => prev.map((message) => {
@@ -241,7 +255,7 @@ export default function NewTripChatOverlay({
       // An abort is us closing the overlay, not a failure worth reporting.
       if (err?.name !== 'AbortError') {
         setError(err?.detail ?? err?.response?.data?.detail ?? 'Could not send message.');
-        setDraft(text); // don't lose what they typed
+        setDraft(text); // don't lose what they typed (and keep requestIdRef for the retry)
       }
     } finally {
       if (sendAbortRef.current === controller) sendAbortRef.current = null;

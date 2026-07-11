@@ -556,6 +556,11 @@ class ChatReplyRequest(APIModel):
     workflow_name: str
     message: str
     context: Optional[dict] = None
+    # Client-generated id for this send; required. Repeating it replays the
+    # original reply instead of running the pipeline twice (review.md 3D-5).
+    # Not optional by design: an optional key means the protection is off by
+    # default, and the frontend is updated in lockstep anyway.
+    request_id: str
 
 
 class ChatReplyResponse(APIModel):

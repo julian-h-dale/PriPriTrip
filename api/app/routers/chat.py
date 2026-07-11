@@ -4,9 +4,10 @@ from datetime import date, datetime, timezone
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
@@ -157,6 +158,39 @@ async def list_trip_chat_messages(
     return [_message_to_response(rec) for rec in result.scalars().all()]
 
 
+async def _stored_reply(db: AsyncSession, *, user: UserRecord, request_id: str) -> dict | None:
+    """The reply a previous identical send already produced, if any."""
+    result = await db.execute(
+        select(ChatMessageRecord).where(
+            ChatMessageRecord.user_id == str(user.id),
+            ChatMessageRecord.request_id == request_id,
+            ChatMessageRecord.is_bot.is_(True),
+        )
+    )
+    bot_message = result.scalar_one_or_none()
+    if bot_message is None or not bot_message.reply_payload:
+        return None
+    return _safe_json_dict(bot_message.reply_payload) or None
+
+
+def _replay_response(payload: dict, *, request_id: str, workflow_name: str) -> StreamingResponse:
+    log_ai_event(
+        "chat.reply.replayed",
+        workflowName=workflow_name,
+        requestId=request_id,
+        tripId=payload.get("tripId"),
+    )
+
+    async def stream():
+        yield _sse("done", payload)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/reply")
 async def reply_in_chat(
     body: ChatReplyRequest,
@@ -164,15 +198,24 @@ async def reply_in_chat(
     user: UserRecord = Depends(require_auth),
 ):
     trip_id = body.trip_id
+    request_id = body.request_id
     runtime_context = _runtime_context_for_user(user, body.context)
     # Verify ownership BEFORE logging: messages aimed at other users' trips
     # must not reach ai.log (review.md 1C-7).
     if trip_id:
         trip = await require_owned_trip(db, trip_id, user)
+
+    # Idempotency (review.md 3D-5): a repeat of a send we already answered
+    # replays that answer — no second LLM call, no duplicate stays/travels.
+    replay = await _stored_reply(db, user=user, request_id=request_id)
+    if replay is not None:
+        return _replay_response(replay, request_id=request_id, workflow_name=body.workflow_name)
+
     log_ai_event(
         "chat.reply.received",
         workflowName=body.workflow_name,
         tripId=trip_id,
+        requestId=request_id,
         message=body.message.strip(),
         uiContext=body.context,
         runtimeContext=runtime_context,
@@ -198,9 +241,24 @@ async def reply_in_chat(
         workflow_name=body.workflow_name,
         message=body.message.strip(),
         is_bot=False,
+        request_id=request_id,
     )
     db.add(user_message)
-    await db.flush()
+    try:
+        # Claims the request id. A concurrent duplicate blocks here until this
+        # transaction ends, then fails the unique constraint — so the pipeline
+        # only ever runs once, even for simultaneous sends.
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        replay = await _stored_reply(db, user=user, request_id=request_id)
+        if replay is not None:
+            return _replay_response(replay, request_id=request_id, workflow_name=body.workflow_name)
+        # The winner rolled back (its turn failed), so nothing was persisted.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A request with this id is already being processed.",
+        )
 
     transcript_result = await db.execute(
         select(ChatMessageRecord)
@@ -304,9 +362,10 @@ async def reply_in_chat(
                 message=bot_text,
                 structure_content=structure_content,
                 is_bot=True,
+                request_id=request_id,
             )
             db.add(bot_message)
-            await db.commit()
+            await db.flush()
             await db.refresh(user_message)
             await db.refresh(bot_message)
 
@@ -314,6 +373,7 @@ async def reply_in_chat(
                 "chat.reply.outcome",
                 workflowName=body.workflow_name,
                 tripId=trip_id,
+                requestId=request_id,
                 complete=complete,
                 verify=verify.model_dump(mode="json") if verify else None,
                 structuredContent=json.loads(structure_content) if structure_content else None,
@@ -327,7 +387,13 @@ async def reply_in_chat(
                 verify=verify,
                 messages=[_message_to_response(user_message), _message_to_response(bot_message)],
             )
-            yield _sse("done", response.model_dump(mode="json", by_alias=True))
+            payload = response.model_dump(mode="json", by_alias=True)
+            # Stored so a repeat of this request id replays the exact same
+            # answer instead of recomputing it (review.md 3D-5).
+            bot_message.reply_payload = json.dumps(payload)
+            await db.commit()
+
+            yield _sse("done", payload)
         except HTTPException as exc:
             # Already logged at the source (e.g. ai.chat_loop.error). The SSE
             # response is committed to 200 by now, so errors ride the stream.
