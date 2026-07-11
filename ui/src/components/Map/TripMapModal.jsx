@@ -157,12 +157,6 @@ function TripMapContent({ open, days, mapId }) {
       const resolved = await Promise.all(
         allLocations.map(async (loc, index) => {
           const latLng = resolveLatLng(loc);
-          const position = latLng ?? (() => {
-            const placeId = placeIdFromLocation(loc);
-            if (!placeId) return null;
-            return geocodeByPlaceId(placeId);
-          })();
-
           const finalPos = latLng ?? (placeIdFromLocation(loc) ? await geocodeByPlaceId(placeIdFromLocation(loc)) : null);
           if (!finalPos) return null;
 
@@ -306,12 +300,6 @@ export default function TripMapModal({
   mapsMapId = 'DEMO_MAP_ID',
   days = [],
 }) {
-  const hasInputLocations = days.some((day) =>
-    (day.points ?? []).some((point) =>
-      (point.locations ?? []).some((loc) => resolveLatLng(loc) || placeIdFromLocation(loc))
-    )
-  );
-
   return (
     <Drawer
       anchor="bottom"

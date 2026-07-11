@@ -4,7 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_auth
 from app.database import get_db
 from app.models import UserRecord
-from app.schemas import TimezoneLookupRequest, UserProfileLocation, UserProfileResponse, UserProfileUpdate
+from app.schemas import (
+    TimezoneLookupRequest,
+    TimezoneLookupResponse,
+    UserProfileLocation,
+    UserProfileResponse,
+    UserProfileUpdate,
+)
 from app.services.timezones import tzid_from_coords
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -43,24 +49,24 @@ async def update_profile(
     if rec is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    if body.firstName is not None:
-        rec.first_name = body.firstName.strip() or None
-    if body.lastName is not None:
-        rec.last_name = body.lastName.strip() or None
-    if body.phoneNumber is not None:
-        rec.phone_number = body.phoneNumber.strip() or None
+    if body.first_name is not None:
+        rec.first_name = body.first_name.strip() or None
+    if body.last_name is not None:
+        rec.last_name = body.last_name.strip() or None
+    if body.phone_number is not None:
+        rec.phone_number = body.phone_number.strip() or None
 
-    if body.homeLocation is not None:
-        rec.home_location_name = body.homeLocation.name
-        rec.home_location_full_address = body.homeLocation.fullAddress
-        rec.home_location_lat = body.homeLocation.lat
-        rec.home_location_lng = body.homeLocation.lng
-        rec.home_location_google_place_id = body.homeLocation.googlePlaceId
-        rec.home_location_google_maps_uri = body.homeLocation.googleMapsUri
+    if body.home_location is not None:
+        rec.home_location_name = body.home_location.name
+        rec.home_location_full_address = body.home_location.full_address
+        rec.home_location_lat = body.home_location.lat
+        rec.home_location_lng = body.home_location.lng
+        rec.home_location_google_place_id = body.home_location.google_place_id
+        rec.home_location_google_maps_uri = body.home_location.google_maps_uri
 
-    if body.homeTimezoneId is not None:
-        rec.home_timezone_id = body.homeTimezoneId
-    elif body.homeLocation is not None:
+    if body.home_timezone_id is not None:
+        rec.home_timezone_id = body.home_timezone_id
+    elif body.home_location is not None:
         rec.home_timezone_id = tzid_from_coords(rec.home_location_lat, rec.home_location_lng)
 
     await db.commit()
@@ -91,15 +97,9 @@ async def clear_profile(
     await db.commit()
 
 
-@router.post("/timezone", response_model=dict)
+@router.post("/timezone", response_model=TimezoneLookupResponse)
 async def lookup_timezone(
     body: TimezoneLookupRequest,
     user: UserRecord = Depends(require_auth),
 ):
-    if body.lat is None or body.lng is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Both lat and lng are required.",
-        )
-    tzid = tzid_from_coords(body.lat, body.lng)
-    return {"timezoneId": tzid}
+    return TimezoneLookupResponse(timezoneId=tzid_from_coords(body.lat, body.lng))

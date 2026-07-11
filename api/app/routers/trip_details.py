@@ -13,15 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_auth
 from app.database import get_db
+from app.dependencies import get_owned_trip
 from app.models import (
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripPointRecord,
     TripRecord,
-    UserRecord,
 )
 from app.schemas import (
     StayDetail,
@@ -31,7 +30,7 @@ from app.schemas import (
     TravelDetailImport,
     TravelDetailPatch,
 )
-from app.serializers import stay_to_response, travel_to_response
+from app.services.locations import location_rows
 from app.services.detail_points import (
     CHECK_IN_DEFAULT_TIME,
     CHECK_OUT_DEFAULT_TIME,
@@ -41,19 +40,9 @@ from app.services.detail_points import (
     sync_stay_generated_points,
     sync_travel_generated_points,
 )
-from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
+from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock, wall_clock_to_text
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["trip details"])
-
-
-def _require_trip(trip: TripRecord | None, user: UserRecord) -> None:
-    if (
-        trip is None
-        or trip.user_id != str(user.id)
-        or bool(getattr(trip, "is_deleted", False))
-        or getattr(trip, "deleted_at", None) is not None
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
 
 
 async def _detail_locations(db: AsyncSession, *, stay_id=None, travel_id=None) -> list:
@@ -74,40 +63,8 @@ async def _replace_detail_locations(
         await db.execute(delete(LocationRecord).where(LocationRecord.stay_detail_id == stay_id))
     else:
         await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id == travel_id))
-    for i, loc in enumerate(locations_payload):
-        db.add(
-            LocationRecord(
-                location_id=loc.locationId,
-                point_id=None,
-                stay_detail_id=stay_id,
-                travel_detail_id=travel_id,
-                role=loc.role,
-                sort_order=i,
-                name=loc.name,
-                lat=loc.lat,
-                lng=loc.lng,
-                full_address=loc.fullAddress,
-                description=loc.description,
-                link=loc.link,
-                google_place_id=loc.googlePlaceId,
-                google_maps_uri=loc.googleMapsUri,
-                timezone_id=loc.timezoneId or tzid_from_coords(loc.lat, loc.lng),
-            )
-        )
-
-
-def _location_tzid(loc) -> str | None:
-    return getattr(loc, "timezoneId", None) or tzid_from_coords(getattr(loc, "lat", None), getattr(loc, "lng", None))
-
-
-def _infer_tzid_from_locations(locations: list, *, role: str | None = None, fallback: str | None = None) -> str | None:
-    for loc in locations or []:
-        if role and getattr(loc, "role", None) != role:
-            continue
-        tzid = _location_tzid(loc)
-        if tzid:
-            return tzid
-    return fallback
+    for row in location_rows(locations_payload, stay_detail_id=stay_id, travel_detail_id=travel_id):
+        db.add(row)
 
 
 def _apply_stay_times(
@@ -155,10 +112,9 @@ def _apply_travel_times(
 @router.get("/travel-details", response_model=list[TravelDetail])
 async def list_travel_details(
     trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(TravelDetailRecord).where(
             TravelDetailRecord.trip_id == trip_id,
@@ -169,7 +125,7 @@ async def list_travel_details(
     out = []
     for rec in result.scalars().all():
         locs = await _detail_locations(db, travel_id=rec.travel_detail_id)
-        out.append(travel_to_response(rec, locs))
+        out.append(TravelDetail.from_record(rec, locs))
     return out
 
 
@@ -177,30 +133,28 @@ async def list_travel_details(
 async def create_travel_detail(
     trip_id: str,
     body: TravelDetailImport,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip, user)
-    detail_id = body.travelDetailId or str(uuid.uuid4())
+    detail_id = body.travel_detail_id or str(uuid.uuid4())
 
-    departure_tzid = body.departureTimezoneId or _infer_tzid_from_locations(
+    departure_tzid = body.departure_timezone_id or infer_tzid_from_locations(
         body.locations, role="origin", fallback=trip.default_timezone_id
     )
-    arrival_tzid = body.arrivalTimezoneId or _infer_tzid_from_locations(
+    arrival_tzid = body.arrival_timezone_id or infer_tzid_from_locations(
         body.locations, role="destination", fallback=trip.default_timezone_id
     )
 
-    departure_local = parse_wall_clock(body.departureDateTime)
-    arrival_local = parse_wall_clock(body.arrivalDateTime)
+    departure_local = parse_wall_clock(body.departure_date_time)
+    arrival_local = parse_wall_clock(body.arrival_date_time)
     rec = TravelDetailRecord(
         travel_detail_id=detail_id,
         trip_id=trip_id,
         name=body.name,
         mode=body.mode,
         operator=body.operator,
-        vehicle_number=body.vehicleNumber,
-        cabin_class=body.cabinClass,
+        vehicle_number=body.vehicle_number,
+        cabin_class=body.cabin_class,
         departure_local=departure_local,
         departure_tzid=departure_tzid,
         departure_utc=derive_utc(departure_local, departure_tzid),
@@ -209,7 +163,7 @@ async def create_travel_detail(
         arrival_utc=derive_utc(arrival_local, arrival_tzid),
         departure_date_time=wall_clock_to_text(departure_local),
         arrival_date_time=wall_clock_to_text(arrival_local),
-        confirmation_number=body.confirmationNumber,
+        confirmation_number=body.confirmation_number,
         description=body.description,
     )
     db.add(rec)
@@ -219,22 +173,21 @@ async def create_travel_detail(
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, travel_id=detail_id)
-    return travel_to_response(rec, locs)
+    return TravelDetail.from_record(rec, locs)
 
 
 @router.get("/travel-details/{travel_detail_id}", response_model=TravelDetail)
 async def get_travel_detail(
     trip_id: str,
     travel_detail_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(TravelDetailRecord, travel_detail_id)
     if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
     locs = await _detail_locations(db, travel_id=travel_detail_id)
-    return travel_to_response(rec, locs)
+    return TravelDetail.from_record(rec, locs)
 
 
 @router.patch("/travel-details/{travel_detail_id}", response_model=TravelDetail)
@@ -242,38 +195,36 @@ async def patch_travel_detail(
     trip_id: str,
     travel_detail_id: str,
     body: TravelDetailPatch,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip, user)
     rec = await db.get(TravelDetailRecord, travel_detail_id)
     if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
 
-    field_map = {
-        "name": "name",
-        "mode": "mode",
-        "operator": "operator",
-        "vehicleNumber": "vehicle_number",
-        "cabinClass": "cabin_class",
-        "departureDateTime": "departure_date_time",
-        "arrivalDateTime": "arrival_date_time",
-        "confirmationNumber": "confirmation_number",
-        "description": "description",
-    }
-    for pydantic_field, orm_field in field_map.items():
-        if pydantic_field in body.model_fields_set:
-            setattr(rec, orm_field, getattr(body, pydantic_field))
+    # Field names match the ORM columns 1:1 now that schemas are snake_case.
+    for field in (
+        "name",
+        "mode",
+        "operator",
+        "vehicle_number",
+        "cabin_class",
+        "departure_date_time",
+        "arrival_date_time",
+        "confirmation_number",
+        "description",
+    ):
+        if field in body.model_fields_set:
+            setattr(rec, field, getattr(body, field))
 
     current_departure_text = (
-        body.departureDateTime
-        if "departureDateTime" in body.model_fields_set
+        body.departure_date_time
+        if "departure_date_time" in body.model_fields_set
         else (wall_clock_to_text(rec.departure_local) or rec.departure_date_time)
     )
     current_arrival_text = (
-        body.arrivalDateTime
-        if "arrivalDateTime" in body.model_fields_set
+        body.arrival_date_time
+        if "arrival_date_time" in body.model_fields_set
         else (wall_clock_to_text(rec.arrival_local) or rec.arrival_date_time)
     )
 
@@ -282,16 +233,16 @@ async def patch_travel_detail(
     )
 
     departure_tzid = (
-        body.departureTimezoneId
-        if "departureTimezoneId" in body.model_fields_set
+        body.departure_timezone_id
+        if "departure_timezone_id" in body.model_fields_set
         else rec.departure_tzid
-    ) or _infer_tzid_from_locations(locations_for_inference, role="origin", fallback=trip.default_timezone_id)
+    ) or infer_tzid_from_locations(locations_for_inference, role="origin", fallback=trip.default_timezone_id)
 
     arrival_tzid = (
-        body.arrivalTimezoneId
-        if "arrivalTimezoneId" in body.model_fields_set
+        body.arrival_timezone_id
+        if "arrival_timezone_id" in body.model_fields_set
         else rec.arrival_tzid
-    ) or _infer_tzid_from_locations(locations_for_inference, role="destination", fallback=trip.default_timezone_id)
+    ) or infer_tzid_from_locations(locations_for_inference, role="destination", fallback=trip.default_timezone_id)
 
     _apply_travel_times(
         rec,
@@ -309,17 +260,16 @@ async def patch_travel_detail(
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, travel_id=travel_detail_id)
-    return travel_to_response(rec, locs)
+    return TravelDetail.from_record(rec, locs)
 
 
 @router.delete("/travel-details/{travel_detail_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_travel_detail(
     trip_id: str,
     travel_detail_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(TravelDetailRecord, travel_detail_id)
     if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Travel detail not found")
@@ -336,10 +286,9 @@ async def delete_travel_detail(
 @router.get("/stay-details", response_model=list[StayDetail])
 async def list_stay_details(
     trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(StayDetailRecord).where(
             StayDetailRecord.trip_id == trip_id,
@@ -350,7 +299,7 @@ async def list_stay_details(
     out = []
     for rec in result.scalars().all():
         locs = await _detail_locations(db, stay_id=rec.stay_detail_id)
-        out.append(stay_to_response(rec, locs))
+        out.append(StayDetail.from_record(rec, locs))
     return out
 
 
@@ -358,25 +307,23 @@ async def list_stay_details(
 async def create_stay_detail(
     trip_id: str,
     body: StayDetailImport,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip, user)
-    detail_id = body.stayDetailId or str(uuid.uuid4())
+    detail_id = body.stay_detail_id or str(uuid.uuid4())
 
-    check_in_tzid = body.checkInTimezoneId or _infer_tzid_from_locations(
+    check_in_tzid = body.check_in_timezone_id or infer_tzid_from_locations(
         body.locations, role="venue", fallback=trip.default_timezone_id
     )
-    check_out_tzid = body.checkOutTimezoneId or check_in_tzid
+    check_out_tzid = body.check_out_timezone_id or check_in_tzid
 
-    check_in_local = parse_wall_clock(body.checkIn)
-    check_out_local = parse_wall_clock(body.checkOut)
+    check_in_local = parse_wall_clock(body.check_in)
+    check_out_local = parse_wall_clock(body.check_out)
     rec = StayDetailRecord(
         stay_detail_id=detail_id,
         trip_id=trip_id,
         name=body.name,
-        stay_type=body.stayType,
+        stay_type=body.stay_type,
         check_in_local=check_in_local,
         check_in_tzid=check_in_tzid,
         check_in_utc=derive_utc(check_in_local, check_in_tzid),
@@ -385,8 +332,8 @@ async def create_stay_detail(
         check_out_utc=derive_utc(check_out_local, check_out_tzid),
         check_in=wall_clock_to_text(check_in_local),
         check_out=wall_clock_to_text(check_out_local),
-        room_type=body.roomType,
-        confirmation_number=body.confirmationNumber,
+        room_type=body.room_type,
+        confirmation_number=body.confirmation_number,
         description=body.description,
     )
     db.add(rec)
@@ -396,22 +343,21 @@ async def create_stay_detail(
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, stay_id=detail_id)
-    return stay_to_response(rec, locs)
+    return StayDetail.from_record(rec, locs)
 
 
 @router.get("/stay-details/{stay_detail_id}", response_model=StayDetail)
 async def get_stay_detail(
     trip_id: str,
     stay_detail_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(StayDetailRecord, stay_detail_id)
     if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")
     locs = await _detail_locations(db, stay_id=stay_detail_id)
-    return stay_to_response(rec, locs)
+    return StayDetail.from_record(rec, locs)
 
 
 @router.patch("/stay-details/{stay_detail_id}", response_model=StayDetail)
@@ -419,36 +365,34 @@ async def patch_stay_detail(
     trip_id: str,
     stay_detail_id: str,
     body: StayDetailPatch,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip, user)
     rec = await db.get(StayDetailRecord, stay_detail_id)
     if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")
 
-    field_map = {
-        "name": "name",
-        "stayType": "stay_type",
-        "checkIn": "check_in",
-        "checkOut": "check_out",
-        "roomType": "room_type",
-        "confirmationNumber": "confirmation_number",
-        "description": "description",
-    }
-    for pydantic_field, orm_field in field_map.items():
-        if pydantic_field in body.model_fields_set:
-            setattr(rec, orm_field, getattr(body, pydantic_field))
+    # Field names match the ORM columns 1:1 now that schemas are snake_case.
+    for field in (
+        "name",
+        "stay_type",
+        "check_in",
+        "check_out",
+        "room_type",
+        "confirmation_number",
+        "description",
+    ):
+        if field in body.model_fields_set:
+            setattr(rec, field, getattr(body, field))
 
     current_check_in_text = (
-        body.checkIn
-        if "checkIn" in body.model_fields_set
+        body.check_in
+        if "check_in" in body.model_fields_set
         else (wall_clock_to_text(rec.check_in_local) or rec.check_in)
     )
     current_check_out_text = (
-        body.checkOut
-        if "checkOut" in body.model_fields_set
+        body.check_out
+        if "check_out" in body.model_fields_set
         else (wall_clock_to_text(rec.check_out_local) or rec.check_out)
     )
 
@@ -457,14 +401,14 @@ async def patch_stay_detail(
     )
 
     check_in_tzid = (
-        body.checkInTimezoneId
-        if "checkInTimezoneId" in body.model_fields_set
+        body.check_in_timezone_id
+        if "check_in_timezone_id" in body.model_fields_set
         else rec.check_in_tzid
-    ) or _infer_tzid_from_locations(locations_for_inference, role="venue", fallback=trip.default_timezone_id)
+    ) or infer_tzid_from_locations(locations_for_inference, role="venue", fallback=trip.default_timezone_id)
 
     check_out_tzid = (
-        body.checkOutTimezoneId
-        if "checkOutTimezoneId" in body.model_fields_set
+        body.check_out_timezone_id
+        if "check_out_timezone_id" in body.model_fields_set
         else rec.check_out_tzid
     ) or check_in_tzid
 
@@ -484,17 +428,16 @@ async def patch_stay_detail(
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, stay_id=stay_detail_id)
-    return stay_to_response(rec, locs)
+    return StayDetail.from_record(rec, locs)
 
 
 @router.delete("/stay-details/{stay_detail_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_stay_detail(
     trip_id: str,
     stay_detail_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(await db.get(TripRecord, trip_id), user)
     rec = await db.get(StayDetailRecord, stay_detail_id)
     if rec is None or rec.trip_id != trip_id or rec.is_deleted or rec.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stay detail not found")

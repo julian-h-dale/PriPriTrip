@@ -41,11 +41,11 @@ def _stay_covered_dates(trip: TripResponse) -> set[date]:
     """Dates covered by any trip-level stay (check-in..check-out inclusive)."""
     covered: set[date] = set()
     for stay in getattr(trip, "stays", []) or []:
-        if not stay.checkIn or not stay.checkOut:
+        if not stay.check_in or not stay.check_out:
             continue
         try:
-            start = _parse_date(stay.checkIn)
-            end = _parse_date(stay.checkOut)
+            start = _parse_date(stay.check_in)
+            end = _parse_date(stay.check_out)
         except ValueError:
             continue
         if end < start:
@@ -61,7 +61,7 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
     # Group (non-alternate) days by their date.
     days_by_date: dict[date, list] = {}
     for day in trip.days:
-        if getattr(day, "isAlternate", False):
+        if getattr(day, "is_alternate", False):
             continue
         try:
             key = _parse_date(day.date)
@@ -71,18 +71,18 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
 
     covered = _stay_covered_dates(trip)
     issues: list[VerifyIssue] = []
-    all_dates = _date_range(trip.startDate, trip.endDate)
-    trip_start = _parse_date(trip.startDate)
-    trip_end = _parse_date(trip.endDate)
+    all_dates = _date_range(trip.start_date, trip.end_date)
+    trip_start = _parse_date(trip.start_date)
+    trip_end = _parse_date(trip.end_date)
 
     # Stay completeness checks.
     for stay in getattr(trip, "stays", []) or []:
-        if not (stay.checkIn and stay.checkOut):
-            stay_date = trip.startDate
-            if stay.checkIn:
-                stay_date = stay.checkIn[:10]
-            elif stay.checkOut:
-                stay_date = stay.checkOut[:10]
+        if not (stay.check_in and stay.check_out):
+            stay_date = trip.start_date
+            if stay.check_in:
+                stay_date = stay.check_in[:10]
+            elif stay.check_out:
+                stay_date = stay.check_out[:10]
             issues.append(
                 VerifyIssue(
                     code="INCOMPLETE_STAY",
@@ -95,14 +95,14 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                 )
             )
 
-        if stay.checkIn:
-            check_in_date = _parse_date(stay.checkIn)
+        if stay.check_in:
+            check_in_date = _parse_date(stay.check_in)
             if check_in_date < trip_start:
                 issues.append(
                     VerifyIssue(
                         code="STAY_OUTOFBOUNDS",
                         severity="error",
-                        date=stay.checkIn[:10],
+                        date=stay.check_in[:10],
                         message="STAY_OUTOFBOUNDS: Stay check-in falls before the trip start date.",
                     )
                 )
@@ -111,18 +111,18 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                     VerifyIssue(
                         code="STAY_OUTOFBOUNDS",
                         severity="error",
-                        date=stay.checkIn[:10],
+                        date=stay.check_in[:10],
                         message="STAY_OUTOFBOUNDS: Stay check-in falls after the trip end date.",
                     )
                 )
-        if stay.checkOut:
-            check_out_date = _parse_date(stay.checkOut)
+        if stay.check_out:
+            check_out_date = _parse_date(stay.check_out)
             if check_out_date < trip_start:
                 issues.append(
                     VerifyIssue(
                         code="STAY_OUTOFBOUNDS",
                         severity="error",
-                        date=stay.checkOut[:10],
+                        date=stay.check_out[:10],
                         message="STAY_OUTOFBOUNDS: Stay check-out falls before the trip start date.",
                     )
                 )
@@ -131,20 +131,20 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                     VerifyIssue(
                         code="STAY_OUTOFBOUNDS",
                         severity="error",
-                        date=stay.checkOut[:10],
+                        date=stay.check_out[:10],
                         message="STAY_OUTOFBOUNDS: Stay check-out falls after the trip end date.",
                     )
                 )
 
     # Travel completeness checks.
     for travel in getattr(trip, "travels", []) or []:
-        travel_date = trip.startDate
-        if travel.departureDateTime:
-            travel_date = travel.departureDateTime[:10]
-        elif travel.arrivalDateTime:
-            travel_date = travel.arrivalDateTime[:10]
+        travel_date = trip.start_date
+        if travel.departure_date_time:
+            travel_date = travel.departure_date_time[:10]
+        elif travel.arrival_date_time:
+            travel_date = travel.arrival_date_time[:10]
 
-        if not (travel.departureDateTime and travel.arrivalDateTime):
+        if not (travel.departure_date_time and travel.arrival_date_time):
             issues.append(
                 VerifyIssue(
                     code="TRAVEL_INCOMPLETE_DATES",
@@ -171,14 +171,14 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                 )
             )
 
-        if travel.departureDateTime:
-            departure_date = _parse_date(travel.departureDateTime)
+        if travel.departure_date_time:
+            departure_date = _parse_date(travel.departure_date_time)
             if departure_date < trip_start:
                 issues.append(
                     VerifyIssue(
                         code="TRAVEL_OUTOFBOUNDS",
                         severity="error",
-                        date=travel.departureDateTime[:10],
+                        date=travel.departure_date_time[:10],
                         message="TRAVEL_OUTOFBOUNDS: Travel departure falls before the trip start date.",
                     )
                 )
@@ -187,18 +187,18 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                     VerifyIssue(
                         code="TRAVEL_OUTOFBOUNDS",
                         severity="error",
-                        date=travel.departureDateTime[:10],
+                        date=travel.departure_date_time[:10],
                         message="TRAVEL_OUTOFBOUNDS: Travel departure falls after the trip end date.",
                     )
                 )
-        if travel.arrivalDateTime:
-            arrival_date = _parse_date(travel.arrivalDateTime)
+        if travel.arrival_date_time:
+            arrival_date = _parse_date(travel.arrival_date_time)
             if arrival_date < trip_start:
                 issues.append(
                     VerifyIssue(
                         code="TRAVEL_OUTOFBOUNDS",
                         severity="error",
-                        date=travel.arrivalDateTime[:10],
+                        date=travel.arrival_date_time[:10],
                         message="TRAVEL_OUTOFBOUNDS: Travel arrival falls before the trip start date.",
                     )
                 )
@@ -207,17 +207,17 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                     VerifyIssue(
                         code="TRAVEL_OUTOFBOUNDS",
                         severity="error",
-                        date=travel.arrivalDateTime[:10],
+                        date=travel.arrival_date_time[:10],
                         message="TRAVEL_OUTOFBOUNDS: Travel arrival falls after the trip end date.",
                     )
                 )
 
     ordered_travels = []
     for travel in getattr(trip, "travels", []) or []:
-        if not travel.departureDateTime or not travel.arrivalDateTime:
+        if not travel.departure_date_time or not travel.arrival_date_time:
             continue
         try:
-            ordered_travels.append((travel, _parse_datetime(travel.departureDateTime), _parse_datetime(travel.arrivalDateTime)))
+            ordered_travels.append((travel, _parse_datetime(travel.departure_date_time), _parse_datetime(travel.arrival_date_time)))
         except ValueError:
             continue
     ordered_travels.sort(key=lambda item: item[1])
@@ -228,7 +228,7 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                 VerifyIssue(
                     code="TRAVEL_OVERLAP",
                     severity="error",
-                    date=travel.departureDateTime[:10],
+                    date=travel.departure_date_time[:10],
                     message="TRAVEL_OVERLAP: Travel departure overlaps a preceding arrival.",
                 )
             )
@@ -237,10 +237,10 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
 
     ordered_stays = []
     for stay in getattr(trip, "stays", []) or []:
-        if not stay.checkIn or not stay.checkOut:
+        if not stay.check_in or not stay.check_out:
             continue
         try:
-            ordered_stays.append((stay, _parse_datetime(stay.checkIn), _parse_datetime(stay.checkOut)))
+            ordered_stays.append((stay, _parse_datetime(stay.check_in), _parse_datetime(stay.check_out)))
         except ValueError:
             continue
     ordered_stays.sort(key=lambda item: item[1])
@@ -251,7 +251,7 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
                 VerifyIssue(
                     code="STAY_OVERLAP",
                     severity="error",
-                    date=stay.checkIn[:10],
+                    date=stay.check_in[:10],
                     message="STAY_OVERLAP: Stay check-in overlaps a previous stay checkout.",
                 )
             )
@@ -262,7 +262,7 @@ def verify_trip(trip: TripResponse) -> VerifyResult:
         iso = d.isoformat()
         day_records = days_by_date.get(d, [])
         points = [p for day in day_records for p in (day.points or [])]
-        first_day_id = day_records[0].dayId if day_records else None
+        first_day_id = day_records[0].day_id if day_records else None
 
         if not points:
             issues.append(

@@ -1,3 +1,4 @@
+import asyncio
 import io
 from unittest.mock import MagicMock
 
@@ -115,7 +116,7 @@ def test_extract_text_unsupported():
 def test_to_trip_import_assigns_ids_and_links():
     result = to_trip_import(_sample_ai_trip())
     assert isinstance(result, TripImport)
-    assert result.tripId
+    assert result.trip_id
     # Trip-level stays/travels hoisted out of points
     assert len(result.stays) == 1
     assert len(result.travels) == 1
@@ -123,16 +124,16 @@ def test_to_trip_import_assigns_ids_and_links():
     travel = result.travels[0]
     assert stay.name == "Hotel Goldener Schlüssel"
     assert travel.mode == "train"
-    assert stay.locations[0].locationId
+    assert stay.locations[0].location_id
 
     day = result.days[0]
-    assert day.dayId
+    assert day.day_id
     dep_point = day.points[0]
     checkin_point = day.points[1]
-    assert dep_point.dayId == day.dayId
+    assert dep_point.day_id == day.day_id
     # Points reference the hoisted details by generated id
-    assert dep_point.travelDetailId == travel.travelDetailId
-    assert checkin_point.stayDetailId == stay.stayDetailId
+    assert dep_point.travel_detail_id == travel.travel_detail_id
+    assert checkin_point.stay_detail_id == stay.stay_detail_id
 
 
 # ── single-pass service functions (mocked OpenAI) ─────────────────────────
@@ -140,7 +141,7 @@ def test_to_trip_import_assigns_ids_and_links():
 def _fake_client_returning(ai_trip):
     fake_client = MagicMock()
 
-    def fake_parse(model, messages, response_format):
+    async def fake_parse(model, messages, response_format):
         completion = MagicMock()
         completion.usage.total_tokens = 100
         completion.choices[0].finish_reason = "stop"
@@ -155,10 +156,10 @@ def _fake_client_returning(ai_trip):
 def test_structure_document_single_call():
     fake_client = _fake_client_returning(_sample_ai_trip())
 
-    result = trip_ai.structure_document("some itinerary text", client=fake_client)
+    result = asyncio.run(trip_ai.structure_document("some itinerary text", client=fake_client))
 
     assert isinstance(result, TripImport)
-    assert result.tripName == "Test Honeymoon"
+    assert result.trip_name == "Test Honeymoon"
     # structure-only = one LLM call
     assert fake_client.beta.chat.completions.parse.call_count == 1
 
@@ -172,13 +173,13 @@ def test_enhance_trip_import_preserves_ids():
     enhanced_ai.days[0].points[0].description = "Smooth scenic train ride."
     fake_client = _fake_client_returning(enhanced_ai)
 
-    result = trip_ai.enhance_trip_import(draft, client=fake_client)
+    result = asyncio.run(trip_ai.enhance_trip_import(draft, client=fake_client))
 
     # one LLM call, IDs preserved, descriptions updated
     assert fake_client.beta.chat.completions.parse.call_count == 1
-    assert result.tripId == draft.tripId
-    assert result.days[0].dayId == draft.days[0].dayId
-    assert result.days[0].points[0].pointId == draft.days[0].points[0].pointId
+    assert result.trip_id == draft.trip_id
+    assert result.days[0].day_id == draft.days[0].day_id
+    assert result.days[0].points[0].point_id == draft.days[0].points[0].point_id
     assert result.days[0].description == "A thrilling arrival day full of alpine views."
     assert result.days[0].points[0].description == "Smooth scenic train ride."
 
@@ -193,11 +194,12 @@ class TestAiImportEndpoint:
         app.dependency_overrides.clear()
 
     def test_ai_import_returns_draft(self, monkeypatch):
-        monkeypatch.setattr(
-            trip_ai, "structure_document", lambda text: to_trip_import(_sample_ai_trip())
-        )
+        async def fake_structure(text):
+            return to_trip_import(_sample_ai_trip())
+
+        monkeypatch.setattr(trip_ai, "structure_document", fake_structure)
         resp = client.post(
-            "/trip/ai-import",
+            "/trips/ai-import",
             files={"file": ("trip.xlsx", _make_xlsx(),
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         )
@@ -207,11 +209,12 @@ class TestAiImportEndpoint:
         assert body["days"][0]["points"][0]["dayId"] == body["days"][0]["dayId"]
 
     def test_ai_import_rejects_unsupported(self, monkeypatch):
-        monkeypatch.setattr(
-            trip_ai, "structure_document", lambda text: to_trip_import(_sample_ai_trip())
-        )
+        async def fake_structure(text):
+            return to_trip_import(_sample_ai_trip())
+
+        monkeypatch.setattr(trip_ai, "structure_document", fake_structure)
         resp = client.post(
-            "/trip/ai-import",
+            "/trips/ai-import",
             files={"file": ("trip.txt", b"hello", "text/plain")},
         )
         assert resp.status_code == 415
@@ -219,14 +222,14 @@ class TestAiImportEndpoint:
     def test_ai_enhance_returns_enhanced_trip(self, monkeypatch):
         draft = to_trip_import(_sample_ai_trip())
 
-        def fake_enhance(trip):
+        async def fake_enhance(trip):
             result = trip.model_copy(deep=True)
             result.days[0].description = "Enhanced narrative."
             return result
 
         monkeypatch.setattr(trip_ai, "enhance_trip_import", fake_enhance)
-        resp = client.post("/trip/ai-enhance", json=draft.model_dump())
+        resp = client.post("/trips/ai-enhance", json=draft.model_dump())
         assert resp.status_code == 200
         body = resp.json()
-        assert body["tripId"] == draft.tripId
+        assert body["tripId"] == draft.trip_id
         assert body["days"][0]["description"] == "Enhanced narrative."

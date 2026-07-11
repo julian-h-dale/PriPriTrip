@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -23,13 +22,8 @@ import TimelineOppositeContent, {
 } from '@mui/lab/TimelineOppositeContent';
 import dayjs, { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
-import {
-  clearError,
-  fetchTrip,
-  selectTrip,
-  selectTripError,
-  selectTripStatus,
-} from '../store/tripSlice';
+import { useGetTripQuery } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 import TravelForm from '../components/Forms/TravelForm';
 
 function fmtDateTime(value) {
@@ -58,15 +52,8 @@ function firstLocationByRole(locations, role) {
 export default function TravelDetailsPage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const trip = useSelector(selectTrip);
-  const status = useSelector(selectTripStatus);
-  const error = useSelector(selectTripError);
+  const { data: trip, isLoading, error } = useGetTripQuery(tripId, { skip: !tripId });
   const [editingTravel, setEditingTravel] = useState(null);
-
-  useEffect(() => {
-    if (tripId) dispatch(fetchTrip(tripId));
-  }, [dispatch, tripId]);
 
   const travels = useMemo(() => {
     const items = trip?.travels ?? [];
@@ -80,8 +67,6 @@ export default function TravelDetailsPage() {
       return aTime - bTime;
     });
   }, [trip]);
-
-  const isLoading = status === 'loading';
 
   return (
     <AppLayout
@@ -107,16 +92,16 @@ export default function TravelDetailsPage() {
           </Typography>
         </Box>
 
-        {isLoading && !trip && (
+        {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
             <CircularProgress />
           </Box>
         )}
 
-        {error && !trip && (
+        {!!error && !trip && (
           <Box sx={{ p: 2 }}>
-            <Alert severity="error" onClose={() => dispatch(clearError())}>
-              {error ?? 'Failed to load travel details.'}
+            <Alert severity="error">
+              {getErrorMessage(error, 'Failed to load travel details.')}
             </Alert>
           </Box>
         )}
@@ -185,10 +170,7 @@ export default function TravelDetailsPage() {
             open={!!editingTravel}
             initialValues={editingTravel || {}}
             onClose={() => setEditingTravel(null)}
-            onSaved={() => {
-              dispatch(fetchTrip(tripId));
-              setEditingTravel(null);
-            }}
+            onSaved={() => setEditingTravel(null)}
           />
         )}
       </Container>

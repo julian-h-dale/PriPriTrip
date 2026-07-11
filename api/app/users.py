@@ -8,7 +8,6 @@ fastapi-users configuration.
 - Email verification: disabled (is_verified defaults to True on create)
 """
 
-import os
 import uuid
 from typing import Optional
 
@@ -16,11 +15,11 @@ from fastapi import Depends
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from fastapi_users.db import SQLAlchemyUserDatabase
-from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import UserRecord
+from app.settings import get_settings
 
 
 # ── User schemas ──────────────────────────────────────────────────────────────
@@ -46,7 +45,13 @@ async def get_user_db(session: AsyncSession = Depends(get_db)):
 # ── UserManager ───────────────────────────────────────────────────────────────
 
 def _jwt_secret() -> str:
-    return os.environ.get("JWT_SECRET", "dev-secret-change-me")
+    # Settings has no default for jwt_secret, so this raises loudly when
+    # JWT_SECRET is missing — a silently-defaulted signing secret means anyone
+    # can forge tokens for any user. Set JWT_SECRET in api/.env.
+    secret = get_settings().jwt_secret
+    if not secret:
+        raise RuntimeError("JWT_SECRET must be set (see api/.env.example)")
+    return secret
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[UserRecord, uuid.UUID]):
@@ -64,9 +69,6 @@ class UserManager(UUIDIDMixin, BaseUserManager[UserRecord, uuid.UUID]):
 
     async def create(self, user_create: UserCreate, safe: bool = False, request=None):
         # Auto-verify on creation — no email verification flow
-        user_dict = user_create.model_dump()
-        user_dict["is_verified"] = True
-        from fastapi_users import schemas as fu_schemas
         patched = user_create.model_copy(update={"is_verified": True})
         return await super().create(patched, safe=safe, request=request)
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -11,10 +11,8 @@ import {
   Typography,
 } from '@mui/material';
 import AppLayout from '../components/AppLayout';
-import {
-  getTrip,
-  verifyTrip,
-} from '../api/tripImportService';
+import { useGetTripQuery, useVerifyTripQuery } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 import TravelForm from '../components/Forms/TravelForm';
 
 function hasTravelIssue(travel) {
@@ -26,13 +24,18 @@ function hasTravelIssue(travel) {
 
 export default function TripWorkflowPage() {
   const { tripId } = useParams();
-  const navigate = useNavigate();
 
-  const [trip, setTrip] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // Requirement: run verify when entering the workflow. Saving a travel leg
+  // invalidates both tags, so the trip and verification refresh automatically.
+  useVerifyTripQuery(tripId, { skip: !tripId });
+  const {
+    data: trip,
+    isLoading,
+    isFetching,
+    error,
+  } = useGetTripQuery(tripId, { skip: !tripId });
+
   const [editorOpen, setEditorOpen] = useState(false);
-  const [error, setError] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
 
   const travelSteps = useMemo(() => {
@@ -40,63 +43,22 @@ export default function TripWorkflowPage() {
     return travels.filter((travel) => hasTravelIssue(travel).hasIssue);
   }, [trip]);
 
-  const current = travelSteps[stepIndex] || null;
-
+  // Clamp the step when the list shrinks after a save.
+  const current = travelSteps[Math.min(stepIndex, Math.max(travelSteps.length - 1, 0))] || null;
   useEffect(() => {
-    let active = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        // Requirement: run verify first when entering the workflow.
-        await verifyTrip(tripId);
-        const t = await getTrip(tripId);
-        if (!active) return;
-        setTrip(t);
-      } catch (err) {
-        if (!active) return;
-        setError(err?.response?.data?.detail ?? 'Could not load trip workflow.');
-      } finally {
-        if (active) setLoading(false);
-      }
+    if (stepIndex > 0 && stepIndex > travelSteps.length - 1) {
+      setStepIndex(Math.max(travelSteps.length - 1, 0));
     }
-    load();
-    return () => {
-      active = false;
-    };
-  }, [tripId]);
+  }, [stepIndex, travelSteps.length]);
 
+  const currentTravelDetailId = current?.travelDetailId;
   useEffect(() => {
-    if (current) {
+    if (currentTravelDetailId) {
       setEditorOpen(true);
     }
-  }, [current?.travelDetailId]);
+  }, [currentTravelDetailId]);
 
-  async function handleStepSaved() {
-    setError(null);
-    setRefreshing(true);
-    try {
-      // Re-run verification after each step save.
-      await verifyTrip(tripId);
-      const refreshed = await getTrip(tripId);
-      setTrip(refreshed);
-
-      const nextSteps = (refreshed.travels ?? []).filter((travel) => hasTravelIssue(travel).hasIssue);
-      if (nextSteps.length === 0) {
-        navigate(`/trip-inspection/${tripId}`);
-        return;
-      }
-
-      const updatedIndex = Math.min(stepIndex, nextSteps.length - 1);
-      setStepIndex(updatedIndex);
-    } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not save this workflow step.');
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <AppLayout title="Trip Workflow">
         <Container maxWidth="sm" sx={{ pt: 3, pb: 6 }}>
@@ -113,15 +75,16 @@ export default function TripWorkflowPage() {
     return (
       <AppLayout title="Trip Workflow">
         <Container maxWidth="sm" sx={{ pt: 3, pb: 6 }}>
-          <Alert severity="error">{error || 'Trip not found.'}</Alert>
+          <Alert severity="error">
+            {getErrorMessage(error, 'Trip not found.')}
+          </Alert>
         </Container>
       </AppLayout>
     );
   }
 
   if (travelSteps.length === 0) {
-    navigate(`/trip-inspection/${tripId}`);
-    return null;
+    return <Navigate to={`/trip-inspection/${tripId}`} replace />;
   }
 
   return (
@@ -131,10 +94,8 @@ export default function TripWorkflowPage() {
           Trip workflow
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 2 }}>
-          Step {stepIndex + 1} of {travelSteps.length}: fix incomplete travel details.
+          Step {Math.min(stepIndex, travelSteps.length - 1) + 1} of {travelSteps.length}: fix incomplete travel details.
         </Typography>
-
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         <Card variant="outlined">
           <CardContent>
@@ -149,7 +110,7 @@ export default function TripWorkflowPage() {
                 Mode: {current.mode || '—'}
               </Typography>
 
-              {refreshing ? (
+              {isFetching ? (
                 <Stack direction="row" spacing={1} alignItems="center">
                   <CircularProgress size={18} />
                   <Typography variant="body2" color="text.secondary">
@@ -171,7 +132,7 @@ export default function TripWorkflowPage() {
           initialValues={current || {}}
           requireLocations
           onClose={() => setEditorOpen(false)}
-          onSaved={handleStepSaved}
+          onSaved={() => setEditorOpen(false)}
         />
       </Container>
     </AppLayout>

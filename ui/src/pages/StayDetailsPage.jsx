@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -23,13 +22,8 @@ import TimelineOppositeContent, {
 } from '@mui/lab/TimelineOppositeContent';
 import dayjs, { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
-import {
-  clearError,
-  fetchTrip,
-  selectTrip,
-  selectTripError,
-  selectTripStatus,
-} from '../store/tripSlice';
+import { useGetTripQuery } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 import StayForm from '../components/Forms/StayForm';
 
 function fmtDateTime(value) {
@@ -62,15 +56,8 @@ function localityLabel(location) {
 export default function StayDetailsPage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const trip = useSelector(selectTrip);
-  const status = useSelector(selectTripStatus);
-  const error = useSelector(selectTripError);
+  const { data: trip, isLoading, error } = useGetTripQuery(tripId, { skip: !tripId });
   const [editingStay, setEditingStay] = useState(null);
-
-  useEffect(() => {
-    if (tripId) dispatch(fetchTrip(tripId));
-  }, [dispatch, tripId]);
 
   const stays = useMemo(() => {
     const items = trip?.stays ?? [];
@@ -80,8 +67,6 @@ export default function StayDetailsPage() {
       return aTime - bTime;
     });
   }, [trip]);
-
-  const isLoading = status === 'loading';
 
   return (
     <AppLayout
@@ -107,16 +92,16 @@ export default function StayDetailsPage() {
           </Typography>
         </Box>
 
-        {isLoading && !trip && (
+        {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
             <CircularProgress />
           </Box>
         )}
 
-        {error && !trip && (
+        {!!error && !trip && (
           <Box sx={{ p: 2 }}>
-            <Alert severity="error" onClose={() => dispatch(clearError())}>
-              {error ?? 'Failed to load stay details.'}
+            <Alert severity="error">
+              {getErrorMessage(error, 'Failed to load stay details.')}
             </Alert>
           </Box>
         )}
@@ -184,10 +169,7 @@ export default function StayDetailsPage() {
             open={!!editingStay}
             initialValues={editingStay || {}}
             onClose={() => setEditingStay(null)}
-            onSaved={() => {
-              dispatch(fetchTrip(tripId));
-              setEditingStay(null);
-            }}
+            onSaved={() => setEditingStay(null)}
           />
         )}
       </Container>

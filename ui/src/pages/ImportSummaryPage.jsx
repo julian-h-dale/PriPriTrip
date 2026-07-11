@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -19,7 +19,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import dayjs from 'dayjs';
 import { parseWallClock } from '../utils/dayjs';
 import AppLayout from '../components/AppLayout';
-import { getTrip, verifyTrip } from '../api/tripImportService';
+import { useGetTripQuery, useLazyVerifyTripQuery } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 
 function fmtDate(dateStr) {
   return dayjs(dateStr).format('MMM D, YYYY');
@@ -59,39 +60,29 @@ export default function ImportSummaryPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [trip, setTrip] = useState(location.state?.trip || null);
-  const [fileName] = useState(location.state?.fileName || null);
-  const [loading, setLoading] = useState(!location.state?.trip);
-  const [continuing, setContinuing] = useState(false);
-  const [error, setError] = useState(null);
+  // A freshly imported trip arrives via navigation state; otherwise load it.
+  const stateTrip = location.state?.trip || null;
+  const fileName = location.state?.fileName || null;
+  const {
+    data: fetchedTrip,
+    isLoading: loading,
+    error: loadError,
+  } = useGetTripQuery(tripId, { skip: !tripId || !!stateTrip });
+  const trip = stateTrip ?? fetchedTrip ?? null;
 
-  useEffect(() => {
-    let active = true;
-    async function loadTrip() {
-      if (trip) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getTrip(tripId);
-        if (active) setTrip(data);
-      } catch (err) {
-        if (active) setError(err?.response?.data?.detail ?? 'Could not load import summary.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    loadTrip();
-    return () => {
-      active = false;
-    };
-  }, [trip, tripId]);
+  const [triggerVerify] = useLazyVerifyTripQuery();
+  const [continuing, setContinuing] = useState(false);
+  const [actionError, setActionError] = useState(null);
+
+  const error = actionError
+    ?? (loadError ? getErrorMessage(loadError, 'Could not load import summary.') : null);
 
   async function handleContinue() {
     if (!tripId) return;
     setContinuing(true);
-    setError(null);
+    setActionError(null);
     try {
-      const result = await verifyTrip(tripId);
+      const result = await triggerVerify(tripId).unwrap();
       navigate(`/trip-inspection/${tripId}`, {
         state: {
           verify: result,
@@ -99,7 +90,7 @@ export default function ImportSummaryPage() {
         },
       });
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not run trip inspection.');
+      setActionError(getErrorMessage(err, 'Could not run trip inspection.'));
       setContinuing(false);
     }
   }

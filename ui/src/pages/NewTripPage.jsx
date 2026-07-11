@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -23,9 +22,9 @@ import TrainIcon from '@mui/icons-material/Train';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import DirectionsBoatIcon from '@mui/icons-material/DirectionsBoat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import dayjs from 'dayjs';
-import client from '../api/client';
-import { fetchTrips } from '../store/tripSlice';
+import { useImportTripMutation } from '../store/apiSlice';
+import { buildImportPayload } from '../utils/newTripPayload';
+import { getErrorMessage } from '../utils/errors';
 
 const MODES = [
   { value: 'flight', label: 'Flight', icon: <FlightIcon /> },
@@ -34,72 +33,6 @@ const MODES = [
   { value: 'ferry', label: 'Ferry', icon: <DirectionsBoatIcon /> },
   { value: 'other', label: 'Other', icon: <MoreHorizIcon /> },
 ];
-
-function ordinalDay(dateStr) {
-  const d = dayjs(dateStr);
-  const day = d.date();
-  const suffix = ['th', 'st', 'nd', 'rd'][
-    day % 10 < 4 && (day < 11 || day > 13) ? day % 10 : 0
-  ];
-  return d.format('MMMM') + ' ' + day + suffix;
-}
-
-function buildTravelPoint({ leg, dayId }) {
-  if (!leg || leg.skipped) return null;
-  const pointId = crypto.randomUUID();
-  return {
-    pointId,
-    dayId,
-    type: 'travel',
-    title: leg.title || leg.route || 'Travel',
-    startDateTime: leg.departureDateTime,
-    endDateTime: leg.arrivalDateTime,
-    confirmationNumber: null,
-    description: null,
-    imageUrl: null,
-    logoUrl: null,
-    locations: leg.route
-      ? leg.route.split(/[→\-–>]+/).map((part, i, arr) => ({
-          locationId: crypto.randomUUID(),
-          name: part.trim(),
-          role: i === 0 ? 'origin' : i === arr.length - 1 ? 'destination' : 'waypoint',
-          lat: null,
-          lng: null,
-          fullAddress: null,
-          description: null,
-          link: null,
-          googlePlaceId: null,
-          googleMapsUri: null,
-        }))
-      : [],
-    travelDetail: {
-      mode: leg.mode,
-      operator: leg.operator || null,
-      vehicleNumber: leg.vehicleNumber || null,
-      cabinClass: null,
-    },
-    stayDetail: null,
-    completed: false,
-    completedDateTime: null,
-  };
-}
-
-function buildImportPayload({ tripDetails, outbound, returnLeg }) {
-  const tripId = crypto.randomUUID();
-  const returnPoint = buildTravelPoint({
-    leg: returnLeg,
-    dayId: days[days.length - 1].dayId,
-  });
-  if (returnPoint) days[days.length - 1].points.push(returnPoint);
-
-  return {
-    tripId,
-    tripName: tripDetails.tripName,
-    startDate: tripDetails.startDate,
-    endDate: tripDetails.endDate,
-    days,
-  };
-}
 
 // ── Step 1: Trip Details ────────────────────────────────────────────────────
 
@@ -260,7 +193,7 @@ const emptyLeg = () => ({
 
 export default function NewTripPage() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const [importTrip] = useImportTripMutation();
 
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -354,11 +287,10 @@ export default function NewTripPage() {
     setSubmitError(null);
     try {
       const payload = buildImportPayload({ tripDetails, outbound, returnLeg });
-      await client.post('/trip/import', payload);
-      dispatch(fetchTrips());
+      await importTrip(payload).unwrap();
       navigate(`/trip/${payload.tripId}`);
     } catch (err) {
-      setSubmitError(err?.response?.data?.detail ?? 'Failed to create trip. Please try again.');
+      setSubmitError(getErrorMessage(err, 'Failed to create trip. Please try again.'));
       setSubmitting(false);
     }
   }

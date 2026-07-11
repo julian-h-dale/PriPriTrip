@@ -4,7 +4,6 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 API_PORT=8000
 DB_PORT=5432
-APP_PASSWORD="${APP_PASSWORD:-honeymoon}"
 API_PID_FILE="$REPO_ROOT/.api.pid"
 
 # ── argument parsing ──────────────────────────────────────────────────────────
@@ -76,6 +75,10 @@ echo ">> Starting FastAPI (port $API_PORT)..."
     # shellcheck source=/dev/null
     source .venv/bin/activate
   fi
+  # Load .env so JWT_SECRET / OPENAI_API_KEY etc. reach the app.
+  if [[ -f .env ]]; then
+    export $(grep -v '^\s*#' .env | grep -v '^\s*$' | xargs)
+  fi
   uvicorn app.main:app --host 0.0.0.0 --port "$API_PORT"
 ) &
 API_BG_PID=$!
@@ -84,18 +87,14 @@ disown "$API_BG_PID"
 
 wait_for_port "FastAPI" "$API_PORT"
 
-# ── 3. Verify auth endpoint ───────────────────────────────────────────────────
-echo ">> Verifying auth endpoint..."
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "http://localhost:${API_PORT}/auth" \
-  -H "Content-Type: application/json" \
-  -d "{\"password\": \"${APP_PASSWORD}\"}")
+# ── 3. Verify API health ──────────────────────────────────────────────────────
+echo ">> Verifying API health endpoint..."
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${API_PORT}/health")
 
 if [[ "$HTTP_STATUS" == "200" ]]; then
-  echo "   Auth OK (HTTP 200)."
+  echo "   Health OK (HTTP 200)."
 else
-  echo "ERROR: Auth endpoint returned HTTP $HTTP_STATUS (expected 200)." >&2
-  echo "       Check APP_PASSWORD env var — current value: '${APP_PASSWORD}'" >&2
+  echo "ERROR: /health returned HTTP $HTTP_STATUS (expected 200)." >&2
   exit 1
 fi
 

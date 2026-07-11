@@ -26,6 +26,7 @@ from app.schemas import (
 from app.services.ai_trace import log_ai_event
 from app.services.date_normalizer import DateNormalizerInput, normalize_date
 from app.services.detail_points import (
+    reconcile_trip_days,
     soft_delete_generated_points_for_stay,
     soft_delete_generated_points_for_travel,
     sync_stay_generated_points,
@@ -33,7 +34,8 @@ from app.services.detail_points import (
 )
 from app.services.llm_contract import ActionResult, AppliedAssistantResult, AssistantAction, AssistantTurn
 from app.services.location_resolver import enrich_location_dict
-from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
+from app.services.locations import location_rows
+from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
 
 
 def _coerce_uuid(value: str | None) -> str:
@@ -85,11 +87,13 @@ def _ensure_location_id(loc: dict[str, Any]) -> dict[str, Any]:
     return loc
 
 
-def _prepare_locations(locations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+async def _prepare_locations(locations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     prepared: list[dict[str, Any]] = []
     for raw_loc in locations:
         loc = _ensure_location_id(dict(raw_loc))
-        loc = enrich_location_dict(loc)
+        # The chat contract strips coords/place IDs from model output, so
+        # every location is resolved server-side here (review.md 3C-6).
+        loc = await enrich_location_dict(loc)
         prepared.append(loc)
     return prepared
 
@@ -100,26 +104,8 @@ def _action_fields_dict(action: AssistantAction) -> dict[str, Any]:
 
 async def _replace_point_locations(db: AsyncSession, point_id: str, locations: list[dict[str, Any]]) -> None:
     await db.execute(delete(LocationRecord).where(LocationRecord.point_id == point_id))
-    for index, loc in enumerate(_prepare_locations(locations)):
-        db.add(
-            LocationRecord(
-                location_id=loc["locationId"],
-                point_id=point_id,
-                stay_detail_id=None,
-                travel_detail_id=None,
-                role=loc["role"],
-                sort_order=index,
-                name=loc["name"],
-                lat=loc.get("lat"),
-                lng=loc.get("lng"),
-                full_address=loc.get("fullAddress"),
-                description=loc.get("description"),
-                link=loc.get("link"),
-                google_place_id=loc.get("googlePlaceId"),
-                google_maps_uri=loc.get("googleMapsUri"),
-                timezone_id=loc.get("timezoneId") or tzid_from_coords(loc.get("lat"), loc.get("lng")),
-            )
-        )
+    for row in location_rows(await _prepare_locations(locations), point_id=point_id):
+        db.add(row)
 
 
 async def _replace_detail_locations(
@@ -134,26 +120,10 @@ async def _replace_detail_locations(
     if travel_id is not None:
         await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id == travel_id))
 
-    for index, loc in enumerate(_prepare_locations(locations)):
-        db.add(
-            LocationRecord(
-                location_id=loc["locationId"],
-                point_id=None,
-                stay_detail_id=stay_id,
-                travel_detail_id=travel_id,
-                role=loc["role"],
-                sort_order=index,
-                name=loc["name"],
-                lat=loc.get("lat"),
-                lng=loc.get("lng"),
-                full_address=loc.get("fullAddress"),
-                description=loc.get("description"),
-                link=loc.get("link"),
-                google_place_id=loc.get("googlePlaceId"),
-                google_maps_uri=loc.get("googleMapsUri"),
-                timezone_id=loc.get("timezoneId") or tzid_from_coords(loc.get("lat"), loc.get("lng")),
-            )
-        )
+    for row in location_rows(
+        await _prepare_locations(locations), stay_detail_id=stay_id, travel_detail_id=travel_id
+    ):
+        db.add(row)
 
 
 async def execute_action(db: AsyncSession, *, trip: TripRecord, action: AssistantAction) -> ActionResult:
@@ -174,13 +144,19 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             "endDate": "end_date",
         }
         applied = 0
+        dates_changed = False
         for key, orm_field in field_map.items():
             if key in fields:
                 setattr(trip, orm_field, fields[key])
                 applied += 1
+                if key in ("startDate", "endDate"):
+                    dates_changed = True
         if applied == 0:
             return ActionResult(op=action.op, target=action.target, status="error", detail="No supported trip fields provided")
         trip.updated_at = datetime.now(timezone.utc)
+        if dates_changed:
+            # Keep day rows aligned with the new date range.
+            await reconcile_trip_days(db, trip)
         await db.flush()
         return ActionResult(op=action.op, target=action.target, id=trip.trip_id, status="ok", detail=f"Updated {applied} trip field(s)")
 
@@ -263,34 +239,34 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 return ActionResult(op=action.op, target=action.target, id=payload["pointId"], status="error", detail=str(exc))
 
             rec = TripPointRecord(
-                point_id=body.pointId,
+                point_id=body.point_id,
                 trip_id=trip.trip_id,
-                day_id=body.dayId,
+                day_id=body.day_id,
                 type=body.type,
                 title=body.title,
-                stay_detail_id=body.stayDetailId,
-                travel_detail_id=body.travelDetailId,
-                confirmation_number=body.confirmationNumber,
+                stay_detail_id=body.stay_detail_id,
+                travel_detail_id=body.travel_detail_id,
+                confirmation_number=body.confirmation_number,
                 description=body.description,
-                image_url=body.imageUrl,
-                logo_url=body.logoUrl,
-                is_system_created=body.isSystemCreated,
+                image_url=body.image_url,
+                logo_url=body.logo_url,
+                is_system_created=body.is_system_created,
                 completed=body.completed,
-                completed_date_time=body.completedDateTime,
+                completed_date_time=body.completed_date_time,
             )
-            rec.start_local = parse_wall_clock(body.startDateTime)
-            rec.start_tzid = body.startTimezoneId or _trip_tz(trip)
+            rec.start_local = parse_wall_clock(body.start_date_time)
+            rec.start_tzid = body.start_timezone_id or _trip_tz(trip)
             rec.start_utc = derive_utc(rec.start_local, rec.start_tzid)
-            rec.end_local = parse_wall_clock(body.endDateTime)
-            rec.end_tzid = body.endTimezoneId or rec.start_tzid
+            rec.end_local = parse_wall_clock(body.end_date_time)
+            rec.end_tzid = body.end_timezone_id or rec.start_tzid
             rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
             rec.start_date_time = wall_clock_to_text(rec.start_local)
             rec.end_date_time = wall_clock_to_text(rec.end_local)
             db.add(rec)
             await db.flush()
-            await _replace_point_locations(db, body.pointId, [loc.model_dump() for loc in body.locations])
+            await _replace_point_locations(db, body.point_id, [loc.model_dump(by_alias=True) for loc in body.locations])
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=body.pointId, status="ok")
+            return ActionResult(op=action.op, target=action.target, id=body.point_id, status="ok")
 
         if not action.id:
             return ActionResult(op=action.op, target=action.target, status="error", detail="Point id is required")
@@ -304,41 +280,41 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             except Exception as exc:
                 return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
 
-            field_map = {
-                "dayId": "day_id",
-                "type": "type",
-                "title": "title",
-                "stayDetailId": "stay_detail_id",
-                "travelDetailId": "travel_detail_id",
-                "confirmationNumber": "confirmation_number",
-                "description": "description",
-                "imageUrl": "image_url",
-                "logoUrl": "logo_url",
-                "isSystemCreated": "is_system_created",
-                "completed": "completed",
-                "completedDateTime": "completed_date_time",
-            }
-            for key, orm_field in field_map.items():
-                if key in patch.model_fields_set:
-                    setattr(rec, orm_field, getattr(patch, key))
+            # Field names match the ORM columns 1:1 now that schemas are snake_case.
+            for field in (
+                "day_id",
+                "type",
+                "title",
+                "stay_detail_id",
+                "travel_detail_id",
+                "confirmation_number",
+                "description",
+                "image_url",
+                "logo_url",
+                "is_system_created",
+                "completed",
+                "completed_date_time",
+            ):
+                if field in patch.model_fields_set:
+                    setattr(rec, field, getattr(patch, field))
 
-            if "startDateTime" in patch.model_fields_set:
-                rec.start_local = parse_wall_clock(patch.startDateTime)
+            if "start_date_time" in patch.model_fields_set:
+                rec.start_local = parse_wall_clock(patch.start_date_time)
                 rec.start_date_time = wall_clock_to_text(rec.start_local)
-            if "endDateTime" in patch.model_fields_set:
-                rec.end_local = parse_wall_clock(patch.endDateTime)
+            if "end_date_time" in patch.model_fields_set:
+                rec.end_local = parse_wall_clock(patch.end_date_time)
                 rec.end_date_time = wall_clock_to_text(rec.end_local)
 
-            if "startTimezoneId" in patch.model_fields_set:
-                rec.start_tzid = patch.startTimezoneId or _trip_tz(trip)
-            if "endTimezoneId" in patch.model_fields_set:
-                rec.end_tzid = patch.endTimezoneId or rec.start_tzid or _trip_tz(trip)
+            if "start_timezone_id" in patch.model_fields_set:
+                rec.start_tzid = patch.start_timezone_id or _trip_tz(trip)
+            if "end_timezone_id" in patch.model_fields_set:
+                rec.end_tzid = patch.end_timezone_id or rec.start_tzid or _trip_tz(trip)
 
             rec.start_utc = derive_utc(rec.start_local, rec.start_tzid)
             rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
 
             if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump() for loc in (patch.locations or [])]
+                locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
                 await _replace_point_locations(db, rec.point_id, locs)
 
             rec.updated_at = datetime.now(timezone.utc)
@@ -364,25 +340,25 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 return ActionResult(op=action.op, target=action.target, id=payload["stayDetailId"], status="error", detail=str(exc))
 
             rec = StayDetailRecord(
-                stay_detail_id=body.stayDetailId,
+                stay_detail_id=body.stay_detail_id,
                 trip_id=trip.trip_id,
                 name=body.name,
-                stay_type=body.stayType,
-                room_type=body.roomType,
-                confirmation_number=body.confirmationNumber,
+                stay_type=body.stay_type,
+                room_type=body.room_type,
+                confirmation_number=body.confirmation_number,
                 description=body.description,
             )
-            rec.check_in_local = parse_wall_clock(body.checkIn)
-            rec.check_in_tzid = body.checkInTimezoneId or _trip_tz(trip)
+            rec.check_in_local = parse_wall_clock(body.check_in)
+            rec.check_in_tzid = body.check_in_timezone_id or _trip_tz(trip)
             rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
             rec.check_in = wall_clock_to_text(rec.check_in_local)
-            rec.check_out_local = parse_wall_clock(body.checkOut)
-            rec.check_out_tzid = body.checkOutTimezoneId or rec.check_in_tzid
+            rec.check_out_local = parse_wall_clock(body.check_out)
+            rec.check_out_tzid = body.check_out_timezone_id or rec.check_in_tzid
             rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
             rec.check_out = wall_clock_to_text(rec.check_out_local)
             db.add(rec)
             await db.flush()
-            await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump() for loc in body.locations])
+            await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=rec.stay_detail_id, status="ok")
@@ -399,33 +375,27 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             except Exception as exc:
                 return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
 
-            field_map = {
-                "name": "name",
-                "stayType": "stay_type",
-                "roomType": "room_type",
-                "confirmationNumber": "confirmation_number",
-                "description": "description",
-            }
-            for key, orm_field in field_map.items():
-                if key in patch.model_fields_set:
-                    setattr(rec, orm_field, getattr(patch, key))
+            # Field names match the ORM columns 1:1 now that schemas are snake_case.
+            for field in ("name", "stay_type", "room_type", "confirmation_number", "description"):
+                if field in patch.model_fields_set:
+                    setattr(rec, field, getattr(patch, field))
 
-            if "checkIn" in patch.model_fields_set:
-                rec.check_in_local = parse_wall_clock(patch.checkIn)
+            if "check_in" in patch.model_fields_set:
+                rec.check_in_local = parse_wall_clock(patch.check_in)
                 rec.check_in = wall_clock_to_text(rec.check_in_local)
-            if "checkOut" in patch.model_fields_set:
-                rec.check_out_local = parse_wall_clock(patch.checkOut)
+            if "check_out" in patch.model_fields_set:
+                rec.check_out_local = parse_wall_clock(patch.check_out)
                 rec.check_out = wall_clock_to_text(rec.check_out_local)
-            if "checkInTimezoneId" in patch.model_fields_set:
-                rec.check_in_tzid = patch.checkInTimezoneId or _trip_tz(trip)
-            if "checkOutTimezoneId" in patch.model_fields_set:
-                rec.check_out_tzid = patch.checkOutTimezoneId or rec.check_in_tzid
+            if "check_in_timezone_id" in patch.model_fields_set:
+                rec.check_in_tzid = patch.check_in_timezone_id or _trip_tz(trip)
+            if "check_out_timezone_id" in patch.model_fields_set:
+                rec.check_out_tzid = patch.check_out_timezone_id or rec.check_in_tzid
 
             rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
             rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
 
             if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump() for loc in (patch.locations or [])]
+                locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
                 await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=locs)
 
             rec.updated_at = datetime.now(timezone.utc)
@@ -453,27 +423,27 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 return ActionResult(op=action.op, target=action.target, id=payload["travelDetailId"], status="error", detail=str(exc))
 
             rec = TravelDetailRecord(
-                travel_detail_id=body.travelDetailId,
+                travel_detail_id=body.travel_detail_id,
                 trip_id=trip.trip_id,
                 name=body.name,
                 mode=body.mode,
                 operator=body.operator,
-                vehicle_number=body.vehicleNumber,
-                cabin_class=body.cabinClass,
-                confirmation_number=body.confirmationNumber,
+                vehicle_number=body.vehicle_number,
+                cabin_class=body.cabin_class,
+                confirmation_number=body.confirmation_number,
                 description=body.description,
             )
-            rec.departure_local = parse_wall_clock(body.departureDateTime)
-            rec.departure_tzid = body.departureTimezoneId or _trip_tz(trip)
+            rec.departure_local = parse_wall_clock(body.departure_date_time)
+            rec.departure_tzid = body.departure_timezone_id or _trip_tz(trip)
             rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
             rec.departure_date_time = wall_clock_to_text(rec.departure_local)
-            rec.arrival_local = parse_wall_clock(body.arrivalDateTime)
-            rec.arrival_tzid = body.arrivalTimezoneId or rec.departure_tzid
+            rec.arrival_local = parse_wall_clock(body.arrival_date_time)
+            rec.arrival_tzid = body.arrival_timezone_id or rec.departure_tzid
             rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
             rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
             db.add(rec)
             await db.flush()
-            await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump() for loc in body.locations])
+            await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=rec.travel_detail_id, status="ok")
@@ -490,35 +460,35 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             except Exception as exc:
                 return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
 
-            field_map = {
-                "name": "name",
-                "mode": "mode",
-                "operator": "operator",
-                "vehicleNumber": "vehicle_number",
-                "cabinClass": "cabin_class",
-                "confirmationNumber": "confirmation_number",
-                "description": "description",
-            }
-            for key, orm_field in field_map.items():
-                if key in patch.model_fields_set:
-                    setattr(rec, orm_field, getattr(patch, key))
+            # Field names match the ORM columns 1:1 now that schemas are snake_case.
+            for field in (
+                "name",
+                "mode",
+                "operator",
+                "vehicle_number",
+                "cabin_class",
+                "confirmation_number",
+                "description",
+            ):
+                if field in patch.model_fields_set:
+                    setattr(rec, field, getattr(patch, field))
 
-            if "departureDateTime" in patch.model_fields_set:
-                rec.departure_local = parse_wall_clock(patch.departureDateTime)
+            if "departure_date_time" in patch.model_fields_set:
+                rec.departure_local = parse_wall_clock(patch.departure_date_time)
                 rec.departure_date_time = wall_clock_to_text(rec.departure_local)
-            if "arrivalDateTime" in patch.model_fields_set:
-                rec.arrival_local = parse_wall_clock(patch.arrivalDateTime)
+            if "arrival_date_time" in patch.model_fields_set:
+                rec.arrival_local = parse_wall_clock(patch.arrival_date_time)
                 rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
-            if "departureTimezoneId" in patch.model_fields_set:
-                rec.departure_tzid = patch.departureTimezoneId or _trip_tz(trip)
-            if "arrivalTimezoneId" in patch.model_fields_set:
-                rec.arrival_tzid = patch.arrivalTimezoneId or rec.departure_tzid
+            if "departure_timezone_id" in patch.model_fields_set:
+                rec.departure_tzid = patch.departure_timezone_id or _trip_tz(trip)
+            if "arrival_timezone_id" in patch.model_fields_set:
+                rec.arrival_tzid = patch.arrival_timezone_id or rec.departure_tzid
 
             rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
             rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
 
             if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump() for loc in (patch.locations or [])]
+                locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
                 await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=locs)
 
             rec.updated_at = datetime.now(timezone.utc)
@@ -600,6 +570,32 @@ async def apply_assistant_turn(
 
     follow_up_question = turn.followUpQuestion
     assistant_message = turn.assistantMessage
+
+    # Honest failure reporting (review.md 3C-3): the model writes its message
+    # BEFORE actions execute, so on failure its text ("I've added your
+    # flight") would be a lie. Never let a claimed save stand when nothing
+    # was saved.
+    if suppressed and not persisted:
+        failure_summary = ", ".join(
+            f"{item['action'].get('op', '?')} {item['action'].get('target', '?')}"
+            for item in suppressed
+        )
+        assistant_message = (
+            "I wasn't able to save those changes just now "
+            f"(failed: {failure_summary}). Nothing was updated — could you "
+            "rephrase or give me the details again?"
+        )
+    elif suppressed:
+        failure_summary = ", ".join(
+            f"{item['action'].get('op', '?')} {item['action'].get('target', '?')}"
+            for item in suppressed
+        )
+        assistant_message = (
+            f"{assistant_message}\n\n"
+            f"Note: I saved most of that, but some updates failed ({failure_summary}) "
+            "and were not applied."
+        )
+
     if should_suppress_follow_up(
         follow_up_question=follow_up_question,
         trip=trip,
@@ -607,7 +603,7 @@ async def apply_assistant_turn(
         recent_assistant_questions=recent_assistant_questions,
     ):
         follow_up_question = None
-        if persisted:
+        if persisted and not suppressed:
             assistant_message = "Saved your updates. I can keep refining details whenever you are ready."
 
     outcome = AppliedAssistantResult(

@@ -6,13 +6,14 @@ import re
 from typing import Literal
 
 
-PromptStage = Literal["welcome", "travel", "stay", "assistant_actions"]
+PromptStage = Literal["welcome", "travel", "stay", "assistant_actions", "assistant_tools"]
 _REQUIRED_SECTIONS = {
     "base",
     "stage:welcome",
     "stage:travel",
     "stage:stay",
     "stage:assistant_actions",
+    "stage:assistant_tools",
 }
 
 _SECTION_PATTERN = re.compile(r"^##\s*\[(?P<name>[^\]]+)\]\s*$", re.MULTILINE)
@@ -87,3 +88,9 @@ def build_new_trip_stage_prompt(stage: Literal["welcome", "travel", "stay"]) -> 
 def build_trip_assistant_prompt() -> str:
     base = load_base_prompt()
     return f"{base}\n\n{_load_stage_overlay('assistant_actions')}"
+
+
+def build_tool_loop_prompt() -> str:
+    """System prompt for the tool-calling chat loop (chat_tool_loop.py)."""
+    base = load_base_prompt()
+    return f"{base}\n\n{_load_stage_overlay('assistant_tools')}"

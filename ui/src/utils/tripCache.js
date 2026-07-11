@@ -1,42 +1,69 @@
 /**
- * IndexedDB cache for the trip document.
+ * IndexedDB cache for trip documents.
  *
- * Keeps one record in the "trip" object store so the timeline is available
- * offline after the first successful network load.
+ * Trips are stored keyed by tripId, and the trips list is stored under a
+ * dedicated list key, so the timeline and the trips page are available
+ * offline after the first successful network load (review 2C-6).
  */
 
 const DB_NAME = 'pripritrip';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'trip';
-const KEY = 'current';
+const TRIPS_LIST_KEY = '__trips__';
 
 function openDb() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore(STORE);
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE);
+      }
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror = (e) => reject(e.target.error);
   });
 }
 
-export async function cacheTrip(trip) {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(trip, KEY);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e.target.error);
-  });
+function put(value, key) {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+      })
+  );
 }
 
-export async function getCachedTrip() {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).get(KEY);
-    req.onsuccess = (e) => resolve(e.target.result ?? null);
-    req.onerror = (e) => reject(e.target.error);
-  });
+function get(key) {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = (e) => resolve(e.target.result ?? null);
+        req.onerror = (e) => reject(e.target.error);
+      })
+  );
+}
+
+export async function cacheTrip(trip) {
+  if (!trip?.tripId) return;
+  await put(trip, trip.tripId);
+}
+
+export async function getCachedTrip(tripId) {
+  if (!tripId) return null;
+  return get(tripId);
+}
+
+export async function cacheTripList(trips) {
+  if (!Array.isArray(trips)) return;
+  await put(trips, TRIPS_LIST_KEY);
+}
+
+export async function getCachedTripList() {
+  return get(TRIPS_LIST_KEY);
 }

@@ -6,7 +6,7 @@ import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
 import { Box, Typography } from '@mui/material';
-import dayjs, { parseWallClock } from '../../utils/dayjs';
+import { parseWallClock } from '../../utils/dayjs';
 
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import TrainIcon from '@mui/icons-material/Train';

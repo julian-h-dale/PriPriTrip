@@ -16,7 +16,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useCallback, useEffect, useState } from 'react';
 
-import client from '../../api/client';
+import {
+  useCreatePointMutation,
+  useDeletePointMutation,
+  usePatchPointMutation,
+} from '../../store/apiSlice';
+import { getErrorMessage } from '../../utils/errors';
 import LocationForm from './LocationForm';
 
 /**
@@ -74,7 +79,7 @@ function buildPayload(form, dayId) {
     description: form.description.trim() || null,
     imageUrl: form.imageUrl.trim() || null,
     logoUrl: form.logoUrl.trim() || null,
-    locations: form.locations.map((loc, i) => ({
+    locations: form.locations.map((loc) => ({
       ...loc,
       name: loc.name.trim(),
       fullAddress: loc.fullAddress?.trim() || null,
@@ -106,6 +111,9 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [createPoint] = useCreatePointMutation();
+  const [patchPoint] = usePatchPointMutation();
+  const [deletePoint] = useDeletePointMutation();
 
   // Reset form when the drawer opens (handles switching between create / edit)
   useEffect(() => {
@@ -166,18 +174,18 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
     try {
       setSaving(true);
       if (initialValues?.pointId) {
-        await client.put(`/trips/${tripId}/points/${initialValues.pointId}`, payload);
+        await patchPoint({ tripId, pointId: initialValues.pointId, patch: payload }).unwrap();
       } else {
-        await client.post(`/trips/${tripId}/points`, {
-          ...payload,
-          pointId: crypto.randomUUID(),
-        });
+        await createPoint({
+          tripId,
+          point: { ...payload, pointId: crypto.randomUUID() },
+        }).unwrap();
       }
       onSaved?.();
       onClose();
     } catch (err) {
       // Surface a generic error — could be enhanced with a Snackbar
-      setErrors({ _submit: err?.response?.data?.detail ?? 'Save failed. Please try again.' });
+      setErrors({ _submit: getErrorMessage(err, 'Save failed. Please try again.') });
     } finally {
       setSaving(false);
     }
@@ -188,11 +196,11 @@ export default function PointForm({ tripId, dayId, open, onClose, onSaved, onDel
   async function handleDelete() {
     try {
       setDeleting(true);
-      await client.delete(`/trips/${tripId}/points/${initialValues.pointId}`);
+      await deletePoint({ tripId, pointId: initialValues.pointId }).unwrap();
       onDeleted?.();
       onClose();
     } catch (err) {
-      setErrors({ _submit: err?.response?.data?.detail ?? 'Delete failed. Please try again.' });
+      setErrors({ _submit: getErrorMessage(err, 'Delete failed. Please try again.') });
     } finally {
       setDeleting(false);
     }

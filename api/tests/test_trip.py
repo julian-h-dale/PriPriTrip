@@ -1,196 +1,234 @@
-from unittest.mock import MagicMock, patch
+"""Tests for the /trips CRUD endpoints.
 
-import pytest
+Uses the same lightweight fake async session pattern as test_trip_details.py
+(dispatches select() results by table name) so no real database is needed.
+"""
+
+from unittest.mock import MagicMock
+
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
-from app.auth import make_token
+from app.auth import require_auth
 from app.database import get_db
 from app.main import app
 from app.models import TripRecord
-from app.schemas import TripHeader
 
 client = TestClient(app)
 
-APP_PASSWORD = "honeymoon"
-TOKEN_SECRET = "testsecret"
-VALID_TOKEN = make_token(APP_PASSWORD, TOKEN_SECRET)
+USER_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_USER_ID = "22222222-2222-2222-2222-222222222222"
+TRIP_ID = "trip-1"
 
-SAMPLE_TRIP_HEADER = {
-    "tripId": "trip_001",
-    "tripName": "Test Trip",
-    "startDate": "2026-05-10",
-    "endDate": "2026-05-20",
+
+def _fake_user(user_id=USER_ID):
+    user = MagicMock()
+    user.id = user_id
+    return user
+
+
+class _FakeResult:
+    def __init__(self, items):
+        self._items = items
+
+    def scalars(self):
+        return self
+
+    def all(self):
+        return list(self._items)
+
+
+class _FakeSession:
+    """get() by (model, pk); execute() returns rows keyed by target table."""
+
+    def __init__(self, store: dict, rows_by_table: dict):
+        self._store = store
+        self._rows = rows_by_table
+        self.added = []
+        self.committed = False
+
+    async def get(self, model, pk):
+        return self._store.get((model, pk))
+
+    async def execute(self, stmt):
+        try:
+            table = stmt.get_final_froms()[0].name
+        except Exception:
+            table = getattr(getattr(stmt, "table", None), "name", None)
+        return _FakeResult(self._rows.get(table, []))
+
+    async def commit(self):
+        self.committed = True
+
+    async def refresh(self, _obj):
+        return None
+
+    async def flush(self):
+        return None
+
+    def add(self, obj):
+        self.added.append(obj)
+
+
+def _install(store, rows_by_table=None, user_id=USER_ID):
+    session = _FakeSession(store, rows_by_table or {})
+    app.dependency_overrides[get_db] = lambda: session
+    app.dependency_overrides[require_auth] = lambda: _fake_user(user_id)
+    return session
+
+
+def _trip(owner=USER_ID, trip_id=TRIP_ID, **overrides):
+    rec = TripRecord(
+        trip_id=trip_id,
+        user_id=owner,
+        trip_name="Okinawa",
+        status="new",
+        start_date="2026-10-30",
+        end_date="2026-11-11",
+        is_deleted=False,
+        deleted_at=None,
+    )
+    for key, value in overrides.items():
+        setattr(rec, key, value)
+    return rec
+
+
+_EMPTY_TRIP_TABLES = {
+    "stay_details": [],
+    "travel_details": [],
+    "trip_days": [],
+    "trip_points": [],
+    "locations": [],
 }
 
-ENV_VARS = {
-    "APP_PASSWORD": APP_PASSWORD,
-    "TOKEN_SECRET": TOKEN_SECRET,
-    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/testdb",
-}
 
-AUTH_HEADERS = {"Authorization": f"Bearer {VALID_TOKEN}"}
-
-
-def make_mock_trip(trip_id: str = "trip_001") -> MagicMock:
-    record = MagicMock(spec=TripRecord)
-    record.trip_id = trip_id
-    record.trip_name = "Test Trip"
-    record.start_date = "2026-05-10"
-    record.end_date = "2026-05-20"
-    return record
-
-
-# ---------------------------------------------------------------------------
-# GET /trips  (list)
-# ---------------------------------------------------------------------------
-
-
-class TestApiTripsList:
-    def setup_method(self):
-        self.mock_db = MagicMock(spec=Session)
-        app.dependency_overrides[get_db] = lambda: self.mock_db
-
+class TestListTrips:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_returns_list_of_trips(self):
-        self.mock_db.query.return_value.order_by.return_value.all.return_value = [
-            make_mock_trip()
-        ]
-
-        resp = client.get("/trips", headers=AUTH_HEADERS)
-
+    def test_lists_own_trips(self):
+        _install({}, {"trips": [_trip(), _trip(trip_id="trip-2")]})
+        resp = client.get("/trips")
         assert resp.status_code == 200
-        body = resp.json()
-        assert isinstance(body, list)
-        assert len(body) == 1
-        assert body[0]["tripId"] == "trip_001"
+        assert [t["tripId"] for t in resp.json()] == ["trip-1", "trip-2"]
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_returns_empty_list_when_no_trips(self):
-        self.mock_db.query.return_value.order_by.return_value.all.return_value = []
-
-        resp = client.get("/trips", headers=AUTH_HEADERS)
-
+    def test_empty_list(self):
+        _install({}, {"trips": []})
+        resp = client.get("/trips")
         assert resp.status_code == 200
         assert resp.json() == []
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_no_token_returns_401(self):
-        resp = client.get("/trips")
-        assert resp.status_code == 401
 
-
-# ---------------------------------------------------------------------------
-# GET /trips/{trip_id}
-# ---------------------------------------------------------------------------
-
-
-class TestApiTripGet:
-    def setup_method(self):
-        self.mock_db = MagicMock(spec=Session)
-        app.dependency_overrides[get_db] = lambda: self.mock_db
-
+class TestGetTrip:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_valid_token_returns_assembled_trip(self):
-        self.mock_db.get.return_value = make_mock_trip()
-        self.mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
-
-        resp = client.get("/trips/trip_001", headers=AUTH_HEADERS)
-
+    def test_get_assembled_trip(self):
+        _install({(TripRecord, TRIP_ID): _trip()}, dict(_EMPTY_TRIP_TABLES))
+        resp = client.get(f"/trips/{TRIP_ID}")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["tripId"] == "trip_001"
+        assert body["tripId"] == TRIP_ID
+        assert body["tripName"] == "Okinawa"
         assert body["days"] == []
+        assert body["stays"] == []
+        assert body["travels"] == []
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_missing_trip_returns_404(self):
-        self.mock_db.get.return_value = None
+    def test_other_users_trip_is_404(self):
+        _install({(TripRecord, TRIP_ID): _trip(owner=OTHER_USER_ID)}, dict(_EMPTY_TRIP_TABLES))
+        assert client.get(f"/trips/{TRIP_ID}").status_code == 404
 
-        resp = client.get("/trips/trip_001", headers=AUTH_HEADERS)
+    def test_soft_deleted_trip_is_404(self):
+        _install(
+            {(TripRecord, TRIP_ID): _trip(is_deleted=True)},
+            dict(_EMPTY_TRIP_TABLES),
+        )
+        assert client.get(f"/trips/{TRIP_ID}").status_code == 404
 
-        assert resp.status_code == 404
-
-    @patch.dict("os.environ", ENV_VARS)
-    def test_no_token_returns_401(self):
-        resp = client.get("/trips/trip_001")
-        assert resp.status_code == 401
-
-    @patch.dict("os.environ", ENV_VARS)
-    def test_invalid_token_returns_401(self):
-        resp = client.get("/trips/trip_001", headers={"Authorization": "Bearer invalidtoken"})
-        assert resp.status_code == 401
-
-
-# ---------------------------------------------------------------------------
-# POST /trips  (upsert)
-# ---------------------------------------------------------------------------
+    def test_missing_trip_is_404(self):
+        _install({}, dict(_EMPTY_TRIP_TABLES))
+        assert client.get("/trips/nope").status_code == 404
 
 
-class TestApiTripPost:
-    def setup_method(self):
-        self.mock_db = MagicMock(spec=Session)
-        app.dependency_overrides[get_db] = lambda: self.mock_db
-
+class TestUpsertTrip:
     def teardown_method(self):
         app.dependency_overrides.clear()
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_inserts_new_record_when_trip_not_found(self):
-        self.mock_db.get.return_value = None
+    def _body(self):
+        return {
+            "tripName": "Okinawa",
+            "startDate": "2026-10-30",
+            "endDate": "2026-11-11",
+        }
 
-        resp = client.post("/trips", json=SAMPLE_TRIP_HEADER, headers=AUTH_HEADERS)
-
+    def test_create(self):
+        session = _install({})
+        resp = client.put(f"/trips/{TRIP_ID}", json=self._body())
         assert resp.status_code == 200
-        self.mock_db.add.assert_called_once()
-        added: TripRecord = self.mock_db.add.call_args[0][0]
-        assert added.trip_id == "trip_001"
-        assert added.trip_name == "Test Trip"
-        self.mock_db.commit.assert_called_once()
+        assert session.committed
+        assert len(session.added) == 1
+        assert session.added[0].user_id == USER_ID
+        body = resp.json()
+        assert body["tripId"] == TRIP_ID
+        assert body["tripName"] == "Okinawa"
+        assert body["startDate"] == "2026-10-30"
+        assert body["endDate"] == "2026-11-11"
+        assert body["status"] == "new"
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_updates_existing_record(self):
-        existing = MagicMock(spec=TripRecord)
-        self.mock_db.get.return_value = existing
-
-        resp = client.post("/trips", json=SAMPLE_TRIP_HEADER, headers=AUTH_HEADERS)
-
+    def test_update_existing(self):
+        trip = _trip(trip_name="Old Name")
+        _install({(TripRecord, TRIP_ID): trip})
+        resp = client.put(f"/trips/{TRIP_ID}", json=self._body())
         assert resp.status_code == 200
-        assert existing.trip_name == "Test Trip"
-        assert existing.start_date == "2026-05-10"
-        assert existing.end_date == "2026-05-20"
-        self.mock_db.add.assert_not_called()
-        self.mock_db.commit.assert_called_once()
+        assert trip.trip_name == "Okinawa"
+        assert resp.json()["tripName"] == "Okinawa"
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_valid_token_and_body_returns_200(self):
-        self.mock_db.get.return_value = None
-        resp = client.post("/trips", json=SAMPLE_TRIP_HEADER, headers=AUTH_HEADERS)
+    def test_body_trip_id_is_ignored_path_wins(self):
+        session = _install({})
+        resp = client.put(f"/trips/{TRIP_ID}", json={**self._body(), "tripId": "some-other-id"})
         assert resp.status_code == 200
-        assert resp.json()["status"] == "ok"
+        assert session.added[0].trip_id == TRIP_ID
+        assert resp.json()["tripId"] == TRIP_ID
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_no_token_returns_401(self):
-        resp = client.post("/trips", json=SAMPLE_TRIP_HEADER)
-        assert resp.status_code == 401
+    def test_update_other_users_trip_forbidden(self):
+        _install({(TripRecord, TRIP_ID): _trip(owner=OTHER_USER_ID)})
+        assert client.put(f"/trips/{TRIP_ID}", json=self._body()).status_code == 403
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_invalid_token_returns_401(self):
-        resp = client.post(
-            "/trips", json=SAMPLE_TRIP_HEADER, headers={"Authorization": "Bearer badtoken"}
+    def test_upsert_revives_soft_deleted_trip(self):
+        trip = _trip(is_deleted=True)
+        _install({(TripRecord, TRIP_ID): trip})
+        resp = client.put(f"/trips/{TRIP_ID}", json=self._body())
+        assert resp.status_code == 200
+        assert trip.is_deleted is False
+        assert trip.deleted_at is None
+
+
+class TestDeleteTrip:
+    def teardown_method(self):
+        app.dependency_overrides.clear()
+
+    def test_soft_deletes_trip_and_children(self):
+        trip = _trip()
+        from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord
+
+        day = TripDayRecord(day_id="d1", trip_id=TRIP_ID, title="Day 1", date="2026-10-30", is_deleted=False)
+        point = TripPointRecord(point_id="p1", trip_id=TRIP_ID, day_id="d1", type="activity", title="X", is_deleted=False)
+        stay = StayDetailRecord(stay_detail_id="s1", trip_id=TRIP_ID, stay_type="hotel", is_deleted=False)
+        travel = TravelDetailRecord(travel_detail_id="t1", trip_id=TRIP_ID, mode="flight", is_deleted=False)
+        _install(
+            {(TripRecord, TRIP_ID): trip},
+            {
+                "trip_days": [day],
+                "trip_points": [point],
+                "stay_details": [stay],
+                "travel_details": [travel],
+            },
         )
-        assert resp.status_code == 401
+        resp = client.delete(f"/trips/{TRIP_ID}")
+        assert resp.status_code == 204
+        for rec in (trip, day, point, stay, travel):
+            assert rec.is_deleted is True
+            assert rec.deleted_at is not None
 
-    @patch.dict("os.environ", ENV_VARS)
-    def test_invalid_json_returns_422(self):
-        resp = client.post(
-            "/trips",
-            content=b"not-json",
-            headers={**AUTH_HEADERS, "Content-Type": "application/json"},
-        )
-        assert resp.status_code == 422
+    def test_other_users_trip_is_404(self):
+        _install({(TripRecord, TRIP_ID): _trip(owner=OTHER_USER_ID)})
+        assert client.delete(f"/trips/{TRIP_ID}").status_code == 404

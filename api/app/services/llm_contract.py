@@ -1,3 +1,23 @@
+"""LLM wire contract for the chat workflows (camelCase-native by design).
+
+These models ARE the contract — the prompt file no longer documents the
+output shape or runtime context (the "Recommended Structured Output Shape"
+and "Runtime Context Expected From App" sections were removed per review.md
+3E-6; they were developer docs shipping as prompt tokens and promised context
+keys the backend never sent):
+
+- `AssistantTurn` is the structured-output shape for the legacy batch chat
+  workflows, enforced via OpenAI structured outputs.
+- `AssistantRuntimeContext` is the runtime context the app sends every turn
+  (chat.py `_runtime_context_for_user`): `appCurrentDate` (today in the
+  user's home timezone — the prompt's date policy depends on it),
+  `userHomeLocation`, `userHomeTimezoneId`, and the free-form `uiContext`
+  from the client.
+- The tool-calling loop (chat_tool_loop.py) reuses `AssistantAction`/
+  `ActionResult` internally; its per-tool argument schemas live in
+  chat_tools.py.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -6,19 +26,22 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ActionLocationFields(BaseModel):
+    """Location fields the model may supply.
+
+    Deliberately excludes lat/lng/fullAddress/googlePlaceId/googleMapsUri/
+    timezoneId: models fabricate plausible-looking place metadata from memory,
+    and pre-filled coords/place IDs used to bypass the authoritative Places
+    resolver (review.md 3C-6). The backend resolves every location server-side
+    from `name`.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     locationId: str | None = None
     role: str | None = None
     name: str | None = None
-    lat: float | None = None
-    lng: float | None = None
-    fullAddress: str | None = None
     description: str | None = None
     link: str | None = None
-    googlePlaceId: str | None = None
-    googleMapsUri: str | None = None
-    timezoneId: str | None = None
 
 
 class AssistantActionFields(BaseModel):
@@ -145,6 +168,10 @@ class UserHomeLocationContext(BaseModel):
 class AssistantRuntimeContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # Today's date (YYYY-MM-DD) in the user's home timezone. The prompt's
+    # date policy resolves relative dates ("tomorrow", "this Friday")
+    # against this — it must be sent on every turn.
+    appCurrentDate: str | None = None
     userHomeLocation: UserHomeLocationContext = Field(default_factory=UserHomeLocationContext)
     userHomeTimezoneId: str | None = None
     uiContext: dict[str, Any] = Field(default_factory=dict)

@@ -86,6 +86,7 @@ def _trip(days, stays=None, travels=None, start="2026-05-10", end="2026-05-12") 
     return TripResponse(
         tripId="trip_1",
         tripName="Test Trip",
+        status="new",
         startDate=start,
         endDate=end,
         stays=stays or [],
@@ -107,7 +108,7 @@ def test_clean_trip_has_no_issues():
     result = verify_trip(trip)
     assert result.ok is True
     assert result.issues == []
-    assert result.daysChecked == 3
+    assert result.days_checked == 3
 
 
 def test_empty_day_flagged():
@@ -138,7 +139,7 @@ def test_missing_day_in_range_flagged():
     empty = [i for i in result.issues if i.code == "EMPTY_DAY"]
     assert len(empty) == 1
     assert empty[0].date == "2026-05-11"
-    assert empty[0].dayId is None
+    assert empty[0].day_id is None
     assert empty[0].severity == "warning"
 
 

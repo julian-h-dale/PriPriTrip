@@ -4,7 +4,6 @@ import {
   Chip,
   Drawer,
   IconButton,
-  Stack,
   Typography,
 } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
@@ -13,9 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import MapIcon from '@mui/icons-material/Map';
 import { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import dayjs, { parseWallClock } from '../../utils/dayjs';
-import { fetchTrip, selectTrip } from '../../store/tripSlice';
+import { parseWallClock } from '../../utils/dayjs';
 import PointForm from '../Forms/PointForm';
 
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
@@ -107,9 +104,7 @@ function LocationRow({ label, loc }) {
   );
 }
 
-export default function PointDetailSheet({ item, onClose }) {
-  const trip = useSelector(selectTrip);
-  const dispatch = useDispatch();
+export default function PointDetailSheet({ tripId, item, onClose }) {
   const [editOpen, setEditOpen] = useState(false);
 
   if (!item) return null;
@@ -245,15 +240,14 @@ export default function PointDetailSheet({ item, onClose }) {
         </Button>
       </Box>
 
-      {/* Edit form */}
-      {trip && (
+      {/* Edit form — cache invalidation refreshes the trip after save/delete */}
+      {tripId && (
         <PointForm
-          tripId={trip.tripId}
+          tripId={tripId}
           dayId={item.dayId}
           open={editOpen}
           onClose={() => setEditOpen(false)}
-          onSaved={() => dispatch(fetchTrip(trip.tripId))}
-          onDeleted={() => { dispatch(fetchTrip(trip.tripId)); setEditOpen(false); onClose(); }}
+          onDeleted={() => { setEditOpen(false); onClose(); }}
           initialValues={item}
         />
       )}

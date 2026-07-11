@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Fab,
   IconButton,
   Stack,
@@ -19,14 +24,13 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
-import { verifyTrip } from '../api/tripImportService';
 import NewTripChatOverlay from '../components/Chat/NewTripChatOverlay';
 import {
-  deleteTripById,
-  fetchTrips,
-  selectTrips,
-  selectTripsStatus,
-} from '../store/tripSlice';
+  useDeleteTripMutation,
+  useGetTripsQuery,
+  useLazyVerifyTripQuery,
+} from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 import AppLayout from '../components/AppLayout';
 
 function fmtDate(dateStr) {
@@ -39,37 +43,44 @@ function fmtDate(dateStr) {
 }
 
 export default function TripsPage() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const trips = useSelector(selectTrips);
-  const status = useSelector(selectTripsStatus);
+  const {
+    data: trips = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetTripsQuery();
+  const [deleteTrip] = useDeleteTripMutation();
+  const [triggerVerify] = useLazyVerifyTripQuery();
+
+  const [confirmingTrip, setConfirmingTrip] = useState(null); // trip pending delete confirmation
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [inspectingTripId, setInspectingTripId] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatTripId, setChatTripId] = useState(null);
 
-  useEffect(() => {
-    dispatch(fetchTrips());
-  }, [dispatch]);
-
-  async function handleDeleteTrip(tripId) {
-    setDeleteError(null);
-    setDeletingTripId(tripId);
+  async function handleDeleteConfirmed() {
+    const trip = confirmingTrip;
+    if (!trip) return;
+    setConfirmingTrip(null);
+    setActionError(null);
+    setDeletingTripId(trip.tripId);
     try {
-      await dispatch(deleteTripById(tripId)).unwrap();
+      await deleteTrip(trip.tripId).unwrap();
     } catch (err) {
-      setDeleteError(err?.message ?? 'Could not delete trip. Please try again.');
+      setActionError(getErrorMessage(err, 'Could not delete trip. Please try again.'));
     } finally {
       setDeletingTripId(null);
     }
   }
 
   async function handleInspectTrip(trip) {
-    setDeleteError(null);
+    setActionError(null);
     setInspectingTripId(trip.tripId);
     try {
-      const verify = await verifyTrip(trip.tripId);
+      const verify = await triggerVerify(trip.tripId).unwrap();
       const hasTravelWorkflowIssues = (verify?.issues ?? []).some(
         (issue) => issue.code === 'TRAVEL_INCOMPLETE_DATES' || issue.code === 'TRAVEL_INCOMPLETE_LOCATIONS'
       );
@@ -83,7 +94,7 @@ export default function TripsPage() {
         state: { verify, tripName: trip.tripName },
       });
     } catch (err) {
-      setDeleteError(err?.response?.data?.detail ?? 'Could not inspect trip. Please try again.');
+      setActionError(getErrorMessage(err, 'Could not inspect trip. Please try again.'));
     } finally {
       setInspectingTripId(null);
     }
@@ -108,15 +119,28 @@ export default function TripsPage() {
           Your Trips
         </Typography>
 
-        {deleteError && <Alert severity="error" sx={{ mb: 2 }}>{deleteError}</Alert>}
+        {actionError && <Alert severity="error" sx={{ mb: 2 }}>{actionError}</Alert>}
 
-        {status === 'loading' && trips.length === 0 && (
+        {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
             <CircularProgress />
           </Box>
         )}
 
-        {status === 'loaded' && trips.length === 0 && (
+        {isError && trips.length === 0 && (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => refetch()}>
+                Retry
+              </Button>
+            }
+          >
+            {getErrorMessage(error, 'Could not load your trips. Check your connection and try again.')}
+          </Alert>
+        )}
+
+        {!isLoading && !isError && trips.length === 0 && (
           <Typography color="text.secondary">No trips found.</Typography>
         )}
 
@@ -155,7 +179,7 @@ export default function TripsPage() {
                   </IconButton>
                   <IconButton
                     aria-label={`Delete ${trip.tripName}`}
-                    onClick={() => handleDeleteTrip(trip.tripId)}
+                    onClick={() => setConfirmingTrip(trip)}
                     disabled={deletingTripId === trip.tripId}
                     sx={{ color: 'error.main' }}
                   >
@@ -167,6 +191,21 @@ export default function TripsPage() {
           </Card>
         ))}
       </Container>
+
+      <Dialog open={!!confirmingTrip} onClose={() => setConfirmingTrip(null)}>
+        <DialogTitle>Delete trip?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {`"${confirmingTrip?.tripName ?? ''}" and all of its days, points, and details will be permanently deleted. This cannot be undone.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmingTrip(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleDeleteConfirmed}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Fab
         color="primary"

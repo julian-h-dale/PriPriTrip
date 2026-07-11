@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -11,14 +10,15 @@ import {
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AppLayout from '../components/AppLayout';
-import { aiImportDocument, saveImportedTrip } from '../api/tripImportService';
-import { fetchTrips } from '../store/tripSlice';
+import { aiImportDocument } from '../api/tripImportService';
+import { useImportTripMutation } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 
 const ACCEPT = '.xlsx,.pdf,.docx';
 
 export default function ImportTripPage() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [importTrip] = useImportTripMutation();
   const inputRef = useRef(null);
 
   const [fileName, setFileName] = useState(null);
@@ -35,8 +35,7 @@ export default function ImportTripPage() {
     try {
       const draft = await aiImportDocument(file);
       setStatus('saving');
-      await saveImportedTrip(draft);
-      dispatch(fetchTrips());
+      await importTrip(draft).unwrap();
       navigate(`/import-summary/${draft.tripId}`, {
         state: {
           trip: draft,
@@ -44,7 +43,7 @@ export default function ImportTripPage() {
         },
       });
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not import the document. Please try again.');
+      setError(getErrorMessage(err, 'Could not import the document. Please try again.'));
       setStatus('idle');
     }
   }

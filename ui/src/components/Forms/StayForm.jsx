@@ -13,7 +13,12 @@ import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useEffect, useState } from 'react';
-import client from '../../api/client';
+import {
+  useCreateStayDetailMutation,
+  useDeleteStayDetailMutation,
+  usePatchStayDetailMutation,
+} from '../../store/apiSlice';
+import { getErrorMessage } from '../../utils/errors';
 import LocationForm from './LocationForm';
 
 const STAY_TYPES = [
@@ -58,6 +63,9 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [createStayDetail] = useCreateStayDetailMutation();
+  const [patchStayDetail] = usePatchStayDetailMutation();
+  const [deleteStayDetail] = useDeleteStayDetailMutation();
   const isEdit = Boolean(initialValues?.stayDetailId);
 
   useEffect(() => {
@@ -142,18 +150,19 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
       };
 
       if (isEdit) {
-        await client.patch(
-          `/trips/${tripId}/stay-details/${initialValues.stayDetailId}`,
-          payload
-        );
+        await patchStayDetail({
+          tripId,
+          stayDetailId: initialValues.stayDetailId,
+          patch: payload,
+        }).unwrap();
       } else {
-        await client.post(`/trips/${tripId}/stay-details`, payload);
+        await createStayDetail({ tripId, stay: payload }).unwrap();
       }
 
       onSaved?.();
       onClose?.();
     } catch (err) {
-      setErrors({ _submit: err?.response?.data?.detail ?? 'Save failed. Please try again.' });
+      setErrors({ _submit: getErrorMessage(err, 'Save failed. Please try again.') });
     } finally {
       setSaving(false);
     }
@@ -163,11 +172,11 @@ export default function StayForm({ tripId, open, onClose, onSaved, initialValues
     if (!isEdit) return;
     try {
       setDeleting(true);
-      await client.delete(`/trips/${tripId}/stay-details/${initialValues.stayDetailId}`);
+      await deleteStayDetail({ tripId, stayDetailId: initialValues.stayDetailId }).unwrap();
       onSaved?.();
       onClose?.();
     } catch (err) {
-      setErrors({ _submit: err?.response?.data?.detail ?? 'Delete failed. Please try again.' });
+      setErrors({ _submit: getErrorMessage(err, 'Delete failed. Please try again.') });
     } finally {
       setDeleting(false);
     }

@@ -1,21 +1,24 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
+from app.dependencies import get_owned_trip, require_owned_trip
 from app.models import ChatMessageRecord, TripRecord, UserRecord
 from app.schemas import ChatMessageResponse, ChatReplyRequest, ChatReplyResponse
 from app.services.ai_trace import log_ai_event
+from app.services.chat_tool_loop import run_chat_tool_loop
 from app.services.llm_contract import AssistantRuntimeContext, UserHomeLocationContext
 from app.services.new_trip_workflow import handle_new_trip_chat_turn
 from app.services.trip_assistant_workflow import handle_trip_assistant_chat_turn
+from app.settings import get_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -103,8 +106,21 @@ def _safe_float(value) -> float | None:
     return value if isinstance(value, (float, int)) else None
 
 
+def _app_current_date(user: UserRecord) -> str:
+    """Today's date in the user's home timezone (fallback UTC)."""
+    from zoneinfo import ZoneInfo
+
+    tzid = _safe_str(getattr(user, "home_timezone_id", None))
+    try:
+        tz = ZoneInfo(tzid) if tzid else timezone.utc
+    except Exception:
+        tz = timezone.utc
+    return datetime.now(tz).date().isoformat()
+
+
 def _runtime_context_for_user(user: UserRecord, ui_context: dict | None) -> dict:
     ctx = AssistantRuntimeContext(
+        appCurrentDate=_app_current_date(user),
         userHomeLocation=UserHomeLocationContext(
             name=_safe_str(getattr(user, "home_location_name", None)),
             fullAddress=_safe_str(getattr(user, "home_location_full_address", None)),
@@ -121,24 +137,15 @@ def _runtime_context_for_user(user: UserRecord, ui_context: dict | None) -> dict
 
 @router.get("/trips/{trip_id}", response_model=list[ChatMessageResponse])
 async def list_trip_chat_messages(
-    trip_id: str,
     workflow_name: str = Query(..., alias="workflowName"),
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    if (
-        trip is None
-        or trip.user_id != str(user.id)
-        or trip.is_deleted
-        or trip.deleted_at is not None
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-
     result = await db.execute(
         select(ChatMessageRecord)
         .where(
-            ChatMessageRecord.trip_id == trip_id,
+            ChatMessageRecord.trip_id == trip.trip_id,
             ChatMessageRecord.user_id == str(user.id),
             ChatMessageRecord.workflow_name == workflow_name,
         )
@@ -153,26 +160,21 @@ async def reply_in_chat(
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
-    trip_id = body.tripId
+    trip_id = body.trip_id
     runtime_context = _runtime_context_for_user(user, body.context)
+    # Verify ownership BEFORE logging: messages aimed at other users' trips
+    # must not reach ai.log (review.md 1C-7).
+    if trip_id:
+        trip = await require_owned_trip(db, trip_id, user)
     log_ai_event(
         "chat.reply.received",
-        workflowName=body.workflowName,
+        workflowName=body.workflow_name,
         tripId=trip_id,
         message=body.message.strip(),
         uiContext=body.context,
         runtimeContext=runtime_context,
     )
-    if trip_id:
-        trip = await db.get(TripRecord, trip_id)
-        if (
-            trip is None
-            or trip.user_id != str(user.id)
-            or trip.is_deleted
-            or trip.deleted_at is not None
-        ):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-    else:
+    if not trip_id:
         today = date.today().isoformat()
         trip_id = str(uuid.uuid4())
         trip = TripRecord(
@@ -190,7 +192,7 @@ async def reply_in_chat(
         message_id=str(uuid.uuid4()),
         user_id=str(user.id),
         trip_id=trip_id,
-        workflow_name=body.workflowName,
+        workflow_name=body.workflow_name,
         message=body.message.strip(),
         is_bot=False,
     )
@@ -202,7 +204,7 @@ async def reply_in_chat(
         .where(
             ChatMessageRecord.trip_id == trip_id,
             ChatMessageRecord.user_id == str(user.id),
-            ChatMessageRecord.workflow_name == body.workflowName,
+            ChatMessageRecord.workflow_name == body.workflow_name,
         )
         .order_by(ChatMessageRecord.created_at)
     )
@@ -214,12 +216,13 @@ async def reply_in_chat(
         .where(
             ChatMessageRecord.trip_id == trip_id,
             ChatMessageRecord.user_id == str(user.id),
-            ChatMessageRecord.workflow_name == _summary_workflow_name(body.workflowName),
+            ChatMessageRecord.workflow_name == _summary_workflow_name(body.workflow_name),
             ChatMessageRecord.is_bot.is_(True),
         )
         .order_by(ChatMessageRecord.created_at.desc())
+        .limit(1)
     )
-    latest_summary = next(iter(summary_result.scalars().all()), None)
+    latest_summary = summary_result.scalar_one_or_none()
     summary_meta = _safe_json_dict(latest_summary.structure_content if latest_summary else None)
     covered_turns = int(summary_meta.get("coveredTurns", 0))
     existing_summary = latest_summary.message if latest_summary else ""
@@ -234,7 +237,7 @@ async def reply_in_chat(
                 message_id=str(uuid.uuid4()),
                 user_id=str(user.id),
                 trip_id=trip_id,
-                workflow_name=_summary_workflow_name(body.workflowName),
+                workflow_name=_summary_workflow_name(body.workflow_name),
                 message=conversation_summary,
                 structure_content=json.dumps({"coveredTurns": desired_covered_turns}),
                 is_bot=True,
@@ -244,7 +247,7 @@ async def reply_in_chat(
 
     log_ai_event(
         "chat.reply.context",
-        workflowName=body.workflowName,
+        workflowName=body.workflow_name,
         tripId=trip_id,
         totalWorkflowMessages=len(workflow_messages),
         transcriptWindowTurns=len(transcript),
@@ -255,7 +258,25 @@ async def reply_in_chat(
         runtimeContext=runtime_context,
     )
 
-    if body.workflowName == "trip:new_trip":
+    assistant_mode = get_settings().chat_assistant_mode
+    if body.workflow_name.startswith("trip:") and assistant_mode == "loop":
+        # Tool-calling loop (review.md 3A): one runner for all trip:* chat
+        # workflows. "batch" mode below is the kill switch back to the
+        # legacy one-shot structured-output workflows.
+        outcome = await run_chat_tool_loop(
+            db,
+            trip=trip,
+            transcript=transcript,
+            latest_message=body.message.strip(),
+            conversation_summary=conversation_summary or None,
+            ui_context=runtime_context,
+            workflow_name=body.workflow_name,
+        )
+        bot_text = outcome.assistantMessage
+        complete = outcome.complete
+        verify = outcome.verify
+        structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
+    elif body.workflow_name == "trip:new_trip":
         outcome = await handle_new_trip_chat_turn(
             db,
             trip=trip,
@@ -268,7 +289,7 @@ async def reply_in_chat(
         complete = outcome.complete
         verify = outcome.verify
         structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
-    elif body.workflowName.startswith("trip:"):
+    elif body.workflow_name.startswith("trip:"):
         outcome = await handle_trip_assistant_chat_turn(
             db,
             trip=trip,
@@ -291,7 +312,7 @@ async def reply_in_chat(
         message_id=str(uuid.uuid4()),
         user_id=str(user.id),
         trip_id=trip_id,
-        workflow_name=body.workflowName,
+        workflow_name=body.workflow_name,
         message=bot_text,
         structure_content=structure_content,
         is_bot=True,
@@ -303,7 +324,7 @@ async def reply_in_chat(
 
     log_ai_event(
         "chat.reply.outcome",
-        workflowName=body.workflowName,
+        workflowName=body.workflow_name,
         tripId=trip_id,
         complete=complete,
         verify=verify.model_dump(mode="json") if verify else None,

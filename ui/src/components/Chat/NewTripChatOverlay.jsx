@@ -17,12 +17,15 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import {
   aiImportDocument,
   aiImportTripDocument,
-  getTrip,
-  saveAiDocumentRecords,
-  saveImportedTrip,
-  saveTripHeader,
-  verifyTrip,
 } from '../../api/tripImportService';
+import {
+  useGetTripQuery,
+  useImportTripMutation,
+  useLazyVerifyTripQuery,
+  useSaveAiDocumentRecordsMutation,
+  useSaveTripHeaderMutation,
+} from '../../store/apiSlice';
+import { getErrorMessage } from '../../utils/errors';
 import { listChatMessages, sendChatMessage } from '../../api/chatService';
 
 function MarkdownBubble({ text, isBot }) {
@@ -106,7 +109,17 @@ export default function NewTripChatOverlay({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [tripSnapshot, setTripSnapshot] = useState(null);
+
+  const [saveTripHeader] = useSaveTripHeaderMutation();
+  const [importTrip] = useImportTripMutation();
+  const [saveAiDocumentRecords] = useSaveAiDocumentRecordsMutation();
+  const [triggerVerify] = useLazyVerifyTripQuery();
+
+  // The trip snapshot decides which upload mode to offer; served from the
+  // RTK Query cache and kept fresh by mutation invalidation.
+  const { data: tripSnapshot } = useGetTripQuery(tripId, {
+    skip: !open || !tripId,
+  });
 
   useEffect(() => {
     let active = true;
@@ -131,26 +144,6 @@ export default function NewTripChatOverlay({
       active = false;
     };
   }, [open, tripId, workflowName]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadTripSnapshot() {
-      if (!open || !tripId) {
-        if (active) setTripSnapshot(null);
-        return;
-      }
-      try {
-        const trip = await getTrip(tripId);
-        if (active) setTripSnapshot(trip);
-      } catch {
-        if (active) setTripSnapshot(null);
-      }
-    }
-    loadTripSnapshot();
-    return () => {
-      active = false;
-    };
-  }, [open, tripId]);
 
   const shouldUseItineraryUpload = !tripSnapshot || tripSnapshot.status === 'new';
 
@@ -224,20 +217,20 @@ export default function NewTripChatOverlay({
             tripName: 'New Trip Draft',
             startDate: today,
             endDate: today,
-          });
+          }).unwrap();
           onTripIdChange?.(targetTripId);
         }
 
         const imported = await aiImportDocument(file, { tripId: targetTripId });
-        const draft = {
+        const draftTrip = {
           ...imported,
           tripId: targetTripId,
         };
-        const saveResult = await saveImportedTrip(draft);
-        const verify = await verifyTrip(saveResult.tripId);
+        const saveResult = await importTrip(draftTrip).unwrap();
+        const verify = await triggerVerify(saveResult.tripId).unwrap();
         onComplete?.({
           tripId: saveResult.tripId,
-          tripName: draft.tripName,
+          tripName: draftTrip.tripName,
           verify,
           complete: true,
         });
@@ -249,10 +242,12 @@ export default function NewTripChatOverlay({
       }
 
       const extraction = await aiImportTripDocument(tripId, file, 'detail_import');
-      const result = await saveAiDocumentRecords(extraction.documentId, {
+      const result = await saveAiDocumentRecords({
+        documentId: extraction.documentId,
+        tripId,
         stays: extraction.stays,
         travels: extraction.travels,
-      });
+      }).unwrap();
       setMessages((prev) => [
         ...prev,
         {
@@ -264,11 +259,12 @@ export default function NewTripChatOverlay({
         },
       ]);
     } catch (err) {
-      const blocked = err?.response?.data?.detail;
-      if (blocked?.errorCode === 'ITINERARY_REIMPORT_BLOCKED') {
+      // Detail may come from RTK Query (err.data) or axios (err.response.data).
+      const detail = err?.data?.detail ?? err?.response?.data?.detail;
+      if (detail?.errorCode === 'ITINERARY_REIMPORT_BLOCKED') {
         setError('Itinerary import is already locked for this trip. Continue in inspection or upload detail documents.');
       } else {
-        setError(err?.response?.data?.detail ?? err?.message ?? 'Could not import that document into the trip.');
+        setError(getErrorMessage(err, err?.message ?? 'Could not import that document into the trip.'));
       }
     } finally {
       setUploading(false);

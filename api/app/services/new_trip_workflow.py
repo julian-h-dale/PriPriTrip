@@ -1,56 +1,21 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 import json
-import os
-import time
-import uuid
 from typing import Optional
 
-from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import LocationRecord, StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord, TripRecord
-from app.schemas import StayDetailImport, TravelDetailImport, TripResponse, VerifyResult
-from app.serializers import point_to_response, stay_to_response, travel_to_response
+from app.schemas import StayDetail, TravelDetail, TripPointResponse, TripResponse, VerifyResult
 from app.services.ai_trace import log_ai_event
-from app.services.detail_points import (
-    CHECK_IN_DEFAULT_TIME,
-    CHECK_OUT_DEFAULT_TIME,
-    normalize_stay_wall_clock,
-    sync_stay_generated_points,
-    sync_travel_generated_points,
-)
 from app.services.llm_contract import AssistantTurn
+from app.services.openai_client import get_async_client, parse_structured
 from app.services.prompt_composer import build_new_trip_stage_prompt
-from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
 from app.services.trip_action_executor import apply_assistant_turn
 from app.services.trip_verify import verify_trip
-
-_DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
-_REQUEST_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", "120"))
-_MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
-
-class WelcomeTurn(BaseModel):
-    assistantMessage: str
-    tripName: Optional[str] = None
-    startDate: Optional[str] = None
-    endDate: Optional[str] = None
-    startLocationName: Optional[str] = None
-    destinationLocationName: Optional[str] = None
-    defaultTimezoneId: Optional[str] = None
-
-
-class TravelTurn(BaseModel):
-    assistantMessage: str
-    travel: Optional[TravelDetailImport] = None
-
-
-class StayTurn(BaseModel):
-    assistantMessage: str
-    stay: Optional[StayDetailImport] = None
 
 
 class WorkflowOutcome(BaseModel):
@@ -58,98 +23,6 @@ class WorkflowOutcome(BaseModel):
     complete: bool = False
     verify: Optional[VerifyResult] = None
     structuredContent: Optional[dict] = None
-
-
-def _coerce_uuid(value: str | None) -> str:
-    if value:
-        try:
-            return str(uuid.UUID(str(value)))
-        except ValueError:
-            pass
-    return str(uuid.uuid4())
-
-
-def _structured_turn_payload(model: BaseModel) -> dict:
-    data = model.model_dump(exclude_none=True)
-    data.pop("assistantMessage", None)
-    return data
-
-
-def _client():
-    from openai import OpenAI
-
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY is not configured on the server.",
-        )
-    return OpenAI(api_key=api_key, timeout=_REQUEST_TIMEOUT, max_retries=_MAX_RETRIES)
-
-
-def _parse(client, *, system: str, user: str, response_format, pass_name: str):
-    started = time.monotonic()
-    log_ai_event(
-        "ai.new_trip.openai.request",
-        passName=pass_name,
-        model=_DEFAULT_MODEL,
-        requestTimeoutSeconds=_REQUEST_TIMEOUT,
-        maxRetries=_MAX_RETRIES,
-        systemPrompt=system,
-        userPrompt=user,
-    )
-    try:
-        completion = client.beta.chat.completions.parse(
-            model=_DEFAULT_MODEL,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            response_format=response_format,
-        )
-    except Exception as exc:
-        log_ai_event(
-            "ai.new_trip.openai.error",
-            passName=pass_name,
-            elapsedSeconds=round(time.monotonic() - started, 3),
-            error=str(exc),
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI request failed: {exc}",
-        ) from exc
-
-    message = completion.choices[0].message
-    usage = getattr(completion, "usage", None)
-    prompt_details = getattr(usage, "prompt_tokens_details", None) if usage else None
-    log_ai_event(
-        "ai.new_trip.openai.response_meta",
-        passName=pass_name,
-        elapsedSeconds=round(time.monotonic() - started, 3),
-        finishReason=(completion.choices[0].finish_reason if completion.choices else None),
-        totalTokens=(getattr(usage, "total_tokens", None) if usage else None),
-        promptTokens=(getattr(usage, "prompt_tokens", None) if usage else None),
-        completionTokens=(getattr(usage, "completion_tokens", None) if usage else None),
-        cachedPromptTokens=(getattr(prompt_details, "cached_tokens", None) if prompt_details else None),
-        refusal=getattr(message, "refusal", None),
-    )
-    if getattr(message, "refusal", None):
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI refused the request: {message.refusal}",
-        )
-    parsed = message.parsed
-    if parsed is None:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI did not return a parseable {pass_name} response.",
-        )
-    log_ai_event(
-        "ai.new_trip.openai.parsed",
-        passName=pass_name,
-        parsed=parsed,
-    )
-    return parsed
 
 
 async def _trip_state_summary(db: AsyncSession, trip: TripRecord) -> dict:
@@ -223,192 +96,12 @@ def _recent_assistant_questions(transcript: list[dict], limit: int = 5) -> list[
     return list(reversed(questions))
 
 
-async def _reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
-    try:
-        start = date.fromisoformat(trip.start_date)
-        end = date.fromisoformat(trip.end_date)
-    except ValueError:
-        return
-    if end < start:
-        return
-
-    existing_result = await db.execute(
-        select(TripDayRecord).where(
-            TripDayRecord.trip_id == trip.trip_id,
-            TripDayRecord.is_deleted.is_(False),
-            TripDayRecord.deleted_at.is_(None),
-        )
-    )
-    existing_days = existing_result.scalars().all()
-    existing_by_date = {day.date: day for day in existing_days}
-
-    current = start
-    desired_dates = set()
-    while current <= end:
-        date_text = current.isoformat()
-        desired_dates.add(date_text)
-        if date_text not in existing_by_date:
-            db.add(
-                TripDayRecord(
-                    day_id=str(uuid.uuid4()),
-                    trip_id=trip.trip_id,
-                    title=date_text,
-                    date=date_text,
-                    description=None,
-                    is_alternate=False,
-                    completed=False,
-                )
-            )
-        current = current.fromordinal(current.toordinal() + 1)
-
-    if existing_days:
-        points_result = await db.execute(
-            select(TripPointRecord).where(
-                TripPointRecord.trip_id == trip.trip_id,
-                TripPointRecord.is_deleted.is_(False),
-                TripPointRecord.deleted_at.is_(None),
-            )
-        )
-        points_by_day: dict[str, list[TripPointRecord]] = {}
-        for point in points_result.scalars().all():
-            points_by_day.setdefault(point.day_id, []).append(point)
-
-        for day in existing_days:
-            if day.date in desired_dates:
-                continue
-            if points_by_day.get(day.day_id):
-                continue
-            day.is_deleted = True
-            day.deleted_at = datetime.now(timezone.utc)
-            day.updated_at = datetime.now(timezone.utc)
-
-    await db.flush()
-
-
-async def _apply_welcome_updates(db: AsyncSession, trip: TripRecord, turn: WelcomeTurn) -> None:
-    if turn.tripName:
-        trip.trip_name = turn.tripName
-    if turn.startLocationName:
-        trip.start_location_name = turn.startLocationName
-    if turn.destinationLocationName:
-        trip.destination_location_name = turn.destinationLocationName
-    if turn.defaultTimezoneId:
-        trip.default_timezone_id = turn.defaultTimezoneId
-    if turn.startDate:
-        trip.start_date = turn.startDate
-    if turn.endDate:
-        trip.end_date = turn.endDate
-    if trip.trip_name == "New Trip Draft" and trip.destination_location_name:
-        trip.trip_name = f"{trip.destination_location_name} Trip"
-    await _reconcile_trip_days(db, trip)
-
-
 def _mark_trip_draft_after_chat_completion(trip: TripRecord) -> None:
     # Completing the chat-driven new-trip flow moves the trip out of "new"
     # so itinerary uploads are no longer allowed.
     if trip.status != "draft":
         trip.status = "draft"
         trip.updated_at = datetime.now(timezone.utc)
-
-
-async def _create_travel(db: AsyncSession, trip: TripRecord, travel: TravelDetailImport) -> None:
-    detail_id = _coerce_uuid(travel.travelDetailId)
-    departure_tzid = travel.departureTimezoneId or trip.default_timezone_id
-    arrival_tzid = travel.arrivalTimezoneId or trip.default_timezone_id
-    departure_local = parse_wall_clock(travel.departureDateTime)
-    arrival_local = parse_wall_clock(travel.arrivalDateTime)
-    rec = TravelDetailRecord(
-        travel_detail_id=detail_id,
-        trip_id=trip.trip_id,
-        name=travel.name,
-        mode=travel.mode,
-        operator=travel.operator,
-        vehicle_number=travel.vehicleNumber,
-        cabin_class=travel.cabinClass,
-        departure_local=departure_local,
-        departure_tzid=departure_tzid,
-        departure_utc=derive_utc(departure_local, departure_tzid),
-        arrival_local=arrival_local,
-        arrival_tzid=arrival_tzid,
-        arrival_utc=derive_utc(arrival_local, arrival_tzid),
-        departure_date_time=wall_clock_to_text(departure_local),
-        arrival_date_time=wall_clock_to_text(arrival_local),
-        confirmation_number=travel.confirmationNumber,
-        description=travel.description,
-    )
-    db.add(rec)
-    await db.flush()
-    for idx, loc in enumerate(travel.locations or []):
-        db.add(
-            LocationRecord(
-                location_id=_coerce_uuid(loc.locationId),
-                point_id=None,
-                stay_detail_id=None,
-                travel_detail_id=detail_id,
-                role=loc.role,
-                sort_order=idx,
-                name=loc.name,
-                lat=loc.lat,
-                lng=loc.lng,
-                full_address=loc.fullAddress,
-                description=loc.description,
-                link=loc.link,
-                google_place_id=loc.googlePlaceId,
-                google_maps_uri=loc.googleMapsUri,
-                timezone_id=loc.timezoneId or tzid_from_coords(loc.lat, loc.lng),
-            )
-        )
-    await sync_travel_generated_points(db, travel=rec)
-
-
-async def _create_stay(db: AsyncSession, trip: TripRecord, stay: StayDetailImport) -> None:
-    detail_id = _coerce_uuid(stay.stayDetailId)
-    check_in_text = normalize_stay_wall_clock(stay.checkIn, default_time=CHECK_IN_DEFAULT_TIME)
-    check_out_text = normalize_stay_wall_clock(stay.checkOut, default_time=CHECK_OUT_DEFAULT_TIME)
-    check_in_tzid = stay.checkInTimezoneId or trip.default_timezone_id
-    check_out_tzid = stay.checkOutTimezoneId or check_in_tzid
-    check_in_local = parse_wall_clock(check_in_text)
-    check_out_local = parse_wall_clock(check_out_text)
-    rec = StayDetailRecord(
-        stay_detail_id=detail_id,
-        trip_id=trip.trip_id,
-        name=stay.name,
-        stay_type=stay.stayType,
-        check_in_local=check_in_local,
-        check_in_tzid=check_in_tzid,
-        check_in_utc=derive_utc(check_in_local, check_in_tzid),
-        check_out_local=check_out_local,
-        check_out_tzid=check_out_tzid,
-        check_out_utc=derive_utc(check_out_local, check_out_tzid),
-        check_in=wall_clock_to_text(check_in_local),
-        check_out=wall_clock_to_text(check_out_local),
-        room_type=stay.roomType,
-        confirmation_number=stay.confirmationNumber,
-        description=stay.description,
-    )
-    db.add(rec)
-    await db.flush()
-    for idx, loc in enumerate(stay.locations or []):
-        db.add(
-            LocationRecord(
-                location_id=_coerce_uuid(loc.locationId),
-                point_id=None,
-                stay_detail_id=detail_id,
-                travel_detail_id=None,
-                role=loc.role,
-                sort_order=idx,
-                name=loc.name,
-                lat=loc.lat,
-                lng=loc.lng,
-                full_address=loc.fullAddress,
-                description=loc.description,
-                link=loc.link,
-                google_place_id=loc.googlePlaceId,
-                google_maps_uri=loc.googleMapsUri,
-                timezone_id=loc.timezoneId or tzid_from_coords(loc.lat, loc.lng),
-            )
-        )
-    await sync_stay_generated_points(db, stay=rec)
 
 
 async def _assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
@@ -468,8 +161,8 @@ async def _assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
         ).scalars().all():
             locs_by_point.setdefault(loc.point_id, []).append(loc)
 
-    stays = {s.stay_detail_id: stay_to_response(s, locs_by_stay.get(s.stay_detail_id, [])) for s in stay_records}
-    travels = {t.travel_detail_id: travel_to_response(t, locs_by_travel.get(t.travel_detail_id, [])) for t in travel_records}
+    stays = {s.stay_detail_id: StayDetail.from_record(s, locs_by_stay.get(s.stay_detail_id, [])) for s in stay_records}
+    travels = {t.travel_detail_id: TravelDetail.from_record(t, locs_by_travel.get(t.travel_detail_id, [])) for t in travel_records}
 
     points_by_day: dict[str, list] = {}
     for point in points:
@@ -478,19 +171,10 @@ async def _assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
     from app.schemas import TripDayWithPoints
 
     days = [
-        TripDayWithPoints(
-            dayId=day.day_id,
-            tripId=day.trip_id,
-            title=day.title,
-            date=day.date,
-            description=day.description,
-            isAlternate=day.is_alternate,
-            completed=day.completed,
-            deletedAt=day.deleted_at.isoformat() if day.deleted_at else None,
-            createdAt=day.created_at.isoformat() if day.created_at else None,
-            updatedAt=day.updated_at.isoformat() if day.updated_at else None,
+        TripDayWithPoints.from_record(
+            day,
             points=[
-                point_to_response(
+                TripPointResponse.from_record(
                     point,
                     locs_by_point.get(point.point_id, []),
                     travels.get(point.travel_detail_id) if point.travel_detail_id else None,
@@ -503,14 +187,14 @@ async def _assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
     ]
 
     return TripResponse(
-        tripId=trip.trip_id,
-        tripName=trip.trip_name,
+        trip_id=trip.trip_id,
+        trip_name=trip.trip_name,
         status=trip.status,
-        startLocationName=trip.start_location_name,
-        destinationLocationName=trip.destination_location_name,
-        defaultTimezoneId=trip.default_timezone_id,
-        startDate=trip.start_date,
-        endDate=trip.end_date,
+        start_location_name=trip.start_location_name,
+        destination_location_name=trip.destination_location_name,
+        default_timezone_id=trip.default_timezone_id,
+        start_date=trip.start_date,
+        end_date=trip.end_date,
         stays=list(stays.values()),
         travels=list(travels.values()),
         days=days,
@@ -527,9 +211,9 @@ async def handle_new_trip_chat_turn(
     ui_context: dict | None = None,
     client=None,
 ) -> WorkflowOutcome:
-    client = client or _client()
+    client = client or get_async_client()
     summary = await _trip_state_summary(db, trip)
-    trip_snapshot = (await _assembled_trip(db, trip)).model_dump(mode="json")
+    trip_snapshot = (await _assembled_trip(db, trip)).model_dump(mode="json", by_alias=True)
     log_ai_event(
         "ai.new_trip.turn.start",
         tripId=trip.trip_id,
@@ -574,7 +258,7 @@ async def handle_new_trip_chat_turn(
         )
 
     log_ai_event("ai.new_trip.turn.stage", tripId=trip.trip_id, stage=stage)
-    turn = _parse(
+    turn = await parse_structured(
         client,
         system=build_new_trip_stage_prompt(stage),
         user=_conversation_prompt(
@@ -587,6 +271,7 @@ async def handle_new_trip_chat_turn(
         ),
         response_format=AssistantTurn,
         pass_name=f"new-trip-{stage}",
+        event_prefix="ai.new_trip.openai",
     )
 
     applied = await apply_assistant_turn(
@@ -627,12 +312,16 @@ async def handle_new_trip_chat_turn(
         assembled = await _assembled_trip(db, trip)
         verify = verify_trip(assembled)
         summary_message = (
-            f"Your trip draft is ready: {assembled.tripName}.\n"
-            f"- dates: {assembled.startDate} to {assembled.endDate}\n"
+            f"Your trip draft is ready: {assembled.trip_name}.\n"
+            f"- dates: {assembled.start_date} to {assembled.end_date}\n"
             f"- travel legs: {len(assembled.travels)}\n"
             f"- stays: {len(assembled.stays)}\n"
             "Opening inspection so you can review any remaining issues."
         )
+        # Don't swallow the model's follow-up question when the trip shell
+        # completes — losing it costs real information (review.md 3C-5).
+        if applied.followUpQuestion:
+            summary_message = f"{summary_message}\n\n{applied.followUpQuestion}"
         log_ai_event(
             "ai.new_trip.turn.outcome",
             tripId=trip.trip_id,

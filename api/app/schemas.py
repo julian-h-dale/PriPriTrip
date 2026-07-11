@@ -1,320 +1,422 @@
+"""API request/response schemas.
+
+Python code uses snake_case field names; the wire format stays camelCase via
+the `to_camel` alias generator (FastAPI serializes response models by alias
+by default, and `populate_by_name=True` lets requests/constructors use either
+form). The `from_record` classmethods replace the old app/serializers.py.
+
+NOTE: the OpenAI structured-output models (app/services/llm_contract.py and
+the AI* models in app/services/trip_ai.py) are deliberately NOT converted —
+their camelCase field names are part of the LLM contract.
+"""
+
 import uuid
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 from app.enums import AIDocumentType, AIDocumentWorkflowMode, LocationRole, PointType, StayType, TravelMode
+from app.services.timezones import wall_clock_to_text
 
 
 def _uuid() -> str:
     return str(uuid.uuid4())
 
 
+class APIModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
 # ── Auth ────────────────────────────────────────────────────────────────────
 
-class AuthResponse(BaseModel):
+class AuthResponse(APIModel):
     token: str
-    mapsApiKey: str
+    maps_api_key: str
 
 
-class UserProfileLocation(BaseModel):
+class UserProfileLocation(APIModel):
     name: Optional[str] = None
-    fullAddress: Optional[str] = None
+    full_address: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
+    google_place_id: Optional[str] = None
+    google_maps_uri: Optional[str] = None
 
 
-class UserProfileResponse(BaseModel):
+class UserProfileResponse(APIModel):
     email: str
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
-    homeLocation: UserProfileLocation = UserProfileLocation()
-    homeTimezoneId: Optional[str] = None
-    phoneNumber: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    home_location: UserProfileLocation = UserProfileLocation()
+    home_timezone_id: Optional[str] = None
+    phone_number: Optional[str] = None
 
 
-class UserProfileUpdate(BaseModel):
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
-    homeLocation: Optional[UserProfileLocation] = None
-    homeTimezoneId: Optional[str] = None
-    phoneNumber: Optional[str] = None
+class UserProfileUpdate(APIModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    home_location: Optional[UserProfileLocation] = None
+    home_timezone_id: Optional[str] = None
+    phone_number: Optional[str] = None
 
 
-class TimezoneLookupRequest(BaseModel):
-    lat: Optional[float] = None
-    lng: Optional[float] = None
+class TimezoneLookupRequest(APIModel):
+    lat: float
+    lng: float
+
+
+class TimezoneLookupResponse(APIModel):
+    timezone_id: Optional[str] = None
 
 
 # ── Trip header ─────────────────────────────────────────────────────────────
 
-class TripHeader(BaseModel):
-    tripId: str
-    tripName: str
-    startLocationName: Optional[str] = None
-    destinationLocationName: Optional[str] = None
-    defaultTimezoneId: Optional[str] = None
-    startDate: str
-    endDate: str
+class TripHeader(APIModel):
+    # Optional: the PUT /trips/{trip_id} path segment is authoritative.
+    trip_id: Optional[str] = None
+    trip_name: str
+    start_location_name: Optional[str] = None
+    destination_location_name: Optional[str] = None
+    default_timezone_id: Optional[str] = None
+    start_date: str
+    end_date: str
+
+
+class TripHeaderResponse(APIModel):
+    trip_id: str
+    trip_name: str
+    start_date: str
+    end_date: str
+    status: str
 
 
 # ── Location ────────────────────────────────────────────────────────────────
 
-class LocationCreate(BaseModel):
-    locationId: str = Field(default_factory=_uuid)
+class LocationCreate(APIModel):
+    location_id: str = Field(default_factory=_uuid)
     role: LocationRole
     name: str
     lat: Optional[float] = None
     lng: Optional[float] = None
-    fullAddress: Optional[str] = None
+    full_address: Optional[str] = None
     description: Optional[str] = None
     link: Optional[str] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
-    timezoneId: Optional[str] = None
+    google_place_id: Optional[str] = None
+    google_maps_uri: Optional[str] = None
+    timezone_id: Optional[str] = None
 
 
-class LocationResponse(BaseModel):
-    locationId: str
+class LocationResponse(APIModel):
+    location_id: str
     # Exactly one owner is set depending on what the location is attached to.
-    pointId: Optional[str] = None
-    stayDetailId: Optional[str] = None
-    travelDetailId: Optional[str] = None
+    point_id: Optional[str] = None
+    stay_detail_id: Optional[str] = None
+    travel_detail_id: Optional[str] = None
     role: LocationRole
     name: str
     lat: Optional[float] = None
     lng: Optional[float] = None
-    fullAddress: Optional[str] = None
+    full_address: Optional[str] = None
     description: Optional[str] = None
     link: Optional[str] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
-    timezoneId: Optional[str] = None
+    google_place_id: Optional[str] = None
+    google_maps_uri: Optional[str] = None
+    timezone_id: Optional[str] = None
+
+
+def _location_responses(locations: list | None) -> List[LocationResponse]:
+    ordered = sorted(locations or [], key=lambda loc: loc.sort_order)
+    return [LocationResponse.model_validate(loc) for loc in ordered]
 
 
 # ── Travel / Stay details (first-class trip entities) ────────────────────────
 
-class TravelDetail(BaseModel):
-    travelDetailId: str = Field(default_factory=_uuid)
-    tripId: Optional[str] = None
+class TravelDetail(APIModel):
+    travel_detail_id: str = Field(default_factory=_uuid)
+    trip_id: Optional[str] = None
     name: Optional[str] = None
     mode: TravelMode
     operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
-    departureDateTime: Optional[str] = None
-    departureTimezoneId: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    arrivalTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    vehicle_number: Optional[str] = None
+    cabin_class: Optional[str] = None
+    departure_date_time: Optional[str] = None
+    departure_timezone_id: Optional[str] = None
+    arrival_date_time: Optional[str] = None
+    arrival_timezone_id: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
     locations: List[LocationResponse] = []
 
+    @classmethod
+    def from_record(cls, rec, locations: list | None = None) -> "TravelDetail":
+        return cls(
+            travel_detail_id=rec.travel_detail_id,
+            trip_id=rec.trip_id,
+            name=rec.name,
+            mode=rec.mode,
+            operator=rec.operator,
+            vehicle_number=rec.vehicle_number,
+            cabin_class=rec.cabin_class,
+            departure_date_time=wall_clock_to_text(rec.departure_local) or rec.departure_date_time,
+            departure_timezone_id=rec.departure_tzid,
+            arrival_date_time=wall_clock_to_text(rec.arrival_local) or rec.arrival_date_time,
+            arrival_timezone_id=rec.arrival_tzid,
+            confirmation_number=rec.confirmation_number,
+            description=rec.description,
+            locations=_location_responses(locations),
+        )
 
-class StayDetail(BaseModel):
-    stayDetailId: str = Field(default_factory=_uuid)
-    tripId: Optional[str] = None
+
+class StayDetail(APIModel):
+    stay_detail_id: str = Field(default_factory=_uuid)
+    trip_id: Optional[str] = None
     name: Optional[str] = None
-    stayType: StayType
-    checkIn: Optional[str] = None
-    checkInTimezoneId: Optional[str] = None
-    checkOut: Optional[str] = None
-    checkOutTimezoneId: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    stay_type: StayType
+    check_in: Optional[str] = None
+    check_in_timezone_id: Optional[str] = None
+    check_out: Optional[str] = None
+    check_out_timezone_id: Optional[str] = None
+    room_type: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
     locations: List[LocationResponse] = []
 
+    @classmethod
+    def from_record(cls, rec, locations: list | None = None) -> "StayDetail":
+        return cls(
+            stay_detail_id=rec.stay_detail_id,
+            trip_id=rec.trip_id,
+            name=rec.name,
+            stay_type=rec.stay_type,
+            check_in=wall_clock_to_text(rec.check_in_local) or rec.check_in,
+            check_in_timezone_id=rec.check_in_tzid,
+            check_out=wall_clock_to_text(rec.check_out_local) or rec.check_out,
+            check_out_timezone_id=rec.check_out_tzid,
+            room_type=rec.room_type,
+            confirmation_number=rec.confirmation_number,
+            description=rec.description,
+            locations=_location_responses(locations),
+        )
 
-class TravelDetailImport(BaseModel):
-    travelDetailId: str = Field(default_factory=_uuid)
+
+class TravelDetailImport(APIModel):
+    travel_detail_id: str = Field(default_factory=_uuid)
     name: Optional[str] = None
     mode: TravelMode
     operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
-    departureDateTime: Optional[str] = None
-    departureTimezoneId: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    arrivalTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    vehicle_number: Optional[str] = None
+    cabin_class: Optional[str] = None
+    departure_date_time: Optional[str] = None
+    departure_timezone_id: Optional[str] = None
+    arrival_date_time: Optional[str] = None
+    arrival_timezone_id: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
     locations: List[LocationCreate] = []
 
 
-class StayDetailImport(BaseModel):
-    stayDetailId: str = Field(default_factory=_uuid)
+class StayDetailImport(APIModel):
+    stay_detail_id: str = Field(default_factory=_uuid)
     name: Optional[str] = None
-    stayType: StayType
-    checkIn: Optional[str] = None
-    checkInTimezoneId: Optional[str] = None
-    checkOut: Optional[str] = None
-    checkOutTimezoneId: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    stay_type: StayType
+    check_in: Optional[str] = None
+    check_in_timezone_id: Optional[str] = None
+    check_out: Optional[str] = None
+    check_out_timezone_id: Optional[str] = None
+    room_type: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
     locations: List[LocationCreate] = []
 
 
-class TravelDetailPatch(BaseModel):
+class TravelDetailPatch(APIModel):
     name: Optional[str] = None
     mode: Optional[TravelMode] = None
     operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
-    departureDateTime: Optional[str] = None
-    departureTimezoneId: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    arrivalTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    vehicle_number: Optional[str] = None
+    cabin_class: Optional[str] = None
+    departure_date_time: Optional[str] = None
+    departure_timezone_id: Optional[str] = None
+    arrival_date_time: Optional[str] = None
+    arrival_timezone_id: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
     locations: Optional[List[LocationCreate]] = None
 
 
-class StayDetailPatch(BaseModel):
+class StayDetailPatch(APIModel):
     name: Optional[str] = None
-    stayType: Optional[StayType] = None
-    checkIn: Optional[str] = None
-    checkInTimezoneId: Optional[str] = None
-    checkOut: Optional[str] = None
-    checkOutTimezoneId: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    stay_type: Optional[StayType] = None
+    check_in: Optional[str] = None
+    check_in_timezone_id: Optional[str] = None
+    check_out: Optional[str] = None
+    check_out_timezone_id: Optional[str] = None
+    room_type: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
     locations: Optional[List[LocationCreate]] = None
 
 
 # ── Trip Day ────────────────────────────────────────────────────────────────
 
-class TripDayCreate(BaseModel):
-    dayId: str
+class TripDayCreate(APIModel):
+    day_id: str
     title: str
     date: str
     description: Optional[str] = None
-    isAlternate: bool = False
+    is_alternate: bool = False
     completed: bool = False
 
 
-class TripDayUpdate(BaseModel):
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
-
-
-class TripDayPatch(BaseModel):
+class TripDayPatch(APIModel):
     title: Optional[str] = None
     date: Optional[str] = None
     description: Optional[str] = None
-    isAlternate: Optional[bool] = None
+    is_alternate: Optional[bool] = None
     completed: Optional[bool] = None
 
 
-class TripDayResponse(BaseModel):
-    dayId: str
-    tripId: str
+class TripDayResponse(APIModel):
+    day_id: str
+    trip_id: str
     title: str
     date: str
     description: Optional[str] = None
-    isAlternate: bool = False
+    is_alternate: bool = False
     completed: bool
-    deletedAt: Optional[str] = None
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
+    deleted_at: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+    @classmethod
+    def from_record(cls, r) -> "TripDayResponse":
+        return cls(**_day_fields(r))
+
+
+def _day_fields(r) -> dict:
+    return dict(
+        day_id=r.day_id,
+        trip_id=r.trip_id,
+        title=r.title,
+        date=r.date,
+        description=r.description,
+        is_alternate=r.is_alternate,
+        completed=r.completed,
+        deleted_at=r.deleted_at.isoformat() if r.deleted_at else None,
+        created_at=r.created_at.isoformat() if r.created_at else None,
+        updated_at=r.updated_at.isoformat() if r.updated_at else None,
+    )
 
 
 # ── Trip Point ───────────────────────────────────────────────────────────────
 
-class TripPointCreate(BaseModel):
-    pointId: str = Field(default_factory=_uuid)
-    dayId: Optional[str] = None
+class TripPointCreate(APIModel):
+    point_id: str = Field(default_factory=_uuid)
+    day_id: Optional[str] = None
     type: PointType
     title: str
-    stayDetailId: Optional[str] = None
-    travelDetailId: Optional[str] = None
-    startDateTime: Optional[str] = None
-    startTimezoneId: Optional[str] = None
-    endDateTime: Optional[str] = None
-    endTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    stay_detail_id: Optional[str] = None
+    travel_detail_id: Optional[str] = None
+    start_date_time: Optional[str] = None
+    start_timezone_id: Optional[str] = None
+    end_date_time: Optional[str] = None
+    end_timezone_id: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
+    image_url: Optional[str] = None
+    logo_url: Optional[str] = None
     locations: List[LocationCreate] = []
-    isSystemCreated: bool = False
+    is_system_created: bool = False
     completed: bool = False
-    completedDateTime: Optional[str] = None
+    completed_date_time: Optional[str] = None
 
 
-class TripPointUpdate(BaseModel):
-    dayId: str
-    type: PointType
-    title: str
-    stayDetailId: Optional[str] = None
-    travelDetailId: Optional[str] = None
-    startDateTime: Optional[str] = None
-    startTimezoneId: Optional[str] = None
-    endDateTime: Optional[str] = None
-    endTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationCreate] = []
-    isSystemCreated: bool = False
-    completed: bool = False
-    completedDateTime: Optional[str] = None
-
-
-class TripPointPatch(BaseModel):
-    dayId: Optional[str] = None
+class TripPointPatch(APIModel):
+    day_id: Optional[str] = None
     type: Optional[PointType] = None
     title: Optional[str] = None
-    stayDetailId: Optional[str] = None
-    travelDetailId: Optional[str] = None
-    startDateTime: Optional[str] = None
-    startTimezoneId: Optional[str] = None
-    endDateTime: Optional[str] = None
-    endTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    stay_detail_id: Optional[str] = None
+    travel_detail_id: Optional[str] = None
+    start_date_time: Optional[str] = None
+    start_timezone_id: Optional[str] = None
+    end_date_time: Optional[str] = None
+    end_timezone_id: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
+    image_url: Optional[str] = None
+    logo_url: Optional[str] = None
     locations: Optional[List[LocationCreate]] = None
-    isSystemCreated: Optional[bool] = None
+    is_system_created: Optional[bool] = None
     completed: Optional[bool] = None
-    completedDateTime: Optional[str] = None
+    completed_date_time: Optional[str] = None
 
 
-class TripPointResponse(BaseModel):
-    pointId: str
-    tripId: str
-    dayId: str
+class TripPointResponse(APIModel):
+    point_id: str
+    trip_id: str
+    day_id: str
     type: PointType
     title: str
-    stayDetailId: Optional[str] = None
-    travelDetailId: Optional[str] = None
-    startDateTime: Optional[str] = None
-    startTimezoneId: Optional[str] = None
-    endDateTime: Optional[str] = None
-    endTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    stay_detail_id: Optional[str] = None
+    travel_detail_id: Optional[str] = None
+    start_date_time: Optional[str] = None
+    start_timezone_id: Optional[str] = None
+    end_date_time: Optional[str] = None
+    end_timezone_id: Optional[str] = None
+    confirmation_number: Optional[str] = None
     description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
+    image_url: Optional[str] = None
+    logo_url: Optional[str] = None
     locations: List[LocationResponse] = []
-    isSystemCreated: bool = False
+    is_system_created: bool = False
     # The referenced first-class detail, embedded for convenience.
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
+    travel_detail: Optional[TravelDetail] = None
+    stay_detail: Optional[StayDetail] = None
     completed: bool
-    completedDateTime: Optional[str] = None
-    deletedAt: Optional[str] = None
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
+    completed_date_time: Optional[str] = None
+    deleted_at: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+    @classmethod
+    def from_record(
+        cls,
+        point,
+        locations: list,
+        travel: Optional[TravelDetail] = None,
+        stay: Optional[StayDetail] = None,
+    ) -> "TripPointResponse":
+        return cls(
+            point_id=point.point_id,
+            trip_id=point.trip_id,
+            day_id=point.day_id,
+            type=point.type,
+            title=point.title,
+            stay_detail_id=point.stay_detail_id,
+            travel_detail_id=point.travel_detail_id,
+            start_date_time=wall_clock_to_text(point.start_local) or point.start_date_time,
+            start_timezone_id=point.start_tzid,
+            end_date_time=wall_clock_to_text(point.end_local) or point.end_date_time,
+            end_timezone_id=point.end_tzid,
+            confirmation_number=point.confirmation_number,
+            description=point.description,
+            image_url=point.image_url,
+            logo_url=point.logo_url,
+            locations=_location_responses(locations),
+            is_system_created=point.is_system_created,
+            travel_detail=travel,
+            stay_detail=stay,
+            completed=point.completed,
+            completed_date_time=point.completed_date_time,
+            deleted_at=point.deleted_at.isoformat() if point.deleted_at else None,
+            created_at=point.created_at.isoformat() if point.created_at else None,
+            updated_at=point.updated_at.isoformat() if point.updated_at else None,
+        )
 
 
 # ── Assembled trip response ──────────────────────────────────────────────────
@@ -322,23 +424,27 @@ class TripPointResponse(BaseModel):
 class TripDayWithPoints(TripDayResponse):
     points: List[TripPointResponse] = []
 
-
-class TripListItem(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
+    @classmethod
+    def from_record(cls, r, points: Optional[List[TripPointResponse]] = None) -> "TripDayWithPoints":
+        return cls(points=points or [], **_day_fields(r))
 
 
-class TripResponse(BaseModel):
-    tripId: str
-    tripName: str
+class TripListItem(APIModel):
+    trip_id: str
+    trip_name: str
+    start_date: str
+    end_date: str
+
+
+class TripResponse(APIModel):
+    trip_id: str
+    trip_name: str
     status: str
-    startLocationName: Optional[str] = None
-    destinationLocationName: Optional[str] = None
-    defaultTimezoneId: Optional[str] = None
-    startDate: str
-    endDate: str
+    start_location_name: Optional[str] = None
+    destination_location_name: Optional[str] = None
+    default_timezone_id: Optional[str] = None
+    start_date: str
+    end_date: str
     stays: List[StayDetail] = []
     travels: List[TravelDetail] = []
     days: List[TripDayWithPoints] = []
@@ -346,110 +452,110 @@ class TripResponse(BaseModel):
 
 # ── Import ───────────────────────────────────────────────────────────────────
 
-class TripDayImport(BaseModel):
-    dayId: str = Field(default_factory=_uuid)
+class TripDayImport(APIModel):
+    day_id: str = Field(default_factory=_uuid)
     title: str
     date: str
     description: Optional[str] = None
-    isAlternate: bool = False
+    is_alternate: bool = False
     completed: bool = False
     points: List[TripPointCreate] = []
 
 
-class TripImport(BaseModel):
-    tripId: str = Field(default_factory=_uuid)
-    tripName: str
-    defaultTimezoneId: Optional[str] = None
-    startDate: str
-    endDate: str
+class TripImport(APIModel):
+    trip_id: str = Field(default_factory=_uuid)
+    trip_name: str
+    default_timezone_id: Optional[str] = None
+    start_date: str
+    end_date: str
     stays: List[StayDetailImport] = []
     travels: List[TravelDetailImport] = []
     days: List[TripDayImport] = []
 
 
-class ImportResult(BaseModel):
+class ImportResult(APIModel):
     status: str
-    tripId: str
-    daysImported: int
-    pointsImported: int
-    staysImported: int = 0
-    travelsImported: int = 0
+    trip_id: str
+    days_imported: int
+    points_imported: int
+    stays_imported: int = 0
+    travels_imported: int = 0
 
 
-class AIDocumentExtraction(BaseModel):
-    documentId: str
-    tripId: str
+class AIDocumentExtraction(APIModel):
+    document_id: str
+    trip_id: str
     filename: str
-    documentType: AIDocumentType = AIDocumentType.DETAIL
-    workflowMode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
+    document_type: AIDocumentType = AIDocumentType.DETAIL
+    workflow_mode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
     cached: bool = False
     stays: List[StayDetailImport] = []
     travels: List[TravelDetailImport] = []
 
 
-class AIDocumentSaveRequest(BaseModel):
+class AIDocumentSaveRequest(APIModel):
     stays: Optional[List[StayDetailImport]] = None
     travels: Optional[List[TravelDetailImport]] = None
-    stayDetailIds: Optional[List[str]] = None
-    travelDetailIds: Optional[List[str]] = None
+    stay_detail_ids: Optional[List[str]] = None
+    travel_detail_ids: Optional[List[str]] = None
 
 
-class AIDocumentSaveResult(BaseModel):
+class AIDocumentSaveResult(APIModel):
     status: str
-    tripId: str
-    documentId: str
-    staysSaved: int
-    travelsSaved: int
+    trip_id: str
+    document_id: str
+    stays_saved: int
+    travels_saved: int
 
 
-class AIDocumentListItem(BaseModel):
-    documentId: str
-    tripId: str
+class AIDocumentListItem(APIModel):
+    document_id: str
+    trip_id: str
     filename: str
-    documentType: AIDocumentType = AIDocumentType.DETAIL
-    workflowMode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
-    staysExtracted: int = 0
-    travelsExtracted: int = 0
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
+    document_type: AIDocumentType = AIDocumentType.DETAIL
+    workflow_mode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
+    stays_extracted: int = 0
+    travels_extracted: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 # ── Verify ───────────────────────────────────────────────────────────────────
 
-class VerifyIssue(BaseModel):
+class VerifyIssue(APIModel):
     code: str
     severity: str  # "error" | "warning"
     date: str
-    dayId: Optional[str] = None
+    day_id: Optional[str] = None
     message: str
 
 
-class VerifyResult(BaseModel):
+class VerifyResult(APIModel):
     ok: bool
-    daysChecked: int
+    days_checked: int
     issues: List[VerifyIssue] = []
 
 
-class ChatMessageResponse(BaseModel):
-    messageId: str
-    tripId: str
-    workflowName: str
+class ChatMessageResponse(APIModel):
+    message_id: str
+    trip_id: str
+    workflow_name: str
     message: str
-    structureContent: Optional[str] = None
-    isBot: bool
-    createdAt: Optional[str] = None
+    structure_content: Optional[str] = None
+    is_bot: bool
+    created_at: Optional[str] = None
 
 
-class ChatReplyRequest(BaseModel):
-    tripId: Optional[str] = None
-    workflowName: str
+class ChatReplyRequest(APIModel):
+    trip_id: Optional[str] = None
+    workflow_name: str
     message: str
     context: Optional[dict] = None
 
 
-class ChatReplyResponse(BaseModel):
-    tripId: str
+class ChatReplyResponse(APIModel):
+    trip_id: str
     complete: bool = False
-    tripName: Optional[str] = None
+    trip_name: Optional[str] = None
     verify: Optional[VerifyResult] = None
     messages: List[ChatMessageResponse] = []

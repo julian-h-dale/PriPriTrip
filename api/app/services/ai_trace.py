@@ -4,11 +4,12 @@ from datetime import datetime, timezone
 import json
 import logging
 from logging.handlers import RotatingFileHandler
-import os
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
+
+from app.settings import get_settings
 
 _LOGGER_NAME = "app.ai"
 
@@ -19,7 +20,7 @@ def _default_log_path() -> Path:
 
 
 def _resolve_log_path() -> Path:
-    configured = os.environ.get("AI_LOG_PATH", "").strip()
+    configured = get_settings().ai_log_path.strip()
     if not configured:
         return _default_log_path()
     path = Path(configured)
@@ -33,11 +34,12 @@ def get_ai_logger() -> logging.Logger:
     if logger.handlers:
         return logger
 
-    level_name = os.environ.get("AI_LOG_LEVEL", "INFO").upper()
+    settings = get_settings()
+    level_name = settings.ai_log_level.upper()
     level = getattr(logging, level_name, logging.INFO)
 
-    max_bytes = int(os.environ.get("AI_LOG_MAX_BYTES", "10485760"))
-    backup_count = int(os.environ.get("AI_LOG_BACKUP_COUNT", "3"))
+    max_bytes = settings.ai_log_max_bytes
+    backup_count = settings.ai_log_backup_count
     log_path = _resolve_log_path()
     log_path.parent.mkdir(parents=True, exist_ok=True)
 

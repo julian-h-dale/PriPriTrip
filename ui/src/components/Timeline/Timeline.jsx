@@ -3,23 +3,25 @@ import { Box, Typography } from '@mui/material';
 import { AnimatePresence } from 'framer-motion';
 import MuiTimeline from '@mui/lab/Timeline';
 import { timelineOppositeContentClasses } from '@mui/lab/TimelineOppositeContent';
-import { useDispatch, useSelector } from 'react-redux';
 import dayjs from '../../utils/dayjs';
-import { fetchTrip, selectTrip } from '../../store/tripSlice';
 import DayTimelineItem from './DayTimelineItem';
 import PointTimelineItem from './PointTimelineItem';
 import PointDetailSheet from './PointDetailSheet';
 import PointForm from '../Forms/PointForm';
 
-export default function Timeline({ tripId, expandedDayId, onExpandedDayChange }) {
-  const dispatch = useDispatch();
-  const trip = useSelector(selectTrip);
-  const [selectedPoint, setSelectedPoint] = useState(null);
+export default function Timeline({ tripId, trip, expandedDayId, onExpandedDayChange }) {
+  const [selectedPointId, setSelectedPointId] = useState(null);
   const [addPointContext, setAddPointContext] = useState(null); // { dayId, initialValues }
 
   if (!trip) return null;
 
   const sortedDays = trip.days;
+
+  // Derive the selected point from the fresh trip so an edit + automatic
+  // refetch updates the open detail sheet instead of showing stale data.
+  const selectedPoint = selectedPointId
+    ? sortedDays.flatMap((day) => day.points).find((p) => p.pointId === selectedPointId) ?? null
+    : null;
 
   const renderItems = [];
   sortedDays.forEach((day) => {
@@ -76,7 +78,7 @@ export default function Timeline({ tripId, expandedDayId, onExpandedDayChange })
                 item={item}
                 isFirst={isFirst}
                 isLast={isLast}
-                onSelect={setSelectedPoint}
+                onSelect={(point) => setSelectedPointId(point?.pointId ?? null)}
               />
             );
           })}
@@ -84,8 +86,9 @@ export default function Timeline({ tripId, expandedDayId, onExpandedDayChange })
       </MuiTimeline>
 
       <PointDetailSheet
+        tripId={tripId}
         item={selectedPoint}
-        onClose={() => setSelectedPoint(null)}
+        onClose={() => setSelectedPointId(null)}
       />
 
       <PointForm
@@ -94,10 +97,7 @@ export default function Timeline({ tripId, expandedDayId, onExpandedDayChange })
         open={!!addPointContext}
         initialValues={addPointContext?.initialValues}
         onClose={() => setAddPointContext(null)}
-        onSaved={() => {
-          dispatch(fetchTrip(tripId));
-          setAddPointContext(null);
-        }}
+        onSaved={() => setAddPointContext(null)}
       />
     </Box>
   );

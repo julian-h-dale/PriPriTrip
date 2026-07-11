@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -17,64 +18,47 @@ import AppLayout from '../components/AppLayout';
 import {
   aiImportTripDocument,
   getAiDocumentExtraction,
-  listAiDocuments,
   regenAiDocumentExtraction,
 } from '../api/tripImportService';
+import { apiSlice, useGetAiDocumentsQuery } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 
 const ACCEPT = '.xlsx,.pdf,.docx';
 
 export default function DocumentImporterPage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const inputRef = useRef(null);
 
   const [status, setStatus] = useState('idle'); // idle | extracting
   const [fileName, setFileName] = useState(null);
-  const [error, setError] = useState(null);
-  const [documents, setDocuments] = useState([]);
-  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [actionError, setActionError] = useState(null);
   const [workingDocumentId, setWorkingDocumentId] = useState(null);
+
+  const {
+    data: documents = [],
+    isLoading: loadingDocs,
+    error: docsError,
+  } = useGetAiDocumentsQuery(tripId, { skip: !tripId });
+
+  const error = actionError
+    ?? (docsError ? getErrorMessage(docsError, 'Could not load previous documents.') : null);
 
   const busy = status !== 'idle';
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadDocuments() {
-      if (!tripId) return;
-      setLoadingDocs(true);
-      try {
-        const data = await listAiDocuments(tripId);
-        if (active) setDocuments(data);
-      } catch (err) {
-        if (active) {
-          setError(err?.response?.data?.detail ?? 'Could not load previous documents.');
-        }
-      } finally {
-        if (active) setLoadingDocs(false);
-      }
-    }
-
-    loadDocuments();
-    return () => {
-      active = false;
-    };
-  }, [tripId]);
-
-  async function refreshDocuments() {
-    if (!tripId) return;
-    const data = await listAiDocuments(tripId);
-    setDocuments(data);
+  function invalidateDocuments() {
+    dispatch(apiSlice.util.invalidateTags([{ type: 'AiDocuments', id: tripId }]));
   }
 
   async function handleFile(file) {
     if (!file || !tripId) return;
-    setError(null);
+    setActionError(null);
     setFileName(file.name);
     setStatus('extracting');
     try {
       const extraction = await aiImportTripDocument(tripId, file);
-      await refreshDocuments();
+      invalidateDocuments();
       navigate(`/trip/${tripId}/document-import/review`, {
         state: {
           extraction,
@@ -82,13 +66,13 @@ export default function DocumentImporterPage() {
         },
       });
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not extract details from this document.');
+      setActionError(getErrorMessage(err, 'Could not extract details from this document.'));
       setStatus('idle');
     }
   }
 
   async function handleReview(documentId) {
-    setError(null);
+    setActionError(null);
     setWorkingDocumentId(documentId);
     try {
       const extraction = await getAiDocumentExtraction(documentId);
@@ -99,17 +83,17 @@ export default function DocumentImporterPage() {
         },
       });
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not load extracted details.');
+      setActionError(getErrorMessage(err, 'Could not load extracted details.'));
       setWorkingDocumentId(null);
     }
   }
 
   async function handleRegen(documentId) {
-    setError(null);
+    setActionError(null);
     setWorkingDocumentId(documentId);
     try {
       const extraction = await regenAiDocumentExtraction(documentId);
-      await refreshDocuments();
+      invalidateDocuments();
       navigate(`/trip/${tripId}/document-import/review`, {
         state: {
           extraction,
@@ -117,7 +101,7 @@ export default function DocumentImporterPage() {
         },
       });
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not regenerate extracted details.');
+      setActionError(getErrorMessage(err, 'Could not regenerate extracted details.'));
       setWorkingDocumentId(null);
     }
   }

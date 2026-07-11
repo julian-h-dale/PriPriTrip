@@ -6,20 +6,25 @@
 
 # ---------------------------------------------------------------------------
 # Authentication
-# Run this request first, copy the token from the response, and paste it
-# into the @token variable below.
+# Run the session request first, copy the token from the response, and paste
+# it into the @token variable below.
 # ---------------------------------------------------------------------------
 
-### POST /auth — obtain a bearer token
-POST {{baseUrl}}/auth
+### POST /auth/session — obtain a bearer token
+POST {{baseUrl}}/auth/session
 Content-Type: application/json
 
 {
-  "password": "honeymoon"
+  "email": "you@example.com",
+  "password": "your-password"
 }
 
 # After running the request above, set the token here:
 @token = <paste-token-here>
+@tripId = 00000000-0000-0000-0000-000000000001
+@dayId = 00000000-0000-0000-0000-000000000002
+@pointId = 00000000-0000-0000-0000-000000000003
+@documentId = 00000000-0000-0000-0000-000000000004
 
 # ---------------------------------------------------------------------------
 # Health
@@ -29,153 +34,135 @@ Content-Type: application/json
 GET {{baseUrl}}/health
 
 # ---------------------------------------------------------------------------
-# Import (bulk load)
+# Trips
 # ---------------------------------------------------------------------------
 
-### POST /trip/import — replace all trip data from trip.json contract
-# Send the full trip.json file content as the body.
-POST {{baseUrl}}/trip/import
+### GET /trips — list trips
+GET {{baseUrl}}/trips
+Authorization: Bearer {{token}}
+
+### GET /trips/:tripId — fetch the full assembled trip
+GET {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
+
+### PUT /trips/:tripId — create or update the trip header (returns the header)
+PUT {{baseUrl}}/trips/{{tripId}}
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "tripId": "honeymoon-2026",
-  "tripName": "Switzerland & Croatia Honeymoon",
-  "startDate": "2026-05-10",
-  "endDate": "2026-05-20",
-  "days": [
-    {
-      "dayId": "day-2026-05-11",
-      "title": "May 11 — Arrival in Bern",
-      "date": "2026-05-11",
-      "description": "Arrive Zurich Airport, train to Bern, settle in at Hotel Goldener Schlüssel, see Bern Old Town",
-      "sortOrder": 2,
-      "isAlternate": false,
-      "completed": false,
-      "points": [
-        {
-          "pointId": "may11-train-zrh-bern",
-          "dayId": "day-2026-05-11",
-          "type": "travel",
-          "title": "Train: Zurich Airport → Bern",
-          "startDateTime": "2026-05-11T12:15:00+02:00",
-          "endDateTime": "2026-05-11T13:30:00+02:00",
-          "sortOrder": 1,
-          "confirmationNumber": null,
-          "description": "Direct InterCity train from Zurich Airport to Bern.",
-          "imageUrl": null,
-          "logoUrl": null,
-          "locations": [
-            {
-              "locationId": "may11-train-zrh-bern-loc-0",
-              "role": "origin",
-              "sortOrder": 0,
-              "name": "Zurich Airport Railway Station",
-              "lat": 47.461714,
-              "lng": 8.550860,
-              "fullAddress": "Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
-              "googleMapsUri": null
-            },
-            {
-              "locationId": "may11-train-zrh-bern-loc-1",
-              "role": "destination",
-              "sortOrder": 1,
-              "name": "Bern Railway Station",
-              "lat": 46.948527,
-              "lng": 7.439914,
-              "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
-              "description": null,
-              "link": null,
-              "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
-              "googleMapsUri": null
-            }
-          ],
-          "travelDetail": { "mode": "train", "operator": null, "vehicleNumber": null, "cabinClass": null },
-          "stayDetail": null,
-          "completed": false,
-          "completedDateTime": null
-        }
-      ]
-    }
-  ]
-}
-
-# ---------------------------------------------------------------------------
-# Trip header
-# ---------------------------------------------------------------------------
-
-### GET /trip — fetch the full assembled trip (header + all days + points)
-GET {{baseUrl}}/trip
-Authorization: Bearer {{token}}
-
-### POST /trip — create or update the trip header fields only
-POST {{baseUrl}}/trip
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "tripId": "honeymoon-2026",
   "tripName": "Switzerland & Croatia Honeymoon",
   "startDate": "2026-05-10",
   "endDate": "2026-05-20"
 }
 
-# ---------------------------------------------------------------------------
-# Trip days — list
-# ---------------------------------------------------------------------------
-
-### GET /trip/days — list all active (non-deleted) days
-GET {{baseUrl}}/trip/days
+### GET /trips/:tripId/verify — deterministic trip verification
+GET {{baseUrl}}/trips/{{tripId}}/verify
 Authorization: Bearer {{token}}
 
-### GET /trip/days/deleted — list soft-deleted days
-GET {{baseUrl}}/trip/days/deleted
+### DELETE /trips/:tripId — soft-delete a trip and its children
+DELETE {{baseUrl}}/trips/{{tripId}}
 Authorization: Bearer {{token}}
 
 # ---------------------------------------------------------------------------
-# Trip days — create
+# Import (bulk full replace)
 # ---------------------------------------------------------------------------
 
-### POST /trip/days — create a day
-POST {{baseUrl}}/trip/days
+### POST /trips/:tripId/import — replace all trip data from the trip contract
+POST {{baseUrl}}/trips/{{tripId}}/import
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "dayId": "day-2026-05-11",
+  "tripName": "Switzerland & Croatia Honeymoon",
+  "startDate": "2026-05-10",
+  "endDate": "2026-05-20",
+  "stays": [],
+  "travels": [],
+  "days": []
+}
+
+# ---------------------------------------------------------------------------
+# AI import / enhance
+# ---------------------------------------------------------------------------
+
+### POST /trips/ai-import — structure a document into a NEW draft trip (multipart)
+# POST {{baseUrl}}/trips/ai-import   (multipart form: file)
+
+### POST /trips/:tripId/ai-import — structure an itinerary for an existing trip
+# POST {{baseUrl}}/trips/{{tripId}}/ai-import   (multipart form: file)
+
+### POST /trips/ai-enhance — enrich a draft trip's descriptions
+POST {{baseUrl}}/trips/ai-enhance
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "tripName": "Trip",
+  "startDate": "2026-05-10",
+  "endDate": "2026-05-20",
+  "stays": [],
+  "travels": [],
+  "days": []
+}
+
+# ---------------------------------------------------------------------------
+# AI documents
+# ---------------------------------------------------------------------------
+
+### POST /trips/:tripId/ai-documents — extract records from a document (multipart)
+# POST {{baseUrl}}/trips/{{tripId}}/ai-documents  (multipart form: file, workflowMode)
+
+### GET /trips/:tripId/ai-documents — list a trip's AI documents
+GET {{baseUrl}}/trips/{{tripId}}/ai-documents
+Authorization: Bearer {{token}}
+
+### GET /ai-documents/:documentId — re-read a stored extraction
+GET {{baseUrl}}/ai-documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+### POST /ai-documents/:documentId/regen — re-run extraction on the stored text
+POST {{baseUrl}}/ai-documents/{{documentId}}/regen
+Authorization: Bearer {{token}}
+
+### POST /ai-documents/:documentId/save — persist selected extracted records
+POST {{baseUrl}}/ai-documents/{{documentId}}/save
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "stayDetailIds": [],
+  "travelDetailIds": []
+}
+
+# ---------------------------------------------------------------------------
+# Trip days
+# ---------------------------------------------------------------------------
+
+### GET /trips/:tripId/days — list active days
+GET {{baseUrl}}/trips/{{tripId}}/days
+Authorization: Bearer {{token}}
+
+### GET /trips/:tripId/days/deleted — list soft-deleted days
+GET {{baseUrl}}/trips/{{tripId}}/days/deleted
+Authorization: Bearer {{token}}
+
+### POST /trips/:tripId/days — create a day
+POST {{baseUrl}}/trips/{{tripId}}/days
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "dayId": "{{dayId}}",
   "title": "May 11 — Arrival in Bern",
   "date": "2026-05-11",
   "description": "Arrive Zurich Airport, train to Bern.",
-  "sortOrder": 1,
   "isAlternate": false,
   "completed": false
 }
 
-# ---------------------------------------------------------------------------
-# Trip days — update
-# ---------------------------------------------------------------------------
-
-@dayId = day-2026-05-11
-
-### PUT /trip/days/:id — fully replace a day (all fields required)
-PUT {{baseUrl}}/trip/days/{{dayId}}
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "title": "May 11 — Arrival in Bern (updated)",
-  "date": "2026-05-11",
-  "description": "Updated description.",
-  "sortOrder": 1,
-  "isAlternate": false,
-  "completed": false
-}
-
-### PATCH /trip/days/:id — update only the supplied fields
-PATCH {{baseUrl}}/trip/days/{{dayId}}
+### PATCH /trips/:tripId/days/:dayId — update only the supplied fields
+PATCH {{baseUrl}}/trips/{{tripId}}/days/{{dayId}}
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
@@ -183,361 +170,110 @@ Authorization: Bearer {{token}}
   "completed": true
 }
 
-### DELETE /trip/days/:id — soft-delete a day (sets deletedAt, returns 204)
-DELETE {{baseUrl}}/trip/days/{{dayId}}
+### DELETE /trips/:tripId/days/:dayId — soft-delete a day (204)
+DELETE {{baseUrl}}/trips/{{tripId}}/days/{{dayId}}
 Authorization: Bearer {{token}}
 
-### POST /trip/days/:id/restore — restore a soft-deleted day
-POST {{baseUrl}}/trip/days/{{dayId}}/restore
-Authorization: Bearer {{token}}
-
-# ---------------------------------------------------------------------------
-# Trip points — list
-# ---------------------------------------------------------------------------
-
-### GET /trip/points — list all active (non-deleted) points
-GET {{baseUrl}}/trip/points
-Authorization: Bearer {{token}}
-
-### GET /trip/points/deleted — list soft-deleted points
-GET {{baseUrl}}/trip/points/deleted
+### POST /trips/:tripId/days/:dayId/restore — restore a soft-deleted day
+POST {{baseUrl}}/trips/{{tripId}}/days/{{dayId}}/restore
 Authorization: Bearer {{token}}
 
 # ---------------------------------------------------------------------------
-# Trip points — create
+# Trip points
 # ---------------------------------------------------------------------------
 
-### POST /trip/points — create a travel point
-POST {{baseUrl}}/trip/points
+### GET /trips/:tripId/points — list active points
+GET {{baseUrl}}/trips/{{tripId}}/points
+Authorization: Bearer {{token}}
+
+### GET /trips/:tripId/points/deleted — list soft-deleted points
+GET {{baseUrl}}/trips/{{tripId}}/points/deleted
+Authorization: Bearer {{token}}
+
+### POST /trips/:tripId/points — create a point
+POST {{baseUrl}}/trips/{{tripId}}/points
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "pointId": "may11-train-zrh-bern",
-  "dayId": "day-2026-05-11",
-  "type": "travel",
-  "title": "Train: Zurich Airport → Bern",
-  "startDateTime": "2026-05-11T12:15:00+02:00",
-  "endDateTime": "2026-05-11T13:30:00+02:00",
-  "sortOrder": 1,
-  "confirmationNumber": null,
-  "description": "Direct InterCity train from Zurich Airport to Bern.",
-  "imageUrl": null,
-  "logoUrl": null,
-  "locations": [
-    {
-      "locationId": "may11-train-zrh-bern-loc-0",
-      "role": "origin",
-      "sortOrder": 0,
-      "name": "Zurich Airport Railway Station",
-      "lat": 47.461714,
-      "lng": 8.550860,
-      "fullAddress": "Switzerland",
-      "description": null,
-      "link": null,
-      "googlePlaceId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
-      "googleMapsUri": null
-    },
-    {
-      "locationId": "may11-train-zrh-bern-loc-1",
-      "role": "destination",
-      "sortOrder": 1,
-      "name": "Bern Railway Station",
-      "lat": 46.948527,
-      "lng": 7.439914,
-      "fullAddress": "Bahnhofpl. 10A, 3011 Bern, Switzerland",
-      "description": null,
-      "link": null,
-      "googlePlaceId": "ChIJORjHI785jkcR3Xe8c9B29BY",
-      "googleMapsUri": null
-    }
-  ],
-  "travelDetail": { "mode": "train", "operator": null, "vehicleNumber": null, "cabinClass": null },
-  "stayDetail": null,
-  "completed": false,
-  "completedDateTime": null
-}
-
-### POST /trip/points — create a stay point
-POST {{baseUrl}}/trip/points
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "pointId": "may11-hotel-arrival",
-  "dayId": "day-2026-05-11",
-  "type": "stay",
-  "title": "Arrive: Hotel Goldener Schlüssel",
-  "startDateTime": "2026-05-11T13:45:00+02:00",
-  "endDateTime": "2026-05-11T14:15:00+02:00",
-  "sortOrder": 2,
-  "confirmationNumber": "58204SG008394",
-  "description": "Check in. Bern Old Town location.",
-  "imageUrl": null,
-  "logoUrl": null,
-  "locations": [
-    {
-      "locationId": "may11-hotel-arrival-loc-0",
-      "role": "venue",
-      "sortOrder": 0,
-      "name": "Hotel Goldener Schlüssel",
-      "lat": 46.948623,
-      "lng": 7.448727,
-      "fullAddress": "Rathausgasse 72, 3011 Bern, Switzerland",
-      "description": null,
-      "link": null,
-      "googlePlaceId": "ChIJFz1_5sM5jkcRQ9nMjH27cXI",
-      "googleMapsUri": null
-    }
-  ],
-  "travelDetail": null,
-  "stayDetail": { "stayType": "hotel", "checkInTime": null, "checkOutTime": null, "roomType": null },
-  "completed": false,
-  "completedDateTime": null
-}
-
-### POST /trip/points — create an activity point
-POST {{baseUrl}}/trip/points
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "pointId": "may11-lunch",
-  "dayId": "day-2026-05-11",
+  "pointId": "{{pointId}}",
+  "dayId": "{{dayId}}",
   "type": "activity",
-  "title": "Lunch Options in Bern",
-  "startDateTime": "2026-05-11T14:15:00+02:00",
-  "endDateTime": "2026-05-11T15:15:00+02:00",
-  "sortOrder": 3,
-  "confirmationNumber": null,
-  "description": "Casual first lunch after arrival.",
-  "imageUrl": null,
-  "logoUrl": null,
+  "title": "Lunch in Bern",
+  "startDateTime": "2026-05-11T14:15:00",
+  "endDateTime": "2026-05-11T15:15:00",
   "locations": [
     {
-      "locationId": "may11-lunch-loc-0",
       "role": "venue",
-      "sortOrder": 0,
       "name": "Kornhauskeller",
       "lat": 46.948730,
-      "lng": 7.447269,
-      "fullAddress": "Kornhauspl. 18, 3011 Bern, Switzerland",
-      "description": null,
-      "link": null,
-      "googlePlaceId": "ChIJt52vQ8E5jkcR5sQbczMLN38",
-      "googleMapsUri": null
+      "lng": 7.447269
     }
-  ],
-  "travelDetail": null,
-  "stayDetail": null,
-  "completed": false,
-  "completedDateTime": null
+  ]
 }
 
-# ---------------------------------------------------------------------------
-# Trip points — update
-# ---------------------------------------------------------------------------
-
-@pointId = may11-train-zrh-bern
-
-### PUT /trip/points/:id — fully replace a point (all fields required)
-PUT {{baseUrl}}/trip/points/{{pointId}}
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "dayId": "day-2026-05-11",
-  "type": "travel",
-  "title": "Train: Zurich Airport → Bern (updated)",
-  "startDateTime": "2026-05-11T12:30:00+02:00",
-  "endDateTime": "2026-05-11T13:45:00+02:00",
-  "sortOrder": 1,
-  "confirmationNumber": null,
-  "description": "Updated description.",
-  "imageUrl": null,
-  "logoUrl": null,
-  "locations": [],
-  "travelDetail": { "mode": "train", "operator": "SBB", "vehicleNumber": null, "cabinClass": null },
-  "stayDetail": null,
-  "completed": false,
-  "completedDateTime": null
-}
-
-### PATCH /trip/points/:id — update only the supplied fields
-PATCH {{baseUrl}}/trip/points/{{pointId}}
+### PATCH /trips/:tripId/points/:pointId — update only the supplied fields
+PATCH {{baseUrl}}/trips/{{tripId}}/points/{{pointId}}
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "completed": true,
-  "completedDateTime": "2026-05-11T13:30:00+02:00"
+  "completedDateTime": "2026-05-11T13:30:00"
 }
 
-### DELETE /trip/points/:id — soft-delete a point (sets deletedAt, returns 204)
-DELETE {{baseUrl}}/trip/points/{{pointId}}
+### DELETE /trips/:tripId/points/:pointId — soft-delete a point (204)
+DELETE {{baseUrl}}/trips/{{tripId}}/points/{{pointId}}
 Authorization: Bearer {{token}}
 
-### POST /trip/points/:id/restore — restore a soft-deleted point
-POST {{baseUrl}}/trip/points/{{pointId}}/restore
+### POST /trips/:tripId/points/:pointId/restore — restore a soft-deleted point
+POST {{baseUrl}}/trips/{{tripId}}/points/{{pointId}}/restore
 Authorization: Bearer {{token}}
 
-
 # ---------------------------------------------------------------------------
-# Authentication
-# Run this request first, copy the token from the response, and paste it
-# into the @token variable below.
+# Travel / stay details
 # ---------------------------------------------------------------------------
 
-### POST /auth — obtain a bearer token
-POST {{baseUrl}}/auth
-Content-Type: application/json
-
-{
-  "password": "honeymoon"
-}
-
-# After running the request above, set the token here:
-@token = <paste-token-here>
-
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
-
-### GET /health — liveness check (no auth required)
-GET {{baseUrl}}/health
-
-# ---------------------------------------------------------------------------
-# Trip header
-# ---------------------------------------------------------------------------
-
-### GET /trip — fetch the full trip (header + all active items)
-GET {{baseUrl}}/trip
+### GET /trips/:tripId/travel-details
+GET {{baseUrl}}/trips/{{tripId}}/travel-details
 Authorization: Bearer {{token}}
 
-### POST /trip — create or update the trip header
-POST {{baseUrl}}/trip
+### GET /trips/:tripId/stay-details
+GET {{baseUrl}}/trips/{{tripId}}/stay-details
+Authorization: Bearer {{token}}
+
+# ---------------------------------------------------------------------------
+# Chat
+# ---------------------------------------------------------------------------
+
+### POST /chat/reply
+POST {{baseUrl}}/chat/reply
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "tripId": "trip-001",
-  "tripName": "Honeymoon 2025",
-  "startDate": "2025-08-01",
-  "endDate": "2025-08-14"
+  "workflowName": "trip:new_trip",
+  "message": "Help me plan a trip to Bern"
 }
 
-# ---------------------------------------------------------------------------
-# Trip items — list
-# ---------------------------------------------------------------------------
-
-### GET /trip/items — list all active (non-deleted) items
-GET {{baseUrl}}/trip/items
-Authorization: Bearer {{token}}
-
-### GET /trip/items/deleted — list soft-deleted items
-GET {{baseUrl}}/trip/items/deleted
+### GET /chat/trips/:tripId?workflowName=trip:new_trip
+GET {{baseUrl}}/chat/trips/{{tripId}}?workflowName=trip:new_trip
 Authorization: Bearer {{token}}
 
 # ---------------------------------------------------------------------------
-# Trip items — create
+# Profile
 # ---------------------------------------------------------------------------
 
-### POST /trip/items — create a group item
-POST {{baseUrl}}/trip/items
+### GET /profile
+GET {{baseUrl}}/profile
+Authorization: Bearer {{token}}
+
+### POST /profile/timezone — timezone lookup by coordinates
+POST {{baseUrl}}/profile/timezone
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "itemId": "group-001",
-  "tripId": "trip-001",
-  "parentItemId": null,
-  "kind": "group",
-  "title": "Arrival in Paris",
-  "startDateTime": "2025-08-01T14:00:00Z",
-  "endDateTime": "2025-08-01T20:00:00Z",
-  "sortOrder": 1,
-  "locations": [
-    { "name": "Charles de Gaulle Airport", "lat": 49.0097, "lng": 2.5479 }
-  ]
+  "lat": 46.948730,
+  "lng": 7.447269
 }
-
-### POST /trip/items — create a leg item inside a group
-POST {{baseUrl}}/trip/items
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "itemId": "leg-001",
-  "tripId": "trip-001",
-  "parentItemId": "group-001",
-  "kind": "leg",
-  "title": "Flight CDG → JFK",
-  "type": "flight",
-  "subtype": "economy",
-  "startDateTime": "2025-08-14T10:00:00Z",
-  "endDateTime": "2025-08-14T13:30:00Z",
-  "sortOrder": 2,
-  "confirmationNumber": "AF001",
-  "description": "Air France direct flight",
-  "locations": [
-    { "name": "Charles de Gaulle Airport", "lat": 49.0097, "lng": 2.5479 },
-    { "name": "JFK International Airport", "lat": 40.6413, "lng": -73.7781 }
-  ]
-}
-
-# ---------------------------------------------------------------------------
-# Trip items — full replace
-# ---------------------------------------------------------------------------
-
-### PUT /trip/items/:id — fully replace an item
-@itemId = leg-001
-
-PUT {{baseUrl}}/trip/items/{{itemId}}
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "itemId": "leg-001",
-  "tripId": "trip-001",
-  "parentItemId": "group-001",
-  "kind": "leg",
-  "title": "Flight CDG → JFK (updated)",
-  "type": "flight",
-  "subtype": "business",
-  "startDateTime": "2025-08-14T11:00:00Z",
-  "endDateTime": "2025-08-14T14:30:00Z",
-  "sortOrder": 2,
-  "confirmationNumber": "AF002",
-  "description": "Upgraded to business class",
-  "locations": [
-    { "name": "Charles de Gaulle Airport", "lat": 49.0097, "lng": 2.5479 },
-    { "name": "JFK International Airport", "lat": 40.6413, "lng": -73.7781 }
-  ]
-}
-
-# ---------------------------------------------------------------------------
-# Trip items — partial update
-# ---------------------------------------------------------------------------
-
-### PATCH /trip/items/:id — update only the supplied fields
-PATCH {{baseUrl}}/trip/items/{{itemId}}
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "title": "Flight CDG → JFK (patched title)",
-  "completed": true,
-  "completedDateTime": "2025-08-14T14:35:00Z"
-}
-
-# ---------------------------------------------------------------------------
-# Trip items — soft delete & restore
-# ---------------------------------------------------------------------------
-
-### DELETE /trip/items/:id — soft-delete an item (sets deletedAt, returns 204)
-DELETE {{baseUrl}}/trip/items/{{itemId}}
-Authorization: Bearer {{token}}
-
-### POST /trip/items/:id/restore — restore a soft-deleted item
-POST {{baseUrl}}/trip/items/{{itemId}}/restore
-Authorization: Bearer {{token}}

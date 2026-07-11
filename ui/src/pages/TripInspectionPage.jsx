@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -15,55 +14,34 @@ import {
   Typography,
 } from '@mui/material';
 import AppLayout from '../components/AppLayout';
-import { verifyTrip } from '../api/tripImportService';
+import { useVerifyTripQuery } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 
 export default function TripInspectionPage() {
   const { tripId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [result, setResult] = useState(location.state?.verify || null);
-  const [tripName] = useState(location.state?.tripName || null);
-  const [loading, setLoading] = useState(!location.state?.verify);
-  const [error, setError] = useState(null);
+  // Results handed over via navigation state skip the network round-trip.
+  const stateVerify = location.state?.verify || null;
+  const tripName = location.state?.tripName || null;
+  const {
+    data: fetchedVerify,
+    isLoading: loading,
+    error: verifyError,
+  } = useVerifyTripQuery(tripId, { skip: !tripId || !!stateVerify });
+  const result = stateVerify ?? fetchedVerify ?? null;
+  const error = verifyError
+    ? getErrorMessage(verifyError, 'Could not run trip inspection.')
+    : null;
 
-  useEffect(() => {
-    let active = true;
-    async function loadVerify() {
-      if (result) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await verifyTrip(tripId);
-        if (active) setResult(data);
-      } catch (err) {
-        if (active) setError(err?.response?.data?.detail ?? 'Could not run trip inspection.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    loadVerify();
-    return () => {
-      active = false;
-    };
-  }, [result, tripId]);
-
+  // Plain derivations — cheap filters over a small array, no memoization needed.
   const issues = result?.issues ?? [];
-  const errorCount = useMemo(
-    () => issues.filter((i) => i.severity === 'error').length,
-    [issues]
-  );
-  const warningCount = useMemo(
-    () => issues.filter((i) => i.severity === 'warning').length,
-    [issues]
-  );
-  const travelIssueCount = useMemo(
-    () =>
-      issues.filter(
-        (i) => i.code === 'TRAVEL_INCOMPLETE_DATES' || i.code === 'TRAVEL_INCOMPLETE_LOCATIONS'
-      ).length,
-    [issues]
-  );
+  const errorCount = issues.filter((i) => i.severity === 'error').length;
+  const warningCount = issues.filter((i) => i.severity === 'warning').length;
+  const travelIssueCount = issues.filter(
+    (i) => i.code === 'TRAVEL_INCOMPLETE_DATES' || i.code === 'TRAVEL_INCOMPLETE_LOCATIONS'
+  ).length;
 
   return (
     <AppLayout title="Trip Inspection">

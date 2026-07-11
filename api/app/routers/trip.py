@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
+from app.dependencies import get_owned_trip
 from app.models import (
     LocationRecord,
     StayDetailRecord,
@@ -17,25 +17,19 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import (
+    StayDetail,
+    TravelDetail,
     TripDayWithPoints,
     TripHeader,
+    TripHeaderResponse,
     TripListItem,
+    TripPointResponse,
     TripResponse,
     VerifyResult,
 )
-from app.serializers import point_to_response, stay_to_response, travel_to_response
 from app.services.trip_verify import verify_trip
 
 router = APIRouter(prefix="/trips", tags=["trips"])
-
-
-def _is_active_trip(trip: TripRecord | None, user: UserRecord) -> bool:
-    return (
-        trip is not None
-        and trip.user_id == str(user.id)
-        and not bool(getattr(trip, "is_deleted", False))
-        and getattr(trip, "deleted_at", None) is None
-    )
 
 
 @router.get("", response_model=list[TripListItem])
@@ -53,34 +47,22 @@ async def list_trips(
         .order_by(TripRecord.start_date)
     )
     records = result.scalars().all()
-    return [
-        TripListItem(
-            tripId=r.trip_id,
-            tripName=r.trip_name,
-            startDate=r.start_date,
-            endDate=r.end_date,
-        )
-        for r in records
-    ]
+    return [TripListItem.model_validate(r) for r in records]
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
 async def get_trip(
-    trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    return await _load_trip(trip_id, db, user)
+    return await _load_trip(trip, db)
 
 
 async def _load_trip(
-    trip_id: str,
+    record: TripRecord,
     db: AsyncSession,
-    user: UserRecord,
 ) -> TripResponse:
-    record = await db.get(TripRecord, trip_id)
-    if not _is_active_trip(record, user):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    trip_id = record.trip_id
 
     # ── Trip-level stays & travels (with their own locations) ────────────────
     stays_result = await db.execute(
@@ -121,11 +103,11 @@ async def _load_trip(
             locs_by_travel.setdefault(loc.travel_detail_id, []).append(loc)
 
     stays = {
-        s.stay_detail_id: stay_to_response(s, locs_by_stay.get(s.stay_detail_id, []))
+        s.stay_detail_id: StayDetail.from_record(s, locs_by_stay.get(s.stay_detail_id, []))
         for s in stay_records
     }
     travels = {
-        t.travel_detail_id: travel_to_response(t, locs_by_travel.get(t.travel_detail_id, []))
+        t.travel_detail_id: TravelDetail.from_record(t, locs_by_travel.get(t.travel_detail_id, []))
         for t in travel_records
     }
 
@@ -168,19 +150,10 @@ async def _load_trip(
         points_by_day.setdefault(p.day_id, []).append(p)
 
     assembled_days = [
-        TripDayWithPoints(
-            dayId=d.day_id,
-            tripId=d.trip_id,
-            title=d.title,
-            date=d.date,
-            description=d.description,
-            isAlternate=d.is_alternate,
-            completed=d.completed,
-            deletedAt=d.deleted_at.isoformat() if d.deleted_at else None,
-            createdAt=d.created_at.isoformat() if d.created_at else None,
-            updatedAt=d.updated_at.isoformat() if d.updated_at else None,
+        TripDayWithPoints.from_record(
+            d,
             points=[
-                point_to_response(
+                TripPointResponse.from_record(
                     p,
                     locs_by_point.get(p.point_id, []),
                     travels.get(p.travel_detail_id) if p.travel_detail_id else None,
@@ -193,14 +166,14 @@ async def _load_trip(
     ]
 
     return TripResponse(
-        tripId=record.trip_id,
-        tripName=record.trip_name,
+        trip_id=record.trip_id,
+        trip_name=record.trip_name,
         status=record.status,
-        startLocationName=record.start_location_name,
-        destinationLocationName=record.destination_location_name,
-        defaultTimezoneId=record.default_timezone_id,
-        startDate=record.start_date,
-        endDate=record.end_date,
+        start_location_name=record.start_location_name,
+        destination_location_name=record.destination_location_name,
+        default_timezone_id=record.default_timezone_id,
+        start_date=record.start_date,
+        end_date=record.end_date,
         stays=list(stays.values()),
         travels=list(travels.values()),
         days=assembled_days,
@@ -209,69 +182,63 @@ async def _load_trip(
 
 @router.get("/{trip_id}/verify", response_model=VerifyResult)
 async def verify_trip_endpoint(
-    trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    trip = await _load_trip(trip_id, db, user)
-    return verify_trip(trip)
+    assembled = await _load_trip(trip, db)
+    return verify_trip(assembled)
 
 
-@router.post("", status_code=status.HTTP_200_OK)
+@router.put("/{trip_id}", response_model=TripHeaderResponse, status_code=status.HTTP_200_OK)
 async def upsert_trip(
+    trip_id: str,
     body: TripHeader,
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
-    try:
-        record = await db.get(TripRecord, body.tripId)
-        if record is None:
-            db.add(
-                TripRecord(
-                    trip_id=body.tripId,
-                    user_id=str(user.id),
-                    trip_name=body.tripName,
-                    start_location_name=body.startLocationName,
-                    destination_location_name=body.destinationLocationName,
-                    default_timezone_id=body.defaultTimezoneId,
-                    start_date=body.startDate,
-                    end_date=body.endDate,
-                )
-            )
-        else:
-            if record.user_id != str(user.id):
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-            if bool(getattr(record, "is_deleted", False)) or getattr(record, "deleted_at", None) is not None:
-                record.is_deleted = False
-                record.deleted_at = None
-            record.trip_name = body.tripName
-            record.start_location_name = body.startLocationName
-            record.destination_location_name = body.destinationLocationName
-            record.default_timezone_id = body.defaultTimezoneId
-            record.start_date = body.startDate
-            record.end_date = body.endDate
-            record.updated_at = datetime.now(timezone.utc)
-        await db.commit()
-        return {"status": "ok"}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logging.error("POST /trips error: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save trip"
+    # The path is authoritative; body.tripId is still accepted but ignored.
+    record = await db.get(TripRecord, trip_id)
+    if record is None:
+        record = TripRecord(
+            trip_id=trip_id,
+            user_id=str(user.id),
+            trip_name=body.trip_name,
+            start_location_name=body.start_location_name,
+            destination_location_name=body.destination_location_name,
+            default_timezone_id=body.default_timezone_id,
+            start_date=body.start_date,
+            end_date=body.end_date,
         )
+        db.add(record)
+    else:
+        if record.user_id != str(user.id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if bool(record.is_deleted) or record.deleted_at is not None:
+            record.is_deleted = False
+            record.deleted_at = None
+        record.trip_name = body.trip_name
+        record.start_location_name = body.start_location_name
+        record.destination_location_name = body.destination_location_name
+        record.default_timezone_id = body.default_timezone_id
+        record.start_date = body.start_date
+        record.end_date = body.end_date
+        record.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    return TripHeaderResponse(
+        trip_id=record.trip_id,
+        trip_name=record.trip_name,
+        start_date=record.start_date,
+        end_date=record.end_date,
+        status=record.status or "new",
+    )
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_trip(
-    trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    if not _is_active_trip(trip, user):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-
+    trip_id = trip.trip_id
     now = datetime.now(timezone.utc)
     trip.is_deleted = True
     trip.deleted_at = now

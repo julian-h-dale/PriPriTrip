@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -16,37 +16,34 @@ import HouseIcon from '@mui/icons-material/House';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AppLayout from '../components/AppLayout';
 import Timeline from '../components/Timeline/Timeline';
-import TripMapModal from '../components/Map/TripMapModal';
-import {
-  fetchTrip,
-  clearError,
-  selectTrip,
-  selectTripStatus,
-  selectTripError,
-} from '../store/tripSlice';
+import { useGetTripQuery } from '../store/apiSlice';
 import { selectMapsApiKey } from '../store/authSlice';
+import { getErrorMessage } from '../utils/errors';
 import { useOnlineStatus } from '../utils/useOnlineStatus';
+
+// Loaded on demand so the Google Maps SDK stays out of the page chunk.
+const TripMapModal = lazy(() => import('../components/Map/TripMapModal'));
 
 export default function HomePage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const trip = useSelector(selectTrip);
-  const status = useSelector(selectTripStatus);
-  const error = useSelector(selectTripError);
   const mapsApiKey = useSelector(selectMapsApiKey);
   const isOnline = useOnlineStatus();
 
+  const {
+    data: trip,
+    isLoading,
+    error,
+  } = useGetTripQuery(tripId, { skip: !tripId });
+  const errorMessage = getErrorMessage(error, 'Failed to load trip.');
+
   const [expandedDayId, setExpandedDayId] = useState(null);
   const [mapOpen, setMapOpen] = useState(false);
-  const tripDays = useMemo(() => trip?.days ?? [], [trip]);
+  const [snackDismissed, setSnackDismissed] = useState(false);
 
   useEffect(() => {
-    if (tripId) dispatch(fetchTrip(tripId));
-  }, [dispatch, tripId]);
-
-  const isLoading = status === 'loading';
-  const isError = status === 'error';
+    setSnackDismissed(false);
+  }, [error]);
 
   return (
     <AppLayout
@@ -94,21 +91,20 @@ export default function HomePage() {
       }
     >
       <Container maxWidth="sm" disableGutters>
-        {isLoading && !trip && (
+        {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
             <CircularProgress />
           </Box>
         )}
-        {isError && !trip && (
+        {!!error && !trip && (
           <Box sx={{ p: 2 }}>
-            <Alert severity="error" onClose={() => dispatch(clearError())}>
-              {error ?? 'Failed to load trip.'}
-            </Alert>
+            <Alert severity="error">{errorMessage}</Alert>
           </Box>
         )}
         {trip && (
           <Timeline
             tripId={tripId}
+            trip={trip}
             expandedDayId={expandedDayId}
             onExpandedDayChange={setExpandedDayId}
           />
@@ -116,26 +112,30 @@ export default function HomePage() {
       </Container>
 
       <Snackbar
-        open={isError && !!trip}
+        open={!!error && !!trip && !snackDismissed}
         autoHideDuration={5000}
-        onClose={() => dispatch(clearError())}
+        onClose={() => setSnackDismissed(true)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert
           severity="error"
-          onClose={() => dispatch(clearError())}
+          onClose={() => setSnackDismissed(true)}
           sx={{ width: '100%' }}
         >
-          {error ?? 'Failed to load trip.'}
+          {errorMessage}
         </Alert>
       </Snackbar>
 
-      <TripMapModal
-        open={mapOpen}
-        onClose={() => setMapOpen(false)}
-        mapsApiKey={mapsApiKey}
-        days={tripDays}
-      />
+      {mapOpen && (
+        <Suspense fallback={null}>
+          <TripMapModal
+            open={mapOpen}
+            onClose={() => setMapOpen(false)}
+            mapsApiKey={mapsApiKey}
+            days={trip?.days ?? []}
+          />
+        </Suspense>
+      )}
     </AppLayout>
   );
 }

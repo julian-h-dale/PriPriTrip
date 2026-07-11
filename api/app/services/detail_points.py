@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord
+from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripPointRecord, TripRecord
 from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
 
 
@@ -192,6 +192,73 @@ async def sync_stay_generated_points(
         point.is_deleted = False
         point.deleted_at = None
         point.updated_at = datetime.now(timezone.utc)
+
+
+async def reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
+    """Align the trip's day rows with its start/end date range.
+
+    Creates missing days for every date in range; soft-deletes days that fell
+    out of range and hold no points. Runs after any trip date change.
+    """
+    try:
+        start = date.fromisoformat(trip.start_date)
+        end = date.fromisoformat(trip.end_date)
+    except (TypeError, ValueError):
+        return
+    if end < start:
+        return
+
+    existing_result = await db.execute(
+        select(TripDayRecord).where(
+            TripDayRecord.trip_id == trip.trip_id,
+            TripDayRecord.is_deleted.is_(False),
+            TripDayRecord.deleted_at.is_(None),
+        )
+    )
+    existing_days = existing_result.scalars().all()
+    existing_by_date = {day.date: day for day in existing_days}
+
+    current = start
+    desired_dates = set()
+    while current <= end:
+        date_text = current.isoformat()
+        desired_dates.add(date_text)
+        if date_text not in existing_by_date:
+            db.add(
+                TripDayRecord(
+                    day_id=str(uuid.uuid4()),
+                    trip_id=trip.trip_id,
+                    title=date_text,
+                    date=date_text,
+                    description=None,
+                    is_alternate=False,
+                    completed=False,
+                )
+            )
+        current += timedelta(days=1)
+
+    if existing_days:
+        points_result = await db.execute(
+            select(TripPointRecord).where(
+                TripPointRecord.trip_id == trip.trip_id,
+                TripPointRecord.is_deleted.is_(False),
+                TripPointRecord.deleted_at.is_(None),
+            )
+        )
+        points_by_day: dict[str, list[TripPointRecord]] = {}
+        for point in points_result.scalars().all():
+            points_by_day.setdefault(point.day_id, []).append(point)
+
+        for day in existing_days:
+            if day.date in desired_dates:
+                continue
+            if points_by_day.get(day.day_id):
+                continue
+            day.is_deleted = True
+            day.deleted_at = datetime.now(timezone.utc)
+            day.updated_at = datetime.now(timezone.utc)
+
+    await db.flush()
 
 
 async def soft_delete_generated_points_for_travel(db: AsyncSession, *, travel_detail_id: str) -> None:

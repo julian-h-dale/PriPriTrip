@@ -1,5 +1,4 @@
 import logging
-import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,16 +7,24 @@ from app.database import get_db
 from app.routers import chat, profile, trip, trip_ai_import, trip_days, trip_details, trip_import, trip_points
 from app.schemas import AuthResponse
 from app.services.prompt_composer import validate_prompt_sections
+from app.settings import get_settings
 from app.users import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_users, get_user_manager
 
 
 def create_app() -> FastAPI:
     validate_prompt_sections()
 
+    settings = get_settings()
+
+    # Fail fast at boot (not on the first login) if the JWT secret is missing.
+    from app.users import _jwt_secret
+
+    _jwt_secret()
+
     # Ensure our app.* loggers emit at INFO and reach a handler even under
     # uvicorn (which does not configure the root logger).
     app_logger = logging.getLogger("app")
-    app_logger.setLevel(os.environ.get("APP_LOG_LEVEL", "INFO").upper())
+    app_logger.setLevel(settings.app_log_level.upper())
     if not app_logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(
@@ -28,9 +35,16 @@ def create_app() -> FastAPI:
 
     application = FastAPI(title="PriPriTrip API")
 
+    # Env-driven allowlist. "*" with credentials would let any website make
+    # credentialed requests to the API (Starlette echoes the request Origin).
+    cors_origins = [
+        origin.strip()
+        for origin in settings.cors_origins.split(",")
+        if origin.strip()
+    ]
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -90,7 +104,7 @@ def create_app() -> FastAPI:
 
         strategy = get_jwt_strategy()
         token = await strategy.write_token(user)
-        maps_api_key = os.environ.get("MAPS_API_KEY", "")
+        maps_api_key = get_settings().maps_api_key
         return AuthResponse(token=token, mapsApiKey=maps_api_key)
 
     # ── Custom register endpoint returning AuthResponse ────────────────────────
@@ -121,7 +135,7 @@ def create_app() -> FastAPI:
 
         strategy = get_jwt_strategy()
         token = await strategy.write_token(user)
-        maps_api_key = os.environ.get("MAPS_API_KEY", "")
+        maps_api_key = get_settings().maps_api_key
         return AuthResponse(token=token, mapsApiKey=maps_api_key)
 
     application.include_router(trip.router)

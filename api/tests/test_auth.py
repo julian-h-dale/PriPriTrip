@@ -1,92 +1,61 @@
-from unittest.mock import patch
+"""Auth behavior tests.
+
+The custom /auth/session endpoints construct their own DB session internally
+(bypassing dependency injection), so credential flows can't be faked here yet —
+they get full coverage when they move onto Depends(get_user_manager) (see
+review.md 1C-1). What we can and do verify now:
+
+- protected endpoints reject unauthenticated requests
+- /health is open
+"""
 
 from fastapi.testclient import TestClient
 
-from app.auth import make_token, verify_token
 from app.main import app
 
 client = TestClient(app)
 
 
-# ---------------------------------------------------------------------------
-# make_token / verify_token unit tests
-# ---------------------------------------------------------------------------
-
-
-class TestMakeToken:
-    def test_returns_64_char_hex_string(self):
-        token = make_token("password", "secret")
-        assert isinstance(token, str)
-        assert len(token) == 64
-
-    def test_is_deterministic(self):
-        assert make_token("password", "secret") == make_token("password", "secret")
-
-    def test_different_passwords_produce_different_tokens(self):
-        assert make_token("abc", "secret") != make_token("xyz", "secret")
-
-    def test_different_secrets_produce_different_tokens(self):
-        assert make_token("password", "secret1") != make_token("password", "secret2")
-
-
-class TestVerifyToken:
-    def test_valid_token_accepted(self):
-        token = make_token("honeymoon", "mysecret")
-        assert verify_token(token, "honeymoon", "mysecret") is True
-
-    def test_wrong_token_rejected(self):
-        assert verify_token("badtoken", "honeymoon", "mysecret") is False
-
-    def test_token_from_wrong_secret_rejected(self):
-        token = make_token("honeymoon", "secret1")
-        assert verify_token(token, "honeymoon", "secret2") is False
-
-    def test_token_from_wrong_password_rejected(self):
-        token = make_token("wrongpassword", "mysecret")
-        assert verify_token(token, "honeymoon", "mysecret") is False
-
-
-# ---------------------------------------------------------------------------
-# POST /auth endpoint tests
-# ---------------------------------------------------------------------------
-
-
-class TestApiAuth:
-    @patch.dict(
-        "os.environ",
-        {"APP_PASSWORD": "honeymoon", "TOKEN_SECRET": "testsecret", "MAPS_API_KEY": "testmapskey"},
-    )
-    def test_correct_password_returns_200_with_token_and_maps_key(self):
-        resp = client.post("/auth", json={"password": "honeymoon"})
+class TestUnauthenticatedAccess:
+    def test_health_is_open(self):
+        resp = client.get("/health")
         assert resp.status_code == 200
-        body = resp.json()
-        assert "token" in body
-        assert body["mapsApiKey"] == "testmapskey"
+        assert resp.json() == {"status": "ok"}
 
-    @patch.dict(
-        "os.environ",
-        {"APP_PASSWORD": "honeymoon", "TOKEN_SECRET": "testsecret", "MAPS_API_KEY": ""},
-    )
-    def test_returned_token_is_verifiable(self):
-        resp = client.post("/auth", json={"password": "honeymoon"})
-        body = resp.json()
-        assert verify_token(body["token"], "honeymoon", "testsecret") is True
+    def test_list_trips_requires_auth(self):
+        assert client.get("/trips").status_code == 401
 
-    @patch.dict("os.environ", {"APP_PASSWORD": "honeymoon", "TOKEN_SECRET": "testsecret"})
-    def test_wrong_password_returns_401(self):
-        resp = client.post("/auth", json={"password": "wrongpassword"})
+    def test_get_trip_requires_auth(self):
+        assert client.get("/trips/some-trip").status_code == 401
+
+    def test_create_trip_requires_auth(self):
+        assert client.put("/trips/some-trip-id", json={}).status_code == 401
+
+    def test_delete_trip_requires_auth(self):
+        assert client.delete("/trips/some-trip").status_code == 401
+
+    def test_days_require_auth(self):
+        assert client.get("/trips/some-trip/days").status_code == 401
+
+    def test_points_require_auth(self):
+        assert client.get("/trips/some-trip/points").status_code == 401
+
+    def test_details_require_auth(self):
+        assert client.get("/trips/some-trip/travel-details").status_code == 401
+        assert client.get("/trips/some-trip/stay-details").status_code == 401
+
+    def test_chat_requires_auth(self):
+        assert (
+            client.post(
+                "/chat/reply",
+                json={"workflowName": "trip:new_trip", "message": "hi"},
+            ).status_code
+            == 401
+        )
+
+    def test_import_requires_auth(self):
+        assert client.post("/trips/some-trip-id/import", json={}).status_code == 401
+
+    def test_bad_token_rejected(self):
+        resp = client.get("/trips", headers={"Authorization": "Bearer not-a-real-token"})
         assert resp.status_code == 401
-
-    @patch.dict("os.environ", {"APP_PASSWORD": "honeymoon", "TOKEN_SECRET": "testsecret"})
-    def test_missing_password_field_returns_422(self):
-        resp = client.post("/auth", json={})
-        assert resp.status_code == 422
-
-    def test_invalid_json_body_returns_422(self):
-        resp = client.post("/auth", content=b"not-json", headers={"Content-Type": "application/json"})
-        assert resp.status_code == 422
-
-    @patch.dict("os.environ", {"APP_PASSWORD": "honeymoon", "TOKEN_SECRET": "testsecret"})
-    def test_response_content_type_is_json(self):
-        resp = client.post("/auth", json={"password": "honeymoon"})
-        assert "application/json" in resp.headers["content-type"]

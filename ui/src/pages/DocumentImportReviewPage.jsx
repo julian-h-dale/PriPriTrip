@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -17,8 +16,8 @@ import {
   Typography,
 } from '@mui/material';
 import AppLayout from '../components/AppLayout';
-import { saveAiDocumentRecords } from '../api/tripImportService';
-import { fetchTrip } from '../store/tripSlice';
+import { useSaveAiDocumentRecordsMutation } from '../store/apiSlice';
+import { getErrorMessage } from '../utils/errors';
 
 function localityLabel(location) {
   const fullAddress = location?.fullAddress;
@@ -41,7 +40,7 @@ export default function DocumentImportReviewPage() {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+  const [saveAiDocumentRecords] = useSaveAiDocumentRecordsMutation();
 
   const extraction = location.state?.extraction || null;
   const fileName = location.state?.fileName || extraction?.filename || null;
@@ -85,14 +84,15 @@ export default function DocumentImportReviewPage() {
     try {
       const stays = (extraction.stays ?? []).filter((stay) => selectedStays.has(stay.stayDetailId));
       const travels = (extraction.travels ?? []).filter((travel) => selectedTravels.has(travel.travelDetailId));
-      await saveAiDocumentRecords(extraction.documentId, {
+      await saveAiDocumentRecords({
+        documentId: extraction.documentId,
+        tripId,
         stays,
         travels,
-      });
-      dispatch(fetchTrip(tripId));
+      }).unwrap();
       navigate(`/trip/${tripId}`);
     } catch (err) {
-      setError(err?.response?.data?.detail ?? 'Could not save extracted records.');
+      setError(getErrorMessage(err, 'Could not save extracted records.'));
       setSaving(false);
     }
   }

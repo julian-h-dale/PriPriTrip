@@ -12,16 +12,12 @@ day<->point linkage are assigned server-side in ``to_trip_import``.
 from __future__ import annotations
 
 import logging
-import os
-import time
 import uuid
 from typing import List, Optional
 
-from fastapi import HTTPException, status
 from pydantic import BaseModel
 
 from app.enums import LocationRole, PointType, StayType, TravelMode
-from app.services.ai_trace import log_ai_event
 from app.schemas import (
     LocationCreate,
     StayDetailImport,
@@ -30,13 +26,9 @@ from app.schemas import (
     TripImport,
     TripPointCreate,
 )
+from app.services.openai_client import get_async_client, parse_structured
 
 logger = logging.getLogger("app.trip_ai")
-
-_DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
-# Fail fast instead of hanging forever if OpenAI is slow/unreachable.
-_REQUEST_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", "120"))
-_MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
 
 
 # ── ID-free intermediate model the LLM produces ──────────────────────────────
@@ -190,181 +182,40 @@ General:
 """
 
 
-def _client():
-    from openai import OpenAI
-
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY is not configured on the server.",
-        )
-    return OpenAI(api_key=api_key, timeout=_REQUEST_TIMEOUT, max_retries=_MAX_RETRIES)
-
-
-def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
-    log_ai_event(
-        "ai.trip_import.openai.request",
-        passName=pass_name,
-        model=_DEFAULT_MODEL,
-        requestTimeoutSeconds=_REQUEST_TIMEOUT,
-        maxRetries=_MAX_RETRIES,
-        systemPrompt=system,
-        userPrompt=user,
-    )
-    logger.info(
-        "OpenAI %s pass: model=%s prompt_chars=%d timeout=%.0fs",
-        pass_name, _DEFAULT_MODEL, len(user), _REQUEST_TIMEOUT,
-    )
-    started = time.monotonic()
-    try:
-        completion = client.beta.chat.completions.parse(
-            model=_DEFAULT_MODEL,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            response_format=AITrip,
-        )
-    except Exception as exc:  # network / API errors / timeout
-        logger.exception("OpenAI %s pass failed after %.1fs", pass_name, time.monotonic() - started)
-        log_ai_event(
-            "ai.trip_import.openai.error",
-            passName=pass_name,
-            elapsedSeconds=round(time.monotonic() - started, 3),
-            error=str(exc),
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI request failed: {exc}",
-        ) from exc
-
-    elapsed = time.monotonic() - started
-    usage = getattr(completion, "usage", None)
-    finish = completion.choices[0].finish_reason if completion.choices else None
-    logger.info(
-        "OpenAI %s pass ok in %.1fs: finish_reason=%s usage=%s",
-        pass_name, elapsed, finish,
-        getattr(usage, "total_tokens", None) if usage else None,
-    )
-    log_ai_event(
-        "ai.trip_import.openai.response_meta",
-        passName=pass_name,
-        elapsedSeconds=round(elapsed, 3),
-        finishReason=finish,
-        usage=(getattr(usage, "total_tokens", None) if usage else None),
+async def _parse(client, system: str, user: str, *, pass_name: str) -> AITrip:
+    """Structured itinerary pass via the shared async OpenAI helper."""
+    return await parse_structured(
+        client,
+        system=system,
+        user=user,
+        response_format=AITrip,
+        pass_name=pass_name,
+        event_prefix="ai.trip_import.openai",
     )
 
-    message = completion.choices[0].message
-    if getattr(message, "refusal", None):
-        logger.warning("OpenAI %s pass refused: %s", pass_name, message.refusal)
-        log_ai_event(
-            "ai.trip_import.openai.refusal",
-            passName=pass_name,
-            refusal=message.refusal,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI refused the request: {message.refusal}",
-        )
-    parsed = message.parsed
-    if parsed is None:
-        logger.warning("OpenAI %s pass returned no parseable content", pass_name)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="OpenAI did not return a parseable trip.",
-        )
-    log_ai_event(
-        "ai.trip_import.openai.parsed",
-        passName=pass_name,
-        parsed=parsed,
-    )
-    return parsed
 
-
-def _parse_document(client, system: str, user: str, *, pass_name: str) -> AIDocumentExtract:
-    log_ai_event(
-        "ai.document_import.openai.request",
-        passName=pass_name,
-        model=_DEFAULT_MODEL,
-        requestTimeoutSeconds=_REQUEST_TIMEOUT,
-        maxRetries=_MAX_RETRIES,
-        systemPrompt=system,
-        userPrompt=user,
-    )
-    logger.info(
-        "OpenAI %s pass: model=%s prompt_chars=%d timeout=%.0fs",
-        pass_name, _DEFAULT_MODEL, len(user), _REQUEST_TIMEOUT,
-    )
-    started = time.monotonic()
-    try:
-        completion = client.beta.chat.completions.parse(
-            model=_DEFAULT_MODEL,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            response_format=AIDocumentExtract,
-        )
-    except Exception as exc:
-        logger.exception("OpenAI %s pass failed after %.1fs", pass_name, time.monotonic() - started)
-        log_ai_event(
-            "ai.document_import.openai.error",
-            passName=pass_name,
-            elapsedSeconds=round(time.monotonic() - started, 3),
-            error=str(exc),
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI request failed: {exc}",
-        ) from exc
-
-    elapsed = time.monotonic() - started
-    usage = getattr(completion, "usage", None)
-    finish = completion.choices[0].finish_reason if completion.choices else None
-    log_ai_event(
-        "ai.document_import.openai.response_meta",
-        passName=pass_name,
-        elapsedSeconds=round(elapsed, 3),
-        finishReason=finish,
-        usage=(getattr(usage, "total_tokens", None) if usage else None),
+async def _parse_document(client, system: str, user: str, *, pass_name: str) -> AIDocumentExtract:
+    """Structured single-document pass via the shared async OpenAI helper."""
+    return await parse_structured(
+        client,
+        system=system,
+        user=user,
+        response_format=AIDocumentExtract,
+        pass_name=pass_name,
+        event_prefix="ai.document_import.openai",
     )
 
-    message = completion.choices[0].message
-    if getattr(message, "refusal", None):
-        log_ai_event(
-            "ai.document_import.openai.refusal",
-            passName=pass_name,
-            refusal=message.refusal,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI refused the request: {message.refusal}",
-        )
-    parsed = message.parsed
-    if parsed is None:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="OpenAI did not return parseable document records.",
-        )
-    log_ai_event(
-        "ai.document_import.openai.parsed",
-        passName=pass_name,
-        parsed=parsed,
-    )
-    return parsed
 
-
-def structure_itinerary(document_text: str, client=None) -> AITrip:
-    client = client or _client()
+async def structure_itinerary(document_text: str, client=None) -> AITrip:
+    client = client or get_async_client()
     user = f"Itinerary document:\n\n{document_text}"
-    return _parse(client, _STRUCTURE_SYSTEM, user, pass_name="structure")
+    return await _parse(client, _STRUCTURE_SYSTEM, user, pass_name="structure")
 
 
-def enhance_trip(trip: AITrip, client=None) -> AITrip:
-    client = client or _client()
+async def enhance_trip(trip: AITrip, client=None) -> AITrip:
+    client = client or get_async_client()
     user = "Structured trip to enhance:\n\n" + trip.model_dump_json(indent=2)
-    return _parse(client, _ENHANCE_SYSTEM, user, pass_name="enhance")
+    return await _parse(client, _ENHANCE_SYSTEM, user, pass_name="enhance")
 
 
 def _ai_locations(ai_locs, *, stay_id=None, travel_id=None) -> List[LocationCreate]:
@@ -461,26 +312,26 @@ def to_trip_import(trip: AITrip) -> TripImport:
     )
 
 
-def build_trip_from_document(document_text: str, client=None) -> TripImport:
+async def build_trip_from_document(document_text: str, client=None) -> TripImport:
     """Full pipeline: structure -> enhance -> TripImport with IDs."""
-    client = client or _client()
+    client = client or get_async_client()
     logger.info("pipeline start: structuring itinerary (%d chars)", len(document_text))
-    structured = structure_itinerary(document_text, client=client)
+    structured = await structure_itinerary(document_text, client=client)
     logger.info(
         "pipeline: structured %d days, %d points; starting enhance pass",
         len(structured.days),
         sum(len(d.points) for d in structured.days),
     )
-    enhanced = enhance_trip(structured, client=client)
+    enhanced = await enhance_trip(structured, client=client)
     logger.info("pipeline: enhance pass complete; assembling TripImport")
     return to_trip_import(enhanced)
 
 
-def structure_document(document_text: str, client=None) -> TripImport:
+async def structure_document(document_text: str, client=None) -> TripImport:
     """Pass 1 only: structure a document into a TripImport draft (no enhance)."""
-    client = client or _client()
+    client = client or get_async_client()
     logger.info("structure-only: structuring itinerary (%d chars)", len(document_text))
-    structured = structure_itinerary(document_text, client=client)
+    structured = await structure_itinerary(document_text, client=client)
     logger.info(
         "structure-only: produced %d days, %d points",
         len(structured.days),
@@ -489,11 +340,11 @@ def structure_document(document_text: str, client=None) -> TripImport:
     return to_trip_import(structured)
 
 
-def extract_document_records(document_text: str, client=None) -> AIDocumentDraft:
+async def extract_document_records(document_text: str, client=None) -> AIDocumentDraft:
     """Extract only stays/travels from a single uploaded reservation/ticket document."""
-    client = client or _client()
+    client = client or get_async_client()
     user = f"Document text:\n\n{document_text}"
-    parsed = _parse_document(client, _DOCUMENT_SYSTEM, user, pass_name="document")
+    parsed = await _parse_document(client, _DOCUMENT_SYSTEM, user, pass_name="document")
 
     stays: List[StayDetailImport] = []
     for s in parsed.stays:
@@ -548,18 +399,18 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
     Detail IDs are reused as the temporary refs so points keep their linkage.
     """
     return AITrip(
-        tripName=trip.tripName,
-        startDate=trip.startDate,
-        endDate=trip.endDate,
+        tripName=trip.trip_name,
+        startDate=trip.start_date,
+        endDate=trip.end_date,
         stays=[
             AIStay(
-                ref=s.stayDetailId,
+                ref=s.stay_detail_id,
                 name=s.name,
-                stayType=s.stayType,
-                checkIn=s.checkIn,
-                checkOut=s.checkOut,
-                roomType=s.roomType,
-                confirmationNumber=s.confirmationNumber,
+                stayType=s.stay_type,
+                checkIn=s.check_in,
+                checkOut=s.check_out,
+                roomType=s.room_type,
+                confirmationNumber=s.confirmation_number,
                 description=s.description,
                 locations=_ai_locs_from(s.locations),
             )
@@ -567,15 +418,15 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
         ],
         travels=[
             AITravel(
-                ref=t.travelDetailId,
+                ref=t.travel_detail_id,
                 name=t.name,
                 mode=t.mode,
                 operator=t.operator,
-                vehicleNumber=t.vehicleNumber,
-                cabinClass=t.cabinClass,
-                departureDateTime=t.departureDateTime,
-                arrivalDateTime=t.arrivalDateTime,
-                confirmationNumber=t.confirmationNumber,
+                vehicleNumber=t.vehicle_number,
+                cabinClass=t.cabin_class,
+                departureDateTime=t.departure_date_time,
+                arrivalDateTime=t.arrival_date_time,
+                confirmationNumber=t.confirmation_number,
                 description=t.description,
                 locations=_ai_locs_from(t.locations),
             )
@@ -586,16 +437,16 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
                 title=day.title,
                 date=day.date,
                 description=day.description,
-                isAlternate=day.isAlternate,
+                isAlternate=day.is_alternate,
                 points=[
                     AIPoint(
                         type=pt.type,
                         title=pt.title,
-                        stayRef=pt.stayDetailId,
-                        travelRef=pt.travelDetailId,
-                        startDateTime=pt.startDateTime,
-                        endDateTime=pt.endDateTime,
-                        confirmationNumber=pt.confirmationNumber,
+                        stayRef=pt.stay_detail_id,
+                        travelRef=pt.travel_detail_id,
+                        startDateTime=pt.start_date_time,
+                        endDateTime=pt.end_date_time,
+                        confirmationNumber=pt.confirmation_number,
                         description=pt.description,
                         locations=_ai_locs_from(pt.locations),
                     )
@@ -607,19 +458,19 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
     )
 
 
-def enhance_trip_import(trip: TripImport, client=None) -> TripImport:
+async def enhance_trip_import(trip: TripImport, client=None) -> TripImport:
     """Pass 2 only: enhance descriptions of an existing trip, preserving IDs.
 
     The enhance pass only touches description fields and does not add/remove
     entities, so enhanced text is merged back into the original TripImport by
     position — keeping every existing ID intact.
     """
-    client = client or _client()
+    client = client or get_async_client()
     logger.info(
         "enhance-only: enhancing trip=%r (%d stays, %d travels, %d days)",
-        trip.tripName, len(trip.stays), len(trip.travels), len(trip.days),
+        trip.trip_name, len(trip.stays), len(trip.travels), len(trip.days),
     )
-    enhanced = enhance_trip(_trip_import_to_ai(trip), client=client)
+    enhanced = await enhance_trip(_trip_import_to_ai(trip), client=client)
 
     def _merge_locs(locs, ai_locs):
         for loc, ai_loc in zip(locs, ai_locs):
@@ -642,5 +493,5 @@ def enhance_trip_import(trip: TripImport, client=None) -> TripImport:
             if ai_pt.description:
                 pt.description = ai_pt.description
             _merge_locs(pt.locations, ai_pt.locations)
-    logger.info("enhance-only: merged enhancements back into trip=%r", result.tripName)
+    logger.info("enhance-only: merged enhancements back into trip=%r", result.trip_name)
     return result

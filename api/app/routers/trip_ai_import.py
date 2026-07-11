@@ -1,10 +1,18 @@
 """AI-assisted trip import.
 
-Two separate passes, each its own endpoint:
-  - POST /trip/ai-import  : structure a document into a draft TripImport.
-  - POST /trip/ai-enhance : enrich an existing trip's descriptions.
+Trip-scoped endpoints:
+  - POST /trips/ai-import               : structure a document into a new draft TripImport.
+  - POST /trips/{trip_id}/ai-import     : same, for an existing trip (records the document).
+  - POST /trips/ai-enhance              : enrich a draft trip's descriptions.
+  - POST /trips/{trip_id}/ai-documents  : extract stay/travel records from a document.
+  - GET  /trips/{trip_id}/ai-documents  : list a trip's AI documents.
 
-Neither endpoint persists anything; the frontend saves via POST /trip/import.
+Document-scoped endpoints:
+  - GET  /ai-documents/{document_id}        : re-read a stored extraction.
+  - POST /ai-documents/{document_id}/regen  : re-run extraction on the stored text.
+  - POST /ai-documents/{document_id}/save   : persist selected extracted records.
+
+Draft structuring persists nothing; the frontend saves via POST /trips/{trip_id}/import.
 """
 
 import logging
@@ -16,12 +24,12 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.concurrency import run_in_threadpool
 
 from app.auth import require_auth
 from app.database import get_db
+from app.dependencies import get_owned_trip, require_owned_trip
 from app.enums import AIDocumentType, AIDocumentWorkflowMode
-from app.models import AIDocumentRecord, LocationRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
+from app.models import AIDocumentRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
 from app.schemas import AIDocumentExtraction, AIDocumentListItem, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
 from app.services.detail_points import (
     CHECK_IN_DEFAULT_TIME,
@@ -31,7 +39,8 @@ from app.services.detail_points import (
     sync_travel_generated_points,
 )
 from app.services import document_ingest, trip_ai
-from app.services.timezones import derive_utc, parse_wall_clock, tzid_from_coords, wall_clock_to_text
+from app.services.locations import location_rows
+from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock, wall_clock_to_text
 
 logger = logging.getLogger("app.ai_import")
 
@@ -40,27 +49,13 @@ router = APIRouter(tags=["import"])
 _MAX_BYTES = 15 * 1024 * 1024  # 15 MB
 
 
-def _location_tzid(loc):
-    return getattr(loc, "timezoneId", None) or tzid_from_coords(getattr(loc, "lat", None), getattr(loc, "lng", None))
-
-
-def _infer_tzid(locations, role=None, fallback=None):
-    for loc in locations or []:
-        if role and getattr(loc, "role", None) != role:
-            continue
-        tzid = _location_tzid(loc)
-        if tzid:
-            return tzid
-    return fallback
-
-
 def _document_payload(rec: AIDocumentRecord) -> AIDocumentExtraction:
     payload = AIDocumentExtraction.model_validate_json(rec.extracted_payload)
-    payload.documentId = rec.document_id
-    payload.tripId = rec.trip_id
+    payload.document_id = rec.document_id
+    payload.trip_id = rec.trip_id
     payload.filename = rec.filename
-    payload.documentType = AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value))
-    payload.workflowMode = AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value))
+    payload.document_type = AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value))
+    payload.workflow_mode = AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value))
     return payload
 
 
@@ -77,12 +72,32 @@ def _itinerary_doc_locked(trip: TripRecord) -> bool:
     return trip.status != "new"
 
 
-@router.post("/trip/ai-import", response_model=TripImport)
-async def ai_import(
+@router.post("/trips/ai-import", response_model=TripImport)
+async def ai_import_new_trip(
     file: UploadFile = File(...),
-    tripId: str | None = Form(None),
+    user: UserRecord = Depends(require_auth),
+):
+    """Structure a document into a brand-new draft trip (nothing persisted)."""
+    return await _ai_import(file=file, trip=None, db=None, user=user)
+
+
+@router.post("/trips/{trip_id}/ai-import", response_model=TripImport)
+async def ai_import_for_trip(
+    file: UploadFile = File(...),
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
+):
+    """Structure an itinerary document for an existing trip and record the document."""
+    return await _ai_import(file=file, trip=trip, db=db, user=user)
+
+
+async def _ai_import(
+    *,
+    file: UploadFile,
+    trip: TripRecord | None,
+    db: AsyncSession | None,
+    user: UserRecord,
 ):
     started = time.monotonic()
     filename = file.filename or "unknown"
@@ -97,27 +112,17 @@ async def ai_import(
             detail="File is too large (max 15 MB).",
         )
 
-    trip: TripRecord | None = None
-    if tripId:
-        trip = await db.get(TripRecord, tripId)
-        if (
-            trip is None
-            or trip.user_id != str(user.id)
-            or trip.is_deleted
-            or trip.deleted_at is not None
-        ):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-        if _itinerary_doc_locked(trip):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=_itinerary_reimport_detail(trip=trip),
-            )
+    if trip is not None and _itinerary_doc_locked(trip):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=_itinerary_reimport_detail(trip=trip),
+        )
 
     if trip is None:
         document_text = document_ingest.extract_text(filename, data)
         logger.info("ai-import extracted %d chars of text from %s", len(document_text), filename)
         try:
-            draft = await run_in_threadpool(trip_ai.structure_document, document_text)
+            draft = await trip_ai.structure_document(document_text)
         except HTTPException:
             raise
         except Exception:
@@ -130,7 +135,7 @@ async def ai_import(
         logger.info(
             "ai-import done: file=%s trip=%r days=%d in %.1fs",
             filename,
-            draft.tripName,
+            draft.trip_name,
             len(draft.days),
             elapsed,
         )
@@ -158,10 +163,8 @@ async def ai_import(
         document_text = document_ingest.extract_text(filename, data)
         logger.info("ai-import extracted %d chars of text from %s", len(document_text), filename)
 
-        # The OpenAI client is synchronous/blocking; run it off the event loop so it
-        # does not stall the whole server while waiting on the API.
         try:
-            draft = await run_in_threadpool(trip_ai.structure_document, document_text)
+            draft = await trip_ai.structure_document(document_text)
         except HTTPException:
             raise
         except Exception:
@@ -171,8 +174,7 @@ async def ai_import(
                 detail="AI import failed. See server logs for details.",
             )
 
-    if tripId:
-        draft = draft.model_copy(update={"tripId": tripId})
+    draft = draft.model_copy(update={"trip_id": trip.trip_id})
 
     if trip is not None:
         now = datetime.now(timezone.utc)
@@ -197,8 +199,8 @@ async def ai_import(
                 workflow_mode=AIDocumentWorkflowMode.ITINERARY_IMPORT.value,
                 content_hash=content_hash,
                 body_contents=document_text,
-                extracted_payload=itinerary_payload.model_dump_json(),
-                trip_import_payload=draft.model_dump_json(),
+                extracted_payload=itinerary_payload.model_dump_json(by_alias=True),
+                trip_import_payload=draft.model_dump_json(by_alias=True),
             )
         )
         trip.status = "draft"
@@ -209,14 +211,14 @@ async def ai_import(
     logger.info(
         "ai-import done: file=%s trip=%r days=%d in %.1fs",
         filename,
-        draft.tripName,
+        draft.trip_name,
         len(draft.days),
         elapsed,
     )
     return draft
 
 
-@router.post("/trip/ai-enhance", response_model=TripImport)
+@router.post("/trips/ai-enhance", response_model=TripImport)
 async def ai_enhance(
     trip: TripImport,
     user: UserRecord = Depends(require_auth),
@@ -225,15 +227,15 @@ async def ai_enhance(
     started = time.monotonic()
     logger.info(
         "ai-enhance start: user=%s trip=%r days=%d",
-        getattr(user, "id", "?"), trip.tripName, len(trip.days),
+        getattr(user, "id", "?"), trip.trip_name, len(trip.days),
     )
 
     try:
-        enhanced = await run_in_threadpool(trip_ai.enhance_trip_import, trip)
+        enhanced = await trip_ai.enhance_trip_import(trip)
     except HTTPException:
         raise
     except Exception:
-        logger.exception("ai-enhance failed for trip=%r", trip.tripName)
+        logger.exception("ai-enhance failed for trip=%r", trip.trip_name)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI enhance failed. See server logs for details.",
@@ -242,30 +244,23 @@ async def ai_enhance(
     elapsed = time.monotonic() - started
     logger.info(
         "ai-enhance done: trip=%r days=%d in %.1fs",
-        enhanced.tripName, len(enhanced.days), elapsed,
+        enhanced.trip_name, len(enhanced.days), elapsed,
     )
     return enhanced
 
 
-@router.post("/trip/ai-document", response_model=AIDocumentExtraction)
+@router.post("/trips/{trip_id}/ai-documents", response_model=AIDocumentExtraction)
 async def ai_document_import(
-    tripId: str = Form(...),
     workflowMode: AIDocumentWorkflowMode = Form(AIDocumentWorkflowMode.DETAIL_IMPORT),
     file: UploadFile = File(...),
+    tripId: str | None = Form(None),  # accepted for backwards compatibility; the path wins
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
     started = time.monotonic()
     filename = file.filename or "unknown"
-
-    trip = await db.get(TripRecord, tripId)
-    if (
-        trip is None
-        or trip.user_id != str(user.id)
-        or trip.is_deleted
-        or trip.deleted_at is not None
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    tripId = trip.trip_id
 
     if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT and _itinerary_doc_locked(trip):
         raise HTTPException(
@@ -298,13 +293,13 @@ async def ai_document_import(
     if cached_doc is not None and cached_doc.extracted_payload:
         payload = AIDocumentExtraction.model_validate_json(cached_doc.extracted_payload)
         payload.cached = True
-        payload.documentId = cached_doc.document_id
-        payload.tripId = tripId
+        payload.document_id = cached_doc.document_id
+        payload.trip_id = tripId
         payload.filename = filename
-        payload.documentType = AIDocumentType(getattr(cached_doc, "document_type", document_type.value))
-        payload.workflowMode = AIDocumentWorkflowMode(getattr(cached_doc, "workflow_mode", workflowMode.value))
-        cached_doc.document_type = payload.documentType.value
-        cached_doc.workflow_mode = payload.workflowMode.value
+        payload.document_type = AIDocumentType(getattr(cached_doc, "document_type", document_type.value))
+        payload.workflow_mode = AIDocumentWorkflowMode(getattr(cached_doc, "workflow_mode", workflowMode.value))
+        cached_doc.document_type = payload.document_type.value
+        cached_doc.workflow_mode = payload.workflow_mode.value
         if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
             trip.status = "draft"
             trip.updated_at = datetime.now(timezone.utc)
@@ -326,12 +321,12 @@ async def ai_document_import(
     if global_cached_doc is not None and global_cached_doc.extracted_payload:
         document_id = str(uuid.uuid4())
         payload = AIDocumentExtraction.model_validate_json(global_cached_doc.extracted_payload)
-        payload.documentId = document_id
-        payload.tripId = tripId
+        payload.document_id = document_id
+        payload.trip_id = tripId
         payload.filename = filename
         payload.cached = True
-        payload.documentType = document_type
-        payload.workflowMode = workflowMode
+        payload.document_type = document_type
+        payload.workflow_mode = workflowMode
 
         db.add(
             AIDocumentRecord(
@@ -343,7 +338,7 @@ async def ai_document_import(
                 workflow_mode=workflowMode.value,
                 content_hash=content_hash,
                 body_contents=global_cached_doc.body_contents,
-                extracted_payload=payload.model_dump_json(),
+                extracted_payload=payload.model_dump_json(by_alias=True),
                 trip_import_payload=global_cached_doc.trip_import_payload,
             )
         )
@@ -357,12 +352,12 @@ async def ai_document_import(
     document_text = document_ingest.extract_text(filename, data)
     try:
         if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
-            draft_trip = await run_in_threadpool(trip_ai.structure_document, document_text)
+            draft_trip = await trip_ai.structure_document(document_text)
             draft_stays = draft_trip.stays
             draft_travels = draft_trip.travels
-            trip_import_payload = draft_trip.model_dump_json()
+            trip_import_payload = draft_trip.model_dump_json(by_alias=True)
         else:
-            draft = await run_in_threadpool(trip_ai.extract_document_records, document_text)
+            draft = await trip_ai.extract_document_records(document_text)
             draft_stays = draft.stays
             draft_travels = draft.travels
             trip_import_payload = None
@@ -397,7 +392,7 @@ async def ai_document_import(
             workflow_mode=workflowMode.value,
             content_hash=content_hash,
             body_contents=document_text,
-            extracted_payload=payload.model_dump_json(),
+            extracted_payload=payload.model_dump_json(by_alias=True),
             trip_import_payload=trip_import_payload,
         )
         db.add(doc)
@@ -407,7 +402,7 @@ async def ai_document_import(
         cached_doc.workflow_mode = workflowMode.value
         cached_doc.content_hash = content_hash
         cached_doc.body_contents = document_text
-        cached_doc.extracted_payload = payload.model_dump_json()
+        cached_doc.extracted_payload = payload.model_dump_json(by_alias=True)
         cached_doc.trip_import_payload = trip_import_payload
         cached_doc.updated_at = datetime.now(timezone.utc)
 
@@ -431,23 +426,14 @@ async def ai_document_import(
 
 @router.get("/trips/{trip_id}/ai-documents", response_model=list[AIDocumentListItem])
 async def list_ai_documents(
-    trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(require_auth),
 ):
-    trip = await db.get(TripRecord, trip_id)
-    if (
-        trip is None
-        or trip.user_id != str(user.id)
-        or trip.is_deleted
-        or trip.deleted_at is not None
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-
     result = await db.execute(
         select(AIDocumentRecord).where(
             AIDocumentRecord.user_id == str(user.id),
-            AIDocumentRecord.trip_id == trip_id,
+            AIDocumentRecord.trip_id == trip.trip_id,
         )
     )
     out = []
@@ -469,7 +455,7 @@ async def list_ai_documents(
     return out
 
 
-@router.get("/trip/ai-document/{document_id}", response_model=AIDocumentExtraction)
+@router.get("/ai-documents/{document_id}", response_model=AIDocumentExtraction)
 async def get_ai_document_extraction(
     document_id: str,
     db: AsyncSession = Depends(get_db),
@@ -485,7 +471,7 @@ async def get_ai_document_extraction(
     return payload
 
 
-@router.post("/trip/ai-document/{document_id}/regen", response_model=AIDocumentExtraction)
+@router.post("/ai-documents/{document_id}/regen", response_model=AIDocumentExtraction)
 async def regen_ai_document_extraction(
     document_id: str,
     db: AsyncSession = Depends(get_db),
@@ -496,7 +482,7 @@ async def regen_ai_document_extraction(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     try:
-        draft = await run_in_threadpool(trip_ai.extract_document_records, rec.body_contents)
+        draft = await trip_ai.extract_document_records(rec.body_contents)
     except HTTPException:
         raise
     except Exception:
@@ -516,13 +502,13 @@ async def regen_ai_document_extraction(
         stays=draft.stays,
         travels=draft.travels,
     )
-    rec.extracted_payload = payload.model_dump_json()
+    rec.extracted_payload = payload.model_dump_json(by_alias=True)
     rec.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return payload
 
 
-@router.post("/trip/ai-document/{document_id}/save", response_model=AIDocumentSaveResult)
+@router.post("/ai-documents/{document_id}/save", response_model=AIDocumentSaveResult)
 async def save_ai_document_records(
     document_id: str,
     body: AIDocumentSaveRequest,
@@ -533,20 +519,13 @@ async def save_ai_document_records(
     if rec is None or rec.user_id != str(user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    trip = await db.get(TripRecord, rec.trip_id)
-    if (
-        trip is None
-        or trip.user_id != str(user.id)
-        or trip.is_deleted
-        or trip.deleted_at is not None
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+    trip = await require_owned_trip(db, rec.trip_id, user)
     if not rec.extracted_payload:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No extracted payload to save")
 
     payload = AIDocumentExtraction.model_validate_json(rec.extracted_payload)
-    selected_stay_ids = set(body.stayDetailIds) if body.stayDetailIds is not None else None
-    selected_travel_ids = set(body.travelDetailIds) if body.travelDetailIds is not None else None
+    selected_stay_ids = set(body.stay_detail_ids) if body.stay_detail_ids is not None else None
+    selected_travel_ids = set(body.travel_detail_ids) if body.travel_detail_ids is not None else None
 
     if body.stays is not None:
         stays_to_save = list(body.stays)
@@ -554,7 +533,7 @@ async def save_ai_document_records(
         stays_to_save = [
             stay
             for stay in payload.stays
-            if selected_stay_ids is None or stay.stayDetailId in selected_stay_ids
+            if selected_stay_ids is None or stay.stay_detail_id in selected_stay_ids
         ]
 
     if body.travels is not None:
@@ -563,23 +542,23 @@ async def save_ai_document_records(
         travels_to_save = [
             travel
             for travel in payload.travels
-            if selected_travel_ids is None or travel.travelDetailId in selected_travel_ids
+            if selected_travel_ids is None or travel.travel_detail_id in selected_travel_ids
         ]
 
     stays_saved = 0
     travels_saved = 0
 
     for stay in stays_to_save:
-        stay_id = stay.stayDetailId or str(uuid.uuid4())
+        stay_id = stay.stay_detail_id or str(uuid.uuid4())
         if await db.get(StayDetailRecord, stay_id):
             continue
 
-        check_in_tzid = stay.checkInTimezoneId or _infer_tzid(
+        check_in_tzid = stay.check_in_timezone_id or infer_tzid_from_locations(
             stay.locations, role="venue", fallback=trip.default_timezone_id
         )
-        check_out_tzid = stay.checkOutTimezoneId or check_in_tzid
-        check_in_text = normalize_stay_wall_clock(stay.checkIn, default_time=CHECK_IN_DEFAULT_TIME)
-        check_out_text = normalize_stay_wall_clock(stay.checkOut, default_time=CHECK_OUT_DEFAULT_TIME)
+        check_out_tzid = stay.check_out_timezone_id or check_in_tzid
+        check_in_text = normalize_stay_wall_clock(stay.check_in, default_time=CHECK_IN_DEFAULT_TIME)
+        check_out_text = normalize_stay_wall_clock(stay.check_out, default_time=CHECK_OUT_DEFAULT_TIME)
         check_in_local = parse_wall_clock(check_in_text)
         check_out_local = parse_wall_clock(check_out_text)
 
@@ -588,7 +567,7 @@ async def save_ai_document_records(
                 stay_detail_id=stay_id,
                 trip_id=rec.trip_id,
                 name=stay.name,
-                stay_type=stay.stayType,
+                stay_type=stay.stay_type,
                 check_in_local=check_in_local,
                 check_in_tzid=check_in_tzid,
                 check_in_utc=derive_utc(check_in_local, check_in_tzid),
@@ -597,50 +576,32 @@ async def save_ai_document_records(
                 check_out_utc=derive_utc(check_out_local, check_out_tzid),
                 check_in=wall_clock_to_text(check_in_local),
                 check_out=wall_clock_to_text(check_out_local),
-                room_type=stay.roomType,
-                confirmation_number=stay.confirmationNumber,
+                room_type=stay.room_type,
+                confirmation_number=stay.confirmation_number,
                 description=stay.description,
             )
         )
         await db.flush()
         rec_stay = await db.get(StayDetailRecord, stay_id)
-        for i, loc in enumerate(stay.locations):
-            db.add(
-                LocationRecord(
-                    location_id=loc.locationId,
-                    point_id=None,
-                    stay_detail_id=stay_id,
-                    travel_detail_id=None,
-                    role=loc.role,
-                    sort_order=i,
-                    name=loc.name,
-                    lat=loc.lat,
-                    lng=loc.lng,
-                    full_address=loc.fullAddress,
-                    description=loc.description,
-                    link=loc.link,
-                    google_place_id=loc.googlePlaceId,
-                    google_maps_uri=loc.googleMapsUri,
-                    timezone_id=_location_tzid(loc),
-                )
-            )
+        for row in location_rows(stay.locations, stay_detail_id=stay_id):
+            db.add(row)
         if rec_stay is not None:
             await sync_stay_generated_points(db, stay=rec_stay)
         stays_saved += 1
 
     for travel in travels_to_save:
-        travel_id = travel.travelDetailId or str(uuid.uuid4())
+        travel_id = travel.travel_detail_id or str(uuid.uuid4())
         if await db.get(TravelDetailRecord, travel_id):
             continue
 
-        departure_tzid = travel.departureTimezoneId or _infer_tzid(
+        departure_tzid = travel.departure_timezone_id or infer_tzid_from_locations(
             travel.locations, role="origin", fallback=trip.default_timezone_id
         )
-        arrival_tzid = travel.arrivalTimezoneId or _infer_tzid(
+        arrival_tzid = travel.arrival_timezone_id or infer_tzid_from_locations(
             travel.locations, role="destination", fallback=trip.default_timezone_id
         )
-        departure_local = parse_wall_clock(travel.departureDateTime)
-        arrival_local = parse_wall_clock(travel.arrivalDateTime)
+        departure_local = parse_wall_clock(travel.departure_date_time)
+        arrival_local = parse_wall_clock(travel.arrival_date_time)
 
         db.add(
             TravelDetailRecord(
@@ -649,8 +610,8 @@ async def save_ai_document_records(
                 name=travel.name,
                 mode=travel.mode,
                 operator=travel.operator,
-                vehicle_number=travel.vehicleNumber,
-                cabin_class=travel.cabinClass,
+                vehicle_number=travel.vehicle_number,
+                cabin_class=travel.cabin_class,
                 departure_local=departure_local,
                 departure_tzid=departure_tzid,
                 departure_utc=derive_utc(departure_local, departure_tzid),
@@ -659,32 +620,14 @@ async def save_ai_document_records(
                 arrival_utc=derive_utc(arrival_local, arrival_tzid),
                 departure_date_time=wall_clock_to_text(departure_local),
                 arrival_date_time=wall_clock_to_text(arrival_local),
-                confirmation_number=travel.confirmationNumber,
+                confirmation_number=travel.confirmation_number,
                 description=travel.description,
             )
         )
         await db.flush()
         rec_travel = await db.get(TravelDetailRecord, travel_id)
-        for i, loc in enumerate(travel.locations):
-            db.add(
-                LocationRecord(
-                    location_id=loc.locationId,
-                    point_id=None,
-                    stay_detail_id=None,
-                    travel_detail_id=travel_id,
-                    role=loc.role,
-                    sort_order=i,
-                    name=loc.name,
-                    lat=loc.lat,
-                    lng=loc.lng,
-                    full_address=loc.fullAddress,
-                    description=loc.description,
-                    link=loc.link,
-                    google_place_id=loc.googlePlaceId,
-                    google_maps_uri=loc.googleMapsUri,
-                    timezone_id=_location_tzid(loc),
-                )
-            )
+        for row in location_rows(travel.locations, travel_detail_id=travel_id):
+            db.add(row)
         if rec_travel is not None:
             await sync_travel_generated_points(db, travel=rec_travel)
         travels_saved += 1

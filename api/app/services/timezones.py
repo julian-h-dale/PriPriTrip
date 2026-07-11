@@ -46,6 +46,45 @@ def tzid_from_coords(lat: float | None, lng: float | None) -> str | None:
         return None
 
 
+_CAMEL_TO_SNAKE = {
+    "locationId": "location_id",
+    "fullAddress": "full_address",
+    "googlePlaceId": "google_place_id",
+    "googleMapsUri": "google_maps_uri",
+    "timezoneId": "timezone_id",
+}
+
+
+def _loc_get(loc, name: str):
+    """Read a location attribute from a dict (camelCase keys), a snake_case
+    pydantic/ORM object, or a legacy camelCase object."""
+    if isinstance(loc, dict):
+        return loc.get(name)
+    value = getattr(loc, name, None)
+    if value is None and name in _CAMEL_TO_SNAKE:
+        value = getattr(loc, _CAMEL_TO_SNAKE[name], None)
+    return value
+
+
+def location_tzid(loc) -> str | None:
+    """Timezone id for a location (pydantic object, ORM row, or dict).
+
+    Prefers an explicit timezoneId, falling back to coordinate lookup.
+    """
+    return _loc_get(loc, "timezoneId") or tzid_from_coords(_loc_get(loc, "lat"), _loc_get(loc, "lng"))
+
+
+def infer_tzid_from_locations(locations, *, role: str | None = None, fallback: str | None = None) -> str | None:
+    """First resolvable timezone id among locations (optionally filtered by role)."""
+    for loc in locations or []:
+        if role and _loc_get(loc, "role") != role:
+            continue
+        tzid = location_tzid(loc)
+        if tzid:
+            return tzid
+    return fallback
+
+
 def derive_utc(local_dt: datetime | None, tzid: str | None) -> datetime | None:
     if local_dt is None or not tzid:
         return None

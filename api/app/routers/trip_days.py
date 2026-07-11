@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_auth
 from app.database import get_db
-from app.models import TripDayRecord, TripRecord, UserRecord
-from app.schemas import TripDayCreate, TripDayPatch, TripDayResponse, TripDayUpdate
+from app.dependencies import get_owned_trip
+from app.models import TripDayRecord, TripRecord
+from app.schemas import TripDayCreate, TripDayPatch, TripDayResponse
 
 router = APIRouter(
     prefix="/trips/{trip_id}/days",
@@ -16,42 +16,25 @@ router = APIRouter(
 
 
 def _day_to_response(r: TripDayRecord) -> TripDayResponse:
-    return TripDayResponse(
-        dayId=r.day_id,
-        tripId=r.trip_id,
-        title=r.title,
-        date=r.date,
-        description=r.description,
-        isAlternate=r.is_alternate,
-        completed=r.completed,
-        deletedAt=r.deleted_at.isoformat() if r.deleted_at else None,
-        createdAt=r.created_at.isoformat() if r.created_at else None,
-        updatedAt=r.updated_at.isoformat() if r.updated_at else None,
-    )
+    return TripDayResponse.from_record(r)
 
 
-def _require_trip(trip_id: str, trip: TripRecord | None, user: UserRecord) -> TripRecord:
-    if (
-        trip is None
-        or trip.user_id != str(user.id)
-        or bool(getattr(trip, "is_deleted", False))
-        or getattr(trip, "deleted_at", None) is not None
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
-    return trip
+async def _require_day(db: AsyncSession, day_id: str, trip: TripRecord) -> TripDayRecord:
+    day = await db.get(TripDayRecord, day_id)
+    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip.trip_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
+    return day
 
 
 @router.get("", response_model=list[TripDayResponse])
 async def list_days(
-    trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(trip_id, await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(TripDayRecord)
         .where(
-            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.trip_id == trip.trip_id,
             TripDayRecord.is_deleted.is_(False),
             TripDayRecord.deleted_at.is_(None),
         )
@@ -62,15 +45,13 @@ async def list_days(
 
 @router.get("/deleted", response_model=list[TripDayResponse])
 async def list_deleted_days(
-    trip_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(trip_id, await db.get(TripRecord, trip_id), user)
     result = await db.execute(
         select(TripDayRecord)
         .where(
-            TripDayRecord.trip_id == trip_id,
+            TripDayRecord.trip_id == trip.trip_id,
             TripDayRecord.is_deleted.is_(True),
             TripDayRecord.deleted_at.isnot(None),
         )
@@ -81,21 +62,19 @@ async def list_deleted_days(
 
 @router.post("", response_model=TripDayResponse, status_code=status.HTTP_201_CREATED)
 async def create_day(
-    trip_id: str,
     body: TripDayCreate,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    _require_trip(trip_id, await db.get(TripRecord, trip_id), user)
-    if await db.get(TripDayRecord, body.dayId) is not None:
+    if await db.get(TripDayRecord, body.day_id) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day already exists")
     day = TripDayRecord(
-        day_id=body.dayId,
-        trip_id=trip_id,
+        day_id=body.day_id,
+        trip_id=trip.trip_id,
         title=body.title,
         date=body.date,
         description=body.description,
-        is_alternate=body.isAlternate,
+        is_alternate=body.is_alternate,
         completed=body.completed,
     )
     db.add(day)
@@ -104,53 +83,18 @@ async def create_day(
     return _day_to_response(day)
 
 
-@router.put("/{day_id}", response_model=TripDayResponse)
-async def update_day(
-    trip_id: str,
-    day_id: str,
-    body: TripDayUpdate,
-    db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
-):
-    day = await db.get(TripDayRecord, day_id)
-    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip_id, trip, user)
-    day.title = body.title
-    day.date = body.date
-    day.description = body.description
-    day.is_alternate = body.isAlternate
-    day.completed = body.completed
-    day.updated_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(day)
-    return _day_to_response(day)
-
-
 @router.patch("/{day_id}", response_model=TripDayResponse)
 async def patch_day(
-    trip_id: str,
     day_id: str,
     body: TripDayPatch,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    day = await db.get(TripDayRecord, day_id)
-    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip_id, trip, user)
-    _field_map = {
-        "title": "title",
-        "date": "date",
-        "description": "description",
-        "isAlternate": "is_alternate",
-        "completed": "completed",
-    }
-    for pydantic_field, orm_field in _field_map.items():
-        if pydantic_field in body.model_fields_set:
-            setattr(day, orm_field, getattr(body, pydantic_field))
+    day = await _require_day(db, day_id, trip)
+    # Field names match the ORM columns 1:1 now that schemas are snake_case.
+    for field in ("title", "date", "description", "is_alternate", "completed"):
+        if field in body.model_fields_set:
+            setattr(day, field, getattr(body, field))
     day.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(day)
@@ -159,16 +103,11 @@ async def patch_day(
 
 @router.delete("/{day_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_day(
-    trip_id: str,
     day_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
-    day = await db.get(TripDayRecord, day_id)
-    if day is None or day.is_deleted or day.deleted_at is not None or day.trip_id != trip_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip_id, trip, user)
+    day = await _require_day(db, day_id, trip)
     day.is_deleted = True
     day.deleted_at = datetime.now(timezone.utc)
     day.updated_at = datetime.now(timezone.utc)
@@ -177,16 +116,13 @@ async def delete_day(
 
 @router.post("/{day_id}/restore", response_model=TripDayResponse)
 async def restore_day(
-    trip_id: str,
     day_id: str,
+    trip: TripRecord = Depends(get_owned_trip),
     db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
 ):
     day = await db.get(TripDayRecord, day_id)
-    if day is None or day.trip_id != trip_id:
+    if day is None or day.trip_id != trip.trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
-    trip = await db.get(TripRecord, trip_id)
-    _require_trip(trip_id, trip, user)
     if day.deleted_at is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day is not deleted")
     day.is_deleted = False

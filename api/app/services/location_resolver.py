@@ -1,25 +1,32 @@
+"""Google Places resolution for assistant-provided location names.
+
+Async (httpx) so it never blocks the event loop — this runs inside chat-turn
+handling. The chat contract deliberately does not let the model supply
+lat/lng/place IDs (review.md 3C-6), so every model-named location passes
+through here for authoritative metadata.
+"""
+
 from __future__ import annotations
 
-import json
-import os
-import urllib.error
-import urllib.request
+import logging
+
+import httpx
+
+from app.settings import get_settings
+
+logger = logging.getLogger("app.services.location_resolver")
+
+_PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+_REQUEST_TIMEOUT_SECONDS = 8.0
 
 
-def _post_json(url: str, *, payload: dict, headers: dict[str, str]) -> dict:
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", **headers},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=8) as resp:
-        body = resp.read().decode("utf-8")
-    return json.loads(body) if body else {}
-
-
-def resolve_location_candidates(query: str, *, region_code: str | None = None, max_candidates: int = 3) -> list[dict]:
-    maps_api_key = os.environ.get("MAPS_API_KEY")
+async def resolve_location_candidates(
+    query: str,
+    *,
+    region_code: str | None = None,
+    max_candidates: int = 3,
+) -> list[dict]:
+    maps_api_key = get_settings().maps_api_key
     if not maps_api_key:
         return []
 
@@ -36,12 +43,12 @@ def resolve_location_candidates(query: str, *, region_code: str | None = None, m
     }
 
     try:
-        data = _post_json(
-            "https://places.googleapis.com/v1/places:searchText",
-            payload=payload,
-            headers=headers,
-        )
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+            resp = await client.post(_PLACES_SEARCH_URL, json=payload, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning("Places lookup failed for %r: %s", query, exc)
         return []
 
     candidates: list[dict] = []
@@ -61,13 +68,13 @@ def resolve_location_candidates(query: str, *, region_code: str | None = None, m
     return candidates
 
 
-def enrich_location_dict(loc: dict, *, region_code: str | None = None) -> dict:
+async def enrich_location_dict(loc: dict, *, region_code: str | None = None) -> dict:
     if not loc.get("name"):
         return loc
     if loc.get("googlePlaceId") and loc.get("lat") is not None and loc.get("lng") is not None:
         return loc
 
-    candidates = resolve_location_candidates(loc["name"], region_code=region_code, max_candidates=1)
+    candidates = await resolve_location_candidates(loc["name"], region_code=region_code, max_candidates=1)
     if not candidates:
         return loc
 

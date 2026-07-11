@@ -12,7 +12,12 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useEffect, useState } from 'react';
-import client from '../../api/client';
+import {
+  useCreateTravelDetailMutation,
+  useDeleteTravelDetailMutation,
+  usePatchTravelDetailMutation,
+} from '../../store/apiSlice';
+import { getErrorMessage } from '../../utils/errors';
 import LocationForm from './LocationForm';
 
 const TRAVEL_MODES = [
@@ -86,6 +91,9 @@ export default function TravelForm({
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [createTravelDetail] = useCreateTravelDetailMutation();
+  const [patchTravelDetail] = usePatchTravelDetailMutation();
+  const [deleteTravelDetail] = useDeleteTravelDetailMutation();
   const isEdit = Boolean(initialValues?.travelDetailId);
 
   useEffect(() => {
@@ -170,18 +178,19 @@ export default function TravelForm({
       payload.locations = normalizedLocations;
 
       if (isEdit) {
-        await client.patch(
-          `/trips/${tripId}/travel-details/${initialValues.travelDetailId}`,
-          payload
-        );
+        await patchTravelDetail({
+          tripId,
+          travelDetailId: initialValues.travelDetailId,
+          patch: payload,
+        }).unwrap();
       } else {
-        await client.post(`/trips/${tripId}/travel-details`, payload);
+        await createTravelDetail({ tripId, travel: payload }).unwrap();
       }
 
       onSaved?.();
       onClose?.();
     } catch (err) {
-      setErrors({ _submit: err?.response?.data?.detail ?? 'Save failed. Please try again.' });
+      setErrors({ _submit: getErrorMessage(err, 'Save failed. Please try again.') });
     } finally {
       setSaving(false);
     }
@@ -191,14 +200,17 @@ export default function TravelForm({
     if (!isEdit) return;
     try {
       setDeleting(true);
-      await client.delete(`/trips/${tripId}/travel-details/${initialValues.travelDetailId}`);
+      await deleteTravelDetail({
+        tripId,
+        travelDetailId: initialValues.travelDetailId,
+      }).unwrap();
       onDeleted?.();
       if (!onDeleted) {
         onSaved?.();
       }
       onClose?.();
     } catch (err) {
-      setErrors({ _submit: err?.response?.data?.detail ?? 'Delete failed. Please try again.' });
+      setErrors({ _submit: getErrorMessage(err, 'Delete failed. Please try again.') });
     } finally {
       setDeleting(false);
     }
