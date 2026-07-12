@@ -273,6 +273,20 @@ api/
 
 Note: there are no DB migrations yet by design — the schema is still moving fast. `dev.sh --clean` recreates the schema. Alembic is planned before any release (see `../review.md` 1B-4).
 
+### Dates and times (review.md 1C-3)
+
+Calendar dates (`trips.start_date`, `trip_days.date`) are `DATE` columns, not text — so `"not-a-date"` is a hard error and date arithmetic works in SQL. The API wire format is unchanged (`"2026-10-30"` either way).
+
+A timestamp is stored **three** times, deliberately, and each carries different information:
+
+| Column | Example | What it is |
+|---|---|---|
+| `check_in_local` | `2026-10-30 15:00` | the wall clock — what the booking says |
+| `check_in_tzid` | `Asia/Tokyo` | *which* clock that is |
+| `check_in_utc` | `2026-10-30 06:00+00` | the actual instant, for ordering across timezones |
+
+There used to be a **fourth** — a `check_in` VARCHAR holding `"2026-10-30T15:00"`, written as `wall_clock_to_text(rec.check_in_local)` right after the typed column was set. Same fact, twice, with two writers that could drift. It is gone; the API renders that text from `*_local` on the way out (`from_record`), so the response is identical.
+
 ### Model conventions (review.md 1C-3)
 
 `app/models.py` uses SQLAlchemy 2.0 declarative style: `Mapped[...]` + `mapped_column(...)`, where nullability comes from the annotation (`Mapped[str]` is NOT NULL, `Mapped[str | None]` is nullable).
@@ -286,6 +300,7 @@ Note: there are no DB migrations yet by design — the schema is still moving fa
 ```bash
 psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-11_add_indexes.sql
 psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-11_chat_idempotency.sql
+psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-12_date_columns.sql
 ```
 
 `./dev.sh --clean` gets you the same schema from scratch.

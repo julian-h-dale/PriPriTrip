@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import date
 import uuid
 from dataclasses import dataclass, field
 
 from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripRecord
 from app.services.chat_tool_loop import run_chat_tool_loop
+from app.services.timezones import parse_wall_clock
 from app.services.trip_state import WorkflowOutcome
 
 from evals import db as eval_db
@@ -23,8 +25,8 @@ async def seed_trip(session, scenario: Scenario) -> TripRecord:
         trip_id=str(uuid.uuid4()),
         trip_name=scenario.trip.tripName,
         status=scenario.trip.status,
-        start_date=scenario.trip.startDate or scenario.appCurrentDate,
-        end_date=scenario.trip.endDate or scenario.appCurrentDate,
+        start_date=date.fromisoformat(scenario.trip.startDate or scenario.appCurrentDate),
+        end_date=date.fromisoformat(scenario.trip.endDate or scenario.appCurrentDate),
         start_location_name=scenario.trip.startLocationName,
         destination_location_name=scenario.trip.destinationLocationName,
         default_timezone_id=scenario.trip.defaultTimezoneId,
@@ -40,7 +42,7 @@ async def seed_trip(session, scenario: Scenario) -> TripRecord:
                 day_id=str(uuid.uuid4()),
                 trip_id=trip.trip_id,
                 title=day.title,
-                date=day.date,
+                date=date.fromisoformat(day.date),
                 description=day.description,
             )
         )
@@ -51,8 +53,8 @@ async def seed_trip(session, scenario: Scenario) -> TripRecord:
                 trip_id=trip.trip_id,
                 name=stay.name,
                 stay_type=stay.stayType,
-                check_in=stay.checkIn,
-                check_out=stay.checkOut,
+                check_in_local=parse_wall_clock(stay.checkIn),
+                check_out_local=parse_wall_clock(stay.checkOut),
                 room_type=stay.roomType,
                 confirmation_number=stay.confirmationNumber,
             )
@@ -64,8 +66,8 @@ async def seed_trip(session, scenario: Scenario) -> TripRecord:
                 trip_id=trip.trip_id,
                 name=travel.name,
                 mode=travel.mode,
-                departure_date_time=travel.departureDateTime,
-                arrival_date_time=travel.arrivalDateTime,
+                departure_local=parse_wall_clock(travel.departureDateTime),
+                arrival_local=parse_wall_clock(travel.arrivalDateTime),
                 confirmation_number=travel.confirmationNumber,
             )
         )

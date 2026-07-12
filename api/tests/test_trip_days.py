@@ -1,5 +1,7 @@
 """Tests for the /trips/{trip_id}/days CRUD + restore endpoints (real DB)."""
 
+from datetime import date
+
 from app.models import TripDayRecord
 
 from tests.factories import make_day, make_trip, new_id
@@ -66,7 +68,7 @@ class TestPatchDay:
 
         assert resp.status_code == 200
         await db.refresh(day)
-        assert (day.title, day.date, day.description) == ("New", "2026-11-01", "Notes")
+        assert (day.title, day.date, day.description) == ("New", date(2026, 11, 1), "Notes")
 
     async def test_patch_partial_update_leaves_other_fields_alone(self, client, db, user):
         trip = await make_trip(db, user)

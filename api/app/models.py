@@ -11,7 +11,7 @@ Conventions:
   soft-delete filter.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
@@ -19,6 +19,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     ColumnElement,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -87,8 +88,8 @@ class TripRecord(SoftDeleteMixin, Base):
     start_location_name: Mapped[str | None] = mapped_column(String)
     destination_location_name: Mapped[str | None] = mapped_column(String)
     default_timezone_id: Mapped[str | None] = mapped_column(String)
-    start_date: Mapped[str] = mapped_column(String)
-    end_date: Mapped[str] = mapped_column(String)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=text("NOW()")
     )
@@ -138,7 +139,7 @@ class TripDayRecord(SoftDeleteMixin, Base):
         Uuid(as_uuid=False), ForeignKey("trips.trip_id"), index=True
     )
     title: Mapped[str] = mapped_column(String)
-    date: Mapped[str] = mapped_column(String)
+    date: Mapped[date] = mapped_column(Date)
     description: Mapped[str | None] = mapped_column(String)
     is_alternate: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
@@ -155,7 +156,7 @@ class TripDayRecord(SoftDeleteMixin, Base):
             TripPointRecord.is_deleted.is_(False),
             TripPointRecord.deleted_at.is_(None),
         ),
-        order_by=lambda: TripPointRecord.start_date_time,
+        order_by=lambda: TripPointRecord.start_local,
         viewonly=True,
     )
 
@@ -188,22 +189,21 @@ class TripPointRecord(SoftDeleteMixin, Base):
         ForeignKey("travel_details.travel_detail_id", ondelete="SET NULL"),
         index=True,
     )
-    # Wall-clock source of truth and derived UTC instant.
+    # Wall clock (what the ticket says) + which clock + the derived instant.
+    # There is no separate text copy: the API renders one from start_local.
     start_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     start_tzid: Mapped[str | None] = mapped_column(String)
     start_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     end_tzid: Mapped[str | None] = mapped_column(String)
     end_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    start_date_time: Mapped[str | None] = mapped_column(String)
-    end_date_time: Mapped[str | None] = mapped_column(String)
     confirmation_number: Mapped[str | None] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(String)
     image_url: Mapped[str | None] = mapped_column(String)
     logo_url: Mapped[str | None] = mapped_column(String)
     is_system_created: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    completed_date_time: Mapped[str | None] = mapped_column(String)
+    completed_date_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=text("NOW()")
     )
@@ -297,8 +297,6 @@ class TravelDetailRecord(SoftDeleteMixin, Base):
     arrival_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     arrival_tzid: Mapped[str | None] = mapped_column(String)
     arrival_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    departure_date_time: Mapped[str | None] = mapped_column(String)
-    arrival_date_time: Mapped[str | None] = mapped_column(String)
     confirmation_number: Mapped[str | None] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime | None] = mapped_column(
@@ -334,8 +332,6 @@ class StayDetailRecord(SoftDeleteMixin, Base):
     check_out_local: Mapped[datetime | None] = mapped_column(DateTime(timezone=False))
     check_out_tzid: Mapped[str | None] = mapped_column(String)
     check_out_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    check_in: Mapped[str | None] = mapped_column(String)
-    check_out: Mapped[str | None] = mapped_column(String)
     room_type: Mapped[str | None] = mapped_column(String)
     confirmation_number: Mapped[str | None] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(String)

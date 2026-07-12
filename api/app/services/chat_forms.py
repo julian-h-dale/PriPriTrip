@@ -16,6 +16,7 @@ other write, with no LLM call at all: a plain save is instant and free.
 
 from __future__ import annotations
 
+from datetime import date, datetime
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -31,6 +32,7 @@ from app.models import (
     TripRecord,
 )
 from app.schemas import ChatForm, ChatFormField, ChatFormOption
+from app.services.timezones import wall_clock_to_text
 
 # Field types the frontend knows how to render.
 TEXT = "text"
@@ -70,16 +72,16 @@ FIELD_SPECS: dict[str, dict[str, FieldSpec]] = {
     "point": {
         "title": FieldSpec("Title", TEXT, "title"),
         "type": FieldSpec("Type", SELECT, "type", _enum_options(PointType)),
-        "startDateTime": FieldSpec("Starts", DATETIME, "start_date_time"),
-        "endDateTime": FieldSpec("Ends", DATETIME, "end_date_time"),
+        "startDateTime": FieldSpec("Starts", DATETIME, "start_local"),
+        "endDateTime": FieldSpec("Ends", DATETIME, "end_local"),
         "confirmationNumber": FieldSpec("Confirmation number", TEXT, "confirmation_number"),
         "description": FieldSpec("Notes", TEXTAREA, "description"),
     },
     "stay": {
         "name": FieldSpec("Property name", TEXT, "name"),
         "stayType": FieldSpec("Type", SELECT, "stay_type", _enum_options(StayType)),
-        "checkIn": FieldSpec("Check-in", DATETIME, "check_in"),
-        "checkOut": FieldSpec("Check-out", DATETIME, "check_out"),
+        "checkIn": FieldSpec("Check-in", DATETIME, "check_in_local"),
+        "checkOut": FieldSpec("Check-out", DATETIME, "check_out_local"),
         "roomType": FieldSpec("Room type", TEXT, "room_type"),
         "confirmationNumber": FieldSpec("Confirmation number", TEXT, "confirmation_number"),
         "description": FieldSpec("Notes", TEXTAREA, "description"),
@@ -90,8 +92,8 @@ FIELD_SPECS: dict[str, dict[str, FieldSpec]] = {
         "operator": FieldSpec("Operator / airline", TEXT, "operator"),
         "vehicleNumber": FieldSpec("Flight / train number", TEXT, "vehicle_number"),
         "cabinClass": FieldSpec("Cabin / class", TEXT, "cabin_class"),
-        "departureDateTime": FieldSpec("Departure", DATETIME, "departure_date_time"),
-        "arrivalDateTime": FieldSpec("Arrival", DATETIME, "arrival_date_time"),
+        "departureDateTime": FieldSpec("Departure", DATETIME, "departure_local"),
+        "arrivalDateTime": FieldSpec("Arrival", DATETIME, "arrival_local"),
         "confirmationNumber": FieldSpec("Confirmation number", TEXT, "confirmation_number"),
         "description": FieldSpec("Notes", TEXTAREA, "description"),
     },
@@ -162,6 +164,12 @@ def _current_value(record, spec: FieldSpec) -> str | None:
     value = getattr(record, spec.attr, None)
     if value is None:
         return None
+    if isinstance(value, datetime):
+        # The app's canonical wall-clock text ("2026-10-30T15:00"), which is
+        # also what an <input type="datetime-local"> expects.
+        return wall_clock_to_text(value)
+    if isinstance(value, date):
+        return value.isoformat()
     return str(value)
 
 

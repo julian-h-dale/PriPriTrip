@@ -235,7 +235,7 @@ async def reply_in_chat(
         runtimeContext=runtime_context,
     )
     if not trip_id:
-        today = date.today().isoformat()
+        today = date.today()
         trip_id = str(uuid.uuid4())
         trip = TripRecord(
             trip_id=trip_id,

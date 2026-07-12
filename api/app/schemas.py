@@ -11,6 +11,7 @@ their camelCase field names are part of the LLM contract.
 """
 
 import uuid
+from datetime import date as CalendarDate, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -88,15 +89,15 @@ class TripHeader(APIModel):
     start_location_name: Optional[str] = None
     destination_location_name: Optional[str] = None
     default_timezone_id: Optional[str] = None
-    start_date: str
-    end_date: str
+    start_date: CalendarDate
+    end_date: CalendarDate
 
 
 class TripHeaderResponse(APIModel):
     trip_id: str
     trip_name: str
-    start_date: str
-    end_date: str
+    start_date: CalendarDate
+    end_date: CalendarDate
     status: str
 
 
@@ -167,9 +168,9 @@ class TravelDetail(APIModel):
             operator=rec.operator,
             vehicle_number=rec.vehicle_number,
             cabin_class=rec.cabin_class,
-            departure_date_time=wall_clock_to_text(rec.departure_local) or rec.departure_date_time,
+            departure_date_time=wall_clock_to_text(rec.departure_local),
             departure_timezone_id=rec.departure_tzid,
-            arrival_date_time=wall_clock_to_text(rec.arrival_local) or rec.arrival_date_time,
+            arrival_date_time=wall_clock_to_text(rec.arrival_local),
             arrival_timezone_id=rec.arrival_tzid,
             confirmation_number=rec.confirmation_number,
             description=rec.description,
@@ -198,9 +199,9 @@ class StayDetail(APIModel):
             trip_id=rec.trip_id,
             name=rec.name,
             stay_type=rec.stay_type,
-            check_in=wall_clock_to_text(rec.check_in_local) or rec.check_in,
+            check_in=wall_clock_to_text(rec.check_in_local),
             check_in_timezone_id=rec.check_in_tzid,
-            check_out=wall_clock_to_text(rec.check_out_local) or rec.check_out,
+            check_out=wall_clock_to_text(rec.check_out_local),
             check_out_timezone_id=rec.check_out_tzid,
             room_type=rec.room_type,
             confirmation_number=rec.confirmation_number,
@@ -272,7 +273,7 @@ class StayDetailPatch(APIModel):
 class TripDayCreate(APIModel):
     day_id: str
     title: str
-    date: str
+    date: CalendarDate
     description: Optional[str] = None
     is_alternate: bool = False
     completed: bool = False
@@ -280,7 +281,7 @@ class TripDayCreate(APIModel):
 
 class TripDayPatch(APIModel):
     title: Optional[str] = None
-    date: Optional[str] = None
+    date: Optional[CalendarDate] = None
     description: Optional[str] = None
     is_alternate: Optional[bool] = None
     completed: Optional[bool] = None
@@ -290,7 +291,7 @@ class TripDayResponse(APIModel):
     day_id: str
     trip_id: str
     title: str
-    date: str
+    date: CalendarDate
     description: Optional[str] = None
     is_alternate: bool = False
     completed: bool
@@ -338,7 +339,7 @@ class TripPointCreate(APIModel):
     locations: List[LocationCreate] = []
     is_system_created: bool = False
     completed: bool = False
-    completed_date_time: Optional[str] = None
+    completed_date_time: Optional[datetime] = None
 
 
 class TripPointPatch(APIModel):
@@ -358,7 +359,7 @@ class TripPointPatch(APIModel):
     locations: Optional[List[LocationCreate]] = None
     is_system_created: Optional[bool] = None
     completed: Optional[bool] = None
-    completed_date_time: Optional[str] = None
+    completed_date_time: Optional[datetime] = None
 
 
 class TripPointResponse(APIModel):
@@ -383,7 +384,7 @@ class TripPointResponse(APIModel):
     travel_detail: Optional[TravelDetail] = None
     stay_detail: Optional[StayDetail] = None
     completed: bool
-    completed_date_time: Optional[str] = None
+    completed_date_time: Optional[datetime] = None
     deleted_at: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -404,9 +405,9 @@ class TripPointResponse(APIModel):
             title=point.title,
             stay_detail_id=point.stay_detail_id,
             travel_detail_id=point.travel_detail_id,
-            start_date_time=wall_clock_to_text(point.start_local) or point.start_date_time,
+            start_date_time=wall_clock_to_text(point.start_local),
             start_timezone_id=point.start_tzid,
-            end_date_time=wall_clock_to_text(point.end_local) or point.end_date_time,
+            end_date_time=wall_clock_to_text(point.end_local),
             end_timezone_id=point.end_tzid,
             confirmation_number=point.confirmation_number,
             description=point.description,
@@ -437,8 +438,8 @@ class TripDayWithPoints(TripDayResponse):
 class TripListItem(APIModel):
     trip_id: str
     trip_name: str
-    start_date: str
-    end_date: str
+    start_date: CalendarDate
+    end_date: CalendarDate
 
 
 class TripResponse(APIModel):
@@ -448,8 +449,8 @@ class TripResponse(APIModel):
     start_location_name: Optional[str] = None
     destination_location_name: Optional[str] = None
     default_timezone_id: Optional[str] = None
-    start_date: str
-    end_date: str
+    start_date: CalendarDate
+    end_date: CalendarDate
     stays: List[StayDetail] = []
     travels: List[TravelDetail] = []
     days: List[TripDayWithPoints] = []
@@ -460,7 +461,7 @@ class TripResponse(APIModel):
 class TripDayImport(APIModel):
     day_id: str = Field(default_factory=_uuid)
     title: str
-    date: str
+    date: CalendarDate
     description: Optional[str] = None
     is_alternate: bool = False
     completed: bool = False
@@ -471,8 +472,8 @@ class TripImport(APIModel):
     trip_id: str = Field(default_factory=_uuid)
     trip_name: str
     default_timezone_id: Optional[str] = None
-    start_date: str
-    end_date: str
+    start_date: CalendarDate
+    end_date: CalendarDate
     stays: List[StayDetailImport] = []
     travels: List[TravelDetailImport] = []
     days: List[TripDayImport] = []
@@ -530,7 +531,7 @@ class AIDocumentListItem(APIModel):
 class VerifyIssue(APIModel):
     code: str
     severity: str  # "error" | "warning"
-    date: str
+    date: CalendarDate
     day_id: Optional[str] = None
     message: str
 

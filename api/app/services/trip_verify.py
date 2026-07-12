@@ -15,12 +15,14 @@ from datetime import date, datetime, timedelta
 from app.schemas import TripResponse, VerifyIssue, VerifyResult
 
 
-def _parse_date(value: str) -> date:
-    # Dates are stored as ISO "YYYY-MM-DD"; take the date part defensively.
-    return date.fromisoformat(value[:10])
+def _parse_date(value) -> date:
+    """Trip/day dates are real `date`s; wall-clock times are still ISO text."""
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value)[:10])
 
 
-def _date_range(start: str, end: str) -> list[date]:
+def _date_range(start, end) -> list[date]:
     start_d = _parse_date(start)
     end_d = _parse_date(end)
     if end_d < start_d:

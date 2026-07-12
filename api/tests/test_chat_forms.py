@@ -5,6 +5,8 @@ nothing else. Types, labels, options and current values come from the server,
 so a model that invents a field or an option is rejected rather than obeyed.
 """
 
+from datetime import datetime
+
 import pytest
 import pytest_asyncio
 
@@ -25,7 +27,8 @@ async def scenario(db, user):
     """A trip with one flight (partly filled in) and one hotel."""
     trip = await make_trip(db, user, trip_name="Kyoto Trip")
     travel = await make_travel(
-        db, trip, name="Flight to Osaka", mode="flight", departure_date_time="2026-10-30T09:00"
+        db, trip, name="Flight to Osaka", mode="flight",
+        departure_local=datetime(2026, 10, 30, 9, 0),
     )
     stay = await make_stay(db, trip, name="Ritz-Carlton Kyoto", stay_type="hotel")
     return trip, travel, stay

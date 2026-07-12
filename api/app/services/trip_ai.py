@@ -385,8 +385,9 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
     """
     return AITrip(
         tripName=trip.trip_name,
-        startDate=trip.start_date,
-        endDate=trip.end_date,
+        # The LLM contract is ISO text; the columns are real dates.
+        startDate=trip.start_date.isoformat(),
+        endDate=trip.end_date.isoformat(),
         stays=[
             AIStay(
                 ref=s.stay_detail_id,
@@ -420,7 +421,7 @@ def _trip_import_to_ai(trip: TripImport) -> AITrip:
         days=[
             AIDay(
                 title=day.title,
-                date=day.date,
+                date=day.date.isoformat(),
                 description=day.description,
                 isAlternate=day.is_alternate,
                 points=[

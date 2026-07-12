@@ -228,7 +228,7 @@ class TestAiImportEndpoint:
             return result
 
         monkeypatch.setattr(trip_ai, "enhance_trip_import", fake_enhance)
-        resp = client.post("/trips/ai-enhance", json=draft.model_dump())
+        resp = client.post("/trips/ai-enhance", json=draft.model_dump(mode="json", by_alias=True))
         assert resp.status_code == 200
         body = resp.json()
         assert body["tripId"] == draft.trip_id

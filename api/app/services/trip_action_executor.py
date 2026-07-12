@@ -34,7 +34,7 @@ from app.services.detail_points import (
 from app.services.llm_contract import ActionResult, AssistantAction
 from app.services.location_resolver import enrich_location_dict
 from app.services.locations import location_rows
-from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
+from app.services.timezones import derive_utc, parse_wall_clock
 
 
 def _coerce_uuid(value: str | None) -> str:
@@ -86,33 +86,53 @@ def _trip_tz(trip: TripRecord) -> str:
     return trip.default_timezone_id or "UTC"
 
 
+def _as_date(value: Any) -> date | None:
+    """ISO text (what the model and the normalizer speak) -> a real date."""
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value[:10])
+        except ValueError:
+            return None
+    return None
+
+
+def _iso(value: date | None) -> str | None:
+    return value.isoformat() if value else None
+
+
 def _normalize_trip_dates(fields: dict[str, Any], *, trip: TripRecord) -> dict[str, Any]:
+    """Resolve the model's date text, returning real `date` objects."""
     result = dict(fields)
     today = date.today().isoformat()
 
-    if isinstance(result.get("startDate"), str):
+    if "startDate" in result:
         normalized = normalize_date(
             DateNormalizerInput(
-                rawText=result["startDate"],
+                rawText=str(result["startDate"]),
                 appCurrentDate=today,
-                tripStartDate=trip.start_date,
-                tripEndDate=trip.end_date,
+                tripStartDate=_iso(trip.start_date),
+                tripEndDate=_iso(trip.end_date),
             )
         )
-        if normalized:
-            result["startDate"] = normalized
+        result["startDate"] = _as_date(normalized or result["startDate"])
 
-    if isinstance(result.get("endDate"), str):
+    if "endDate" in result:
         normalized = normalize_date(
             DateNormalizerInput(
-                rawText=result["endDate"],
+                rawText=str(result["endDate"]),
                 appCurrentDate=today,
-                tripStartDate=result.get("startDate") or trip.start_date,
-                tripEndDate=trip.end_date,
+                tripStartDate=_iso(result.get("startDate") or trip.start_date),
+                tripEndDate=_iso(trip.end_date),
             )
         )
-        if normalized:
-            result["endDate"] = normalized
+        result["endDate"] = _as_date(normalized or result["endDate"])
+
+    # A date the model wrote that we could not parse must not reach the column.
+    for key in ("startDate", "endDate"):
+        if key in result and result[key] is None:
+            del result[key]
 
     return result
 
@@ -201,13 +221,21 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 return ActionResult(op=action.op, target=action.target, id=day_id, status="error", detail="Day already exists")
             title = action_fields.get("title")
             day_date = action_fields.get("date")
-            if isinstance(day_date, str):
+            if day_date is not None:
                 normalized = normalize_date(
-                    DateNormalizerInput(rawText=day_date, appCurrentDate=date.today().isoformat(), tripStartDate=trip.start_date, tripEndDate=trip.end_date)
+                    DateNormalizerInput(
+                        rawText=str(day_date),
+                        appCurrentDate=date.today().isoformat(),
+                        tripStartDate=_iso(trip.start_date),
+                        tripEndDate=_iso(trip.end_date),
+                    )
                 )
-                day_date = normalized or day_date
+                day_date = _as_date(normalized or day_date)
             if not title or not day_date:
-                return ActionResult(op=action.op, target=action.target, status="error", detail="Day create requires title and date")
+                return ActionResult(
+                    op=action.op, target=action.target, status="error",
+                    detail="Day create requires a title and a date (ISO YYYY-MM-DD).",
+                )
             db.add(
                 TripDayRecord(
                     day_id=day_id,
@@ -240,12 +268,22 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
         if action.op == "update":
             fields = dict(action_fields)
-            if isinstance(fields.get("date"), str):
+            if fields.get("date") is not None:
                 normalized = normalize_date(
-                    DateNormalizerInput(rawText=fields["date"], appCurrentDate=date.today().isoformat(), tripStartDate=trip.start_date, tripEndDate=trip.end_date)
+                    DateNormalizerInput(
+                        rawText=str(fields["date"]),
+                        appCurrentDate=date.today().isoformat(),
+                        tripStartDate=_iso(trip.start_date),
+                        tripEndDate=_iso(trip.end_date),
+                    )
                 )
-                if normalized:
-                    fields["date"] = normalized
+                parsed = _as_date(normalized or fields["date"])
+                if parsed is None:
+                    return ActionResult(
+                        op=action.op, target=action.target, id=action.id, status="error",
+                        detail=f"{fields['date']!r} is not a date I can read. Use ISO YYYY-MM-DD.",
+                    )
+                fields["date"] = parsed
             field_map = {
                 "title": "title",
                 "date": "date",
@@ -302,8 +340,6 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             rec.end_local = parse_wall_clock(body.end_date_time)
             rec.end_tzid = body.end_timezone_id or rec.start_tzid
             rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
-            rec.start_date_time = wall_clock_to_text(rec.start_local)
-            rec.end_date_time = wall_clock_to_text(rec.end_local)
             db.add(rec)
             await db.flush()
             await _replace_point_locations(db, body.point_id, [loc.model_dump(by_alias=True) for loc in body.locations])
@@ -352,10 +388,8 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             if "start_date_time" in patch.model_fields_set:
                 rec.start_local = parse_wall_clock(patch.start_date_time)
-                rec.start_date_time = wall_clock_to_text(rec.start_local)
             if "end_date_time" in patch.model_fields_set:
                 rec.end_local = parse_wall_clock(patch.end_date_time)
-                rec.end_date_time = wall_clock_to_text(rec.end_local)
 
             if "start_timezone_id" in patch.model_fields_set:
                 rec.start_tzid = patch.start_timezone_id or _trip_tz(trip)
@@ -401,11 +435,9 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             rec.check_in_local = parse_wall_clock(body.check_in)
             rec.check_in_tzid = body.check_in_timezone_id or _trip_tz(trip)
             rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
-            rec.check_in = wall_clock_to_text(rec.check_in_local)
             rec.check_out_local = parse_wall_clock(body.check_out)
             rec.check_out_tzid = body.check_out_timezone_id or rec.check_in_tzid
             rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
-            rec.check_out = wall_clock_to_text(rec.check_out_local)
             db.add(rec)
             await db.flush()
             await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
@@ -442,10 +474,8 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             if "check_in" in patch.model_fields_set:
                 rec.check_in_local = parse_wall_clock(patch.check_in)
-                rec.check_in = wall_clock_to_text(rec.check_in_local)
             if "check_out" in patch.model_fields_set:
                 rec.check_out_local = parse_wall_clock(patch.check_out)
-                rec.check_out = wall_clock_to_text(rec.check_out_local)
             if "check_in_timezone_id" in patch.model_fields_set:
                 rec.check_in_tzid = patch.check_in_timezone_id or _trip_tz(trip)
             if "check_out_timezone_id" in patch.model_fields_set:
@@ -494,11 +524,9 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             rec.departure_local = parse_wall_clock(body.departure_date_time)
             rec.departure_tzid = body.departure_timezone_id or _trip_tz(trip)
             rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
-            rec.departure_date_time = wall_clock_to_text(rec.departure_local)
             rec.arrival_local = parse_wall_clock(body.arrival_date_time)
             rec.arrival_tzid = body.arrival_timezone_id or rec.departure_tzid
             rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
-            rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
             db.add(rec)
             await db.flush()
             await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
@@ -543,10 +571,8 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             if "departure_date_time" in patch.model_fields_set:
                 rec.departure_local = parse_wall_clock(patch.departure_date_time)
-                rec.departure_date_time = wall_clock_to_text(rec.departure_local)
             if "arrival_date_time" in patch.model_fields_set:
                 rec.arrival_local = parse_wall_clock(patch.arrival_date_time)
-                rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
             if "departure_timezone_id" in patch.model_fields_set:
                 rec.departure_tzid = patch.departure_timezone_id or _trip_tz(trip)
             if "arrival_timezone_id" in patch.model_fields_set:

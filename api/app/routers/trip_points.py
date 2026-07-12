@@ -187,7 +187,7 @@ async def _infer_tzid_from_day_stay(
     for stay in stays_result.scalars().all():
         if stay.check_in_local is None or stay.check_out_local is None:
             continue
-        if stay.check_in_local.date() <= datetime.fromisoformat(day.date).date() <= stay.check_out_local.date():
+        if stay.check_in_local.date() <= day.date <= stay.check_out_local.date():
             locs = await db.execute(
                 select(LocationRecord).where(LocationRecord.stay_detail_id == stay.stay_detail_id)
             )
@@ -256,7 +256,7 @@ async def list_points(
             TripPointRecord.trip_id == trip.trip_id,
             active(TripPointRecord),
         )
-        .order_by(TripPointRecord.start_date_time)
+        .order_by(TripPointRecord.start_local)
     )
     points = result.scalars().all()
     return await _load_point_responses(list(points), db)
@@ -273,7 +273,7 @@ async def list_deleted_points(
             TripPointRecord.trip_id == trip.trip_id,
             deleted(TripPointRecord),
         )
-        .order_by(TripPointRecord.start_date_time)
+        .order_by(TripPointRecord.start_local)
     )
     points = result.scalars().all()
     return await _load_point_responses(list(points), db)
@@ -300,8 +300,6 @@ async def create_point(
         title=body.title,
         stay_detail_id=body.stay_detail_id,
         travel_detail_id=body.travel_detail_id,
-        start_date_time=None,
-        end_date_time=None,
         confirmation_number=body.confirmation_number,
         description=body.description,
         image_url=body.image_url,
@@ -325,8 +323,6 @@ async def create_point(
     point.end_local = parse_wall_clock(body.end_date_time)
     point.end_tzid = body.end_timezone_id or inferred_tzid
     point.end_utc = derive_utc(point.end_local, point.end_tzid)
-    point.start_date_time = wall_clock_to_text(point.start_local)
-    point.end_date_time = wall_clock_to_text(point.end_local)
     await _replace_locations(body.point_id, body.locations, db)
     await db.commit()
     await db.refresh(point)
@@ -395,12 +391,12 @@ async def patch_point(
     start_text = (
         body.start_date_time
         if "start_date_time" in body.model_fields_set
-        else (wall_clock_to_text(point.start_local) or point.start_date_time)
+        else wall_clock_to_text(point.start_local)
     )
     end_text = (
         body.end_date_time
         if "end_date_time" in body.model_fields_set
-        else (wall_clock_to_text(point.end_local) or point.end_date_time)
+        else wall_clock_to_text(point.end_local)
     )
 
     point.start_local = parse_wall_clock(start_text)
@@ -413,8 +409,6 @@ async def patch_point(
         body.end_timezone_id if "end_timezone_id" in body.model_fields_set else point.end_tzid
     ) or inferred_tzid
     point.end_utc = derive_utc(point.end_local, point.end_tzid)
-    point.start_date_time = wall_clock_to_text(point.start_local)
-    point.end_date_time = wall_clock_to_text(point.end_local)
 
     if "locations" in body.model_fields_set:
         await _replace_locations(point_id, body.locations or [], db)

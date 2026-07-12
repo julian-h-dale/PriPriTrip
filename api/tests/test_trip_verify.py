@@ -1,3 +1,5 @@
+from datetime import date
+
 from app.schemas import (
     LocationResponse,
     StayDetail,
@@ -121,7 +123,7 @@ def test_empty_day_flagged():
         stays=[_stay("2026-05-10T15:00:00", "2026-05-12T11:00:00")],
     )
     result = verify_trip(trip)
-    empty = [i for i in result.issues if i.code == "EMPTY_DAY" and i.date == "2026-05-11"]
+    empty = [i for i in result.issues if i.code == "EMPTY_DAY" and i.date == date(2026, 5, 11)]
     assert len(empty) == 1
     assert empty[0].severity == "warning"
     assert result.ok is False
@@ -138,7 +140,7 @@ def test_missing_day_in_range_flagged():
     result = verify_trip(trip)
     empty = [i for i in result.issues if i.code == "EMPTY_DAY"]
     assert len(empty) == 1
-    assert empty[0].date == "2026-05-11"
+    assert empty[0].date == date(2026, 5, 11)
     assert empty[0].day_id is None
     assert empty[0].severity == "warning"
 
@@ -155,8 +157,8 @@ def test_missing_stay_warning_when_uncovered():
     result = verify_trip(trip)
     warnings = [i for i in result.issues if i.code == "MISSING_STAY"]
     warn_dates = {w.date for w in warnings}
-    assert "2026-05-11" in warn_dates
-    assert "2026-05-12" in warn_dates
+    assert date(2026, 5, 11) in warn_dates
+    assert date(2026, 5, 12) in warn_dates
     assert all(w.severity == "warning" for w in warnings)
 
 
@@ -170,7 +172,7 @@ def test_empty_day_and_missing_stay_are_both_reported():
         stays=[_stay("2026-05-10T15:00:00", "2026-05-10T23:00:00")],
     )
     result = verify_trip(trip)
-    for_11 = [i for i in result.issues if i.date == "2026-05-11"]
+    for_11 = [i for i in result.issues if i.date == date(2026, 5, 11)]
     codes = {i.code for i in for_11}
     assert "EMPTY_DAY" in codes
     assert "MISSING_STAY" in codes
@@ -289,7 +291,7 @@ def test_travel_overlap_raises_error_but_equal_boundary_is_allowed():
     result = verify_trip(trip)
     issues = [i for i in result.issues if i.code == "TRAVEL_OVERLAP"]
     assert len(issues) == 1
-    assert issues[0].date == "2026-05-10"
+    assert issues[0].date == date(2026, 5, 10)
 
 
 def test_stay_overlap_raises_error_but_same_day_gap_is_allowed():
@@ -320,4 +322,4 @@ def test_stay_overlap_raises_error_but_same_day_gap_is_allowed():
     result = verify_trip(trip)
     issues = [i for i in result.issues if i.code == "STAY_OVERLAP"]
     assert len(issues) == 1
-    assert issues[0].date == "2026-05-10"
+    assert issues[0].date == date(2026, 5, 10)

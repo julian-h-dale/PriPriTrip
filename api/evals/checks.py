@@ -6,6 +6,7 @@ trip state, message patterns — never exact model wording.
 
 from __future__ import annotations
 
+from datetime import date, datetime
 import re
 from dataclasses import dataclass
 
@@ -118,8 +119,14 @@ async def evaluate(
 
     for attr, expected in checks.tripFieldEquals.items():
         actual = getattr(trip, attr, None)
+        # Scenarios write dates as text; the columns hold real dates.
+        comparable = actual.isoformat() if isinstance(actual, (date, datetime)) else actual
         results.append(
-            CheckResult(f"trip.{attr} == {expected!r}", actual == expected, f"actual={actual!r}")
+            CheckResult(
+                f"trip.{attr} == {expected!r}",
+                comparable == expected,
+                f"actual={comparable!r}",
+            )
         )
 
     for key, minimum in checks.countsMin.items():

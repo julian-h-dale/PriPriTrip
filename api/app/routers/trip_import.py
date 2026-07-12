@@ -14,7 +14,7 @@ from app.models import (
 )
 from app.schemas import ImportResult, TripImport
 from app.services.locations import location_rows
-from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock, wall_clock_to_text
+from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock
 
 router = APIRouter(tags=["import"])
 
@@ -100,8 +100,6 @@ async def import_trip(
                 check_out_local=check_out_local,
                 check_out_tzid=check_out_tzid,
                 check_out_utc=derive_utc(check_out_local, check_out_tzid),
-                check_in=wall_clock_to_text(check_in_local),
-                check_out=wall_clock_to_text(check_out_local),
                 room_type=stay.room_type,
                 confirmation_number=stay.confirmation_number,
                 description=stay.description,
@@ -136,8 +134,6 @@ async def import_trip(
                 arrival_local=arrival_local,
                 arrival_tzid=arrival_tzid,
                 arrival_utc=derive_utc(arrival_local, arrival_tzid),
-                departure_date_time=wall_clock_to_text(departure_local),
-                arrival_date_time=wall_clock_to_text(arrival_local),
                 confirmation_number=travel.confirmation_number,
                 description=travel.description,
             )
@@ -188,8 +184,6 @@ async def import_trip(
                 end_local=end_local,
                 end_tzid=pt.end_timezone_id or point_tzid,
                 end_utc=derive_utc(end_local, pt.end_timezone_id or point_tzid),
-                start_date_time=wall_clock_to_text(start_local),
-                end_date_time=wall_clock_to_text(end_local),
                 confirmation_number=pt.confirmation_number,
                 description=pt.description,
                 image_url=pt.image_url,

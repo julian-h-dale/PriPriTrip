@@ -97,12 +97,10 @@ def _apply_stay_times(
     rec.check_in_local = parse_wall_clock(check_in_text)
     rec.check_in_tzid = check_in_tzid
     rec.check_in_utc = derive_utc(rec.check_in_local, check_in_tzid)
-    rec.check_in = wall_clock_to_text(rec.check_in_local)
 
     rec.check_out_local = parse_wall_clock(check_out_text)
     rec.check_out_tzid = check_out_tzid
     rec.check_out_utc = derive_utc(rec.check_out_local, check_out_tzid)
-    rec.check_out = wall_clock_to_text(rec.check_out_local)
 
 
 def _apply_travel_times(
@@ -116,12 +114,10 @@ def _apply_travel_times(
     rec.departure_local = parse_wall_clock(departure_text)
     rec.departure_tzid = departure_tzid
     rec.departure_utc = derive_utc(rec.departure_local, departure_tzid)
-    rec.departure_date_time = wall_clock_to_text(rec.departure_local)
 
     rec.arrival_local = parse_wall_clock(arrival_text)
     rec.arrival_tzid = arrival_tzid
     rec.arrival_utc = derive_utc(rec.arrival_local, arrival_tzid)
-    rec.arrival_date_time = wall_clock_to_text(rec.arrival_local)
 
 
 # ── Travel details ────────────────────────────────────────────────────────
@@ -175,8 +171,6 @@ async def create_travel_detail(
         arrival_local=arrival_local,
         arrival_tzid=arrival_tzid,
         arrival_utc=derive_utc(arrival_local, arrival_tzid),
-        departure_date_time=wall_clock_to_text(departure_local),
-        arrival_date_time=wall_clock_to_text(arrival_local),
         confirmation_number=body.confirmation_number,
         description=body.description,
     )
@@ -223,8 +217,6 @@ async def patch_travel_detail(
         "operator",
         "vehicle_number",
         "cabin_class",
-        "departure_date_time",
-        "arrival_date_time",
         "confirmation_number",
         "description",
     ):
@@ -234,12 +226,12 @@ async def patch_travel_detail(
     current_departure_text = (
         body.departure_date_time
         if "departure_date_time" in body.model_fields_set
-        else (wall_clock_to_text(rec.departure_local) or rec.departure_date_time)
+        else wall_clock_to_text(rec.departure_local)
     )
     current_arrival_text = (
         body.arrival_date_time
         if "arrival_date_time" in body.model_fields_set
-        else (wall_clock_to_text(rec.arrival_local) or rec.arrival_date_time)
+        else wall_clock_to_text(rec.arrival_local)
     )
 
     locations_for_inference = body.locations if "locations" in body.model_fields_set else (
@@ -340,8 +332,6 @@ async def create_stay_detail(
         check_out_local=check_out_local,
         check_out_tzid=check_out_tzid,
         check_out_utc=derive_utc(check_out_local, check_out_tzid),
-        check_in=wall_clock_to_text(check_in_local),
-        check_out=wall_clock_to_text(check_out_local),
         room_type=body.room_type,
         confirmation_number=body.confirmation_number,
         description=body.description,
@@ -386,8 +376,6 @@ async def patch_stay_detail(
     for field in (
         "name",
         "stay_type",
-        "check_in",
-        "check_out",
         "room_type",
         "confirmation_number",
         "description",
@@ -398,12 +386,12 @@ async def patch_stay_detail(
     current_check_in_text = (
         body.check_in
         if "check_in" in body.model_fields_set
-        else (wall_clock_to_text(rec.check_in_local) or rec.check_in)
+        else wall_clock_to_text(rec.check_in_local)
     )
     current_check_out_text = (
         body.check_out
         if "check_out" in body.model_fields_set
-        else (wall_clock_to_text(rec.check_out_local) or rec.check_out)
+        else wall_clock_to_text(rec.check_out_local)
     )
 
     locations_for_inference = body.locations if "locations" in body.model_fields_set else (
