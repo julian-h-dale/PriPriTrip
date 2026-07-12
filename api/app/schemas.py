@@ -580,6 +580,34 @@ class ChatForm(APIModel):
     fields: List[ChatFormField] = []
 
 
+# ── Location choice (review.md 3F-5) ────────────────────────────────────────
+
+class ChatChoiceOption(APIModel):
+    # The place id came from OUR Places lookup — the model never sees or
+    # invents one (review.md 3C-6).
+    option_id: str
+    label: str
+    sublabel: Optional[str] = None
+    maps_uri: Optional[str] = None
+
+
+class ChatChoice(APIModel):
+    choice_id: str
+    prompt: str
+    # The location row whose place is being decided.
+    location_id: str
+    query: str
+    options: List[ChatChoiceOption] = []
+
+
+class ChatChoiceSubmitRequest(APIModel):
+    trip_id: str
+    workflow_name: str
+    request_id: str  # same idempotency contract as /chat/reply (review.md 3D-5)
+    choice_id: str
+    option_id: str
+
+
 class ChatFormSubmitRequest(APIModel):
     trip_id: str
     workflow_name: str

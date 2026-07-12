@@ -64,17 +64,37 @@ class PersistedSpec(BaseModel):
     fieldsContain: dict = Field(default_factory=dict)
 
 
+class LocationSpec(BaseModel):
+    """A location the turn must have left on the trip.
+
+    Asserting the *stay* was created is not enough: the model can name a stay
+    "Sheraton" and attach no location at all, which looks right in the reply
+    and is unmappable in the app. This checks the location row itself.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nameMatches: str  # case-insensitive regex against the saved location name
+    # True: must carry a Google place id (we were sure). False: must NOT (we
+    # refused to guess, and the user is choosing).
+    resolved: Optional[bool] = None
+
+
 class Checks(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     toolsCalledInclude: list[str] = Field(default_factory=list)
     toolsCalledExclude: list[str] = Field(default_factory=list)
     persistedInclude: list[PersistedSpec] = Field(default_factory=list)
+    locationsInclude: list[LocationSpec] = Field(default_factory=list)
     tripFieldEquals: dict = Field(default_factory=dict)  # snake_case TripRecord attrs
     countsMin: dict[str, int] = Field(default_factory=dict)  # days/points/stays/travels
     countsMax: dict[str, int] = Field(default_factory=dict)
     finalMessageMatches: list[str] = Field(default_factory=list)  # case-insensitive regex
     finalMessageNotMatches: list[str] = Field(default_factory=list)
+    # What the assistant handed the user to interact with: "choice", "form", or
+    # "none" for a plain prose reply.
+    uiPayloadKind: Optional[str] = None
     maxIterations: Optional[int] = None
     capHit: Optional[bool] = None
     complete: Optional[bool] = None

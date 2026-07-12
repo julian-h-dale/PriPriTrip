@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
@@ -42,6 +43,30 @@ async def _active_count(session: AsyncSession, key: str, trip: TripRecord) -> in
         .where(model.trip_id == trip.trip_id, active(model))
     )
     return int(result.scalar_one())
+
+
+async def _trip_locations(session: AsyncSession, trip: TripRecord) -> list[LocationRecord]:
+    """Every live location on the trip.
+
+    Locations have no trip_id — they hang off a point, stay or travel leg — so
+    this reaches them through their owners. They have no soft-delete of their
+    own either: a location dies with its owner, so filtering the owner is
+    enough.
+    """
+    owners = (
+        (TripPointRecord, LocationRecord.point_id, TripPointRecord.point_id),
+        (StayDetailRecord, LocationRecord.stay_detail_id, StayDetailRecord.stay_detail_id),
+        (TravelDetailRecord, LocationRecord.travel_detail_id, TravelDetailRecord.travel_detail_id),
+    )
+    found: list[LocationRecord] = []
+    for model, fk, pk in owners:
+        result = await session.execute(
+            select(LocationRecord)
+            .join(model, fk == pk)
+            .where(model.trip_id == trip.trip_id, active(model))
+        )
+        found.extend(result.scalars().all())
+    return found
 
 
 @dataclass
@@ -114,6 +139,39 @@ async def evaluate(
                 f"persisted: {spec.op} {spec.target} {spec.fieldsContain or ''}".strip(),
                 _matches_persisted(outcome, spec),
                 f"persisted={(outcome.structuredContent or {}).get('persistedActions', [])}",
+            )
+        )
+
+    if checks.locationsInclude:
+        saved = await _trip_locations(session, trip)
+        summary = [(loc.name, bool(loc.google_place_id)) for loc in saved]
+        for spec in checks.locationsInclude:
+            matched = [loc for loc in saved if re.search(spec.nameMatches, loc.name or "", re.IGNORECASE)]
+            results.append(
+                CheckResult(
+                    f"location saved matching /{spec.nameMatches}/",
+                    bool(matched),
+                    f"locations={summary}",
+                )
+            )
+            if spec.resolved is not None and matched:
+                is_resolved = any(bool(loc.google_place_id) for loc in matched)
+                results.append(
+                    CheckResult(
+                        f"location /{spec.nameMatches}/ resolved == {spec.resolved}",
+                        is_resolved == spec.resolved,
+                        f"locations={summary}",
+                    )
+                )
+
+    if checks.uiPayloadKind is not None:
+        payload = (outcome.structuredContent or {}).get("uiPayload") or {}
+        actual = payload.get("kind", "none")
+        results.append(
+            CheckResult(
+                f"uiPayload.kind == {checks.uiPayloadKind}",
+                actual == checks.uiPayloadKind,
+                f"actual={actual}",
             )
         )
 

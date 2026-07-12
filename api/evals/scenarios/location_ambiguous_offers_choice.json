@@ -1,0 +1,29 @@
+{
+  "name": "location-ambiguous-offers-choice",
+  "description": "A vague hotel name must be saved as a location anyway, left unresolved, and the ambiguity handed to the user as a choice — never guessed, and never re-asked in prose.",
+  "requirement": "requirements doc Req 9 — Location Test 2/3; review.md 3F-5",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "message": "We're staying at the Hyatt.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "toolsCalledInclude": ["create_stay"],
+    "persistedInclude": [
+      {"op": "create", "target": "stay", "fieldsContain": {"name": "Hyatt"}}
+    ],
+    "locationsInclude": [
+      {"nameMatches": "hyatt", "resolved": false}
+    ],
+    "uiPayloadKind": "choice",
+    "countsMin": {"stays": 1},
+    "countsMax": {"stays": 1},
+    "finalMessageNotMatches": ["which hyatt do you mean\\?", "can you tell me which hyatt"],
+    "capHit": false
+  }
+}

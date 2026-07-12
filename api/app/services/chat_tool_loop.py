@@ -146,6 +146,14 @@ async def _stream_completion(client, *, messages: list[dict], tools: list[dict] 
     yield ("message", message, usage)
 
 
+def _ui_payload(form, choice) -> dict | None:
+    if choice is not None:
+        return {"kind": "choice", "choice": choice.model_dump(mode="json", by_alias=True)}
+    if form is not None:
+        return {"kind": "form", "form": form.model_dump(mode="json", by_alias=True)}
+    return None
+
+
 def _tool_status_label(name: str) -> str:
     """Human-readable interim status for a tool call ("Adding a stay…")."""
     if name == "resolve_location":
@@ -258,6 +266,7 @@ async def stream_chat_tool_loop(
     iterations = 0
     cap_hit = False
     ui_form = None
+    ui_choice = None
     final_text = ""
     tool_call_log: list[dict] = []
     attempted_actions: list = []
@@ -320,8 +329,12 @@ async def stream_chat_tool_loop(
                 tool_outcome.action_result,
             )
             if tool_outcome.form is not None:
-                # Only one form can be shown per turn; the newest wins.
+                # One payload per turn; the newest wins.
                 ui_form = tool_outcome.form
+                ui_choice = None
+            if tool_outcome.choice is not None:
+                ui_choice = tool_outcome.choice
+                ui_form = None
             if action is not None:
                 attempted_actions.append(action)
             if action_result is not None:
@@ -387,9 +400,10 @@ async def stream_chat_tool_loop(
         "suppressedActions": suppressed_actions,
         "results": [result.model_dump(mode="json") for result in action_results],
         "followUpQuestion": None,
-        # The form the assistant wants the user to fill in (review.md 3F-2).
-        # Stored with the message so it survives a transcript reload.
-        "uiPayload": {"kind": "form", "form": ui_form.model_dump(mode="json", by_alias=True)} if ui_form else None,
+        # What the assistant wants the user to interact with: a form to fill in
+        # (review.md 3F-2) or a place to choose (3F-5). Stored with the message
+        # so it survives a transcript reload.
+        "uiPayload": _ui_payload(ui_form, ui_choice),
         "toolLoop": {
             "iterations": iterations,
             "capHit": cap_hit,

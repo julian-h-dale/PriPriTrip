@@ -103,6 +103,23 @@ class AssistantAction(BaseModel):
     fields: AssistantActionFields = Field(default_factory=AssistantActionFields)
 
 
+class LocationDecision(BaseModel):
+    """What the resolver decided about one location on a write (review.md 3F-5).
+
+    `high` means we applied a place; the assistant should say what it assumed.
+    `medium` means we did NOT — the user is offered a choice instead of a
+    silent guess. `low` means nothing was found.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    location_id: str
+    query: str
+    confidence: Literal["high", "medium", "low"]
+    resolved_name: str | None = None
+    candidates: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class ActionResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -111,6 +128,7 @@ class ActionResult(BaseModel):
     id: str | None = None
     status: Literal["ok", "error"]
     detail: str | None = None
+    locations: list[LocationDecision] = Field(default_factory=list)
 
 
 class UserHomeLocationContext(BaseModel):

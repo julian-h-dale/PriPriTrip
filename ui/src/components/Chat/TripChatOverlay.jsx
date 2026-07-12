@@ -29,11 +29,14 @@ import {
 } from '../../store/apiSlice';
 import { getErrorMessage } from '../../utils/errors';
 import {
+  choiceFromMessage,
   formFromMessage,
   listChatMessages,
   sendChatMessage,
+  submitChatChoice,
   submitChatForm,
 } from '../../api/chatService';
+import ChatChoiceCard from './ChatChoiceCard';
 import ChatFormCard from './ChatFormCard';
 
 /** Trip data the chat may have changed behind RTK Query's back. */
@@ -131,8 +134,9 @@ export default function TripChatOverlay({
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState(null);
-  // formId -> what was saved, so a submitted form collapses to a receipt.
+  // formId/choiceId -> what was saved, so a submitted card collapses to a receipt.
   const [savedForms, setSavedForms] = useState({});
+  const [savedChoices, setSavedChoices] = useState({});
 
   const messagesEndRef = useRef(null);
   const sendAbortRef = useRef(null);
@@ -315,6 +319,25 @@ export default function TripChatOverlay({
     if (response.complete) onComplete?.(response);
   }
 
+  /**
+   * Apply a place the user picked (review.md 3F-5). Not a chat turn: the
+   * chosen place id goes straight onto the location, no model call.
+   */
+  async function handleChoiceSubmit(choice, option) {
+    const response = await submitChatChoice({
+      tripId,
+      workflowName,
+      requestId: crypto.randomUUID(),
+      choiceId: choice.choiceId,
+      optionId: option.optionId,
+    });
+
+    dispatch(apiSlice.util.invalidateTags(tripCacheTags(response.tripId)));
+    setSavedChoices((prev) => ({ ...prev, [choice.choiceId]: `Using ${option.label}.` }));
+    const [userMessage, botMessage] = response.messages ?? [];
+    setMessages((prev) => [...prev, userMessage, botMessage].filter(Boolean));
+  }
+
   async function handleDocumentUpload(file) {
     if (!file || busy) return;
     setUploading(true);
@@ -439,11 +462,10 @@ export default function TripChatOverlay({
             )}
             {messages.map((message) => {
               const form = message.isBot ? formFromMessage(message) : null;
-              // Form submissions are recorded as "[form] Airline: ANA; …" —
-              // show the values, not the marker.
-              const text = message.message?.startsWith('[form] ')
-                ? message.message.slice('[form] '.length)
-                : message.message;
+              const choice = message.isBot ? choiceFromMessage(message) : null;
+              // Form/choice submissions are recorded as "[form] …" / "[choice] …" —
+              // show what was chosen, not the marker.
+              const text = message.message?.replace(/^\[(form|choice)\] /, '');
               return (
               <Box
                 key={message.messageId}
@@ -456,8 +478,8 @@ export default function TripChatOverlay({
                   sx={{
                     px: 1.5,
                     py: 1,
-                    maxWidth: form ? '95%' : '85%',
-                    minWidth: form ? '85%' : undefined,
+                    maxWidth: form || choice ? '95%' : '85%',
+                    minWidth: form || choice ? '85%' : undefined,
                     bgcolor: message.isBot ? 'grey.100' : 'primary.main',
                     color: message.isBot ? 'text.primary' : 'primary.contrastText',
                   }}
@@ -473,6 +495,14 @@ export default function TripChatOverlay({
                       disabled={busy}
                       savedSummary={savedForms[form.formId] ?? null}
                       onSubmit={(values) => handleFormSubmit(form, values)}
+                    />
+                  )}
+                  {choice && (
+                    <ChatChoiceCard
+                      choice={choice}
+                      disabled={busy}
+                      savedSummary={savedChoices[choice.choiceId] ?? null}
+                      onSubmit={(option) => handleChoiceSubmit(choice, option)}
                     />
                   )}
                   {message.statusLabel && (

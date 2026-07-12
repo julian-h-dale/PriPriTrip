@@ -31,7 +31,7 @@ from app.services.detail_points import (
     sync_stay_generated_points,
     sync_travel_generated_points,
 )
-from app.services.llm_contract import ActionResult, AssistantAction
+from app.services.llm_contract import ActionResult, AssistantAction, LocationDecision
 from app.services.location_resolver import enrich_location_dict
 from app.services.locations import location_rows
 from app.services.timezones import derive_utc, parse_wall_clock
@@ -142,25 +142,56 @@ def _ensure_location_id(loc: dict[str, Any]) -> dict[str, Any]:
     return loc
 
 
-async def _prepare_locations(locations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+async def _prepare_locations(
+    locations: list[dict[str, Any]], *, near: str | None = None
+) -> tuple[list[dict[str, Any]], list[LocationDecision]]:
+    """Resolve each location, and report what was decided about it.
+
+    A `medium` decision means the place was ambiguous and NOT applied — the
+    caller offers the user a choice rather than silently taking candidate #1,
+    which is what this used to do (review.md 3F-5).
+    """
     prepared: list[dict[str, Any]] = []
+    decisions: list[LocationDecision] = []
     for raw_loc in locations:
         loc = _ensure_location_id(dict(raw_loc))
         # The chat contract strips coords/place IDs from model output, so
         # every location is resolved server-side here (review.md 3C-6).
-        loc = await enrich_location_dict(loc)
+        loc, resolution = await enrich_location_dict(loc, near=near)
         prepared.append(loc)
-    return prepared
+        if resolution is not None:
+            decisions.append(
+                LocationDecision(
+                    location_id=loc["locationId"],
+                    query=resolution.query,
+                    confidence=resolution.confidence,
+                    resolved_name=(resolution.chosen or {}).get("name"),
+                    candidates=[
+                        {
+                            "googlePlaceId": c.get("googlePlaceId"),
+                            "name": c.get("name"),
+                            "fullAddress": c.get("fullAddress"),
+                            "googleMapsUri": c.get("googleMapsUri"),
+                        }
+                        for c in resolution.candidates
+                    ] if resolution.is_ambiguous else [],
+                )
+            )
+    return prepared, decisions
 
 
 def _action_fields_dict(action: AssistantAction) -> dict[str, Any]:
     return action.fields.model_dump(mode="json", exclude_none=True)
 
 
-async def _replace_point_locations(db: AsyncSession, point_id: str, locations: list[dict[str, Any]]) -> None:
+async def _replace_point_locations(
+    db: AsyncSession, point_id: str, locations: list[dict[str, Any]], *, near: str | None = None
+) -> list[LocationDecision]:
     await db.execute(delete(LocationRecord).where(LocationRecord.point_id == point_id))
-    for row in location_rows(await _prepare_locations(locations), point_id=point_id):
+    prepared, decisions = await _prepare_locations(locations, near=near)
+    for row in location_rows(prepared, point_id=point_id):
         db.add(row)
+    return decisions
 
 
 async def _replace_detail_locations(
@@ -169,20 +200,22 @@ async def _replace_detail_locations(
     stay_id: str | None = None,
     travel_id: str | None = None,
     locations: list[dict[str, Any]],
-) -> None:
+    near: str | None = None,
+) -> list[LocationDecision]:
     if stay_id is not None:
         await db.execute(delete(LocationRecord).where(LocationRecord.stay_detail_id == stay_id))
     if travel_id is not None:
         await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id == travel_id))
 
-    for row in location_rows(
-        await _prepare_locations(locations), stay_detail_id=stay_id, travel_detail_id=travel_id
-    ):
+    prepared, decisions = await _prepare_locations(locations, near=near)
+    for row in location_rows(prepared, stay_detail_id=stay_id, travel_detail_id=travel_id):
         db.add(row)
+    return decisions
 
 
 async def execute_action(db: AsyncSession, *, trip: TripRecord, action: AssistantAction) -> ActionResult:
     action_fields = _action_fields_dict(action)
+    decisions: list[LocationDecision] = []
 
     if action.target == "trip":
         if action.op != "update":
@@ -342,10 +375,13 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
             db.add(rec)
             await db.flush()
-            await _replace_point_locations(db, body.point_id, [loc.model_dump(by_alias=True) for loc in body.locations])
+            decisions = await _replace_point_locations(
+                db, body.point_id, [loc.model_dump(by_alias=True) for loc in body.locations],
+                near=trip.destination_location_name,
+            )
             await db.flush()
             return ActionResult(
-                op=action.op, target=action.target, id=body.point_id, status="ok",
+                op=action.op, target=action.target, id=body.point_id, status="ok", locations=decisions,
                 detail=_created_id_detail("point", action.id, body.point_id),
             )
 
@@ -401,10 +437,12 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             if "locations" in patch.model_fields_set:
                 locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
-                await _replace_point_locations(db, rec.point_id, locs)
+                decisions = await _replace_point_locations(
+                    db, rec.point_id, locs, near=trip.destination_location_name
+                )
 
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
@@ -440,11 +478,15 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
             db.add(rec)
             await db.flush()
-            await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
+            decisions = await _replace_detail_locations(
+                db, stay_id=rec.stay_detail_id,
+                locations=[loc.model_dump(by_alias=True) for loc in body.locations],
+                near=trip.destination_location_name,
+            )
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
             return ActionResult(
-                op=action.op, target=action.target, id=rec.stay_detail_id, status="ok",
+                op=action.op, target=action.target, id=rec.stay_detail_id, status="ok", locations=decisions,
                 detail=_created_id_detail("stay", action.id, rec.stay_detail_id),
             )
 
@@ -486,11 +528,13 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             if "locations" in patch.model_fields_set:
                 locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
-                await _replace_detail_locations(db, stay_id=rec.stay_detail_id, locations=locs)
+                decisions = await _replace_detail_locations(
+                    db, stay_id=rec.stay_detail_id, locations=locs, near=trip.destination_location_name
+                )
 
             await sync_stay_generated_points(db, stay=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)
@@ -529,11 +573,15 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
             db.add(rec)
             await db.flush()
-            await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=[loc.model_dump(by_alias=True) for loc in body.locations])
+            decisions = await _replace_detail_locations(
+                db, travel_id=rec.travel_detail_id,
+                locations=[loc.model_dump(by_alias=True) for loc in body.locations],
+                near=trip.destination_location_name,
+            )
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
             return ActionResult(
-                op=action.op, target=action.target, id=rec.travel_detail_id, status="ok",
+                op=action.op, target=action.target, id=rec.travel_detail_id, status="ok", locations=decisions,
                 detail=_created_id_detail("travel", action.id, rec.travel_detail_id),
             )
 
@@ -583,11 +631,13 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             if "locations" in patch.model_fields_set:
                 locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
-                await _replace_detail_locations(db, travel_id=rec.travel_detail_id, locations=locs)
+                decisions = await _replace_detail_locations(
+                    db, travel_id=rec.travel_detail_id, locations=locs, near=trip.destination_location_name
+                )
 
             await sync_travel_generated_points(db, travel=rec)
             await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)

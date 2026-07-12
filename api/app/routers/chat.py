@@ -15,12 +15,14 @@ from app.database import get_db
 from app.dependencies import get_owned_trip, require_owned_trip
 from app.models import ChatMessageRecord, TripRecord, UserRecord
 from app.schemas import (
+    ChatChoiceSubmitRequest,
     ChatFormSubmitRequest,
     ChatMessageResponse,
     ChatReplyRequest,
     ChatReplyResponse,
 )
 from app.services.ai_trace import log_ai_event
+from app.services.chat_choices import ChoiceError, apply_choice
 from app.services.chat_forms import FormError, describe_submission, validate_submission
 from app.services.chat_tool_loop import stream_chat_tool_loop
 from app.services.llm_contract import (
@@ -432,6 +434,124 @@ async def reply_in_chat(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def _stored_choice(db: AsyncSession, *, user: UserRecord, choice_id: str) -> dict | None:
+    """The choice payload we issued, so a submission is checked against it."""
+    result = await db.execute(
+        select(ChatMessageRecord).where(
+            ChatMessageRecord.user_id == str(user.id),
+            ChatMessageRecord.is_bot.is_(True),
+        )
+    )
+    for message in result.scalars().all():
+        payload = _safe_json_dict(message.structure_content)
+        ui = payload.get("uiPayload") or {}
+        choice = ui.get("choice") or {}
+        if ui.get("kind") == "choice" and choice.get("choiceId") == choice_id:
+            return choice
+    return None
+
+
+@router.post("/choices/submit", response_model=ChatReplyResponse)
+async def submit_chat_choice(
+    body: ChatChoiceSubmitRequest,
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_auth),
+):
+    """Apply the place the user picked (review.md 3F-5).
+
+    Like a form submit, this is not a chat turn: the chosen place id — one we
+    looked up ourselves — is written straight onto the location, with no model
+    call and no re-resolution that could land somewhere else.
+    """
+    trip = await require_owned_trip(db, body.trip_id, user)
+
+    replay = await _stored_reply(db, user=user, request_id=body.request_id)
+    if replay is not None:
+        return ChatReplyResponse.model_validate(replay)
+
+    choice = await _stored_choice(db, user=user, choice_id=body.choice_id)
+    if choice is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="That choice is no longer available.",
+        )
+
+    log_ai_event(
+        "chat.choice.submitted",
+        workflowName=body.workflow_name,
+        tripId=body.trip_id,
+        choiceId=body.choice_id,
+        optionId=body.option_id,
+        query=choice.get("query"),
+    )
+
+    try:
+        location = await apply_choice(db, trip=trip, choice=choice, option_id=body.option_id)
+    except ChoiceError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    picked = next(
+        (o for o in choice.get("options", []) if o.get("optionId") == body.option_id), {}
+    )
+    label = picked.get("label") or location.name
+
+    user_message = ChatMessageRecord(
+        message_id=str(uuid.uuid4()),
+        user_id=str(user.id),
+        trip_id=body.trip_id,
+        workflow_name=body.workflow_name,
+        message=f"[choice] {label}",
+        is_bot=False,
+        request_id=body.request_id,
+    )
+    db.add(user_message)
+
+    verify = verify_trip(await assembled_trip(db, trip))
+    bot_message = ChatMessageRecord(
+        message_id=str(uuid.uuid4()),
+        user_id=str(user.id),
+        trip_id=body.trip_id,
+        workflow_name=body.workflow_name,
+        message=f"Got it — using {label}.",
+        structure_content=json.dumps(
+            {
+                "choiceSubmission": {
+                    "choiceId": body.choice_id,
+                    "locationId": location.location_id,
+                    "googlePlaceId": location.google_place_id,
+                }
+            }
+        ),
+        is_bot=True,
+        request_id=body.request_id,
+    )
+    db.add(bot_message)
+    await db.flush()
+    await db.refresh(user_message)
+    await db.refresh(bot_message)
+
+    response = ChatReplyResponse(
+        tripId=body.trip_id,
+        complete=False,
+        tripName=trip.trip_name,
+        verify=verify,
+        messages=[_message_to_response(user_message), _message_to_response(bot_message)],
+    )
+    bot_message.reply_payload = json.dumps(response.model_dump(mode="json", by_alias=True))
+    await db.commit()
+
+    log_ai_event(
+        "chat.choice.applied",
+        tripId=body.trip_id,
+        choiceId=body.choice_id,
+        locationId=location.location_id,
+        resolvedName=location.name,
+        googlePlaceId=location.google_place_id,
+    )
+    return response
 
 
 @router.post("/forms/submit", response_model=ChatReplyResponse)

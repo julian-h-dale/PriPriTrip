@@ -144,13 +144,32 @@ export async function submitChatForm(payload) {
   return data;
 }
 
-/** The form the assistant attached to a bot message, if any. */
-export function formFromMessage(message) {
+/**
+ * Apply the place the user picked from a location choice (review.md 3F-5).
+ * Like a form submit, this costs no model call.
+ */
+export async function submitChatChoice(payload) {
+  const { data } = await client.post('/chat/choices/submit', payload);
+  return data;
+}
+
+function uiPayloadFromMessage(message) {
   if (!message?.structureContent) return null;
   try {
-    const parsed = JSON.parse(message.structureContent);
-    return parsed?.uiPayload?.kind === 'form' ? parsed.uiPayload.form : null;
+    return JSON.parse(message.structureContent)?.uiPayload ?? null;
   } catch {
     return null;
   }
+}
+
+/** The form the assistant attached to a bot message, if any. */
+export function formFromMessage(message) {
+  const payload = uiPayloadFromMessage(message);
+  return payload?.kind === 'form' ? payload.form : null;
+}
+
+/** The location choice the assistant attached to a bot message, if any. */
+export function choiceFromMessage(message) {
+  const payload = uiPayloadFromMessage(message);
+  return payload?.kind === 'choice' ? payload.choice : null;
 }

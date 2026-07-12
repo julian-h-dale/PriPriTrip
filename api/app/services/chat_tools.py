@@ -22,7 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums import PointType, StayType, TravelMode
 from app.models import TripRecord
-from app.schemas import ChatForm
+from app.schemas import ChatChoice, ChatForm
+from app.services.chat_choices import build_choice
 from app.services.chat_forms import FormError, build_form
 from app.services.llm_contract import (
     ActionLocationFields,
@@ -30,7 +31,7 @@ from app.services.llm_contract import (
     AssistantAction,
     AssistantActionFields,
 )
-from app.services.location_resolver import resolve_location_candidates
+from app.services.location_resolver import _normalize, resolve_location
 from app.services.trip_action_executor import execute_action
 
 
@@ -38,6 +39,19 @@ class _ToolArgs(BaseModel):
     """Base for tool argument models: camelCase-native, unknown keys rejected."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+_LOCATIONS_HINT = (
+    "Places involved in this record. Any place the user named — hotel, airport, station, "
+    "restaurant, attraction, city — must appear here, not only in the title/name: a record "
+    "with a place in its name but no location cannot be put on a map. Use the user's own "
+    "wording even when it is vague ('the Sheraton'); the backend resolves the real place."
+)
+
+
+def _locations() -> Optional[list[ActionLocationFields]]:
+    """The `locations` field, described identically on every tool that takes one."""
+    return Field(default=None, description=_LOCATIONS_HINT)
 
 
 # ── Trip ─────────────────────────────────────────────────────────────────────
@@ -85,7 +99,7 @@ class CreatePointArgs(_ToolArgs):
     endTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = None
+    locations: Optional[list[ActionLocationFields]] = _locations()
 
 
 class UpdatePointArgs(_ToolArgs):
@@ -99,7 +113,7 @@ class UpdatePointArgs(_ToolArgs):
     endTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = None
+    locations: Optional[list[ActionLocationFields]] = _locations()
 
 
 class DeletePointArgs(_ToolArgs):
@@ -118,7 +132,7 @@ class CreateStayArgs(_ToolArgs):
     roomType: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = None
+    locations: Optional[list[ActionLocationFields]] = _locations()
 
 
 class UpdateStayArgs(_ToolArgs):
@@ -132,7 +146,7 @@ class UpdateStayArgs(_ToolArgs):
     roomType: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = None
+    locations: Optional[list[ActionLocationFields]] = _locations()
 
 
 class DeleteStayArgs(_ToolArgs):
@@ -153,7 +167,7 @@ class CreateTravelArgs(_ToolArgs):
     arrivalTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = None
+    locations: Optional[list[ActionLocationFields]] = _locations()
 
 
 class UpdateTravelArgs(_ToolArgs):
@@ -169,7 +183,7 @@ class UpdateTravelArgs(_ToolArgs):
     arrivalTimezoneId: Optional[str] = None
     confirmationNumber: Optional[str] = None
     description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = None
+    locations: Optional[list[ActionLocationFields]] = _locations()
 
 
 class DeleteTravelArgs(_ToolArgs):
@@ -223,6 +237,7 @@ class ToolOutcome:
     action: AssistantAction | None = None
     action_result: ActionResult | None = None
     form: ChatForm | None = None
+    choice: ChatChoice | None = None
 
 
 def _to_action(op: str, target: str, args: _ToolArgs, *, id_field: str | None = None) -> AssistantAction:
@@ -236,6 +251,35 @@ def _to_action(op: str, target: str, args: _ToolArgs, *, id_field: str | None = 
     )
 
 
+def _location_note(result: ActionResult) -> tuple[str | None, ChatChoice | None]:
+    """What to tell the model about the places it just wrote (review.md 3F-5)."""
+    notes: list[str] = []
+    choice: ChatChoice | None = None
+
+    for decision in result.locations:
+        if decision.confidence == "high" and decision.resolved_name:
+            if _normalize(decision.resolved_name) != _normalize(decision.query):
+                # Say the assumption out loud — it used to be made silently.
+                notes.append(
+                    f"I took {decision.query!r} to mean {decision.resolved_name!r}. "
+                    "Mention this assumption briefly."
+                )
+        elif decision.confidence == "medium":
+            choice = build_choice(decision)
+            notes.append(
+                f"{decision.query!r} is ambiguous, so it was NOT resolved and the user is now "
+                f"choosing between {len(choice.options)} places. Do not ask them which one — the "
+                "choice is already on screen."
+            )
+        elif decision.confidence == "low":
+            notes.append(
+                f"No place matched {decision.query!r}; the name was saved as-is. "
+                "Ask the user for a more specific name if it matters."
+            )
+
+    return (" ".join(notes) or None), choice
+
+
 def _action_handler(op: str, target: str, *, id_field: str | None = None):
     async def handler(db: AsyncSession, trip: TripRecord, args: _ToolArgs) -> ToolOutcome:
         action = _to_action(op, target, args, id_field=id_field)
@@ -243,28 +287,58 @@ def _action_handler(op: str, target: str, *, id_field: str | None = None):
             result = await execute_action(db, trip=trip, action=action)
         except Exception as exc:  # executor bugs must not kill the loop
             result = ActionResult(op=op, target=target, id=action.id, status="error", detail=str(exc))
+
+        note, choice = _location_note(result)
+        payload = result.model_dump(mode="json")
+        if note:
+            payload["locationNote"] = note
+        # The model does not need the candidate machinery — the user sees it.
+        payload.pop("locations", None)
+
         return ToolOutcome(
-            result=result.model_dump(mode="json"),
+            result=payload,
             action=action,
             action_result=result,
+            choice=choice,
         )
 
     return handler
 
 
 async def _resolve_location_handler(db: AsyncSession, trip: TripRecord, args: ResolveLocationArgs) -> ToolOutcome:
-    candidates = await resolve_location_candidates(args.query, max_candidates=args.maxCandidates)
-    # Return only the human-meaningful fields; coords/place IDs stay
-    # server-side (the model cannot write them anyway — review.md 3C-6).
+    # Biased by the trip's destination: "the Hyatt" on an Okinawa trip should
+    # not surface a Hyatt in Ohio (review.md 3F-5).
+    resolution = await resolve_location(
+        args.query,
+        near=trip.destination_location_name,
+        max_candidates=args.maxCandidates,
+    )
+    # Only the human-meaningful fields; coords/place IDs stay server-side
+    # (the model cannot write them anyway — review.md 3C-6).
     trimmed = [
         {
             "name": c.get("name"),
             "fullAddress": c.get("fullAddress"),
             "googleMapsUri": c.get("googleMapsUri"),
         }
-        for c in candidates
+        for c in resolution.candidates
     ]
-    return ToolOutcome(result={"query": args.query, "candidates": trimmed})
+    guidance = {
+        "high": "One clear match. Use this exact name when you save the location.",
+        "medium": (
+            "Several plausible places. Save the record anyway with the user's own wording — "
+            "the app will offer them a choice of places automatically."
+        ),
+        "low": "No match. Ask the user for a more specific name.",
+    }[resolution.confidence]
+    return ToolOutcome(
+        result={
+            "query": args.query,
+            "confidence": resolution.confidence,
+            "candidates": trimmed,
+            "guidance": guidance,
+        }
+    )
 
 
 async def _request_form_handler(db: AsyncSession, trip: TripRecord, args: RequestFormArgs) -> ToolOutcome:
