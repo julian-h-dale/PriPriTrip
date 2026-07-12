@@ -59,8 +59,9 @@ High value next:
 Medium:
 - DONE 1C-3 SQLAlchemy 2.0 style (`Mapped`/`relationship`), FK indexes, date columns instead of strings, soft-delete helper, `onupdate` for `updated_at`, N+1 fixes in points/details list endpoints
 -DONE 1C-1 move `/auth/session` endpoints onto proper DI (unlocks real auth tests)
-- 3D-5 idempotency key on `/chat/reply`; 3D-6 compact per-turn trip snapshot (loop has `get_trip_snapshot` tool, context can slim down); 3D-3 real LLM summarization for long chats
-- 2C-1 Stay/Travel page dedupe; 2C-2 `usePlacesAutocomplete` hook; 2C-3 chat overlay UX (auto-scroll, Enter guard, timeout)
+- DONE 3D-5 idempotency key on `/chat/reply`; 
+-3D-6 compact per-turn trip snapshot (loop has `get_trip_snapshot` tool, context can slim down); 3D-3 real LLM summarization for long chats
+- DONE 2C-1 Stay/Travel page dedupe; 2C-2 `usePlacesAutocomplete` hook; 2C-3 chat overlay UX (auto-scroll, Enter guard, timeout)
 - 1C-7 ai.log PII redaction story (accepted for local-only)
 - 3F-3 document-into-chat + email-forward ingestion; OCR/vision fallback for image PDFs
 
