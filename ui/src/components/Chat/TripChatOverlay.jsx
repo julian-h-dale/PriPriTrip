@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import {
   Box,
   CircularProgress,
@@ -19,6 +20,7 @@ import {
   aiImportTripDocument,
 } from '../../api/tripImportService';
 import {
+  apiSlice,
   useGetTripQuery,
   useImportTripMutation,
   useLazyVerifyTripQuery,
@@ -33,6 +35,11 @@ import {
   submitChatForm,
 } from '../../api/chatService';
 import ChatFormCard from './ChatFormCard';
+
+/** Trip data the chat may have changed behind RTK Query's back. */
+function tripCacheTags(tripId) {
+  return ['Trips', { type: 'Trip', id: tripId }, { type: 'Verify', id: tripId }];
+}
 
 function MarkdownBubble({ text, isBot }) {
   return (
@@ -102,14 +109,22 @@ function TypingBubble() {
   );
 }
 
-export default function NewTripChatOverlay({
+/**
+ * The trip chat. Used two ways:
+ *   - Trips page: workflowName="trip:new_trip", no tripId — builds a new trip.
+ *   - Trip page:  workflowName="trip:manage", tripId set — edits the open trip.
+ */
+export default function TripChatOverlay({
   open,
   onClose,
   tripId,
   workflowName,
+  title = 'Trip Chat',
+  emptyPrompt = "Tell me about your trip — when, where, how you're getting there. Or upload an itinerary.",
   onTripIdChange,
   onComplete,
 }) {
+  const dispatch = useDispatch();
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
@@ -229,8 +244,8 @@ export default function NewTripChatOverlay({
         message: text,
         requestId,
         context: {
-          page: 'trips',
-          chatOverlay: 'new_trip',
+          // Where the user is chatting from — the assistant sees this.
+          page: tripId ? 'trip' : 'trips',
           selectedTripId: tripId || null,
           workflowName,
         },
@@ -248,6 +263,8 @@ export default function NewTripChatOverlay({
         },
       });
       requestIdRef.current = null; // answered — the next send is a new request
+      // The assistant just wrote to the trip; the page underneath is stale.
+      dispatch(apiSlice.util.invalidateTags(tripCacheTags(response.tripId)));
       onTripIdChange?.(response.tripId);
       const [userMessage, botMessage] = response.messages ?? [];
       setMessages((prev) => prev.map((message) => {
@@ -286,6 +303,8 @@ export default function NewTripChatOverlay({
       recordId: form.recordId ?? null,
       values,
     });
+
+    dispatch(apiSlice.util.invalidateTags(tripCacheTags(response.tripId)));
 
     // Collapse the form into a receipt, then append the exchange.
     const [userMessage, botMessage] = response.messages ?? [];
@@ -392,7 +411,7 @@ export default function NewTripChatOverlay({
           }}
         >
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            New Trip Chat
+            {title}
           </Typography>
           <IconButton onClick={onClose} aria-label="Close chat">
             <CloseIcon />
@@ -413,7 +432,7 @@ export default function NewTripChatOverlay({
                   }}
                 >
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    Let&apos;s get ready to go! Tell me about your trip! When, where, how we get there etc. Or upload an itinerary
+                    {emptyPrompt}
                   </Typography>
                 </Paper>
               </Box>

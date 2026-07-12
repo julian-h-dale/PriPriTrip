@@ -23,7 +23,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
-import NewTripChatOverlay from '../components/Chat/NewTripChatOverlay';
+import TripChatOverlay from '../components/Chat/TripChatOverlay';
 import {
   useDeleteTripMutation,
   useGetTripsQuery,
@@ -207,11 +207,13 @@ export default function TripsPage() {
         <ChatIcon />
       </Fab>
 
-      <NewTripChatOverlay
+      <TripChatOverlay
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         tripId={chatTripId}
         workflowName="trip:new_trip"
+        title="New Trip Chat"
+        emptyPrompt="Let's get ready to go! Tell me about your trip — when, where, how you're getting there. Or upload an itinerary."
         onTripIdChange={setChatTripId}
         onComplete={(response) => {
           setChatOpen(false);
