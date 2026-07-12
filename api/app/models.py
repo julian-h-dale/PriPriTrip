@@ -31,7 +31,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -96,6 +96,35 @@ class TripRecord(SoftDeleteMixin, Base):
         DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
     )
 
+    # Live children only — the soft-delete filter lives in the join, so a
+    # caller cannot forget it (review.md 1C-3). viewonly: writes still go
+    # through the routers/executor explicitly.
+    days: Mapped[list["TripDayRecord"]] = relationship(
+        primaryjoin=lambda: and_(
+            TripRecord.trip_id == TripDayRecord.trip_id,
+            TripDayRecord.is_deleted.is_(False),
+            TripDayRecord.deleted_at.is_(None),
+        ),
+        order_by=lambda: (TripDayRecord.date, TripDayRecord.is_alternate),
+        viewonly=True,
+    )
+    stays: Mapped[list["StayDetailRecord"]] = relationship(
+        primaryjoin=lambda: and_(
+            TripRecord.trip_id == StayDetailRecord.trip_id,
+            StayDetailRecord.is_deleted.is_(False),
+            StayDetailRecord.deleted_at.is_(None),
+        ),
+        viewonly=True,
+    )
+    travels: Mapped[list["TravelDetailRecord"]] = relationship(
+        primaryjoin=lambda: and_(
+            TripRecord.trip_id == TravelDetailRecord.trip_id,
+            TravelDetailRecord.is_deleted.is_(False),
+            TravelDetailRecord.deleted_at.is_(None),
+        ),
+        viewonly=True,
+    )
+
     __table_args__ = (
         Index("ix_trips_user_active", "user_id", postgresql_where=text("NOT is_deleted")),
     )
@@ -118,6 +147,16 @@ class TripDayRecord(SoftDeleteMixin, Base):
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    points: Mapped[list["TripPointRecord"]] = relationship(
+        primaryjoin=lambda: and_(
+            TripDayRecord.day_id == TripPointRecord.day_id,
+            TripPointRecord.is_deleted.is_(False),
+            TripPointRecord.deleted_at.is_(None),
+        ),
+        order_by=lambda: TripPointRecord.start_date_time,
+        viewonly=True,
     )
 
     __table_args__ = (
@@ -170,6 +209,28 @@ class TripPointRecord(SoftDeleteMixin, Base):
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    locations: Mapped[list["LocationRecord"]] = relationship(
+        primaryjoin=lambda: TripPointRecord.point_id == LocationRecord.point_id,
+        order_by=lambda: LocationRecord.sort_order,
+        viewonly=True,
+    )
+    stay_detail: Mapped["StayDetailRecord | None"] = relationship(
+        primaryjoin=lambda: and_(
+            TripPointRecord.stay_detail_id == StayDetailRecord.stay_detail_id,
+            StayDetailRecord.is_deleted.is_(False),
+            StayDetailRecord.deleted_at.is_(None),
+        ),
+        viewonly=True,
+    )
+    travel_detail: Mapped["TravelDetailRecord | None"] = relationship(
+        primaryjoin=lambda: and_(
+            TripPointRecord.travel_detail_id == TravelDetailRecord.travel_detail_id,
+            TravelDetailRecord.is_deleted.is_(False),
+            TravelDetailRecord.deleted_at.is_(None),
+        ),
+        viewonly=True,
     )
 
     __table_args__ = (
@@ -247,6 +308,12 @@ class TravelDetailRecord(SoftDeleteMixin, Base):
         DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
     )
 
+    locations: Mapped[list["LocationRecord"]] = relationship(
+        primaryjoin=lambda: TravelDetailRecord.travel_detail_id == LocationRecord.travel_detail_id,
+        order_by=lambda: LocationRecord.sort_order,
+        viewonly=True,
+    )
+
     __table_args__ = (
         Index("ix_travel_details_trip_active", "trip_id", postgresql_where=text("NOT is_deleted")),
     )
@@ -277,6 +344,12 @@ class StayDetailRecord(SoftDeleteMixin, Base):
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=text("NOW()"), onupdate=func.now()
+    )
+
+    locations: Mapped[list["LocationRecord"]] = relationship(
+        primaryjoin=lambda: StayDetailRecord.stay_detail_id == LocationRecord.stay_detail_id,
+        order_by=lambda: LocationRecord.sort_order,
+        viewonly=True,
     )
 
     __table_args__ = (

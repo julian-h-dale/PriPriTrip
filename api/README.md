@@ -292,13 +292,20 @@ psql postgresql://postgres:postgres@localhost:5433/pripritrip -f sql/2026-07-11_
 
 ## Tests
 
+The suite runs against a **real PostgreSQL database** (review.md 1C-3) — the same docker Postgres, in a throwaway `pripritrip_test` database that is recreated each run. Your dev database is never touched.
+
 ```bash
 cd api
+docker compose up -d          # the tests need it
 source .venv/bin/activate
 pytest -q
 ```
 
-Test dependencies live in `requirements-dev.txt` (`pip install -r requirements-dev.txt`). CI runs the suite plus frontend lint/build on every push (`.github/workflows/ci.yml`).
+Each test runs inside a transaction that is rolled back afterwards (the session joins it via savepoints, so the endpoints' own `commit()` calls behave exactly as they do in production). No truncation, no leakage, ~4s for the whole suite.
+
+There are no fake sessions anywhere. The old ones ignored WHERE clauses and could not execute bulk UPDATEs, so foreign keys, check constraints, soft-delete cascades and `selectinload` were all untestable — and the fakes had started needing hand-written support code just to keep up. `tests/factories.py` builds real rows; `tests/test_query_counts.py` pins the N+1 fixes by counting the SQL a request actually issues.
+
+Override the database with `TEST_DATABASE_URL` (and `EVAL_DATABASE_URL` for the eval harness). Test dependencies live in `requirements-dev.txt`. CI runs the suite against a Postgres service container plus frontend lint/build on every push (`.github/workflows/ci.yml`).
 
 ## LLM eval harness (review.md 3D-8)
 
@@ -328,7 +335,7 @@ python -m evals --json eval_report.json  # machine-readable report (gitignored)
 python -m evals --verbose                # show tool calls + final messages
 ```
 
-Runs use an in-memory DB fake (`evals/fake_db.py`) so no PostgreSQL is needed;
+Scenarios run against a real throwaway database (`evals/db.py`, rolled back per scenario), so a write the schema would reject fails here too;
 location enrichment still hits Google Places when `MAPS_API_KEY` is set. A
 full live run takes ~30s and every turn is traced to `ai.log` as usual.
 Adding a scenario = adding a JSON file; the CI tier validates all scenario

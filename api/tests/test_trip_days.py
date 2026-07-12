@@ -1,252 +1,147 @@
-"""Tests for the /trips/{trip_id}/days CRUD + restore endpoints.
+"""Tests for the /trips/{trip_id}/days CRUD + restore endpoints (real DB)."""
 
-Same fake-session pattern as test_trip.py / test_trip_details.py.
-"""
+from app.models import TripDayRecord
 
-from unittest.mock import MagicMock
-
-from fastapi.testclient import TestClient
-
-from app.auth import require_auth
-from app.database import get_db
-from app.main import app
-from app.models import TripDayRecord, TripRecord
-
-client = TestClient(app)
-
-USER_ID = "11111111-1111-1111-1111-111111111111"
-OTHER_USER_ID = "22222222-2222-2222-2222-222222222222"
-TRIP_ID = "trip-1"
-DAY_ID = "day-1"
-
-
-def _fake_user(user_id=USER_ID):
-    user = MagicMock()
-    user.id = user_id
-    return user
-
-
-class _FakeResult:
-    def __init__(self, items):
-        self._items = items
-
-    def scalars(self):
-        return self
-
-    def all(self):
-        return list(self._items)
-
-
-class _FakeSession:
-    def __init__(self, store: dict, rows_by_table: dict):
-        self._store = store
-        self._rows = rows_by_table
-        self.added = []
-
-    async def get(self, model, pk):
-        return self._store.get((model, pk))
-
-    async def execute(self, stmt):
-        try:
-            table = stmt.get_final_froms()[0].name
-        except Exception:
-            table = getattr(getattr(stmt, "table", None), "name", None)
-        return _FakeResult(self._rows.get(table, []))
-
-    async def commit(self):
-        return None
-
-    async def refresh(self, _obj):
-        return None
-
-    def add(self, obj):
-        self.added.append(obj)
-
-
-def _install(store, rows_by_table=None, user_id=USER_ID):
-    session = _FakeSession(store, rows_by_table or {})
-    app.dependency_overrides[get_db] = lambda: session
-    app.dependency_overrides[require_auth] = lambda: _fake_user(user_id)
-    return session
-
-
-def _trip(owner=USER_ID):
-    return TripRecord(
-        trip_id=TRIP_ID,
-        user_id=owner,
-        trip_name="T",
-        start_date="2026-10-30",
-        end_date="2026-11-11",
-        is_deleted=False,
-        deleted_at=None,
-    )
-
-
-def _day(day_id=DAY_ID, trip_id=TRIP_ID, **overrides):
-    rec = TripDayRecord(
-        day_id=day_id,
-        trip_id=trip_id,
-        title="Day 1",
-        date="2026-10-30",
-        description=None,
-        is_alternate=False,
-        completed=False,
-        is_deleted=False,
-        deleted_at=None,
-    )
-    for key, value in overrides.items():
-        setattr(rec, key, value)
-    return rec
+from tests.factories import make_day, make_trip, new_id
 
 
 class TestListDays:
-    def teardown_method(self):
-        app.dependency_overrides.clear()
+    async def test_list(self, client, db, user):
+        trip = await make_trip(db, user)
+        await make_day(db, trip, title="Arrival", date="2026-10-30")
+        await make_day(db, trip, title="Beach", date="2026-10-31")
+        await make_day(db, trip, title="Deleted", date="2026-11-01", is_deleted=True)
 
-    def test_list(self):
-        _install(
-            {(TripRecord, TRIP_ID): _trip()},
-            {"trip_days": [_day("day-1"), _day("day-2")]},
-        )
-        resp = client.get(f"/trips/{TRIP_ID}/days")
+        resp = await client.get(f"/trips/{trip.trip_id}/days")
+
         assert resp.status_code == 200
-        assert [d["dayId"] for d in resp.json()] == ["day-1", "day-2"]
+        assert [d["title"] for d in resp.json()] == ["Arrival", "Beach"]
 
-    def test_other_users_trip_is_404(self):
-        _install({(TripRecord, TRIP_ID): _trip(owner=OTHER_USER_ID)})
-        assert client.get(f"/trips/{TRIP_ID}/days").status_code == 404
+    async def test_other_users_trip_is_404(self, client, db, other_user):
+        trip = await make_trip(db, other_user)
+        assert (await client.get(f"/trips/{trip.trip_id}/days")).status_code == 404
 
 
 class TestCreateDay:
-    def teardown_method(self):
-        app.dependency_overrides.clear()
+    async def test_create(self, client, db, user):
+        trip = await make_trip(db, user)
+        day_id = new_id()
 
-    def _body(self):
-        return {"dayId": DAY_ID, "title": "Day 1", "date": "2026-10-30"}
+        resp = await client.post(
+            f"/trips/{trip.trip_id}/days",
+            json={"dayId": day_id, "title": "Arrival", "date": "2026-10-30"},
+        )
 
-    def test_create(self):
-        session = _install({(TripRecord, TRIP_ID): _trip()})
-        resp = client.post(f"/trips/{TRIP_ID}/days", json=self._body())
         assert resp.status_code == 201
-        assert resp.json()["dayId"] == DAY_ID
-        assert len(session.added) == 1
+        assert resp.json()["title"] == "Arrival"
+        stored = await db.get(TripDayRecord, day_id)
+        assert stored.trip_id == trip.trip_id
 
-    def test_duplicate_conflict(self):
-        _install(
-            {
-                (TripRecord, TRIP_ID): _trip(),
-                (TripDayRecord, DAY_ID): _day(),
-            }
+    async def test_duplicate_conflict(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip)
+
+        resp = await client.post(
+            f"/trips/{trip.trip_id}/days",
+            json={"dayId": day.day_id, "title": "Dup", "date": "2026-10-30"},
         )
-        assert client.post(f"/trips/{TRIP_ID}/days", json=self._body()).status_code == 409
 
-    def test_missing_required_fields(self):
-        _install({(TripRecord, TRIP_ID): _trip()})
-        assert client.post(f"/trips/{TRIP_ID}/days", json={"dayId": DAY_ID}).status_code == 422
+        assert resp.status_code == 409
+
+    async def test_missing_required_fields(self, client, db, user):
+        trip = await make_trip(db, user)
+        resp = await client.post(f"/trips/{trip.trip_id}/days", json={"dayId": new_id()})
+        assert resp.status_code == 422
 
 
-class TestUpdateDay:
-    def teardown_method(self):
-        app.dependency_overrides.clear()
+class TestPatchDay:
+    async def test_patch_full_update(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip, title="Old", date="2026-10-30")
 
-    def test_patch_full_update(self):
-        day = _day()
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        resp = client.patch(
-            f"/trips/{TRIP_ID}/days/{DAY_ID}",
-            json={
-                "title": "New Title",
-                "date": "2026-10-31",
-                "description": "desc",
-                "isAlternate": True,
-                "completed": True,
-            },
+        resp = await client.patch(
+            f"/trips/{trip.trip_id}/days/{day.day_id}",
+            json={"title": "New", "date": "2026-11-01", "description": "Notes"},
         )
+
         assert resp.status_code == 200
-        assert day.title == "New Title"
-        assert day.date == "2026-10-31"
-        assert day.is_alternate is True
+        await db.refresh(day)
+        assert (day.title, day.date, day.description) == ("New", "2026-11-01", "Notes")
 
-    def test_put_day_is_gone(self):
-        day = _day()
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        resp = client.put(
-            f"/trips/{TRIP_ID}/days/{DAY_ID}",
-            json={"title": "x", "date": "2026-10-31"},
-        )
+    async def test_patch_partial_update_leaves_other_fields_alone(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip, title="Arrival", description="Keep me")
+
+        await client.patch(f"/trips/{trip.trip_id}/days/{day.day_id}", json={"title": "Renamed"})
+
+        await db.refresh(day)
+        assert day.title == "Renamed"
+        assert day.description == "Keep me"
+
+    async def test_put_day_is_gone(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip)
+        resp = await client.put(f"/trips/{trip.trip_id}/days/{day.day_id}", json={"title": "X"})
         assert resp.status_code == 405
 
-    def test_patch_partial_update(self):
-        day = _day()
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        resp = client.patch(f"/trips/{TRIP_ID}/days/{DAY_ID}", json={"title": "Patched"})
-        assert resp.status_code == 200
-        assert day.title == "Patched"
-        # Untouched fields keep their values.
-        assert day.date == "2026-10-30"
-        assert day.completed is False
+    async def test_day_from_another_trip_is_404(self, client, db, user):
+        trip = await make_trip(db, user)
+        other_trip = await make_trip(db, user, trip_name="Other")
+        stray = await make_day(db, other_trip)
 
-    def test_day_from_other_trip_is_404(self):
-        day = _day(trip_id="other-trip")
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        assert (
-            client.patch(f"/trips/{TRIP_ID}/days/{DAY_ID}", json={"title": "x"}).status_code == 404
-        )
+        resp = await client.patch(f"/trips/{trip.trip_id}/days/{stray.day_id}", json={"title": "X"})
 
-    def test_other_users_trip_is_404(self):
-        _install(
-            {
-                (TripRecord, TRIP_ID): _trip(owner=OTHER_USER_ID),
-                (TripDayRecord, DAY_ID): _day(),
-            }
-        )
-        assert (
-            client.patch(f"/trips/{TRIP_ID}/days/{DAY_ID}", json={"title": "x"}).status_code == 404
-        )
+        assert resp.status_code == 404
+
+    async def test_other_users_trip_is_404(self, client, db, other_user):
+        trip = await make_trip(db, other_user)
+        day = await make_day(db, trip)
+        resp = await client.patch(f"/trips/{trip.trip_id}/days/{day.day_id}", json={"title": "X"})
+        assert resp.status_code == 404
 
 
-class TestDeleteRestoreDay:
-    def teardown_method(self):
-        app.dependency_overrides.clear()
+class TestDeleteAndRestoreDay:
+    async def test_soft_delete(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip)
 
-    def test_soft_delete(self):
-        day = _day()
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        resp = client.delete(f"/trips/{TRIP_ID}/days/{DAY_ID}")
+        resp = await client.delete(f"/trips/{trip.trip_id}/days/{day.day_id}")
+
         assert resp.status_code == 204
+        await db.refresh(day)
         assert day.is_deleted is True
         assert day.deleted_at is not None
+        # Soft delete: the row survives.
+        assert await db.get(TripDayRecord, day.day_id) is not None
 
-    def test_delete_already_deleted_is_404(self):
-        from datetime import datetime, timezone
+    async def test_delete_already_deleted_is_404(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip, is_deleted=True)
+        assert (await client.delete(f"/trips/{trip.trip_id}/days/{day.day_id}")).status_code == 404
 
-        day = _day(is_deleted=True, deleted_at=datetime.now(timezone.utc))
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        assert client.delete(f"/trips/{TRIP_ID}/days/{DAY_ID}").status_code == 404
+    async def test_restore(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip, is_deleted=True)
 
-    def test_restore(self):
-        from datetime import datetime, timezone
+        resp = await client.post(f"/trips/{trip.trip_id}/days/{day.day_id}/restore")
 
-        day = _day(is_deleted=True, deleted_at=datetime.now(timezone.utc))
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        resp = client.post(f"/trips/{TRIP_ID}/days/{DAY_ID}/restore")
         assert resp.status_code == 200
+        await db.refresh(day)
         assert day.is_deleted is False
         assert day.deleted_at is None
 
-    def test_restore_not_deleted_conflict(self):
-        day = _day()
-        _install({(TripRecord, TRIP_ID): _trip(), (TripDayRecord, DAY_ID): day})
-        assert client.post(f"/trips/{TRIP_ID}/days/{DAY_ID}/restore").status_code == 409
+    async def test_restore_not_deleted_conflict(self, client, db, user):
+        trip = await make_trip(db, user)
+        day = await make_day(db, trip)
+        resp = await client.post(f"/trips/{trip.trip_id}/days/{day.day_id}/restore")
+        assert resp.status_code == 409
 
-    def test_list_deleted(self):
-        from datetime import datetime, timezone
+    async def test_list_deleted(self, client, db, user):
+        trip = await make_trip(db, user)
+        await make_day(db, trip, title="Live")
+        await make_day(db, trip, title="Gone", is_deleted=True)
 
-        deleted = _day(is_deleted=True, deleted_at=datetime.now(timezone.utc))
-        _install(
-            {(TripRecord, TRIP_ID): _trip()},
-            {"trip_days": [deleted]},
-        )
-        resp = client.get(f"/trips/{TRIP_ID}/days/deleted")
+        resp = await client.get(f"/trips/{trip.trip_id}/days/deleted")
+
         assert resp.status_code == 200
-        assert len(resp.json()) == 1
+        assert [d["title"] for d in resp.json()] == ["Gone"]

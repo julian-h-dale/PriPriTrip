@@ -411,8 +411,14 @@ async def reply_in_chat(
         except HTTPException as exc:
             # Already logged at the source (e.g. ai.chat_loop.error). The SSE
             # response is committed to 200 by now, so errors ride the stream.
+            #
+            # Discard the turn explicitly rather than relying on the session
+            # being torn down: the user message (and its request_id claim) must
+            # not survive a failure, or the same id could never be retried.
+            await db.rollback()
             yield _sse("error", {"detail": exc.detail})
         except Exception as exc:
+            await db.rollback()
             log_ai_event(
                 "chat.reply.error",
                 workflowName=body.workflow_name,

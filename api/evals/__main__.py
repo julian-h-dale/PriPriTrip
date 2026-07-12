@@ -17,6 +17,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
+from evals import db as eval_db
 from evals.runner import ScenarioResult, run_scenario
 from evals.scenario import load_scenarios
 
@@ -109,12 +110,18 @@ async def _main(argv=None) -> int:
     _require_openai_key()
     print(f"Running {len(scenarios)} scenario(s) × {args.runs} run(s) against the live model…\n")
 
+    # Real database, real constraints — each scenario runs in its own
+    # transaction and is rolled back (review.md 1C-3).
+    await eval_db.setup()
     started = time.monotonic()
     results: list[ScenarioResult] = []
-    for scenario in scenarios:
-        result = await run_scenario(scenario, runs=args.runs)
-        results.append(result)
-        _print_result(result, args.threshold, args.verbose)
+    try:
+        for scenario in scenarios:
+            result = await run_scenario(scenario, runs=args.runs)
+            results.append(result)
+            _print_result(result, args.threshold, args.verbose)
+    finally:
+        await eval_db.teardown()
     elapsed = time.monotonic() - started
 
     passed = sum(1 for r in results if r.passed(args.threshold))

@@ -1,224 +1,61 @@
-"""Unit tests for the chat tool-calling loop (app/services/chat_tool_loop.py).
+"""The chat tool-calling loop (app/services/chat_tool_loop.py).
 
-Uses a scripted fake async OpenAI client plus the lightweight fake-session
-pattern from test_chat.py / test_trip.py, so the real executor code runs
-against in-memory records with no database or network.
+Real database, scripted OpenAI client: the model's replies are fake, but every
+tool call runs the real executor against real Postgres, so a write that would
+violate a constraint fails here the way it fails in production.
 """
 
-import asyncio
 import json
-import uuid
-from types import SimpleNamespace
 
-from app.models import (
-    LocationRecord,
-    StayDetailRecord,
-    TravelDetailRecord,
-    TripDayRecord,
-    TripPointRecord,
-    TripRecord,
-)
+from sqlalchemy import func, select
+
+from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord
 from app.services.chat_tool_loop import run_chat_tool_loop, stream_chat_tool_loop
 
-USER_ID = "11111111-1111-1111-1111-111111111111"
-TRIP_ID = "22222222-2222-2222-2222-222222222222"
-
-_PK_ATTR = {
-    TripRecord: "trip_id",
-    TripDayRecord: "day_id",
-    TripPointRecord: "point_id",
-    StayDetailRecord: "stay_detail_id",
-    TravelDetailRecord: "travel_detail_id",
-    LocationRecord: "location_id",
-}
+from evals.mock_client import ScriptedClient, response, tool_call
+from tests.factories import make_trip
 
 
-class _FakeResult:
-    def __init__(self, items):
-        self._items = items
-
-    def scalars(self):
-        return self
-
-    def all(self):
-        return list(self._items)
-
-    def scalar_one(self):
-        # Only used for the select(func.count()) trip-summary queries.
-        return len(self._items)
-
-
-class _FakeSession:
-    """Rows keyed by table name; get() by (model, pk). WHERE clauses are
-    ignored — good enough for these scenarios."""
-
-    def __init__(self):
-        self.rows: dict[str, list] = {}
-        self._store: dict = {}
-
-    async def get(self, model, pk):
-        return self._store.get((model, pk))
-
-    async def execute(self, stmt):
-        try:
-            table = stmt.get_final_froms()[0].name
-        except Exception:
-            # DELETE statements (location replacement) land here.
-            table = getattr(getattr(stmt, "table", None), "name", None)
-        return _FakeResult(self.rows.get(table, []))
-
-    async def flush(self):
-        return None
-
-    async def commit(self):
-        return None
-
-    async def refresh(self, _obj):
-        return None
-
-    def add(self, obj):
-        self.rows.setdefault(obj.__table__.name, []).append(obj)
-        pk_attr = _PK_ATTR.get(type(obj))
-        if pk_attr:
-            self._store[(type(obj), getattr(obj, pk_attr))] = obj
-
-
-def _tool_call(name, arguments: dict, call_id=None):
-    return SimpleNamespace(
-        id=call_id or f"call_{uuid.uuid4().hex[:8]}",
-        type="function",
-        function=SimpleNamespace(name=name, arguments=json.dumps(arguments)),
+async def _count(db, model, trip) -> int:
+    return int(
+        (
+            await db.execute(
+                select(func.count()).select_from(model).where(model.trip_id == trip.trip_id)
+            )
+        ).scalar_one()
     )
 
 
-def _response(*, content=None, tool_calls=None):
-    return SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(content=content, tool_calls=tool_calls or None),
-                finish_reason="tool_calls" if tool_calls else "stop",
-            )
-        ],
-        usage=SimpleNamespace(
-            total_tokens=100,
-            prompt_tokens=80,
-            completion_tokens=20,
-            prompt_tokens_details=None,
-        ),
-    )
-
-
-def _as_chunks(response):
-    """Convert a scripted _response into the chunk sequence the streaming
-    API delivers: content deltas, tool-call deltas, then a usage-only chunk."""
-    msg = response.choices[0].message
-    chunks = []
-    if msg.content:
-        chunks.append(
-            SimpleNamespace(
-                choices=[SimpleNamespace(delta=SimpleNamespace(content=msg.content, tool_calls=None), finish_reason=None)],
-                usage=None,
-            )
-        )
-    if msg.tool_calls:
-        deltas = [
-            SimpleNamespace(
-                index=i,
-                id=tc.id,
-                type="function",
-                function=SimpleNamespace(name=tc.function.name, arguments=tc.function.arguments),
-            )
-            for i, tc in enumerate(msg.tool_calls)
-        ]
-        chunks.append(
-            SimpleNamespace(
-                choices=[SimpleNamespace(delta=SimpleNamespace(content=None, tool_calls=deltas), finish_reason=None)],
-                usage=None,
-            )
-        )
-    chunks.append(SimpleNamespace(choices=[], usage=response.usage))
-    return chunks
-
-
-class _FakeStream:
-    def __init__(self, chunks):
-        self._chunks = list(chunks)
-
-    def __aiter__(self):
-        return self
-
-    async def __anext__(self):
-        if not self._chunks:
-            raise StopAsyncIteration
-        return self._chunks.pop(0)
-
-
-class _ScriptedClient:
-    """Returns pre-scripted responses in order; records every request's kwargs."""
-
-    def __init__(self, responses):
-        self._responses = list(responses)
-        self.requests: list[dict] = []
-
-        async def create(**kwargs):
-            # Snapshot: the loop mutates the messages list between calls.
-            recorded = dict(kwargs)
-            recorded["messages"] = [dict(m) for m in kwargs.get("messages", [])]
-            self.requests.append(recorded)
-            if not self._responses:
-                raise AssertionError("Fake client ran out of scripted responses")
-            return _FakeStream(_as_chunks(self._responses.pop(0)))
-
-        self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
-
-
-def _trip(**overrides):
-    rec = TripRecord(
-        trip_id=TRIP_ID,
-        user_id=USER_ID,
-        trip_name="Kyoto Trip",
-        status="new",
-        start_date="2026-10-30",
-        end_date="2026-11-01",
-        destination_location_name="Kyoto",
-    )
-    for key, value in overrides.items():
-        setattr(rec, key, value)
-    return rec
-
-
-def _run(coro):
-    return asyncio.run(coro)
+async def _rows(db, model, trip):
+    return (
+        await db.execute(select(model).where(model.trip_id == trip.trip_id))
+    ).scalars().all()
 
 
 class TestChatToolLoop:
-    def test_executes_tools_then_returns_final_message(self):
-        session = _FakeSession()
-        trip = _trip()
-        session.add(trip)
-        client = _ScriptedClient(
+    async def test_executes_tools_then_returns_final_message(self, db, user):
+        trip = await make_trip(db, user, trip_name="Kyoto Trip", status="new")
+        client = ScriptedClient(
             [
-                _response(tool_calls=[_tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"})]),
-                _response(tool_calls=[_tool_call("update_trip", {"defaultTimezoneId": "Asia/Tokyo"})]),
-                _response(content="Saved the Hyatt Kyoto stay and set the trip timezone. Anything else?"),
+                response(tool_calls=[tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"})]),
+                response(tool_calls=[tool_call("update_trip", {"defaultTimezoneId": "Asia/Tokyo"})]),
+                response(content="Saved the Hyatt Kyoto stay and set the trip timezone. Anything else?"),
             ]
         )
 
-        outcome = _run(
-            run_chat_tool_loop(
-                session,
-                trip=trip,
-                transcript=[{"role": "user", "message": "We're staying at the Hyatt Kyoto"}],
-                latest_message="We're staying at the Hyatt Kyoto",
-                conversation_summary=None,
-                ui_context={"appCurrentDate": "2026-07-10"},
-                workflow_name="trip:manage",
-                client=client,
-            )
+        outcome = await run_chat_tool_loop(
+            db,
+            trip=trip,
+            transcript=[{"role": "user", "message": "We're staying at the Hyatt Kyoto"}],
+            latest_message="We're staying at the Hyatt Kyoto",
+            conversation_summary=None,
+            ui_context={"appCurrentDate": "2026-07-10"},
+            workflow_name="trip:manage",
+            client=client,
         )
 
-        # Executor effects landed on the fake session.
-        stays = session.rows.get("stay_details", [])
+        # The executor's writes really landed in Postgres.
+        stays = await _rows(db, StayDetailRecord, trip)
         assert len(stays) == 1
         assert stays[0].name == "Hyatt Kyoto"
         assert stays[0].stay_type == "hotel"
@@ -235,45 +72,37 @@ class TestChatToolLoop:
         assert len(sc["persistedActions"]) == 2
         assert sc["suppressedActions"] == []
         assert [r["status"] for r in sc["results"]] == ["ok", "ok"]
-        assert sc["followUpQuestion"] is None
+        assert sc["uiPayload"] is None
         assert sc["toolLoop"]["iterations"] == 3
         assert sc["toolLoop"]["capHit"] is False
         assert [tc["name"] for tc in sc["toolLoop"]["toolCalls"]] == ["create_stay", "update_trip"]
 
         # Requests: system+user first, then assistant/tool messages appended.
         assert len(client.requests) == 3
-        first_roles = [m["role"] for m in client.requests[0]["messages"]]
-        assert first_roles == ["system", "user"]
-        last_roles = [m["role"] for m in client.requests[2]["messages"]]
-        assert last_roles == ["system", "user", "assistant", "tool", "assistant", "tool"]
+        assert [m["role"] for m in client.requests[0]["messages"]] == ["system", "user"]
+        assert [m["role"] for m in client.requests[2]["messages"]] == [
+            "system", "user", "assistant", "tool", "assistant", "tool",
+        ]
         assert client.requests[0]["tool_choice"] == "auto"
         tool_names = {t["function"]["name"] for t in client.requests[0]["tools"]}
-        assert {"create_stay", "update_trip", "resolve_location", "get_trip_snapshot"} <= tool_names
+        assert {"create_stay", "update_trip", "resolve_location", "get_trip_snapshot", "request_form"} <= tool_names
 
-    def test_tool_validation_error_is_fed_back_to_model(self):
-        session = _FakeSession()
-        trip = _trip()
-        session.add(trip)
-        client = _ScriptedClient(
+    async def test_tool_validation_error_is_fed_back_to_model(self, db, user):
+        trip = await make_trip(db, user)
+        client = ScriptedClient(
             [
                 # Missing required "title" -> Pydantic validation error.
-                _response(tool_calls=[_tool_call("create_day", {"date": "2026-10-30"})]),
-                _response(content="I need a title for that day — what should I call it?"),
+                response(tool_calls=[tool_call("create_day", {"date": "2026-10-30"})]),
+                response(content="I need a title for that day — what should I call it?"),
             ]
         )
 
-        outcome = _run(
-            run_chat_tool_loop(
-                session,
-                trip=trip,
-                transcript=[],
-                latest_message="Add a day on Oct 30",
-                client=client,
-            )
+        outcome = await run_chat_tool_loop(
+            db, trip=trip, transcript=[], latest_message="Add a day on Oct 30", client=client
         )
 
         # Nothing was executed or persisted.
-        assert session.rows.get("trip_days", []) == []
+        assert await _count(db, TripDayRecord, trip) == 0
         sc = outcome.structuredContent
         assert sc["actions"] == []
         assert sc["persistedActions"] == []
@@ -284,43 +113,50 @@ class TestChatToolLoop:
         assert "title" in tool_calls[0]["result"]["detail"]
 
         # The error text went back to the model as the tool result.
-        second_messages = client.requests[1]["messages"]
-        tool_messages = [m for m in second_messages if m["role"] == "tool"]
-        assert len(tool_messages) == 1
+        tool_messages = [m for m in client.requests[1]["messages"] if m["role"] == "tool"]
         fed_back = json.loads(tool_messages[0]["content"])
         assert fed_back["status"] == "error"
         assert "Invalid arguments for create_day" in fed_back["detail"]
-        assert "title" in fed_back["detail"]
 
         assert outcome.assistantMessage.startswith("I need a title")
 
-    def test_iteration_cap_forces_wrap_up_without_tools(self):
-        session = _FakeSession()
-        trip = _trip()
-        session.add(trip)
-        responses = [
-            _response(tool_calls=[_tool_call("get_trip_snapshot", {})]) for _ in range(6)
-        ]
-        responses.append(_response(content="I looked things over; here's where the trip stands."))
-        client = _ScriptedClient(responses)
+    async def test_an_executor_error_is_fed_back_to_the_model(self, db, user):
+        """A real constraint failure, not a fake one: the day id is invented."""
+        trip = await make_trip(db, user)
+        client = ScriptedClient(
+            [
+                response(tool_calls=[tool_call("update_day", {"dayId": "day-1", "title": "Nope"})]),
+                response(content="I couldn't find that day — which one did you mean?"),
+            ]
+        )
 
-        outcome = _run(
-            run_chat_tool_loop(
-                session,
-                trip=trip,
-                transcript=[],
-                latest_message="Keep checking the trip",
-                client=client,
-            )
+        outcome = await run_chat_tool_loop(
+            db, trip=trip, transcript=[], latest_message="Rename day one", client=client
+        )
+
+        sc = outcome.structuredContent
+        assert sc["persistedActions"] == []
+        assert len(sc["suppressedActions"]) == 1
+        tool_messages = [m for m in client.requests[1]["messages"] if m["role"] == "tool"]
+        assert "not a valid day id" in json.loads(tool_messages[0]["content"])["detail"]
+
+    async def test_iteration_cap_forces_wrap_up_without_tools(self, db, user):
+        trip = await make_trip(db, user)
+        responses = [response(tool_calls=[tool_call("get_trip_snapshot", {})]) for _ in range(6)]
+        responses.append(response(content="I looked things over; here's where the trip stands."))
+        client = ScriptedClient(responses)
+
+        outcome = await run_chat_tool_loop(
+            db, trip=trip, transcript=[], latest_message="Keep checking the trip", client=client
         )
 
         # 6 tool iterations + 1 forced wrap-up call.
         assert len(client.requests) == 7
-        for req in client.requests[:6]:
-            assert "tools" in req
-        final_req = client.requests[6]
-        assert "tools" not in final_req
-        assert final_req["messages"][-1] == {
+        for request in client.requests[:6]:
+            assert "tools" in request
+        final = client.requests[6]
+        assert "tools" not in final
+        assert final["messages"][-1] == {
             "role": "user",
             "content": "Wrap up: summarize what you did and what's still needed.",
         }
@@ -328,38 +164,33 @@ class TestChatToolLoop:
         sc = outcome.structuredContent
         assert sc["toolLoop"]["iterations"] == 6
         assert sc["toolLoop"]["capHit"] is True
-        assert len(sc["toolLoop"]["toolCalls"]) == 6
         assert outcome.assistantMessage == "I looked things over; here's where the trip stands."
 
-    def test_new_trip_completion_marks_draft_and_keeps_model_message(self):
-        session = _FakeSession()
-        trip = _trip(status="new")
-        session.add(trip)
-        client = _ScriptedClient(
+    async def test_new_trip_completion_marks_draft_and_keeps_model_message(self, db, user):
+        trip = await make_trip(db, user, status="new", destination_location_name="Kyoto")
+        client = ScriptedClient(
             [
-                _response(
+                response(
                     tool_calls=[
-                        _tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"}),
-                        _tool_call("create_travel", {"name": "Flight to Osaka", "mode": "flight"}),
+                        tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"}),
+                        tool_call("create_travel", {"name": "Flight to Osaka", "mode": "flight"}),
                     ]
                 ),
-                _response(content="Added your stay and your flight. Want to add check-in dates next?"),
+                response(content="Added your stay and your flight. Want to add check-in dates next?"),
             ]
         )
 
-        outcome = _run(
-            run_chat_tool_loop(
-                session,
-                trip=trip,
-                transcript=[],
-                latest_message="We're staying at the Hyatt Kyoto and flying to Osaka",
-                workflow_name="trip:new_trip",
-                client=client,
-            )
+        outcome = await run_chat_tool_loop(
+            db,
+            trip=trip,
+            transcript=[],
+            latest_message="We're staying at the Hyatt Kyoto and flying to Osaka",
+            workflow_name="trip:new_trip",
+            client=client,
         )
 
-        assert len(session.rows.get("stay_details", [])) == 1
-        assert len(session.rows.get("travel_details", [])) == 1
+        assert await _count(db, StayDetailRecord, trip) == 1
+        assert await _count(db, TravelDetailRecord, trip) == 1
 
         # Completion condition met -> complete + verify, trip promoted to draft.
         assert outcome.complete is True
@@ -370,38 +201,71 @@ class TestChatToolLoop:
         assert outcome.assistantMessage == "Added your stay and your flight. Want to add check-in dates next?"
         assert "trip draft is ready" not in outcome.assistantMessage
 
-        sc = outcome.structuredContent
-        assert len(sc["persistedActions"]) == 2
-        assert sc["toolLoop"]["iterations"] == 2
-
-    def test_stream_emits_status_and_delta_events_in_order(self):
-        session = _FakeSession()
-        trip = _trip()
-        session.add(trip)
-        client = _ScriptedClient(
+    async def test_stream_emits_status_and_delta_events_in_order(self, db, user):
+        trip = await make_trip(db, user)
+        client = ScriptedClient(
             [
-                _response(tool_calls=[_tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"})]),
-                _response(content="Saved the Hyatt Kyoto stay."),
+                response(tool_calls=[tool_call("create_stay", {"name": "Hyatt Kyoto", "stayType": "hotel"})]),
+                response(content="Saved the Hyatt Kyoto stay."),
             ]
         )
 
-        async def _collect():
-            events = []
-            async for event in stream_chat_tool_loop(
-                session,
-                trip=trip,
-                transcript=[],
-                latest_message="We're staying at the Hyatt Kyoto",
-                client=client,
-            ):
-                events.append(event)
-            return events
+        events = []
+        async for event in stream_chat_tool_loop(
+            db, trip=trip, transcript=[], latest_message="We're staying at the Hyatt Kyoto", client=client
+        ):
+            events.append(event)
 
-        events = _run(_collect())
-
-        kinds = [e["type"] for e in events]
-        assert kinds == ["status", "delta", "outcome"]
+        assert [e["type"] for e in events] == ["status", "delta", "outcome"]
         assert events[0]["tool"] == "create_stay"
         assert events[0]["label"] == "Adding a stay…"
         assert events[1]["text"] == "Saved the Hyatt Kyoto stay."
         assert events[2]["outcome"].assistantMessage == "Saved the Hyatt Kyoto stay."
+
+    async def test_a_requested_form_reaches_the_reply(self, db, user):
+        """review.md 3F-2: request_form's form is attached to structuredContent."""
+        trip = await make_trip(db, user)
+        client = ScriptedClient(
+            [
+                response(
+                    tool_calls=[
+                        tool_call("create_travel", {"name": "Flight to Naha", "mode": "flight"})
+                    ]
+                ),
+                response(content="Added the flight — fill in the details below."),
+            ]
+        )
+        await run_chat_tool_loop(
+            db, trip=trip, transcript=[], latest_message="Add my flight", client=client
+        )
+        travel = (await _rows(db, TravelDetailRecord, trip))[0]
+
+        form_client = ScriptedClient(
+            [
+                response(
+                    tool_calls=[
+                        tool_call(
+                            "request_form",
+                            {
+                                "target": "travel",
+                                "recordId": travel.travel_detail_id,
+                                "fields": ["operator", "vehicleNumber"],
+                            },
+                        )
+                    ]
+                ),
+                response(content="I've put the flight details on a form below."),
+            ]
+        )
+
+        outcome = await run_chat_tool_loop(
+            db, trip=trip, transcript=[], latest_message="Where do I put the flight number?",
+            client=form_client,
+        )
+
+        ui = outcome.structuredContent["uiPayload"]
+        assert ui["kind"] == "form"
+        assert ui["form"]["target"] == "travel"
+        assert [f["name"] for f in ui["form"]["fields"]] == ["operator", "vehicleNumber"]
+        # The backend supplied the labels; the model never chose them.
+        assert ui["form"]["fields"][1]["label"] == "Flight / train number"

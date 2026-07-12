@@ -1,236 +1,180 @@
-"""Tests for the first-class travel/stay detail CRUD endpoints.
+"""Tests for the first-class travel/stay detail CRUD endpoints (real DB).
 
-Uses a lightweight fake async session (dispatches queries by table) so no real
-database is needed.
+These now exercise the batch location loading added in review.md 1C-3, so a
+detail's locations really are matched to their owner rather than every row
+being handed back by a fake session.
 """
 
-from unittest.mock import MagicMock
+from app.models import LocationRecord, StayDetailRecord, TravelDetailRecord
 
-from fastapi.testclient import TestClient
-
-from app.auth import require_auth
-from app.database import get_db
-from app.main import app
-from app.models import LocationRecord, StayDetailRecord, TravelDetailRecord, TripRecord
-
-
-client = TestClient(app)
-
-USER_ID = "11111111-1111-1111-1111-111111111111"
-TRIP_ID = "trip-1"
-
-
-def _fake_user():
-    user = MagicMock()
-    user.id = USER_ID
-    return user
-
-
-class _FakeResult:
-    def __init__(self, items):
-        self._items = items
-
-    def scalars(self):
-        return self
-
-    def all(self):
-        return list(self._items)
-
-
-class _FakeSession:
-    """get() by (model, pk); execute() returns rows keyed by target table."""
-
-    def __init__(self, store: dict, rows_by_table: dict):
-        self._store = store
-        self._rows = rows_by_table
-
-    async def get(self, model, pk):
-        return self._store.get((model, pk))
-
-    async def execute(self, stmt):
-        table = None
-        try:
-            table = stmt.get_final_froms()[0].name
-        except Exception:
-            table = getattr(getattr(stmt, "table", None), "name", None)
-        return _FakeResult(self._rows.get(table, []))
-
-    async def commit(self):
-        return None
-
-    async def refresh(self, _obj):
-        return None
-
-    async def flush(self):
-        return None
-
-    def add(self, _obj):
-        return None
-
-    async def delete(self, _obj):
-        return None
-
-
-def _install(store, rows_by_table=None):
-    session = _FakeSession(store, rows_by_table or {})
-    app.dependency_overrides[get_db] = lambda: session
-    app.dependency_overrides[require_auth] = _fake_user
-
-
-def _teardown():
-    app.dependency_overrides.clear()
-
-
-def _trip(owner=USER_ID):
-    return TripRecord(trip_id=TRIP_ID, user_id=owner, trip_name="T", start_date="2026-01-01", end_date="2026-01-02")
-
-
-def _travel(detail_id="td-1", trip_id=TRIP_ID):
-    return TravelDetailRecord(
-        travel_detail_id=detail_id, trip_id=trip_id, name="Flight BA123",
-        mode="flight", operator="BA", vehicle_number="BA123", cabin_class="economy",
-        departure_date_time="2026-01-01T10:00:00Z", arrival_date_time="2026-01-01T12:00:00Z",
-        confirmation_number="ABC", description=None,
-    )
-
-
-def _stay(detail_id="sd-1", trip_id=TRIP_ID):
-    return StayDetailRecord(
-        stay_detail_id=detail_id, trip_id=trip_id, name="Hotel Test",
-        stay_type="hotel", check_in="2026-01-01T15:00:00Z", check_out="2026-01-02T11:00:00Z",
-        room_type="double", confirmation_number="XYZ", description=None,
-    )
+from tests.factories import make_location, make_stay, make_travel, make_trip, new_id
 
 
 class TestTravelDetails:
-    def teardown_method(self):
-        _teardown()
+    async def test_list_with_locations_grouped_by_owner(self, client, db, user):
+        trip = await make_trip(db, user)
+        first = await make_travel(db, trip, name="Flight BA123", mode="flight")
+        second = await make_travel(db, trip, name="Train to Bern", mode="train")
+        await make_location(db, travel=first, role="origin", name="LHR")
+        await make_location(db, travel=first, role="destination", name="Naha")
+        await make_location(db, travel=second, role="origin", name="Zurich")
+        await make_travel(db, trip, name="Deleted", is_deleted=True)
 
-    def test_list(self):
-        _install(
-            {(TripRecord, TRIP_ID): _trip()},
-            {"travel_details": [_travel("td-1"), _travel("td-2")], "locations": []},
-        )
-        resp = client.get(f"/trips/{TRIP_ID}/travel-details")
+        resp = await client.get(f"/trips/{trip.trip_id}/travel-details")
+
         assert resp.status_code == 200
         body = resp.json()
-        assert [d["travelDetailId"] for d in body] == ["td-1", "td-2"]
-        assert body[0]["name"] == "Flight BA123"
-        assert body[0]["mode"] == "flight"
+        by_name = {d["name"]: d for d in body}
+        assert set(by_name) == {"Flight BA123", "Train to Bern"}
+        # The batch loader must not spill one leg's locations onto another.
+        assert {loc["name"] for loc in by_name["Flight BA123"]["locations"]} == {"LHR", "Naha"}
+        assert {loc["name"] for loc in by_name["Train to Bern"]["locations"]} == {"Zurich"}
 
-    def test_get_one(self):
-        rec = _travel("td-9")
-        _install({(TripRecord, TRIP_ID): _trip(), (TravelDetailRecord, "td-9"): rec}, {"locations": []})
-        resp = client.get(f"/trips/{TRIP_ID}/travel-details/td-9")
+    async def test_get_one(self, client, db, user):
+        trip = await make_trip(db, user)
+        travel = await make_travel(db, trip)
+
+        resp = await client.get(f"/trips/{trip.trip_id}/travel-details/{travel.travel_detail_id}")
+
         assert resp.status_code == 200
-        assert resp.json()["travelDetailId"] == "td-9"
+        assert resp.json()["travelDetailId"] == travel.travel_detail_id
 
-    def test_get_one_wrong_trip_404(self):
-        rec = _travel("td-9", trip_id="other")
-        _install({(TripRecord, TRIP_ID): _trip(), (TravelDetailRecord, "td-9"): rec}, {"locations": []})
-        resp = client.get(f"/trips/{TRIP_ID}/travel-details/td-9")
+    async def test_get_one_from_another_trip_is_404(self, client, db, user):
+        trip = await make_trip(db, user)
+        other_trip = await make_trip(db, user, trip_name="Other")
+        stray = await make_travel(db, other_trip)
+
+        resp = await client.get(f"/trips/{trip.trip_id}/travel-details/{stray.travel_detail_id}")
+
         assert resp.status_code == 404
 
-    def test_create(self):
-        _install({(TripRecord, TRIP_ID): _trip()}, {"locations": []})
-        resp = client.post(
-            f"/trips/{TRIP_ID}/travel-details",
-            json={"name": "Train to Bern", "mode": "train", "departureDateTime": "2026-01-01T09:00:00Z"},
+    async def test_create(self, client, db, user):
+        trip = await make_trip(db, user)
+
+        resp = await client.post(
+            f"/trips/{trip.trip_id}/travel-details",
+            json={"name": "Train to Bern", "mode": "train", "departureDateTime": "2026-01-01T09:00"},
         )
+
         assert resp.status_code == 201
         body = resp.json()
         assert body["name"] == "Train to Bern"
-        assert body["mode"] == "train"
-        assert body["tripId"] == TRIP_ID
+        assert body["tripId"] == trip.trip_id
+        stored = await db.get(TravelDetailRecord, body["travelDetailId"])
+        assert stored.mode == "train"
 
-    def test_patch(self):
-        rec = _travel("td-1")
-        _install({(TripRecord, TRIP_ID): _trip(), (TravelDetailRecord, "td-1"): rec}, {"locations": []})
-        resp = client.patch(
-            f"/trips/{TRIP_ID}/travel-details/td-1",
+    async def test_patch_only_touches_the_given_fields(self, client, db, user):
+        trip = await make_trip(db, user)
+        travel = await make_travel(db, trip, name="Flight BA123", operator="BA", mode="flight")
+
+        resp = await client.patch(
+            f"/trips/{trip.trip_id}/travel-details/{travel.travel_detail_id}",
             json={"cabinClass": "first", "name": "Renamed"},
         )
+
         assert resp.status_code == 200
-        body = resp.json()
-        assert body["cabinClass"] == "first"
-        assert body["name"] == "Renamed"
-        assert body["operator"] == "BA"  # untouched
+        await db.refresh(travel)
+        assert travel.cabin_class == "first"
+        assert travel.name == "Renamed"
+        assert travel.operator == "BA"  # untouched
 
-    def test_delete(self):
-        rec = _travel("td-1")
-        _install({(TripRecord, TRIP_ID): _trip(), (TravelDetailRecord, "td-1"): rec}, {"locations": []})
-        resp = client.delete(f"/trips/{TRIP_ID}/travel-details/td-1")
+    async def test_delete_is_a_soft_delete(self, client, db, user):
+        trip = await make_trip(db, user)
+        travel = await make_travel(db, trip)
+
+        resp = await client.delete(f"/trips/{trip.trip_id}/travel-details/{travel.travel_detail_id}")
+
         assert resp.status_code == 204
+        await db.refresh(travel)
+        assert travel.is_deleted is True
+        assert travel.deleted_at is not None
 
-    def test_trip_not_owned_404(self):
-        _install({(TripRecord, TRIP_ID): _trip(owner="someone-else")}, {"travel_details": [], "locations": []})
-        resp = client.get(f"/trips/{TRIP_ID}/travel-details")
-        assert resp.status_code == 404
+    async def test_trip_not_owned_404(self, client, db, other_user):
+        trip = await make_trip(db, other_user)
+        assert (await client.get(f"/trips/{trip.trip_id}/travel-details")).status_code == 404
 
 
 class TestStayDetails:
-    def teardown_method(self):
-        _teardown()
+    async def test_list_with_locations_grouped_by_owner(self, client, db, user):
+        trip = await make_trip(db, user)
+        first = await make_stay(db, trip, name="Hotel Test")
+        second = await make_stay(db, trip, name="Ryokan")
+        await make_location(db, stay=first, name="Naha")
+        await make_location(db, stay=second, name="Kyoto")
 
-    def test_list(self):
-        _install({(TripRecord, TRIP_ID): _trip()}, {"stay_details": [_stay("sd-1")], "locations": []})
-        resp = client.get(f"/trips/{TRIP_ID}/stay-details")
+        resp = await client.get(f"/trips/{trip.trip_id}/stay-details")
+
         assert resp.status_code == 200
-        body = resp.json()
-        assert body[0]["stayDetailId"] == "sd-1"
-        assert body[0]["name"] == "Hotel Test"
+        by_name = {d["name"]: d for d in resp.json()}
+        assert [loc["name"] for loc in by_name["Hotel Test"]["locations"]] == ["Naha"]
+        assert [loc["name"] for loc in by_name["Ryokan"]["locations"]] == ["Kyoto"]
 
-    def test_create(self):
-        _install({(TripRecord, TRIP_ID): _trip()}, {"locations": []})
-        resp = client.post(
-            f"/trips/{TRIP_ID}/stay-details",
-            json={"name": "Grand Hotel", "stayType": "hotel", "checkIn": "2026-01-01T15:00:00Z"},
+    async def test_create(self, client, db, user):
+        trip = await make_trip(db, user)
+
+        resp = await client.post(
+            f"/trips/{trip.trip_id}/stay-details",
+            json={
+                "name": "Hyatt Regency Naha",
+                "stayType": "hotel",
+                "checkIn": "2026-10-30T15:00",
+                "checkOut": "2026-11-05T11:00",
+            },
         )
+
         assert resp.status_code == 201
         body = resp.json()
-        assert body["name"] == "Grand Hotel"
-        assert body["stayType"] == "hotel"
+        stored = await db.get(StayDetailRecord, body["stayDetailId"])
+        assert stored.name == "Hyatt Regency Naha"
+        assert stored.stay_type == "hotel"
 
-    def test_patch(self):
-        rec = _stay("sd-1")
-        _install({(TripRecord, TRIP_ID): _trip(), (StayDetailRecord, "sd-1"): rec}, {"locations": []})
-        resp = client.patch(
-            f"/trips/{TRIP_ID}/stay-details/sd-1",
-            json={"roomType": "suite", "checkIn": "2026-01-01T16:00:00Z"},
+    async def test_patch(self, client, db, user):
+        trip = await make_trip(db, user)
+        stay = await make_stay(db, trip, room_type="double", confirmation_number="XYZ")
+
+        resp = await client.patch(
+            f"/trips/{trip.trip_id}/stay-details/{stay.stay_detail_id}",
+            json={"roomType": "suite"},
         )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["roomType"] == "suite"
-        assert body["checkIn"] == "2026-01-01T16:00"
 
-    def test_patch_locations(self):
-        rec = _stay("sd-1")
-        rows = {
-            "locations": [
-                LocationRecord(
-                    location_id="loc-1",
-                    point_id=None,
-                    stay_detail_id="sd-1",
-                    travel_detail_id=None,
-                    role="venue",
-                    sort_order=0,
-                    name="Grand Hotel",
-                )
-            ]
-        }
-        _install({(TripRecord, TRIP_ID): _trip(), (StayDetailRecord, "sd-1"): rec}, rows)
-        resp = client.patch(
-            f"/trips/{TRIP_ID}/stay-details/sd-1",
+        assert resp.status_code == 200
+        await db.refresh(stay)
+        assert stay.room_type == "suite"
+        assert stay.confirmation_number == "XYZ"  # untouched
+
+    async def test_patch_locations_replaces_them(self, client, db, user):
+        trip = await make_trip(db, user)
+        stay = await make_stay(db, trip)
+        await make_location(db, stay=stay, name="Old Address")
+
+        resp = await client.patch(
+            f"/trips/{trip.trip_id}/stay-details/{stay.stay_detail_id}",
             json={
                 "locations": [
-                    {"locationId": "loc-1", "role": "venue", "name": "Grand Hotel"}
+                    {"locationId": new_id(), "role": "venue", "name": "New Address"}
                 ]
             },
         )
-        assert resp.status_code == 200
 
-    def test_delete(self):
-        rec = _stay("sd-1")
-        _install({(TripRecord, TRIP_ID): _trip(), (StayDetailRecord, "sd-1"): rec}, {"locations": []})
-        resp = client.delete(f"/trips/{TRIP_ID}/stay-details/sd-1")
+        assert resp.status_code == 200
+        assert [loc["name"] for loc in resp.json()["locations"]] == ["New Address"]
+
+        # The old row is really gone from the table, not just filtered out.
+        rows = (
+            await db.execute(
+                LocationRecord.__table__.select().where(
+                    LocationRecord.stay_detail_id == stay.stay_detail_id
+                )
+            )
+        ).all()
+        assert [row.name for row in rows] == ["New Address"]
+
+    async def test_delete_is_a_soft_delete(self, client, db, user):
+        trip = await make_trip(db, user)
+        stay = await make_stay(db, trip)
+
+        resp = await client.delete(f"/trips/{trip.trip_id}/stay-details/{stay.stay_detail_id}")
+
         assert resp.status_code == 204
+        await db.refresh(stay)
+        assert stay.is_deleted is True

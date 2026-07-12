@@ -9,20 +9,18 @@ from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, Trip
 from app.services.chat_tool_loop import run_chat_tool_loop
 from app.services.trip_state import WorkflowOutcome
 
+from evals import db as eval_db
 from evals.checks import CheckResult, evaluate
-from evals.fake_db import FakeSession
 from evals.scenario import Scenario
 
-EVAL_USER_ID = "eval-user"
 
-
-def build_session_and_trip(scenario: Scenario) -> tuple[FakeSession, TripRecord]:
-    session = FakeSession()
+async def seed_trip(session, scenario: Scenario) -> TripRecord:
+    """Insert the scenario's starting state into the eval database."""
     # A chat trip always has dates in production — chat.py's shell trip gets
     # today's date — so default missing dates to the scenario's app date.
     trip = TripRecord(
+        user_id=eval_db.user_id(),
         trip_id=str(uuid.uuid4()),
-        user_id=EVAL_USER_ID,
         trip_name=scenario.trip.tripName,
         status=scenario.trip.status,
         start_date=scenario.trip.startDate or scenario.appCurrentDate,
@@ -32,6 +30,10 @@ def build_session_and_trip(scenario: Scenario) -> tuple[FakeSession, TripRecord]
         default_timezone_id=scenario.trip.defaultTimezoneId,
     )
     session.add(trip)
+    # The children carry a real FK to trips now, so the parent row has to exist
+    # before they are inserted.
+    await session.flush()
+
     for day in scenario.days:
         session.add(
             TripDayRecord(
@@ -40,10 +42,6 @@ def build_session_and_trip(scenario: Scenario) -> tuple[FakeSession, TripRecord]
                 title=day.title,
                 date=day.date,
                 description=day.description,
-                # Column defaults only apply on a real DB flush; the response
-                # models require real booleans.
-                is_alternate=False,
-                completed=False,
             )
         )
     for stay in scenario.stays:
@@ -71,7 +69,10 @@ def build_session_and_trip(scenario: Scenario) -> tuple[FakeSession, TripRecord]
                 confirmation_number=travel.confirmationNumber,
             )
         )
-    return session, trip
+    # Committed so it is baseline state: a rollback inside the loop must not
+    # wipe the scenario's own setup.
+    await session.commit()
+    return trip
 
 
 def _runtime_context(scenario: Scenario) -> dict:
@@ -112,19 +113,22 @@ class ScenarioResult:
 
 
 async def run_once(scenario: Scenario, *, client=None) -> RunResult:
-    session, trip = build_session_and_trip(scenario)
-    outcome = await run_chat_tool_loop(
-        session,
-        trip=trip,
-        transcript=scenario.transcript,
-        latest_message=scenario.message,
-        conversation_summary=scenario.conversationSummary,
-        ui_context=_runtime_context(scenario),
-        workflow_name=scenario.workflowName,
-        client=client,
-    )
-    check_results = evaluate(scenario.checks, outcome=outcome, trip=trip, session=session)
-    return RunResult(outcome=outcome, check_results=check_results)
+    # Each scenario gets its own transaction, rolled back at the end — the
+    # writes are real, they just do not accumulate.
+    async with eval_db.scenario_session() as session:
+        trip = await seed_trip(session, scenario)
+        outcome = await run_chat_tool_loop(
+            session,
+            trip=trip,
+            transcript=scenario.transcript,
+            latest_message=scenario.message,
+            conversation_summary=scenario.conversationSummary,
+            ui_context=_runtime_context(scenario),
+            workflow_name=scenario.workflowName,
+            client=client,
+        )
+        check_results = await evaluate(scenario.checks, outcome=outcome, trip=trip, session=session)
+        return RunResult(outcome=outcome, check_results=check_results)
 
 
 async def run_scenario(scenario: Scenario, *, runs: int = 1, client=None) -> ScenarioResult:

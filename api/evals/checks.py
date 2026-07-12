@@ -9,18 +9,38 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from app.models import TripRecord
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import (
+    StayDetailRecord,
+    TravelDetailRecord,
+    TripDayRecord,
+    TripPointRecord,
+    TripRecord,
+    active,
+)
 from app.services.trip_state import WorkflowOutcome
 
-from evals.fake_db import FakeSession
 from evals.scenario import Checks, PersistedSpec
 
-_COUNT_TABLES = {
-    "days": "trip_days",
-    "points": "trip_points",
-    "stays": "stay_details",
-    "travels": "travel_details",
+_COUNT_MODELS = {
+    "days": TripDayRecord,
+    "points": TripPointRecord,
+    "stays": StayDetailRecord,
+    "travels": TravelDetailRecord,
 }
+
+
+async def _active_count(session: AsyncSession, key: str, trip: TripRecord) -> int:
+    """Live rows of this kind on the trip — a real COUNT, not a dict length."""
+    model = _COUNT_MODELS[key]
+    result = await session.execute(
+        select(func.count())
+        .select_from(model)
+        .where(model.trip_id == trip.trip_id, active(model))
+    )
+    return int(result.scalar_one())
 
 
 @dataclass
@@ -57,12 +77,12 @@ def _matches_persisted(outcome: WorkflowOutcome, spec: PersistedSpec) -> bool:
     )
 
 
-def evaluate(
+async def evaluate(
     checks: Checks,
     *,
     outcome: WorkflowOutcome,
     trip: TripRecord,
-    session: FakeSession,
+    session: AsyncSession,
 ) -> list[CheckResult]:
     results: list[CheckResult] = []
     tool_names = _tool_names(outcome)
@@ -103,11 +123,11 @@ def evaluate(
         )
 
     for key, minimum in checks.countsMin.items():
-        actual = session.active_count(_COUNT_TABLES[key])
+        actual = await _active_count(session, key, trip)
         results.append(CheckResult(f"{key} >= {minimum}", actual >= minimum, f"actual={actual}"))
 
     for key, maximum in checks.countsMax.items():
-        actual = session.active_count(_COUNT_TABLES[key])
+        actual = await _active_count(session, key, trip)
         results.append(CheckResult(f"{key} <= {maximum}", actual <= maximum, f"actual={actual}"))
 
     for pattern in checks.finalMessageMatches:

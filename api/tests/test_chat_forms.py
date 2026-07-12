@@ -1,17 +1,14 @@
-"""Dynamic chat forms (review.md 3F-2).
+"""Dynamic chat forms (review.md 3F-2), against a real database.
 
 The load-bearing property: the model names a record and some field names, and
 nothing else. Types, labels, options and current values come from the server,
 so a model that invents a field or an option is rejected rather than obeyed.
 """
 
-import asyncio
-import uuid
-
 import pytest
+import pytest_asyncio
 
 from app.enums import StayType, TravelMode
-from app.models import StayDetailRecord, TravelDetailRecord, TripRecord
 from app.services.chat_forms import (
     FormError,
     build_form,
@@ -20,58 +17,32 @@ from app.services.chat_forms import (
 )
 from app.services.chat_tools import TOOL_REGISTRY, RequestFormArgs
 
-from evals.fake_db import FakeSession
-
-TRIP_ID = "22222222-2222-2222-2222-222222222222"
+from tests.factories import make_stay, make_travel, make_trip
 
 
-def _run(coro):
-    return asyncio.run(coro)
-
-
-def _setup():
-    session = FakeSession()
-    trip = TripRecord(
-        trip_id=TRIP_ID,
-        user_id="11111111-1111-1111-1111-111111111111",
-        trip_name="Kyoto Trip",
-        status="draft",
-        start_date="2026-10-30",
-        end_date="2026-11-05",
+@pytest_asyncio.fixture
+async def scenario(db, user):
+    """A trip with one flight (partly filled in) and one hotel."""
+    trip = await make_trip(db, user, trip_name="Kyoto Trip")
+    travel = await make_travel(
+        db, trip, name="Flight to Osaka", mode="flight", departure_date_time="2026-10-30T09:00"
     )
-    session.add(trip)
-    travel = TravelDetailRecord(
-        travel_detail_id=str(uuid.uuid4()),
-        trip_id=TRIP_ID,
-        name="Flight to Osaka",
-        mode="flight",
-        departure_date_time="2026-10-30T09:00",
-        is_deleted=False,
-    )
-    session.add(travel)
-    stay = StayDetailRecord(
-        stay_detail_id=str(uuid.uuid4()),
-        trip_id=TRIP_ID,
-        name="Ritz-Carlton Kyoto",
-        stay_type="hotel",
-        is_deleted=False,
-    )
-    session.add(stay)
-    return session, trip, travel, stay
+    stay = await make_stay(db, trip, name="Ritz-Carlton Kyoto", stay_type="hotel")
+    return trip, travel, stay
 
 
 class TestBuildForm:
-    def test_backend_supplies_labels_types_options_and_current_values(self):
-        session, trip, travel, _ = _setup()
+    async def test_backend_supplies_labels_types_options_and_current_values(self, db, scenario):
+        trip, travel, _ = scenario
 
-        built = _run(build_form(
-            session,
+        built = await build_form(
+            db,
             trip=trip,
             target="travel",
             record_id=travel.travel_detail_id,
             field_names=["operator", "vehicleNumber", "mode", "departureDateTime", "confirmationNumber"],
             title="Flight details",
-        ))
+        )
         form = built.form
         by_name = {f.name: f for f in form.fields}
 
@@ -95,61 +66,93 @@ class TestBuildForm:
         # Labels are human, not field names.
         assert by_name["vehicleNumber"].label == "Flight / train number"
 
-    def test_stay_options_come_from_the_stay_enum(self):
-        session, trip, _, stay = _setup()
-        built = _run(build_form(
-            session, trip=trip, target="stay", record_id=stay.stay_detail_id,
+    async def test_stay_options_come_from_the_stay_enum(self, db, scenario):
+        trip, _, stay = scenario
+
+        built = await build_form(
+            db,
+            trip=trip,
+            target="stay",
+            record_id=stay.stay_detail_id,
             field_names=["stayType", "roomType", "checkIn"],
-        ))
+        )
+
         by_name = {f.name: f for f in built.form.fields}
         assert [o.value for o in by_name["stayType"].options] == [s.value for s in StayType]
         assert by_name["stayType"].value == "hotel"
 
-    def test_a_field_the_model_invented_is_rejected(self):
-        session, trip, travel, _ = _setup()
+    async def test_a_field_the_model_invented_is_rejected(self, db, scenario):
+        trip, travel, _ = scenario
+
         with pytest.raises(FormError) as exc:
-            _run(build_form(
-                session, trip=trip, target="travel", record_id=travel.travel_detail_id,
+            await build_form(
+                db,
+                trip=trip,
+                target="travel",
+                record_id=travel.travel_detail_id,
                 field_names=["operator", "seatPreference"],  # not a real field
-            ))
+            )
+
         assert "seatPreference" in str(exc.value)
         assert "Available:" in str(exc.value)  # tells the model what it may ask for
 
-    def test_an_unknown_target_is_rejected(self):
-        session, trip, _, _ = _setup()
+    async def test_an_unknown_target_is_rejected(self, db, scenario):
+        trip, _, _ = scenario
         with pytest.raises(FormError):
-            _run(build_form(session, trip=trip, target="hotel", record_id=None, field_names=["name"]))
+            await build_form(db, trip=trip, target="hotel", record_id=None, field_names=["name"])
 
-    def test_a_record_from_another_trip_is_rejected(self):
-        session, trip, _, _ = _setup()
-        other = TravelDetailRecord(
-            travel_detail_id=str(uuid.uuid4()), trip_id="99999999-9999-9999-9999-999999999999",
-            mode="flight", is_deleted=False,
-        )
-        session.add(other)
+    async def test_a_record_from_another_trip_is_rejected(self, db, user, scenario):
+        trip, _, _ = scenario
+        other_trip = await make_trip(db, user, trip_name="Someone else's trip")
+        stray = await make_travel(db, other_trip)
+
         with pytest.raises(FormError) as exc:
-            _run(build_form(session, trip=trip, target="travel", record_id=other.travel_detail_id,
-                            field_names=["operator"]))
+            await build_form(
+                db, trip=trip, target="travel", record_id=stray.travel_detail_id,
+                field_names=["operator"],
+            )
+
         assert "on this trip" in str(exc.value)
 
-    def test_an_invented_record_id_is_rejected_with_guidance(self):
-        session, trip, _, _ = _setup()
+    async def test_a_soft_deleted_record_is_rejected(self, db, user, scenario):
+        trip, _, _ = scenario
+        gone = await make_travel(db, trip, is_deleted=True)
+
+        with pytest.raises(FormError):
+            await build_form(
+                db, trip=trip, target="travel", record_id=gone.travel_detail_id,
+                field_names=["operator"],
+            )
+
+    async def test_an_invented_record_id_is_rejected_with_guidance(self, db, scenario):
+        trip, _, _ = scenario
+
         with pytest.raises(FormError) as exc:
-            _run(build_form(session, trip=trip, target="travel", record_id="travel-1",
-                            field_names=["operator"]))
+            await build_form(
+                db, trip=trip, target="travel", record_id="travel-1", field_names=["operator"]
+            )
+
         assert "get_trip_snapshot" in str(exc.value)
 
-    def test_no_record_id_builds_a_create_form(self):
-        session, trip, _, _ = _setup()
-        built = _run(build_form(session, trip=trip, target="stay", record_id=None,
-                                field_names=["name", "stayType", "checkIn"]))
+    async def test_no_record_id_builds_a_create_form(self, db, scenario):
+        trip, _, _ = scenario
+
+        built = await build_form(
+            db, trip=trip, target="stay", record_id=None,
+            field_names=["name", "stayType", "checkIn"],
+        )
+
         assert built.form.record_id is None
         assert all(f.value is None for f in built.form.fields)  # nothing to prefill
 
-    def test_trip_form_prefills_from_the_trip_itself(self):
-        session, trip, _, _ = _setup()
-        built = _run(build_form(session, trip=trip, target="trip", record_id=None,
-                                field_names=["tripName", "startDate", "endDate"]))
+    async def test_trip_form_prefills_from_the_trip_itself(self, db, scenario):
+        trip, _, _ = scenario
+
+        built = await build_form(
+            db, trip=trip, target="trip", record_id=None,
+            field_names=["tripName", "startDate", "endDate"],
+        )
+
         by_name = {f.name: f for f in built.form.fields}
         assert by_name["tripName"].value == "Kyoto Trip"
         assert by_name["startDate"].type == "date"
@@ -158,7 +161,9 @@ class TestBuildForm:
 
 class TestValidateSubmission:
     def test_blank_fields_are_dropped_not_written_as_empty(self):
-        cleaned = validate_submission("travel", {"operator": "ANA", "vehicleNumber": "  ", "cabinClass": None})
+        cleaned = validate_submission(
+            "travel", {"operator": "ANA", "vehicleNumber": "  ", "cabinClass": None}
+        )
         assert cleaned == {"operator": "ANA"}
 
     def test_a_bogus_enum_value_is_rejected(self):
@@ -183,8 +188,8 @@ class TestValidateSubmission:
 
 
 class TestRequestFormTool:
-    def test_the_tool_returns_a_form_and_tells_the_model_not_to_repeat_itself(self):
-        session, trip, travel, _ = _setup()
+    async def test_the_tool_returns_a_form_and_tells_the_model_not_to_repeat_itself(self, db, scenario):
+        trip, travel, _ = scenario
         spec = TOOL_REGISTRY["request_form"]
         args = RequestFormArgs(
             target="travel",
@@ -192,7 +197,7 @@ class TestRequestFormTool:
             fields=["operator", "vehicleNumber", "confirmationNumber"],
         )
 
-        outcome = _run(spec.handler(session, trip, args))
+        outcome = await spec.handler(db, trip, args)
 
         assert outcome.result["status"] == "ok"
         assert outcome.form is not None
@@ -202,12 +207,14 @@ class TestRequestFormTool:
         # The model does not get the field machinery back — just an acknowledgement.
         assert "options" not in outcome.result
 
-    def test_a_bad_form_request_comes_back_as_an_error_the_model_can_fix(self):
-        session, trip, travel, _ = _setup()
+    async def test_a_bad_form_request_comes_back_as_an_error_the_model_can_fix(self, db, scenario):
+        trip, travel, _ = scenario
         spec = TOOL_REGISTRY["request_form"]
-        args = RequestFormArgs(target="travel", recordId=travel.travel_detail_id, fields=["seatPreference"])
+        args = RequestFormArgs(
+            target="travel", recordId=travel.travel_detail_id, fields=["seatPreference"]
+        )
 
-        outcome = _run(spec.handler(session, trip, args))
+        outcome = await spec.handler(db, trip, args)
 
         assert outcome.result["status"] == "error"
         assert "seatPreference" in outcome.result["detail"]
@@ -216,3 +223,74 @@ class TestRequestFormTool:
     def test_the_model_cannot_ask_for_zero_fields(self):
         with pytest.raises(Exception):
             RequestFormArgs(target="stay", fields=[])
+
+
+class TestSubmitEndpoint:
+    """POST /chat/forms/submit — a plain save, no model call."""
+
+    async def test_submitting_applies_the_values_to_the_record(self, client, db, user, scenario):
+        import uuid
+
+        trip, travel, _ = scenario
+
+        resp = await client.post(
+            "/chat/forms/submit",
+            json={
+                "tripId": trip.trip_id,
+                "workflowName": "trip:manage",
+                "requestId": str(uuid.uuid4()),
+                "formId": str(uuid.uuid4()),
+                "target": "travel",
+                "recordId": travel.travel_detail_id,
+                "values": {"operator": "ANA", "vehicleNumber": "NH123"},
+            },
+        )
+
+        assert resp.status_code == 200
+        await db.refresh(travel)
+        assert travel.operator == "ANA"
+        assert travel.vehicle_number == "NH123"
+        # The exchange is recorded so the assistant has it next turn.
+        assert [m["isBot"] for m in resp.json()["messages"]] == [False, True]
+
+    async def test_a_bogus_value_is_rejected_and_nothing_is_written(self, client, db, scenario):
+        import uuid
+
+        trip, travel, _ = scenario
+
+        resp = await client.post(
+            "/chat/forms/submit",
+            json={
+                "tripId": trip.trip_id,
+                "workflowName": "trip:manage",
+                "requestId": str(uuid.uuid4()),
+                "formId": str(uuid.uuid4()),
+                "target": "travel",
+                "recordId": travel.travel_detail_id,
+                "values": {"mode": "teleport"},
+            },
+        )
+
+        assert resp.status_code == 422
+        await db.refresh(travel)
+        assert travel.mode == "flight"  # unchanged
+
+    async def test_another_users_trip_is_404(self, client, db, other_user):
+        import uuid
+
+        trip = await make_trip(db, other_user)
+
+        resp = await client.post(
+            "/chat/forms/submit",
+            json={
+                "tripId": trip.trip_id,
+                "workflowName": "trip:manage",
+                "requestId": str(uuid.uuid4()),
+                "formId": str(uuid.uuid4()),
+                "target": "trip",
+                "recordId": None,
+                "values": {"tripName": "Hijacked"},
+            },
+        )
+
+        assert resp.status_code == 404

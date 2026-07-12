@@ -9,7 +9,6 @@ from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import (
     active,
-    LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
@@ -18,16 +17,13 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import (
-    StayDetail,
-    TravelDetail,
-    TripDayWithPoints,
     TripHeader,
     TripHeaderResponse,
     TripListItem,
-    TripPointResponse,
     TripResponse,
     VerifyResult,
 )
+from app.services.trip_state import assembled_trip
 from app.services.trip_verify import verify_trip
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -58,122 +54,10 @@ async def get_trip(
     return await _load_trip(trip, db)
 
 
-async def _load_trip(
-    record: TripRecord,
-    db: AsyncSession,
-) -> TripResponse:
-    trip_id = record.trip_id
-
-    # ── Trip-level stays & travels (with their own locations) ────────────────
-    stays_result = await db.execute(
-        select(StayDetailRecord).where(
-            StayDetailRecord.trip_id == trip_id,
-            active(StayDetailRecord),
-        )
-    )
-    stay_records = stays_result.scalars().all()
-    travels_result = await db.execute(
-        select(TravelDetailRecord).where(
-            TravelDetailRecord.trip_id == trip_id,
-            active(TravelDetailRecord),
-        )
-    )
-    travel_records = travels_result.scalars().all()
-
-    locs_by_stay: dict = {}
-    locs_by_travel: dict = {}
-    locs_by_point: dict = {}
-
-    stay_ids = [s.stay_detail_id for s in stay_records]
-    travel_ids = [t.travel_detail_id for t in travel_records]
-
-    if stay_ids:
-        res = await db.execute(
-            select(LocationRecord).where(LocationRecord.stay_detail_id.in_(stay_ids))
-        )
-        for loc in res.scalars().all():
-            locs_by_stay.setdefault(loc.stay_detail_id, []).append(loc)
-    if travel_ids:
-        res = await db.execute(
-            select(LocationRecord).where(LocationRecord.travel_detail_id.in_(travel_ids))
-        )
-        for loc in res.scalars().all():
-            locs_by_travel.setdefault(loc.travel_detail_id, []).append(loc)
-
-    stays = {
-        s.stay_detail_id: StayDetail.from_record(s, locs_by_stay.get(s.stay_detail_id, []))
-        for s in stay_records
-    }
-    travels = {
-        t.travel_detail_id: TravelDetail.from_record(t, locs_by_travel.get(t.travel_detail_id, []))
-        for t in travel_records
-    }
-
-    # ── Days & points ────────────────────────────────────────────────────────
-    days_result = await db.execute(
-        select(TripDayRecord)
-        .where(
-            TripDayRecord.trip_id == trip_id,
-            active(TripDayRecord),
-        )
-        .order_by(TripDayRecord.date, TripDayRecord.is_alternate)
-    )
-    days = days_result.scalars().all()
-    day_ids = [d.day_id for d in days]
-
-    points = []
-    if day_ids:
-        pts_result = await db.execute(
-            select(TripPointRecord)
-            .where(
-                TripPointRecord.day_id.in_(day_ids),
-                active(TripPointRecord),
-            )
-            .order_by(TripPointRecord.start_date_time)
-        )
-        points = pts_result.scalars().all()
-        point_ids = [p.point_id for p in points]
-
-        if point_ids:
-            loc_result = await db.execute(
-                select(LocationRecord).where(LocationRecord.point_id.in_(point_ids))
-            )
-            for loc in loc_result.scalars().all():
-                locs_by_point.setdefault(loc.point_id, []).append(loc)
-
-    points_by_day: dict = {}
-    for p in points:
-        points_by_day.setdefault(p.day_id, []).append(p)
-
-    assembled_days = [
-        TripDayWithPoints.from_record(
-            d,
-            points=[
-                TripPointResponse.from_record(
-                    p,
-                    locs_by_point.get(p.point_id, []),
-                    travels.get(p.travel_detail_id) if p.travel_detail_id else None,
-                    stays.get(p.stay_detail_id) if p.stay_detail_id else None,
-                )
-                for p in points_by_day.get(d.day_id, [])
-            ],
-        )
-        for d in days
-    ]
-
-    return TripResponse(
-        trip_id=record.trip_id,
-        trip_name=record.trip_name,
-        status=record.status,
-        start_location_name=record.start_location_name,
-        destination_location_name=record.destination_location_name,
-        default_timezone_id=record.default_timezone_id,
-        start_date=record.start_date,
-        end_date=record.end_date,
-        stays=list(stays.values()),
-        travels=list(travels.values()),
-        days=assembled_days,
-    )
+async def _load_trip(record: TripRecord, db: AsyncSession) -> TripResponse:
+    # One loader for the whole app: the chat loop and these routes had grown
+    # two near-identical hand-rolled assemblies (review.md 1C-3).
+    return await assembled_trip(db, record)
 
 
 @router.get("/{trip_id}/verify", response_model=VerifyResult)

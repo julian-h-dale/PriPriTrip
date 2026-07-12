@@ -1,8 +1,10 @@
-"""Shared trip-state helpers for the chat tool loop.
+"""Shared trip-state helpers for the chat tool loop and the trip routes.
 
-Extracted from the legacy batch workflows (new_trip_workflow.py /
-trip_assistant_workflow.py) when those were deleted — the tool loop is the
-only chat path now.
+`assembled_trip` is the single loader for a whole trip. It used to be one of
+two near-identical hand-rolled assemblies (the other lived in routers/trip.py),
+each issuing ~7 queries and stitching the graph together with dicts. Now the
+relationships do it — and because the soft-delete filter is baked into the
+joins, no caller can forget it (review.md 1C-3).
 """
 
 from __future__ import annotations
@@ -12,15 +14,15 @@ from typing import Any, Optional
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import (
-    active,
-    LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
     TripPointRecord,
     TripRecord,
+    active,
 )
 from app.schemas import (
     StayDetail,
@@ -75,65 +77,45 @@ async def trip_summary(db: AsyncSession, trip: TripRecord) -> dict[str, Any]:
     }
 
 
+def _loader_options():
+    """Eager-load the whole trip graph in a fixed number of queries.
+
+    A point's stay/travel is deliberately NOT eager-loaded: every live stay and
+    travel on the trip is already loaded above, so the point just looks its own
+    up by id. Loading them again per point would cost four more round-trips for
+    data we already have.
+    """
+    return (
+        selectinload(TripRecord.stays).selectinload(StayDetailRecord.locations),
+        selectinload(TripRecord.travels).selectinload(TravelDetailRecord.locations),
+        selectinload(TripRecord.days)
+        .selectinload(TripDayRecord.points)
+        .selectinload(TripPointRecord.locations),
+    )
+
+
 async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
-    stay_records = (
+    """The full trip graph as a TripResponse.
+
+    One query per level (not per row): trip, stays, travels, days, points, and
+    their locations. The relationships already exclude soft-deleted rows.
+    """
+    loaded = (
         await db.execute(
-            select(StayDetailRecord).where(
-                StayDetailRecord.trip_id == trip.trip_id,
-                active(StayDetailRecord),
-            )
+            select(TripRecord)
+            .where(TripRecord.trip_id == trip.trip_id)
+            .options(*_loader_options())
         )
-    ).scalars().all()
-    travel_records = (
-        await db.execute(
-            select(TravelDetailRecord).where(
-                TravelDetailRecord.trip_id == trip.trip_id,
-                active(TravelDetailRecord),
-            )
-        )
-    ).scalars().all()
-    day_records = (
-        await db.execute(
-            select(TripDayRecord).where(
-                TripDayRecord.trip_id == trip.trip_id,
-                active(TripDayRecord),
-            )
-        )
-    ).scalars().all()
+    ).scalar_one()
 
-    locs_by_stay: dict[str, list] = {}
-    locs_by_travel: dict[str, list] = {}
-    locs_by_point: dict[str, list] = {}
-
-    for loc in (
-        await db.execute(select(LocationRecord).where(LocationRecord.stay_detail_id.in_([s.stay_detail_id for s in stay_records])))
-    ).scalars().all() if stay_records else []:
-        locs_by_stay.setdefault(loc.stay_detail_id, []).append(loc)
-    for loc in (
-        await db.execute(select(LocationRecord).where(LocationRecord.travel_detail_id.in_([t.travel_detail_id for t in travel_records])))
-    ).scalars().all() if travel_records else []:
-        locs_by_travel.setdefault(loc.travel_detail_id, []).append(loc)
-
-    points = (
-        await db.execute(
-            select(TripPointRecord).where(
-                TripPointRecord.trip_id == trip.trip_id,
-                active(TripPointRecord),
-            )
-        )
-    ).scalars().all()
-    if points:
-        for loc in (
-            await db.execute(select(LocationRecord).where(LocationRecord.point_id.in_([p.point_id for p in points])))
-        ).scalars().all():
-            locs_by_point.setdefault(loc.point_id, []).append(loc)
-
-    stays = {s.stay_detail_id: StayDetail.from_record(s, locs_by_stay.get(s.stay_detail_id, [])) for s in stay_records}
-    travels = {t.travel_detail_id: TravelDetail.from_record(t, locs_by_travel.get(t.travel_detail_id, [])) for t in travel_records}
-
-    points_by_day: dict[str, list] = {}
-    for point in points:
-        points_by_day.setdefault(point.day_id, []).append(point)
+    stays = {
+        stay.stay_detail_id: StayDetail.from_record(stay, stay.locations)
+        for stay in loaded.stays
+    }
+    travels = {
+        travel.travel_detail_id: TravelDetail.from_record(travel, travel.locations)
+        for travel in loaded.travels
+    }
 
     days = [
         TripDayWithPoints.from_record(
@@ -141,25 +123,27 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
             points=[
                 TripPointResponse.from_record(
                     point,
-                    locs_by_point.get(point.point_id, []),
-                    travels.get(point.travel_detail_id) if point.travel_detail_id else None,
-                    stays.get(point.stay_detail_id) if point.stay_detail_id else None,
+                    point.locations,
+                    # Already loaded at trip level — a soft-deleted detail is
+                    # simply absent from these, which is the behaviour we want.
+                    travels.get(point.travel_detail_id),
+                    stays.get(point.stay_detail_id),
                 )
-                for point in points_by_day.get(day.day_id, [])
+                for point in day.points
             ],
         )
-        for day in sorted(day_records, key=lambda item: item.date)
+        for day in loaded.days
     ]
 
     return TripResponse(
-        trip_id=trip.trip_id,
-        trip_name=trip.trip_name,
-        status=trip.status,
-        start_location_name=trip.start_location_name,
-        destination_location_name=trip.destination_location_name,
-        default_timezone_id=trip.default_timezone_id,
-        start_date=trip.start_date,
-        end_date=trip.end_date,
+        trip_id=loaded.trip_id,
+        trip_name=loaded.trip_name,
+        status=loaded.status,
+        start_location_name=loaded.start_location_name,
+        destination_location_name=loaded.destination_location_name,
+        default_timezone_id=loaded.default_timezone_id,
+        start_date=loaded.start_date,
+        end_date=loaded.end_date,
         stays=list(stays.values()),
         travels=list(travels.values()),
         days=days,
