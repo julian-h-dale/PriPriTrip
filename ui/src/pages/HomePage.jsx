@@ -19,6 +19,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AppLayout from '../components/AppLayout';
 import TripChatOverlay from '../components/Chat/TripChatOverlay';
 import Timeline from '../components/Timeline/Timeline';
+import TripGapsBanner from '../components/Trip/TripGapsBanner';
 import { useGetTripQuery } from '../store/apiSlice';
 import { selectMapsApiKey } from '../store/authSlice';
 import { getErrorMessage } from '../utils/errors';
@@ -106,12 +107,21 @@ export default function HomePage() {
           </Box>
         )}
         {trip && (
-          <Timeline
-            tripId={tripId}
-            trip={trip}
-            expandedDayId={expandedDayId}
-            onExpandedDayChange={setExpandedDayId}
-          />
+          <>
+            {/* What's missing, fixable in one tap without a model call.
+                Offline it would only offer forms that cannot be submitted. */}
+            {isOnline && (
+              <Box sx={{ px: 2, pt: 2 }}>
+                <TripGapsBanner tripId={tripId} />
+              </Box>
+            )}
+            <Timeline
+              tripId={tripId}
+              trip={trip}
+              expandedDayId={expandedDayId}
+              onExpandedDayChange={setExpandedDayId}
+            />
+          </>
         )}
       </Container>
 

@@ -162,6 +162,17 @@ class TripDayRecord(SoftDeleteMixin, Base):
 
     __table_args__ = (
         Index("ix_trip_days_trip_active", "trip_id", postgresql_where=text("NOT is_deleted")),
+        # The invariant the app relies on, held by the database rather than by
+        # every writer remembering to check: a date has at most one real day.
+        # Alternates (a second plan for the same date) are deliberately exempt,
+        # and so are soft-deleted rows.
+        Index(
+            "uq_trip_days_one_primary_per_date",
+            "trip_id",
+            "date",
+            unique=True,
+            postgresql_where=text("NOT is_deleted AND NOT is_alternate"),
+        ),
     )
 
 

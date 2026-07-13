@@ -7,6 +7,7 @@ import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
 import { Box, Typography } from '@mui/material';
 import { parseWallClock } from '../../utils/dayjs';
+import { placeLabel } from '../../utils/format';
 
 import { ROYAL_BLUE, getPointIcon } from '../../utils/pointIcons';
 
@@ -15,6 +16,10 @@ const MotionTimelineItem = motion.create(TimelineItem);
 
 export default function PointTimelineItem({ item, isFirst, isLast, onSelect }) {
   const Icon = getPointIcon(item);
+  // Generated points (check-in, departure) inherit the place from their stay or
+  // travel leg, so "Check In: Hyatt" can say where the Hyatt actually is.
+  const first = item.locations?.[0];
+  const place = first ? placeLabel(first) : null;
 
   return (
     <MotionTimelineItem
@@ -50,6 +55,11 @@ export default function PointTimelineItem({ item, isFirst, isLast, onSelect }) {
             {item.title}
           </Typography>
         </Box>
+        {place && (
+          <Typography variant="caption" color="text.secondary">
+            {place}
+          </Typography>
+        )}
       </TimelineContent>
     </MotionTimelineItem>
   );

@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_owned_trip
+from app.enums import DERIVED_POINT_TYPES
+from app.services.detail_points import generated_point_conflict
 from app.models import (
     active,
     deleted,
@@ -224,6 +226,23 @@ async def _infer_point_tzid(
     return fallback or "UTC"
 
 
+def _reject_derived_type(point_type: str | None) -> None:
+    """Only 'activity' points are authored; the rest are generated.
+
+    See app.enums.DERIVED_POINT_TYPES — detail_points.py is their single writer,
+    and a second one is what put two departures on every flight.
+    """
+    if point_type in DERIVED_POINT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"A {point_type!r} point is generated from the stay or travel leg it belongs "
+                f"to and cannot be created directly. Create the stay or the travel leg with "
+                f"its times, and the point appears on the timeline by itself."
+            ),
+        )
+
+
 async def _validate_detail_refs(
     trip_id: str,
     stay_detail_id: str | None,
@@ -290,6 +309,7 @@ async def create_point(
     day = await db.get(TripDayRecord, body.day_id)
     if day is None or day.is_deleted or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
+    _reject_derived_type(body.type)
     await _validate_detail_refs(trip.trip_id, body.stay_detail_id, body.travel_detail_id, db)
 
     point = TripPointRecord(
@@ -358,6 +378,11 @@ async def patch_point(
         "completed",
         "completed_date_time",
     )
+    _reject_derived_type(body.type)
+    conflict = generated_point_conflict(point, body.model_fields_set)
+    if conflict:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict)
+
     await _validate_detail_refs(
         trip.trip_id,
         body.stay_detail_id if "stay_detail_id" in body.model_fields_set else None,
@@ -427,6 +452,15 @@ async def delete_point(
     point = await db.get(TripPointRecord, point_id)
     if point is None or point.is_deleted or point.deleted_at is not None or point.trip_id != trip.trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
+    if point.is_system_created:
+        parent = "stay" if point.stay_detail_id else "travel leg"
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{point.title!r} is generated from its {parent} and would come straight back "
+                f"on the next sync. Delete the {parent}, or clear the time it is generated from."
+            ),
+        )
     point.is_deleted = True
     point.deleted_at = datetime.now(timezone.utc)
     await db.commit()

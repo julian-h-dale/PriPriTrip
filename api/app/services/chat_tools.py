@@ -21,6 +21,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums import PointType, StayType, TravelMode
+
+# The only point type anyone may author; see app.enums.DERIVED_POINT_TYPES.
+AuthoredPointType = Literal[PointType.ACTIVITY]
 from app.models import TripRecord
 from app.schemas import ChatChoice, ChatForm
 from app.services.chat_choices import build_choice
@@ -91,7 +94,12 @@ class DeleteDayArgs(_ToolArgs):
 
 class CreatePointArgs(_ToolArgs):
     dayId: str
-    type: PointType
+    # Only "activity". Check-in, check-out, departure and arrival points are
+    # generated from the stay or travel leg that owns them (app.enums
+    # DERIVED_POINT_TYPES) — the model creates the stay or the leg, and the
+    # point appears by itself. Narrowing the schema means the model cannot even
+    # express the duplicate, rather than being told off for it afterwards.
+    type: AuthoredPointType
     title: str
     startDateTime: Optional[str] = None
     startTimezoneId: Optional[str] = None
@@ -105,7 +113,7 @@ class CreatePointArgs(_ToolArgs):
 class UpdatePointArgs(_ToolArgs):
     pointId: str
     dayId: Optional[str] = None
-    type: Optional[PointType] = None
+    type: Optional[AuthoredPointType] = None
     title: Optional[str] = None
     startDateTime: Optional[str] = None
     startTimezoneId: Optional[str] = None
@@ -401,7 +409,10 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         ),
         ToolSpec(
             "create_day",
-            "Create an itinerary day with a title and ISO date.",
+            "Name an itinerary day (title + ISO date). Every date in the trip's range already has "
+            "a day — this renames the one that is there rather than adding a second, and returns "
+            "its dayId. Only pass isAlternate when the user wants a *second, competing* plan for a "
+            "date they already have one for.",
             CreateDayArgs,
             _action_handler("create", "day"),
         ),
@@ -419,7 +430,9 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         ),
         ToolSpec(
             "create_point",
-            "Create an itinerary point (activity, departure, arrival, check-in, check-out) on an existing day.",
+            "Add an activity to a day — a dinner, a museum, a hike. Check-in, check-out, departure "
+            "and arrival points are NOT created here: they are generated from the stay or travel "
+            "leg that owns them, so create that instead and the point appears by itself.",
             CreatePointArgs,
             _action_handler("create", "point"),
         ),
@@ -437,7 +450,9 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         ),
         ToolSpec(
             "create_stay",
-            "Create a stay (hotel/hostel/airbnb/rental); partial details are fine — save what the user provided.",
+            "Create a stay; partial details are fine — save what the user provided. Set stayType "
+            "whenever the property makes it obvious (a Hyatt or a Sheraton is a hotel) rather than "
+            "leaving it blank, and still fill in the other fields you were told about.",
             CreateStayArgs,
             _action_handler("create", "stay"),
         ),

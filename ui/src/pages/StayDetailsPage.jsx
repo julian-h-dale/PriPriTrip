@@ -10,7 +10,8 @@ import {
   firstLocationByRole,
   formatDateRange,
   formatDateTime,
-  localityLabel,
+  placeLabel,
+  placeLocality,
 } from '../utils/format';
 
 export default function StayDetailsPage() {
@@ -48,9 +49,12 @@ export default function StayDetailsPage() {
             <Typography variant="body2" color="text.secondary">
               {formatDateRange(stay.checkIn, stay.checkOut)}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {localityLabel(venue)}
-            </Typography>
+            <Typography variant="body2">{placeLabel(venue)}</Typography>
+            {placeLocality(venue) && (
+              <Typography variant="caption" color="text.secondary">
+                {placeLocality(venue)}
+              </Typography>
+            )}
           </>
         );
       }}

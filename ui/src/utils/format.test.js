@@ -7,26 +7,43 @@ import {
   formatDateOrdinal,
   formatDateRange,
   formatDateTime,
-  localityLabel,
+  placeLabel,
+  placeLocality,
   toDateTimeLocal,
 } from './format';
 
-describe('localityLabel', () => {
-  it('reduces a full address to the last two parts', () => {
-    expect(localityLabel({ fullAddress: '1-2-3 Shuri, Naha, Okinawa, Japan' })).toBe('Okinawa, Japan');
+describe('placeLabel', () => {
+  it('names the place', () => {
+    expect(placeLabel({ name: 'Hyatt Regency', fullAddress: '3-6-20 Makishi, Naha, Okinawa, Japan' }))
+      .toBe('Hyatt Regency');
   });
 
-  it('falls back to the name when there is no address', () => {
-    expect(localityLabel({ name: 'Hyatt Regency' })).toBe('Hyatt Regency');
+  it('names an airport instead of reciting its post code', () => {
+    // The old helper took the last two parts of the address and rendered this
+    // leg as "IL 60666, USA - TX 77032, USA".
+    const ord = { name: 'ORD', fullAddress: "10000 W O'Hare Ave, Chicago, IL 60666, USA" };
+    expect(placeLabel(ord)).toBe('ORD');
   });
 
-  it('handles a single-part address', () => {
-    expect(localityLabel({ fullAddress: 'Japan', name: 'X' })).toBe('Japan');
+  it('falls back to the street when a place has an address but no name', () => {
+    expect(placeLabel({ fullAddress: '1-2-3 Shuri, Naha, Okinawa, Japan' })).toBe('1-2-3 Shuri');
   });
 
   it('returns an em dash for nothing at all', () => {
-    expect(localityLabel(null)).toBe('—');
-    expect(localityLabel({})).toBe('—');
+    expect(placeLabel(null)).toBe('—');
+    expect(placeLabel({})).toBe('—');
+  });
+});
+
+describe('placeLocality', () => {
+  it('reduces a full address to where in the world it is', () => {
+    expect(placeLocality({ fullAddress: '1-2-3 Shuri, Naha, Okinawa, Japan' })).toBe('Okinawa, Japan');
+  });
+
+  it('is null when there is no address to reduce', () => {
+    expect(placeLocality({ name: 'Brother\'s place' })).toBeNull();
+    expect(placeLocality({ fullAddress: 'Japan' })).toBeNull();
+    expect(placeLocality(null)).toBeNull();
   });
 });
 

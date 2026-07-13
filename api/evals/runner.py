@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripRecord
+from app.services.detail_points import reconcile_trip_days
 from app.services.chat_tool_loop import run_chat_tool_loop
 from app.services.timezones import parse_wall_clock
 from app.services.trip_state import WorkflowOutcome
@@ -71,6 +72,12 @@ async def seed_trip(session, scenario: Scenario) -> TripRecord:
                 confirmation_number=travel.confirmationNumber,
             )
         )
+    # A trip with dates always has a day row for each of them in production —
+    # PUT /trips reconciles them. Seeding a dated trip with no days gave the
+    # model a world it never actually meets, and hid the fact that create_day
+    # was adding a second day to a date that already had one.
+    await reconcile_trip_days(session, trip)
+
     # Committed so it is baseline state: a rollback inside the loop must not
     # wipe the scenario's own setup.
     await session.commit()

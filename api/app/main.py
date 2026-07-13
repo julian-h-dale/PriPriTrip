@@ -11,6 +11,7 @@ from app.routers import (
     trip_ai_import,
     trip_days,
     trip_details,
+    trip_gaps,
     trip_import,
     trip_points,
 )
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     application.include_router(trip_days.router)
     application.include_router(trip_points.router)
     application.include_router(trip_details.router)
+    application.include_router(trip_gaps.router)
     application.include_router(trip_import.router)
     application.include_router(trip_ai_import.router)
     application.include_router(chat.router)

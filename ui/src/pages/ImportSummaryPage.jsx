@@ -24,7 +24,7 @@ import {
   formatDate,
   formatDateRange,
   formatDateTime,
-  localityLabel,
+  placeLabel,
 } from '../utils/format';
 
 export default function ImportSummaryPage() {
@@ -143,10 +143,10 @@ export default function ImportSummaryPage() {
                                 Mode: {travel.mode || '—'}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
-                                Departure: {localityLabel(origin)}
+                                Departure: {placeLabel(origin)}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
-                                Destination: {localityLabel(destination)}
+                                Destination: {placeLabel(destination)}
                               </Typography>
                             </>
                           }
@@ -189,7 +189,7 @@ export default function ImportSummaryPage() {
                                 {formatDateRange(stay.checkIn, stay.checkOut)}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" component="span" display="block">
-                                {localityLabel(venue)}
+                                {placeLabel(venue)}
                               </Typography>
                             </>
                           }

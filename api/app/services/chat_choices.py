@@ -49,22 +49,46 @@ def build_choice(decision: LocationDecision) -> ChatChoice:
     )
 
 
+def submitted_place_id(
+    choice: dict,
+    *,
+    option_id: str | None,
+    place_id: str | None,
+) -> str:
+    """Which Google place this submission actually means.
+
+    Two ways in, and they are trusted differently:
+
+    - `optionId` is one of the places *we* offered, so it is checked against the
+      choice we issued and stored with the message. The model cannot smuggle in
+      a place id (it never sees one — review.md 3C-6), and neither can a stale
+      or forged card.
+    - `placeId` is a place the user went and found themselves, through the
+      Places autocomplete on the card, because none of our suggestions was their
+      brother's house. There is nothing to check it against — that is the whole
+      point of the search box. What still holds is the guard that matters: the
+      location being edited must belong to a trip this user owns.
+    """
+    if option_id:
+        offered = {opt.get("optionId") for opt in choice.get("options", [])}
+        if option_id not in offered:
+            raise ChoiceError("That option was not one of the choices offered.")
+        return option_id
+    if place_id:
+        return place_id
+    raise ChoiceError("Pick one of the places, or search for a different one.")
+
+
 async def apply_choice(
     db: AsyncSession,
     *,
     trip: TripRecord,
     choice: dict,
-    option_id: str,
+    option_id: str | None = None,
+    place_id: str | None = None,
 ) -> LocationRecord:
-    """Write the place the user picked onto the location row.
-
-    `choice` is the payload we issued and stored with the message, so the
-    option is checked against what we actually offered — a client cannot post
-    an arbitrary place id.
-    """
-    offered = {opt.get("optionId") for opt in choice.get("options", [])}
-    if option_id not in offered:
-        raise ChoiceError("That option was not one of the choices offered.")
+    """Write the place the user picked onto the location row."""
+    chosen = submitted_place_id(choice, option_id=option_id, place_id=place_id)
 
     location = await db.get(LocationRecord, choice["locationId"])
     if location is None:
@@ -75,7 +99,7 @@ async def apply_choice(
     if owner_trip_id != trip.trip_id:
         raise ChoiceError("That location is not on this trip.")
 
-    resolved = await place_details(option_id)
+    resolved = await place_details(chosen)
     if resolved is None:
         raise ChoiceError("Could not look that place up. Please try again.")
 

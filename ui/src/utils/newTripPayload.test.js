@@ -70,7 +70,7 @@ describe('buildImportPayload', () => {
     vehicleNumber: '',
   };
 
-  it('builds a full trip payload with travels and generated points', () => {
+  it('builds a full trip payload with travels', () => {
     const payload = buildImportPayload({ tripDetails, outbound, returnLeg });
 
     expect(payload.tripName).toBe('Rome');
@@ -78,25 +78,22 @@ describe('buildImportPayload', () => {
     expect(payload.stays).toEqual([]);
     expect(payload.days).toHaveLength(5);
     expect(payload.travels).toHaveLength(2);
-
-    // Departure/arrival points land on the day matching their date.
-    const day1 = payload.days[0];
-    expect(day1.points).toHaveLength(2);
-    expect(day1.points[0]).toMatchObject({
-      type: 'departure',
-      title: 'Departure: Flight to Rome',
-      isSystemCreated: true,
-      dayId: day1.dayId,
+    expect(payload.travels[0]).toMatchObject({
+      name: 'Flight to Rome',
+      mode: 'flight',
+      departureDateTime: '2026-05-01T09:00',
     });
-    const lastDay = payload.days[4];
-    expect(lastDay.points.map((p) => p.type)).toEqual(['departure', 'arrival']);
-
-    // Points reference their travel detail.
-    expect(day1.points[0].travelDetailId).toBe(payload.travels[0].travelDetailId);
     expect(payload.travels[0].locations.map((l) => l.role)).toEqual(['origin', 'destination']);
   });
 
-  it('omits skipped legs and their points', () => {
+  it('sends no departure/arrival points — the backend generates those from the leg', () => {
+    const payload = buildImportPayload({ tripDetails, outbound, returnLeg });
+    // Sending our own is what put every flight on the timeline twice: once as
+    // our point, once as the one detail_points.py derives from the same leg.
+    expect(payload.days.flatMap((d) => d.points)).toEqual([]);
+  });
+
+  it('omits skipped legs', () => {
     const payload = buildImportPayload({
       tripDetails,
       outbound: { ...outbound, skipped: true },
@@ -104,7 +101,6 @@ describe('buildImportPayload', () => {
     });
     expect(payload.travels).toHaveLength(1);
     expect(payload.travels[0].name).toBe('Flight home');
-    expect(payload.days[0].points).toEqual([]);
   });
 
   it('normalizes empty optional leg fields to null', () => {

@@ -23,6 +23,7 @@ from app.schemas import (
     TripResponse,
     VerifyResult,
 )
+from app.services.detail_points import reconcile_trip_days
 from app.services.trip_state import assembled_trip
 from app.services.trip_verify import verify_trip
 
@@ -102,6 +103,14 @@ async def upsert_trip(
         record.default_timezone_id = body.default_timezone_id
         record.start_date = body.start_date
         record.end_date = body.end_date
+
+    # A trip's dates and its day rows are the same fact, so they are reconciled
+    # together — otherwise a trip saved here has a date range and an empty
+    # timeline, and the first flight to land on one of those dates silently
+    # invents the day it needed. The chat executor already did this on a date
+    # change; the REST path did not.
+    await db.flush()
+    await reconcile_trip_days(db, record)
     await db.commit()
     return TripHeaderResponse(
         trip_id=record.trip_id,

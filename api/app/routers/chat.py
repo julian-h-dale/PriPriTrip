@@ -484,11 +484,15 @@ async def submit_chat_choice(
         tripId=body.trip_id,
         choiceId=body.choice_id,
         optionId=body.option_id,
+        # How often our suggestions miss is worth knowing.
+        searched=body.place_id is not None,
         query=choice.get("query"),
     )
 
     try:
-        location = await apply_choice(db, trip=trip, choice=choice, option_id=body.option_id)
+        location = await apply_choice(
+            db, trip=trip, choice=choice, option_id=body.option_id, place_id=body.place_id
+        )
     except ChoiceError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
@@ -496,6 +500,8 @@ async def submit_chat_choice(
     picked = next(
         (o for o in choice.get("options", []) if o.get("optionId") == body.option_id), {}
     )
+    # A searched place has no option to take a label from — use what Places
+    # called it, which is what we just wrote onto the row.
     label = picked.get("label") or location.name
 
     user_message = ChatMessageRecord(

@@ -23,7 +23,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.enums import PointType, StayType, TravelMode
+from app.enums import AUTHORED_POINT_TYPES, StayType, TravelMode
 from app.models import (
     StayDetailRecord,
     TravelDetailRecord,
@@ -71,7 +71,10 @@ FIELD_SPECS: dict[str, dict[str, FieldSpec]] = {
     },
     "point": {
         "title": FieldSpec("Title", TEXT, "title"),
-        "type": FieldSpec("Type", SELECT, "type", _enum_options(PointType)),
+        # Only the authored type. Check-in/departure points are generated from a
+        # stay or travel leg (app.enums.DERIVED_POINT_TYPES), so offering them
+        # here would let a form create the duplicate the rest of the app refuses.
+        "type": FieldSpec("Type", SELECT, "type", sorted(AUTHORED_POINT_TYPES)),
         "startDateTime": FieldSpec("Starts", DATETIME, "start_local"),
         "endDateTime": FieldSpec("Ends", DATETIME, "end_local"),
         "confirmationNumber": FieldSpec("Confirmation number", TEXT, "confirmation_number"),

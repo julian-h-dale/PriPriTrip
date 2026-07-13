@@ -1,0 +1,24 @@
+{
+  "name": "flight-makes-one-day-not-two",
+  "description": "Saving a flight on a date outside the trip range creates a day to hold it. If the model then names that date, it must rename that day, not add a second one — two July 25ths on the timeline.",
+  "requirement": "detail_points.primary_day_for_date — one primary day per date",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Houston Trip",
+    "status": "draft",
+    "destinationLocationName": "Houston",
+    "startDate": "2026-07-25",
+    "endDate": "2026-07-28"
+  },
+  "message": "I fly into Houston on July 25th at 4pm, landing 6:30pm. Call that day 'Arrival in Houston'.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "toolsCalledInclude": ["create_travel"],
+    "persistedInclude": [
+      {"op": "create", "target": "travel", "fieldsContain": {"mode": "flight"}}
+    ],
+    "countsMin": {"days": 4, "travels": 1},
+    "countsMax": {"days": 4, "travels": 1},
+    "capHit": false
+  }
+}

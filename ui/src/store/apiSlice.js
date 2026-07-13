@@ -40,13 +40,15 @@ function tripContentTags(tripId) {
   return [
     { type: 'Trip', id: tripId },
     { type: 'Verify', id: tripId },
+    // Any content change can open or close a gap, so the banner refetches too.
+    { type: 'Gaps', id: tripId },
   ];
 }
 
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['Trips', 'Trip', 'Verify', 'AiDocuments'],
+  tagTypes: ['Trips', 'Trip', 'Verify', 'AiDocuments', 'Gaps'],
   endpoints: (builder) => ({
     // ── queries ──────────────────────────────────────────────────────────
     getTrips: builder.query({
@@ -88,6 +90,19 @@ export const apiSlice = createApi({
     getAiDocuments: builder.query({
       query: (tripId) => `/trips/${tripId}/ai-documents`,
       providesTags: (result, error, tripId) => [{ type: 'AiDocuments', id: tripId }],
+    }),
+    getTripGaps: builder.query({
+      query: (tripId) => `/trips/${tripId}/gaps`,
+      providesTags: (result, error, tripId) => [{ type: 'Gaps', id: tripId }],
+    }),
+    submitTripGap: builder.mutation({
+      // Costs no model call: the values go straight through the executor.
+      query: ({ tripId, ...body }) => ({
+        url: `/trips/${tripId}/gaps/submit`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (result, error, { tripId }) => tripContentTags(tripId),
     }),
 
     // ── trip-level mutations ─────────────────────────────────────────────
@@ -215,6 +230,8 @@ export const {
   useVerifyTripQuery,
   useLazyVerifyTripQuery,
   useGetAiDocumentsQuery,
+  useGetTripGapsQuery,
+  useSubmitTripGapMutation,
   useSaveTripHeaderMutation,
   useDeleteTripMutation,
   useImportTripMutation,

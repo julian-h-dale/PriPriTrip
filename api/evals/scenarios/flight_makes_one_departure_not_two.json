@@ -1,0 +1,29 @@
+{
+  "name": "flight-makes-one-departure-not-two",
+  "description": "A flight is a travel leg, not a travel leg plus a hand-written 'Depart ORD' point. The departure/arrival points are generated from the leg; the model must not author its own or the timeline shows every flight twice.",
+  "requirement": "app.enums.DERIVED_POINT_TYPES — detail_points.py is the single writer",
+  "workflowName": "trip:manage",
+  "trip": {
+    "tripName": "Okinawa Trip",
+    "status": "draft",
+    "destinationLocationName": "Okinawa",
+    "startDate": "2026-10-30",
+    "endDate": "2026-11-05"
+  },
+  "message": "I fly out of O'Hare at 9am on Oct 30 and land at Naha airport at 2:30pm.",
+  "appCurrentDate": "2026-07-09",
+  "checks": {
+    "toolsCalledInclude": ["create_travel"],
+    "toolsCalledExclude": ["create_point"],
+    "persistedInclude": [
+      {"op": "create", "target": "travel", "fieldsContain": {"mode": "flight"}}
+    ],
+    "countsMin": {"travels": 1, "points": 2},
+    "countsMax": {"travels": 1, "points": 2},
+    "locationsInclude": [
+      {"nameMatches": "hare|ord"},
+      {"nameMatches": "naha"}
+    ],
+    "capHit": false
+  }
+}

@@ -323,17 +323,23 @@ export default function TripChatOverlay({
    * Apply a place the user picked (review.md 3F-5). Not a chat turn: the
    * chosen place id goes straight onto the location, no model call.
    */
-  async function handleChoiceSubmit(choice, option) {
+  /**
+   * `picked` is either one of the places we offered ({ optionId }) or one the
+   * user found through the card's Places search ({ placeId }). The backend
+   * takes it from there — either way there is no model call.
+   */
+  async function handleChoiceSubmit(choice, picked) {
     const response = await submitChatChoice({
       tripId,
       workflowName,
       requestId: crypto.randomUUID(),
       choiceId: choice.choiceId,
-      optionId: option.optionId,
+      optionId: picked.optionId ?? null,
+      placeId: picked.placeId ?? null,
     });
 
     dispatch(apiSlice.util.invalidateTags(tripCacheTags(response.tripId)));
-    setSavedChoices((prev) => ({ ...prev, [choice.choiceId]: `Using ${option.label}.` }));
+    setSavedChoices((prev) => ({ ...prev, [choice.choiceId]: `Using ${picked.label}.` }));
     const [userMessage, botMessage] = response.messages ?? [];
     setMessages((prev) => [...prev, userMessage, botMessage].filter(Boolean));
   }

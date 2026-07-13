@@ -269,7 +269,7 @@ class TestApplyChoice:
         assert updated.full_address.startswith("3-6-20 Makishi")
 
     async def test_an_option_we_never_offered_is_rejected(self, db, user, monkeypatch):
-        """The client cannot post an arbitrary place id."""
+        """An `optionId` is checked against the card we actually issued."""
         trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
 
         with pytest.raises(ChoiceError):
@@ -281,6 +281,33 @@ class TestApplyChoice:
 
         with pytest.raises(ChoiceError):
             await apply_choice(db, trip=other_trip, choice=choice, option_id="place-0")
+
+    async def test_a_place_the_user_searched_for_is_accepted(self, db, user, monkeypatch):
+        """None of our options was their brother's house, so they found it.
+
+        A searched place is deliberately NOT checked against the offered
+        options — there would be nothing to check it against, and refusing it is
+        the bug. What still has to hold is trip ownership, below.
+        """
+        trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
+
+        updated = await apply_choice(db, trip=trip, choice=choice, place_id="place-brothers-house")
+
+        assert updated.google_place_id == "place-brothers-house"
+        assert updated.lat is not None  # real coordinates, so it maps
+
+    async def test_a_searched_place_still_cannot_reach_another_trip(self, db, user, monkeypatch):
+        trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
+        other_trip = await make_trip(db, user, trip_name="Someone else's")
+
+        with pytest.raises(ChoiceError):
+            await apply_choice(db, trip=other_trip, choice=choice, place_id="place-brothers-house")
+
+    async def test_submitting_neither_is_rejected(self, db, user, monkeypatch):
+        trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
+
+        with pytest.raises(ChoiceError):
+            await apply_choice(db, trip=trip, choice=choice)
 
 
 class TestChoiceEndpoint:

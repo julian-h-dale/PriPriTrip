@@ -15,7 +15,17 @@ def get_database_url() -> str:
 
 
 class Base(DeclarativeBase):
-    pass
+    # Fetch server-side defaults (created_at/updated_at, which are NOW()) as part
+    # of the INSERT, via PostgreSQL's RETURNING.
+    #
+    # Without this SQLAlchemy leaves those columns *unloaded* on a freshly
+    # inserted object and fetches them on first access. That access is usually a
+    # sync one — Pydantic serialising the row — and a lazy load from sync code
+    # under asyncio raises MissingGreenlet. It only bites when one session both
+    # inserts a row and then renders it, which is exactly what a chat turn does
+    # when the model changes the trip's dates: reconcile_trip_days inserts the
+    # new day rows, and the same turn serialises them on the way out.
+    __mapper_args__ = {"eager_defaults": True}
 
 
 engine = create_async_engine(get_database_url(), echo=False)

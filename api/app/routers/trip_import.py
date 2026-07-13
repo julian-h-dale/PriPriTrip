@@ -1,10 +1,14 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
+from app.enums import DERIVED_POINT_TYPES
 from app.models import (
+    active,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
@@ -13,6 +17,10 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import ImportResult, TripImport
+from app.services.detail_points import (
+    sync_stay_generated_points,
+    sync_travel_generated_points,
+)
 from app.services.locations import location_rows
 from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock
 
@@ -81,6 +89,7 @@ async def import_trip(
 
     # ── 4. Insert trip-level stays & travels (with their locations) ──────────
     stays_inserted = 0
+    stay_records: list[StayDetailRecord] = []
     for stay in body.stays:
         check_in_tzid = stay.check_in_timezone_id or infer_tzid_from_locations(
             stay.locations, role="venue", fallback=trip.default_timezone_id
@@ -88,28 +97,29 @@ async def import_trip(
         check_out_tzid = stay.check_out_timezone_id or check_in_tzid
         check_in_local = parse_wall_clock(stay.check_in)
         check_out_local = parse_wall_clock(stay.check_out)
-        db.add(
-            StayDetailRecord(
-                stay_detail_id=stay.stay_detail_id,
-                trip_id=trip_id,
-                name=stay.name,
-                stay_type=stay.stay_type,
-                check_in_local=check_in_local,
-                check_in_tzid=check_in_tzid,
-                check_in_utc=derive_utc(check_in_local, check_in_tzid),
-                check_out_local=check_out_local,
-                check_out_tzid=check_out_tzid,
-                check_out_utc=derive_utc(check_out_local, check_out_tzid),
-                room_type=stay.room_type,
-                confirmation_number=stay.confirmation_number,
-                description=stay.description,
-            )
+        stay_record = StayDetailRecord(
+            stay_detail_id=stay.stay_detail_id,
+            trip_id=trip_id,
+            name=stay.name,
+            stay_type=stay.stay_type,
+            check_in_local=check_in_local,
+            check_in_tzid=check_in_tzid,
+            check_in_utc=derive_utc(check_in_local, check_in_tzid),
+            check_out_local=check_out_local,
+            check_out_tzid=check_out_tzid,
+            check_out_utc=derive_utc(check_out_local, check_out_tzid),
+            room_type=stay.room_type,
+            confirmation_number=stay.confirmation_number,
+            description=stay.description,
         )
+        db.add(stay_record)
         await db.flush()
         _add_locations(stay.locations, stay_id=stay.stay_detail_id)
+        stay_records.append(stay_record)
         stays_inserted += 1
 
     travels_inserted = 0
+    travel_records: list[TravelDetailRecord] = []
     for travel in body.travels:
         departure_tzid = travel.departure_timezone_id or infer_tzid_from_locations(
             travel.locations, role="origin", fallback=trip.default_timezone_id
@@ -119,48 +129,68 @@ async def import_trip(
         )
         departure_local = parse_wall_clock(travel.departure_date_time)
         arrival_local = parse_wall_clock(travel.arrival_date_time)
-        db.add(
-            TravelDetailRecord(
-                travel_detail_id=travel.travel_detail_id,
-                trip_id=trip_id,
-                name=travel.name,
-                mode=travel.mode,
-                operator=travel.operator,
-                vehicle_number=travel.vehicle_number,
-                cabin_class=travel.cabin_class,
-                departure_local=departure_local,
-                departure_tzid=departure_tzid,
-                departure_utc=derive_utc(departure_local, departure_tzid),
-                arrival_local=arrival_local,
-                arrival_tzid=arrival_tzid,
-                arrival_utc=derive_utc(arrival_local, arrival_tzid),
-                confirmation_number=travel.confirmation_number,
-                description=travel.description,
-            )
+        travel_record = TravelDetailRecord(
+            travel_detail_id=travel.travel_detail_id,
+            trip_id=trip_id,
+            name=travel.name,
+            mode=travel.mode,
+            operator=travel.operator,
+            vehicle_number=travel.vehicle_number,
+            cabin_class=travel.cabin_class,
+            departure_local=departure_local,
+            departure_tzid=departure_tzid,
+            departure_utc=derive_utc(departure_local, departure_tzid),
+            arrival_local=arrival_local,
+            arrival_tzid=arrival_tzid,
+            arrival_utc=derive_utc(arrival_local, arrival_tzid),
+            confirmation_number=travel.confirmation_number,
+            description=travel.description,
         )
+        db.add(travel_record)
         await db.flush()
         _add_locations(travel.locations, travel_id=travel.travel_detail_id)
+        travel_records.append(travel_record)
         travels_inserted += 1
 
     # ── 5. Insert days & points (points reference stays/travels) ─────────────
     days_inserted = 0
     points_inserted = 0
 
+    # One primary day per date. A document that says "Day 3" and "July 25th"
+    # in two places, or a model that splits a date into "Arrival" and
+    # "Afternoon", must not become two July 25ths on the timeline — the later
+    # one's points move onto the day that is already there.
+    primary_by_date: dict[date, str] = {}
+
     for day_data in body.days:
-        day = TripDayRecord(
-            day_id=day_data.day_id,
-            trip_id=trip_id,
-            title=day_data.title,
-            date=day_data.date,
-            description=day_data.description,
-            is_alternate=day_data.is_alternate,
-            completed=day_data.completed,
-        )
-        db.add(day)
-        await db.flush()
-        days_inserted += 1
+        day_id = day_data.day_id
+        if not day_data.is_alternate and day_data.date in primary_by_date:
+            day_id = primary_by_date[day_data.date]
+        else:
+            db.add(
+                TripDayRecord(
+                    day_id=day_id,
+                    trip_id=trip_id,
+                    title=day_data.title,
+                    date=day_data.date,
+                    description=day_data.description,
+                    is_alternate=day_data.is_alternate,
+                    completed=day_data.completed,
+                )
+            )
+            await db.flush()
+            days_inserted += 1
+            if not day_data.is_alternate:
+                primary_by_date[day_data.date] = day_id
 
         for pt in day_data.points:
+            # The model still describes check-ins and departures in its output,
+            # because that is how a human reads an itinerary. We don't store
+            # them: they are generated from the stay and travel rows below, so
+            # writing them here too is what produced two of every point.
+            if pt.type in DERIVED_POINT_TYPES:
+                continue
+
             point_tzid = pt.start_timezone_id or pt.end_timezone_id or infer_tzid_from_locations(
                 pt.locations, fallback=None
             )
@@ -173,7 +203,7 @@ async def import_trip(
             point = TripPointRecord(
                 point_id=pt.point_id,
                 trip_id=trip_id,
-                day_id=day_data.day_id,
+                day_id=day_id,  # the day we kept, which may not be the one it arrived on
                 type=pt.type,
                 title=pt.title,
                 stay_detail_id=pt.stay_detail_id,
@@ -197,6 +227,27 @@ async def import_trip(
             points_inserted += 1
 
             _add_locations(pt.locations, point_id=pt.point_id)
+
+    # ── 6. Generate the check-in/check-out/departure/arrival points ───────────
+    # The single writer for those four types. It runs last because it needs the
+    # days to exist, and it gives each point the place it happens at — the
+    # flight's origin airport, the hotel's address — by copying from the parent.
+    for stay_record in stay_records:
+        await sync_stay_generated_points(db, stay=stay_record)
+    for travel_record in travel_records:
+        await sync_travel_generated_points(db, travel=travel_record)
+    await db.flush()
+
+    generated = await db.execute(
+        select(func.count())
+        .select_from(TripPointRecord)
+        .where(
+            TripPointRecord.trip_id == trip_id,
+            TripPointRecord.is_system_created.is_(True),
+            active(TripPointRecord),
+        )
+    )
+    points_inserted += int(generated.scalar_one())
 
     await db.commit()
 

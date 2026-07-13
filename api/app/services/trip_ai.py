@@ -122,12 +122,17 @@ TRAVELS (a flight, train, drive, etc.):
   departureDateTime and arrivalDateTime as ISO datetimes, confirmationNumber.
 - Put origin/destination (and any waypoints) under the travel's "locations" with roles origin/destination/waypoint.
 
-DAYS contain ordered timeline POINTS. A point is an "action" of type:
-  check-in | check-out | departure | arrival | activity
-- A "check-in" or "check-out" point references a stay via stayRef.
-- A "departure" or "arrival" point references a travel via travelRef.
-- An "activity" point references neither; put its venue under the point's "locations" with role "venue".
-- The point "title" is the action (e.g. "Check in", "Depart for Zurich"); the stay/travel "name" holds the entity label.
+DAYS contain ordered timeline POINTS, and a point is exactly one thing: an ACTIVITY
+the traveller chose to do — a dinner reservation, a museum, a hike.
+- Give it type "activity", a "title" (e.g. "Dinner at Hitoshi"), start/end date-times,
+  and put its venue under the point's "locations" with role "venue".
+
+Do NOT emit points for checking in, checking out, departing or arriving. Those are not
+separate facts — they ARE the stay's checkIn/checkOut and the travel leg's
+departureDateTime/arrivalDateTime, which you have already recorded above. The app puts
+them on the timeline itself, with the right times and the right places attached. A
+"Depart ORD" point next to a flight from ORD is the same fact written twice, and the
+traveller sees it twice.
 
 General:
 - Treat all date-times as wall-clock local times from the itinerary text.

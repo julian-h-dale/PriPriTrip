@@ -18,7 +18,7 @@ import {
 import AppLayout from '../components/AppLayout';
 import { useSaveAiDocumentRecordsMutation } from '../store/apiSlice';
 import { getErrorMessage } from '../utils/errors';
-import { firstLocationByRole, localityLabel } from '../utils/format';
+import { firstLocationByRole, placeLabel } from '../utils/format';
 
 export default function DocumentImportReviewPage() {
   const { tripId } = useParams();
@@ -134,7 +134,7 @@ export default function DocumentImportReviewPage() {
                         {travel.departureDateTime || '—'} to {travel.arrivalDateTime || '—'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {localityLabel(origin)} to {localityLabel(destination)}
+                        {placeLabel(origin)} to {placeLabel(destination)}
                       </Typography>
                     </Box>
                   </ListItem>
@@ -175,7 +175,7 @@ export default function DocumentImportReviewPage() {
                         {stay.checkIn || '—'} to {stay.checkOut || '—'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {localityLabel(venue)}
+                        {placeLabel(venue)}
                       </Typography>
                     </Box>
                   </ListItem>

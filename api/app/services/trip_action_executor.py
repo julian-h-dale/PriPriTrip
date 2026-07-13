@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.enums import DERIVED_POINT_TYPES
 from app.models import (
     LocationRecord,
     StayDetailRecord,
@@ -25,6 +26,8 @@ from app.schemas import (
 )
 from app.services.date_normalizer import DateNormalizerInput, normalize_date
 from app.services.detail_points import (
+    generated_point_conflict,
+    primary_day_for_date,
     reconcile_trip_days,
     soft_delete_generated_points_for_stay,
     soft_delete_generated_points_for_travel,
@@ -80,6 +83,16 @@ def _bad_id_detail(target: str, value: str | None) -> str:
         f"{value!r} is not a valid {target.lower()} id. "
         f"Use an id from get_trip_snapshot, or create the record instead."
     )
+
+
+# Names the record to touch instead, so the model can recover on its own rather
+# than retrying the same forbidden write (review.md 3C-3).
+_DERIVED_POINT_REFUSAL = (
+    "A {type!r} point is generated from the stay or travel leg it belongs to, so it "
+    "cannot be created or edited directly. Create the stay (with checkIn/checkOut) or "
+    "the travel leg (with departureDateTime/arrivalDateTime) instead, and the point "
+    "appears on the timeline by itself. Only 'activity' points are authored directly."
+)
 
 
 def _trip_tz(trip: TripRecord) -> str:
@@ -269,6 +282,33 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                     op=action.op, target=action.target, status="error",
                     detail="Day create requires a title and a date (ISO YYYY-MM-DD).",
                 )
+
+            is_alternate = bool(action_fields.get("isAlternate", False))
+
+            # A date already has its day: the trip's date range creates one, and
+            # so does saving a flight that lands on it. "Create" the same date
+            # again and you mean *name* it — so adopt the row that is there
+            # rather than stacking a second July 25th onto the timeline.
+            # (An alternate is a deliberate second plan for a date, so it is
+            # exempt: several may coexist.)
+            if not is_alternate:
+                existing = await primary_day_for_date(
+                    db, trip_id=trip.trip_id, day_date=day_date
+                )
+                if existing is not None:
+                    existing.title = title
+                    if action_fields.get("description") is not None:
+                        existing.description = action_fields["description"]
+                    await db.flush()
+                    return ActionResult(
+                        op=action.op, target=action.target, id=existing.day_id, status="ok",
+                        detail=(
+                            f"{day_date.isoformat()} already had a day, so it was renamed to "
+                            f"{title!r} rather than duplicated. Its id is {existing.day_id} — "
+                            f"use that when adding points to this date."
+                        ),
+                    )
+
             db.add(
                 TripDayRecord(
                     day_id=day_id,
@@ -276,7 +316,7 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                     title=title,
                     date=day_date,
                     description=action_fields.get("description"),
-                    is_alternate=bool(action_fields.get("isAlternate", False)),
+                    is_alternate=is_alternate,
                     completed=bool(action_fields.get("completed", False)),
                 )
             )
@@ -317,6 +357,20 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                         detail=f"{fields['date']!r} is not a date I can read. Use ISO YYYY-MM-DD.",
                     )
                 fields["date"] = parsed
+
+                # Moving a day onto a date that already has one would duplicate
+                # it just as surely as creating it there.
+                if not rec.is_alternate and parsed != rec.date:
+                    clash = await primary_day_for_date(db, trip_id=trip.trip_id, day_date=parsed)
+                    if clash is not None and clash.day_id != rec.day_id:
+                        return ActionResult(
+                            op=action.op, target=action.target, id=action.id, status="error",
+                            detail=(
+                                f"{parsed.isoformat()} already has a day ({clash.day_id}, "
+                                f"{clash.title!r}). Edit that one, or move its points across, "
+                                f"rather than moving a second day onto the same date."
+                            ),
+                        )
             field_map = {
                 "title": "title",
                 "date": "date",
@@ -346,6 +400,14 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
             day = await db.get(TripDayRecord, day_id)
             if day is None or day.trip_id != trip.trip_id or day.is_deleted or day.deleted_at is not None:
                 return ActionResult(op=action.op, target=action.target, id=payload["pointId"], status="error", detail="Day not found")
+            if payload.get("type") in DERIVED_POINT_TYPES:
+                return ActionResult(
+                    op=action.op,
+                    target=action.target,
+                    id=payload["pointId"],
+                    status="error",
+                    detail=_DERIVED_POINT_REFUSAL.format(type=payload["type"]),
+                )
             try:
                 body = TripPointCreate.model_validate(payload)
             except Exception as exc:
@@ -403,6 +465,19 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
                 patch = TripPointPatch.model_validate(action_fields)
             except Exception as exc:
                 return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
+            if patch.type in DERIVED_POINT_TYPES:
+                return ActionResult(
+                    op=action.op,
+                    target=action.target,
+                    id=action.id,
+                    status="error",
+                    detail=_DERIVED_POINT_REFUSAL.format(type=patch.type),
+                )
+            conflict = generated_point_conflict(rec, patch.model_fields_set)
+            if conflict:
+                return ActionResult(
+                    op=action.op, target=action.target, id=action.id, status="error", detail=conflict
+                )
 
             # Field names match the ORM columns 1:1 now that schemas are snake_case.
             for field in (
@@ -443,6 +518,22 @@ async def execute_action(db: AsyncSession, *, trip: TripRecord, action: Assistan
 
             await db.flush()
             return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
+
+        # delete
+        if rec.is_system_created:
+            parent = "stay" if rec.stay_detail_id else "travel leg"
+            parent_id = rec.stay_detail_id or rec.travel_detail_id
+            return ActionResult(
+                op=action.op,
+                target=action.target,
+                id=action.id,
+                status="error",
+                detail=(
+                    f"{rec.title!r} is generated from its {parent} and would come straight "
+                    f"back on the next sync. To remove it, delete the {parent} ({parent_id}) "
+                    f"or clear the time it is generated from."
+                ),
+            )
 
         rec.is_deleted = True
         rec.deleted_at = datetime.now(timezone.utc)

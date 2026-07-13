@@ -9,18 +9,33 @@ import dayjs, { parseWallClock } from './dayjs';
 
 const EM_DASH = '—';
 
-/** "1-2-3 Shuri, Naha, Okinawa, Japan" -> "Okinawa, Japan" */
-export function localityLabel(location) {
-  const fullAddress = location?.fullAddress;
-  if (!fullAddress) return location?.name || EM_DASH;
-  const parts = fullAddress
+function addressParts(location) {
+  return (location?.fullAddress ?? '')
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
-  }
-  return parts[0] || location?.name || EM_DASH;
+}
+
+/**
+ * What to call this place: "Houston Bush Airport", "Brother's Pizzeria".
+ *
+ * This is the location's own name, which is what a traveller recognises. The
+ * previous helper showed the last two parts of the full address instead, which
+ * reads fine for a city hotel ("Okinawa, Japan") and turns an airport into its
+ * post code — "IL 60666, USA". Every caller wanted the name.
+ */
+export function placeLabel(location) {
+  return location?.name || addressParts(location)[0] || EM_DASH;
+}
+
+/**
+ * Where in the world that place is: "Naha, Okinawa, Japan" -> "Okinawa, Japan".
+ * A secondary line under placeLabel; null when there is no address to reduce.
+ */
+export function placeLocality(location) {
+  const parts = addressParts(location);
+  if (parts.length < 2) return null;
+  return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
 }
 
 export function firstLocationByRole(locations, role) {

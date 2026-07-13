@@ -542,6 +542,36 @@ class VerifyResult(APIModel):
     issues: List[VerifyIssue] = []
 
 
+class TripGapResponse(APIModel):
+    """One fillable hole, with the form that fills it already built."""
+
+    gap_id: str
+    target: str  # "trip" | "stay" | "travel"
+    record_id: Optional[str] = None
+    record_label: str
+    severity: str  # "blocking" | "worth_adding"
+    message: str
+    fields: List[str] = []
+    # The same server-owned form the chat uses (review.md 3F-2), so the banner
+    # and the assistant put up exactly the same inputs.
+    form: "ChatForm"
+
+
+class TripGapsResponse(APIModel):
+    trip_id: str
+    blocking_count: int
+    total_count: int
+    gaps: List[TripGapResponse] = []
+
+
+class TripGapSubmitRequest(APIModel):
+    """Fill a gap from the trip page. Not a chat turn — no model call."""
+
+    target: str
+    record_id: Optional[str] = None
+    values: dict = {}
+
+
 class ChatMessageResponse(APIModel):
     message_id: str
     trip_id: str
@@ -605,7 +635,11 @@ class ChatChoiceSubmitRequest(APIModel):
     workflow_name: str
     request_id: str  # same idempotency contract as /chat/reply (review.md 3D-5)
     choice_id: str
-    option_id: str
+    # Exactly one of these. `option_id` is one of the places we offered;
+    # `place_id` is one the user found through the card's own Places search,
+    # because none of ours was the place they meant.
+    option_id: Optional[str] = None
+    place_id: Optional[str] = None
 
 
 class ChatFormSubmitRequest(APIModel):

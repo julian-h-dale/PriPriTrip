@@ -9,7 +9,8 @@ import {
   byDateAsc,
   firstLocationByRole,
   formatDateTime,
-  localityLabel,
+  placeLabel,
+  placeLocality,
 } from '../utils/format';
 
 export default function TravelDetailsPage() {
@@ -40,18 +41,25 @@ export default function TravelDetailsPage() {
       getTime={(travel) => formatDateTime(travel.departureDateTime, 'No departure date')}
       onAdd={() => setEditingTravel({})}
       onEdit={setEditingTravel}
-      renderDetails={(travel) => (
-        <>
-          <Typography variant="body2" color="text.secondary">
-            Mode: {travel.mode || '—'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {localityLabel(firstLocationByRole(travel.locations, 'origin'))}
-            {' - '}
-            {localityLabel(firstLocationByRole(travel.locations, 'destination'))}
-          </Typography>
-        </>
-      )}
+      renderDetails={(travel) => {
+        const origin = firstLocationByRole(travel.locations, 'origin');
+        const destination = firstLocationByRole(travel.locations, 'destination');
+        return (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              Mode: {travel.mode || '—'}
+            </Typography>
+            <Typography variant="body2">
+              {placeLabel(origin)} → {placeLabel(destination)}
+            </Typography>
+            {(placeLocality(origin) || placeLocality(destination)) && (
+              <Typography variant="caption" color="text.secondary">
+                {placeLocality(origin) ?? '—'} → {placeLocality(destination) ?? '—'}
+              </Typography>
+            )}
+          </>
+        );
+      }}
     >
       {trip && (
         <TravelForm
