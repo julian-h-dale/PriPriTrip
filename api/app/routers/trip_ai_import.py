@@ -44,6 +44,7 @@ from app.services.detail_points import (
 from app.services import document_ingest, trip_ai
 from app.services.locations import location_rows
 from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock
+from app.services.trip_state import promote_to_draft
 
 logger = logging.getLogger("app.ai_import")
 
@@ -227,7 +228,7 @@ async def _ai_import(
                 trip_import_payload=draft.model_dump_json(by_alias=True),
             )
         )
-        trip.status = "draft"
+        promote_to_draft(trip)
         await db.commit()
 
     elapsed = time.monotonic() - started
@@ -324,7 +325,7 @@ async def ai_document_import(
         cached_doc.document_type = payload.document_type.value
         cached_doc.workflow_mode = payload.workflow_mode.value
         if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
-            trip.status = "draft"
+            promote_to_draft(trip)
         await db.commit()
         return payload
 
@@ -370,7 +371,7 @@ async def ai_document_import(
             )
         )
         if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
-            trip.status = "draft"
+            promote_to_draft(trip)
         await db.commit()
         return payload
 
@@ -431,7 +432,7 @@ async def ai_document_import(
         cached_doc.trip_import_payload = trip_import_payload
 
     if workflowMode == AIDocumentWorkflowMode.ITINERARY_IMPORT:
-        trip.status = "draft"
+        promote_to_draft(trip)
 
     await db.commit()
     elapsed = time.monotonic() - started

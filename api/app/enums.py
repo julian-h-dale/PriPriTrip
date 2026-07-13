@@ -1,6 +1,30 @@
 from enum import StrEnum
 
 
+class TripStatus(StrEnum):
+    """Where a trip is in its life.
+
+    `new` and `draft` are both "still being planned" — the UI treats them
+    identically and sends both to the timeline. The distinction only matters to
+    the itinerary-upload lock: a trip that already has content (`draft`) must not
+    have a whole second itinerary imported over the top of it.
+
+    `active` means you are ON the trip, and it is the only status the UI treats
+    specially (docs/active_trip_plan.md) — everything else falls through to the
+    timeline, so a status added later can never strand the user on a blank page.
+    """
+
+    NEW = "new"
+    DRAFT = "draft"
+    ACTIVE = "active"
+
+
+# Statuses from which a document import may promote a trip to `draft`. An active
+# trip is NOT one of them: uploading a booking confirmation while you are on the
+# trip must not knock it out of `active` and make the What's Next screen vanish.
+PROMOTABLE_TO_DRAFT = frozenset({TripStatus.NEW})
+
+
 class PointType(StrEnum):
     CHECK_IN = "check-in"
     CHECK_OUT = "check-out"

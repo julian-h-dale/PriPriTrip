@@ -20,11 +20,13 @@ from app.schemas import (
     TripHeader,
     TripHeaderResponse,
     TripListItem,
+    TripStatusUpdate,
     TripResponse,
     VerifyResult,
 )
 from app.services.detail_points import reconcile_trip_days
 from app.services.trip_state import assembled_trip
+from app.services.trip_status import effective_status
 from app.services.trip_verify import verify_trip
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -44,7 +46,19 @@ async def list_trips(
         .order_by(TripRecord.start_date)
     )
     records = result.scalars().all()
-    return [TripListItem.model_validate(r) for r in records]
+    # `status` is derived from the clock, not read off the row — see
+    # services/trip_status.py. The list and the detail view must agree, so both
+    # go through the same function.
+    return [
+        TripListItem(
+            tripId=r.trip_id,
+            tripName=r.trip_name,
+            startDate=r.start_date,
+            endDate=r.end_date,
+            status=effective_status(r),
+        )
+        for r in records
+    ]
 
 
 @router.get("/{trip_id}", response_model=TripResponse)
@@ -117,7 +131,42 @@ async def upsert_trip(
         trip_name=record.trip_name,
         start_date=record.start_date,
         end_date=record.end_date,
-        status=record.status or "new",
+        status=effective_status(record),
+    )
+
+
+@router.patch("/{trip_id}/status", response_model=TripHeaderResponse)
+async def set_trip_status(
+    body: TripStatusUpdate,
+    trip: TripRecord = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the trip's *intent* (docs/active_trip_plan.md).
+
+    Activation is automatic — a trip is active while its dates say it is underway,
+    derived on read in services/trip_status.py. This endpoint does not turn that
+    on or off; it sets what the automatic rule resolves against:
+
+        "draft"   → automatic. Active exactly while the trip is underway.
+        "active"  → forced on regardless of the dates (you arrived early).
+        "new"     → no content; never active.
+
+    There is no force-*off* on purpose. If the dates say you are travelling, you
+    are, and the full itinerary is one tap away from the What's Next screen.
+    """
+    trip.status = body.status
+    await db.commit()
+    await db.refresh(trip)
+    # Report the *resolved* status, not what was stored. Setting "draft" on a trip
+    # that is underway means "go back to automatic" — and automatically, it is
+    # active. Echoing the stored value back would make the UI flicker to the
+    # timeline and then flip straight back on the next fetch.
+    return TripHeaderResponse(
+        trip_id=trip.trip_id,
+        trip_name=trip.trip_name,
+        start_date=trip.start_date,
+        end_date=trip.end_date,
+        status=effective_status(trip),
     )
 
 

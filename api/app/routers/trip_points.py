@@ -8,6 +8,7 @@ from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.enums import DERIVED_POINT_TYPES
 from app.services.detail_points import generated_point_conflict
+from app.services.trip_state import promote_to_draft
 from app.models import (
     active,
     deleted,
@@ -329,6 +330,8 @@ async def create_point(
         completed_date_time=body.completed_date_time,
     )
     db.add(point)
+    # Content, so the trip is no longer `new` — see create_travel_detail.
+    promote_to_draft(trip)
     await db.flush()
     inferred_tzid = await _infer_point_tzid(
         db,

@@ -134,6 +134,16 @@ export const apiSlice = createApi({
         ...tripContentTags(payload.tripId),
       ],
     }),
+    setTripStatus: builder.mutation({
+      // Planning ⇄ on-this-trip. Invalidates 'Trips' too, so the list's
+      // "on this trip" chip updates without a refresh.
+      query: ({ tripId, status }) => ({
+        url: `/trips/${tripId}/status`,
+        method: 'PATCH',
+        body: { status },
+      }),
+      invalidatesTags: (result, error, { tripId }) => ['Trips', { type: 'Trip', id: tripId }],
+    }),
     deleteTrip: builder.mutation({
       query: (tripId) => ({ url: `/trips/${tripId}`, method: 'DELETE' }),
       invalidatesTags: (result, error, tripId) => [
@@ -252,6 +262,7 @@ export const {
   useRevokeTripShareMutation,
   useGetSharedTripQuery,
   useSaveTripHeaderMutation,
+  useSetTripStatusMutation,
   useDeleteTripMutation,
   useImportTripMutation,
   useSaveAiDocumentRecordsMutation,

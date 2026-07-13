@@ -31,6 +31,7 @@ from app.schemas import (
     TravelDetailPatch,
 )
 from app.services.locations import location_rows
+from app.services.trip_state import promote_to_draft
 from app.services.detail_points import (
     CHECK_IN_DEFAULT_TIME,
     CHECK_OUT_DEFAULT_TIME,
@@ -178,6 +179,12 @@ async def create_travel_detail(
     await db.flush()
     await _replace_detail_locations(db, body.locations, travel_id=detail_id)
     await sync_travel_generated_points(db, travel=rec)
+    # The trip now has content, so it is no longer `new`. That matters twice over:
+    # an itinerary import is a FULL REPLACE (it deletes every point, day, stay and
+    # travel), and `status != "new"` is what locks it out — so a trip you built by
+    # hand would otherwise be silently wiped by an itinerary upload. It is also
+    # what makes a trip eligible to go active on its start date.
+    promote_to_draft(trip)
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, travel_id=detail_id)
@@ -340,6 +347,7 @@ async def create_stay_detail(
     await db.flush()
     await _replace_detail_locations(db, body.locations, stay_id=detail_id)
     await sync_stay_generated_points(db, stay=rec)
+    promote_to_draft(trip)  # see create_travel_detail
     await db.commit()
     await db.refresh(rec)
     locs = await _detail_locations(db, stay_id=detail_id)

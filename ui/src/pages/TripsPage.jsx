@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Container,
   Dialog,
@@ -151,9 +152,21 @@ export default function TripsPage() {
                   }}
                   sx={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
                 >
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  {trip.tripName}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {trip.tripName}
+                  </Typography>
+                  {/* The trip you're actually on should be visibly different
+                      from the ones you're still planning. */}
+                  {trip.status === 'active' && (
+                    <Chip
+                      label="On this trip"
+                      size="small"
+                      color="success"
+                      sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600 }}
+                    />
+                  )}
+                </Box>
                 <Typography variant="body2" color="text.secondary">
                   {formatDateOrdinal(trip.startDate)} – {formatDateOrdinal(trip.endDate)}
                 </Typography>

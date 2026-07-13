@@ -16,6 +16,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.enums import PROMOTABLE_TO_DRAFT, TripStatus
+from app.services.trip_status import effective_status
 from app.models import (
     StayDetailRecord,
     TravelDetailRecord,
@@ -41,11 +43,26 @@ class WorkflowOutcome(BaseModel):
     structuredContent: Optional[dict] = None
 
 
+def promote_to_draft(trip: TripRecord) -> None:
+    """A trip has gained content, so it is no longer `new`.
+
+    The **only** legal transition here is `new → draft`. It is a promotion, never
+    a reset, and that matters: `trip.status = "draft"` used to be written raw in
+    five places, so uploading a booking confirmation while you were *on* a trip
+    would knock it out of `active` — the What's Next screen would silently
+    disappear mid-trip and nothing would explain why.
+
+    Leaving `new` is what locks itinerary re-import (`trip.status != "new"`), so
+    the promotion still has to happen; it just must not travel backwards.
+    """
+    if trip.status in PROMOTABLE_TO_DRAFT:
+        trip.status = TripStatus.DRAFT
+
+
 def mark_trip_draft_after_chat_completion(trip: TripRecord) -> None:
     # Completing the chat-driven new-trip flow moves the trip out of "new"
     # so itinerary uploads are no longer allowed.
-    if trip.status != "draft":
-        trip.status = "draft"
+    promote_to_draft(trip)
 
 
 async def _count_active_rows(db: AsyncSession, model, trip_id: str) -> int:
@@ -64,6 +81,17 @@ async def trip_summary(db: AsyncSession, trip: TripRecord) -> dict[str, Any]:
     return {
         "tripId": trip.trip_id,
         "tripName": trip.trip_name,
+        # The *stored* status, not the clock-derived one. "Active" is a
+        # presentation concern — it tells the UI which screen to render, and the
+        # model neither renders anything nor behaves differently mid-trip.
+        #
+        # Feeding it the derived value would also make the eval harness depend on
+        # the real wall clock: four scenarios seed a trip whose dates ARE
+        # appCurrentDate, so on that one day of the year the model would suddenly
+        # see "active" and the suite's world would silently change. When the
+        # assistant eventually needs to know you're mid-trip ("my flight is
+        # delayed"), that deserves an explicit isUnderway flag computed from
+        # appCurrentDate — not a repurposed status field.
         "status": trip.status,
         "startDate": trip.start_date.isoformat() if trip.start_date else None,
         "endDate": trip.end_date.isoformat() if trip.end_date else None,
@@ -138,7 +166,8 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
     return TripResponse(
         trip_id=loaded.trip_id,
         trip_name=loaded.trip_name,
-        status=loaded.status,
+        status=effective_status(loaded),
+        status_intent=loaded.status or TripStatus.NEW,
         start_location_name=loaded.start_location_name,
         destination_location_name=loaded.destination_location_name,
         default_timezone_id=loaded.default_timezone_id,

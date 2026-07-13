@@ -17,7 +17,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.enums import AIDocumentType, AIDocumentWorkflowMode, LocationRole, PointType, StayType, TravelMode
+from app.enums import AIDocumentType, AIDocumentWorkflowMode, LocationRole, PointType, StayType, TravelMode, TripStatus
 from app.services.timezones import wall_clock_to_text
 
 
@@ -99,6 +99,16 @@ class TripHeaderResponse(APIModel):
     start_date: CalendarDate
     end_date: CalendarDate
     status: str
+
+
+class TripStatusUpdate(APIModel):
+    """Move a trip between planning and being on it (docs/active_trip_plan.md).
+
+    Typed as the enum, so an unknown status is a 422 rather than a string that
+    quietly lands in the column and strands the UI.
+    """
+
+    status: TripStatus
 
 
 # ── Location ────────────────────────────────────────────────────────────────
@@ -374,6 +384,13 @@ class TripPointResponse(APIModel):
     start_timezone_id: Optional[str] = None
     end_date_time: Optional[str] = None
     end_timezone_id: Optional[str] = None
+    # The derived instants. start_date_time is a *wall clock* ("09:00" — what the
+    # ticket says), which cannot be compared to "now" without knowing the clock.
+    # These can. They are what lets the What's Next screen ask "is this still
+    # ahead of me?" with a plain comparison instead of timezone arithmetic in the
+    # browser (docs/active_trip_plan.md).
+    start_utc: Optional[datetime] = None
+    end_utc: Optional[datetime] = None
     confirmation_number: Optional[str] = None
     description: Optional[str] = None
     image_url: Optional[str] = None
@@ -409,6 +426,8 @@ class TripPointResponse(APIModel):
             start_timezone_id=point.start_tzid,
             end_date_time=wall_clock_to_text(point.end_local),
             end_timezone_id=point.end_tzid,
+            start_utc=point.start_utc,
+            end_utc=point.end_utc,
             confirmation_number=point.confirmation_number,
             description=point.description,
             image_url=point.image_url,
@@ -440,12 +459,19 @@ class TripListItem(APIModel):
     trip_name: str
     start_date: CalendarDate
     end_date: CalendarDate
+    # So the list can show which trip you're actually on.
+    status: str = "new"
 
 
 class TripResponse(APIModel):
     trip_id: str
     trip_name: str
+    # The status resolved against the clock — what the UI renders.
     status: str
+    # The status *stored* on the row: "draft" = follow the dates, "active" =
+    # forced on. Without it the UI cannot tell an automatically-active trip from
+    # a forced one, and the status menu's checkmark would lie.
+    status_intent: str = "new"
     start_location_name: Optional[str] = None
     destination_location_name: Optional[str] = None
     default_timezone_id: Optional[str] = None

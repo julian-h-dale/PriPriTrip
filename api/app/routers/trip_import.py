@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_auth
 from app.database import get_db
-from app.enums import DERIVED_POINT_TYPES
+from app.enums import DERIVED_POINT_TYPES, TripStatus
 from app.models import (
     active,
     StayDetailRecord,
@@ -22,6 +22,7 @@ from app.services.detail_points import (
     sync_travel_generated_points,
 )
 from app.services.locations import location_rows
+from app.services.trip_state import promote_to_draft
 from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock
 
 router = APIRouter(tags=["import"])
@@ -55,10 +56,16 @@ async def import_trip(
 
     # ── 3. Upsert trip header ────────────────────────────────────────────────
     if trip is None:
-        trip = TripRecord(trip_id=trip_id, user_id=str(user.id))
+        # Born with content, so it is already past `new` — that is what locks
+        # itinerary re-import. (Set explicitly: the column default only lands at
+        # INSERT, so promote_to_draft would find status=None and do nothing.)
+        trip = TripRecord(trip_id=trip_id, user_id=str(user.id), status=TripStatus.DRAFT)
         db.add(trip)
+    else:
+        # An existing trip gains content — promote it, but never demote it. An
+        # import into a trip you are *on* must not knock it out of `active`.
+        promote_to_draft(trip)
     trip.trip_name = body.trip_name
-    trip.status = "draft"
     trip.default_timezone_id = body.default_timezone_id
     trip.start_date = body.start_date
     trip.end_date = body.end_date
