@@ -12,7 +12,7 @@ import dayjs from '../../utils/dayjs';
 
 const MotionTimelineItem = motion.create(TimelineItem);
 
-export default function DayTimelineItem({ item, isFirst, isLast, onToggle, onAddPoint }) {
+export default function DayTimelineItem({ item, isFirst, isLast, onToggle, onAddPoint, readOnly = false }) {
   return (
     <MotionTimelineItem
       layout
@@ -59,15 +59,17 @@ export default function DayTimelineItem({ item, isFirst, isLast, onToggle, onAdd
               sx={{ height: 18, fontSize: '0.65rem', flexShrink: 0 }}
             />
           )}
-          <IconButton
-            size="small"
-            color="primary"
-            aria-label="Add point"
-            onClick={(e) => { e.stopPropagation(); onAddPoint(item.dayId); }}
-            sx={{ p: 0.25, flexShrink: 0 }}
-          >
-            <AddCircleOutlineIcon sx={{ fontSize: 20 }} />
-          </IconButton>
+          {!readOnly && (
+            <IconButton
+              size="small"
+              color="primary"
+              aria-label="Add point"
+              onClick={(e) => { e.stopPropagation(); onAddPoint(item.dayId); }}
+              sx={{ p: 0.25, flexShrink: 0 }}
+            >
+              <AddCircleOutlineIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          )}
         </Box>
       </TimelineContent>
     </MotionTimelineItem>

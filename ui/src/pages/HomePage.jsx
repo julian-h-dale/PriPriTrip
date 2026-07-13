@@ -16,10 +16,12 @@ import ChatIcon from '@mui/icons-material/Chat';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import HouseIcon from '@mui/icons-material/House';
 import DescriptionIcon from '@mui/icons-material/Description';
+import IosShareIcon from '@mui/icons-material/IosShare';
 import AppLayout from '../components/AppLayout';
 import TripChatOverlay from '../components/Chat/TripChatOverlay';
 import Timeline from '../components/Timeline/Timeline';
 import TripGapsBanner from '../components/Trip/TripGapsBanner';
+import ShareTripDialog from '../components/Trip/ShareTripDialog';
 import { useGetTripQuery } from '../store/apiSlice';
 import { selectMapsApiKey } from '../store/authSlice';
 import { getErrorMessage } from '../utils/errors';
@@ -44,6 +46,7 @@ export default function HomePage() {
   const [expandedDayId, setExpandedDayId] = useState(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [snackDismissed, setSnackDismissed] = useState(false);
 
   useEffect(() => {
@@ -71,6 +74,13 @@ export default function HomePage() {
               }}
             />
           )}
+          <IconButton
+            color="inherit"
+            aria-label="Share trip"
+            onClick={() => setShareOpen(true)}
+          >
+            <IosShareIcon />
+          </IconButton>
           <IconButton
             color="inherit"
             aria-label="Document importer"
@@ -146,6 +156,14 @@ export default function HomePage() {
           workflowName="trip:manage"
           title={trip.tripName ?? 'Trip Chat'}
           emptyPrompt={`Ask me to change anything about ${trip.tripName ?? 'this trip'} — add a stay, fix a flight time, fill in a confirmation number.`}
+        />
+      )}
+
+      {trip && (
+        <ShareTripDialog
+          tripId={tripId}
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
         />
       )}
 

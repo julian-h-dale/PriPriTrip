@@ -71,7 +71,7 @@ function LocationRow({ label, loc }) {
   );
 }
 
-export default function PointDetailSheet({ tripId, item, onClose }) {
+export default function PointDetailSheet({ tripId, item, onClose, readOnly = false }) {
   const [editOpen, setEditOpen] = useState(false);
 
   if (!item) return null;
@@ -136,14 +136,16 @@ export default function PointDetailSheet({ tripId, item, onClose }) {
               {item.endDateTime && parseWallClock(item.endDateTime).format('h:mm A')}
             </Typography>
           </Box>
-          <IconButton
-            size="small"
-            onClick={() => setEditOpen(true)}
-            aria-label="Edit point"
-            sx={{ flexShrink: 0 }}
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
+          {!readOnly && (
+            <IconButton
+              size="small"
+              onClick={() => setEditOpen(true)}
+              aria-label="Edit point"
+              sx={{ flexShrink: 0 }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          )}
         </Box>
         {chipLabel && (
           <Chip
@@ -207,8 +209,9 @@ export default function PointDetailSheet({ tripId, item, onClose }) {
         </Button>
       </Box>
 
-      {/* Edit form — cache invalidation refreshes the trip after save/delete */}
-      {tripId && (
+      {/* Edit form — cache invalidation refreshes the trip after save/delete.
+          Never mounted for a shared view: there is no trip id to write to. */}
+      {tripId && !readOnly && (
         <PointForm
           tripId={tripId}
           dayId={item.dayId}

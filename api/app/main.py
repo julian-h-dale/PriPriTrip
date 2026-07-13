@@ -14,6 +14,7 @@ from app.routers import (
     trip_gaps,
     trip_import,
     trip_points,
+    trip_share,
 )
 from app.services.prompt_composer import validate_prompt_sections
 from app.settings import get_settings
@@ -81,6 +82,9 @@ def create_app() -> FastAPI:
     application.include_router(trip_points.router)
     application.include_router(trip_details.router)
     application.include_router(trip_gaps.router)
+    application.include_router(trip_share.router)
+    # Public: no auth. The only unauthenticated endpoint returning user data.
+    application.include_router(trip_share.public_router)
     application.include_router(trip_import.router)
     application.include_router(trip_ai_import.router)
     application.include_router(chat.router)

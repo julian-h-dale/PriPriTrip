@@ -9,7 +9,20 @@ import PointTimelineItem from './PointTimelineItem';
 import PointDetailSheet from './PointDetailSheet';
 import PointForm from '../Forms/PointForm';
 
-export default function Timeline({ tripId, trip, expandedDayId, onExpandedDayChange }) {
+/**
+ * The trip timeline: days, each holding its ordered points.
+ *
+ * `readOnly` is what a share link sees (docs/share_links_plan.md). It is not a
+ * cosmetic flag — with no tripId there is nothing to write to, so the add and
+ * edit affordances are removed rather than disabled.
+ */
+export default function Timeline({
+  tripId,
+  trip,
+  expandedDayId,
+  onExpandedDayChange,
+  readOnly = false,
+}) {
   const [selectedPointId, setSelectedPointId] = useState(null);
   const [addPointContext, setAddPointContext] = useState(null); // { dayId, initialValues }
 
@@ -64,6 +77,7 @@ export default function Timeline({ tripId, trip, expandedDayId, onExpandedDayCha
                 item={item}
                 isFirst={isFirst}
                 isLast={isLast}
+                readOnly={readOnly}
                 onToggle={() =>
                   onExpandedDayChange(expandedDayId === item.dayId ? null : item.dayId)
                 }
@@ -88,17 +102,21 @@ export default function Timeline({ tripId, trip, expandedDayId, onExpandedDayCha
       <PointDetailSheet
         tripId={tripId}
         item={selectedPoint}
+        readOnly={readOnly}
         onClose={() => setSelectedPointId(null)}
       />
 
-      <PointForm
-        tripId={tripId}
-        dayId={addPointContext?.dayId}
-        open={!!addPointContext}
-        initialValues={addPointContext?.initialValues}
-        onClose={() => setAddPointContext(null)}
-        onSaved={() => setAddPointContext(null)}
-      />
+      {/* Not rendered at all when read-only — there is no trip to write to. */}
+      {!readOnly && (
+        <PointForm
+          tripId={tripId}
+          dayId={addPointContext?.dayId}
+          open={!!addPointContext}
+          initialValues={addPointContext?.initialValues}
+          onClose={() => setAddPointContext(null)}
+          onSaved={() => setAddPointContext(null)}
+        />
+      )}
     </Box>
   );
 }

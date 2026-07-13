@@ -456,6 +456,53 @@ class TripResponse(APIModel):
     days: List[TripDayWithPoints] = []
 
 
+# ── Sharing (docs/share_links_plan.md) ───────────────────────────────────────
+
+class TripShareResponse(APIModel):
+    """The owner's view of their share link."""
+
+    share_id: str
+    trip_id: str
+    token: str
+    url: str  # the whole link, ready to copy
+    view_count: int
+    last_viewed_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class SharedTripResponse(APIModel):
+    """What someone holding the link sees.
+
+    Deliberately its own type rather than a reuse of TripResponse. They carry
+    the same fields today, but a field added to the owner's view later must not
+    silently start leaking through a public link — it has to be added here on
+    purpose. There is a test that fails if this ever carries a user id.
+    """
+
+    trip_name: str
+    start_location_name: Optional[str] = None
+    destination_location_name: Optional[str] = None
+    start_date: CalendarDate
+    end_date: CalendarDate
+    stays: List[StayDetail] = []
+    travels: List[TravelDetail] = []
+    days: List[TripDayWithPoints] = []
+
+    @classmethod
+    def from_trip(cls, trip: "TripResponse") -> "SharedTripResponse":
+        return cls(
+            tripName=trip.trip_name,
+            startLocationName=trip.start_location_name,
+            destinationLocationName=trip.destination_location_name,
+            startDate=trip.start_date,
+            endDate=trip.end_date,
+            stays=trip.stays,
+            travels=trip.travels,
+            days=trip.days,
+        )
+
+
 # ── Import ───────────────────────────────────────────────────────────────────
 
 class TripDayImport(APIModel):

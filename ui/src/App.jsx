@@ -20,6 +20,7 @@ const TravelDetailsPage = lazy(() => import('./pages/TravelDetailsPage'));
 const TripInspectionPage = lazy(() => import('./pages/TripInspectionPage'));
 const TripWorkflowPage = lazy(() => import('./pages/TripWorkflowPage'));
 const TripsPage = lazy(() => import('./pages/TripsPage'));
+const SharedTripPage = lazy(() => import('./pages/SharedTripPage'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -47,6 +48,9 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
         <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Public: a share link opens with no account (docs/share_links_plan.md).
+            Deliberately outside ProtectedRoute. */}
+        <Route path="/shared/:token" element={<SharedTripPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route
           path="/"

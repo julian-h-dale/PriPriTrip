@@ -419,6 +419,47 @@ class AIDocumentRecord(Base):
     )
 
 
+class TripShareRecord(Base):
+    """A read-only link to a trip, for someone who has no account.
+
+    The token is a bearer capability: whoever holds the URL can read the trip.
+    It is stored in plaintext on purpose — the owner has to be able to copy the
+    link again after they first made it, and a hash cannot be shown back to
+    them. The protection is 256 bits of entropy plus instant revocation, not
+    secrecy at rest. See docs/share_links_plan.md.
+    """
+
+    __tablename__ = "trip_shares"
+
+    share_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id", ondelete="CASCADE"), index=True
+    )
+    token: Mapped[str] = mapped_column(String, unique=True, index=True)
+    # Revocation is soft: a revoked token stays 404 forever rather than being
+    # recycled onto some other trip.
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # So the owner can tell whether anyone actually opened it.
+    view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+
+    __table_args__ = (
+        # At most one live link per trip — "the share link for this trip" is a
+        # simpler thing to hold in your head than a list, and it makes revoking
+        # unambiguous. Held by the database, not by every writer remembering.
+        Index(
+            "uq_trip_shares_one_live_per_trip",
+            "trip_id",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+    )
+
+
 class ChatMessageRecord(Base):
     __tablename__ = "chat_messages"
 

@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
 import asyncpg  # noqa: E402
+from fastapi import HTTPException, Request  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # noqa: E402
 
@@ -138,18 +139,59 @@ async def other_user(db) -> UserRecord:
     return await _make_user(db, "other")
 
 
+_ANON_HEADER = "x-test-anonymous"
+
+
+def _install_overrides(db, user: UserRecord) -> None:
+    """Point the app at the test session, and make auth *request*-scoped.
+
+    Both client fixtures install exactly the same overrides, which is what makes
+    them safe to use in the same test. They mutate one global
+    `app.dependency_overrides` dict, so a fixture that expressed "anonymous" by
+    *removing* the auth override would simply be undone by whichever fixture
+    pytest happened to build second — and `anon_client` would silently be signed
+    in. It was: an anonymous DELETE of a trip came back 204.
+
+    So signed-out is expressed per request, by a header, rather than by global
+    state that another fixture can stomp.
+    """
+
+    def _db():
+        return db
+
+    def _auth(request: Request) -> UserRecord:
+        if request.headers.get(_ANON_HEADER):
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return user
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[require_auth] = _auth
+
+
 @pytest_asyncio.fixture
 async def client(db, user):
     """HTTP client wired to the test session, authenticated as `user`."""
-    app.dependency_overrides[get_db] = lambda: db
-    app.dependency_overrides[require_auth] = lambda: user
+    _install_overrides(db, user)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http
     app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
-async def anon_client():
-    """Unauthenticated client — no dependency overrides."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
+async def anon_client(db, user):
+    """Signed out — but still on the test database.
+
+    `get_db` is still overridden. Without it an anonymous request falls through
+    to the app's own engine and talks to the *dev* database, which went unnoticed
+    for as long as this fixture was only used for 401 checks that never reached a
+    query. The first genuinely public endpoint that reads data
+    (`GET /shared/{token}`) found it immediately.
+    """
+    _install_overrides(db, user)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={_ANON_HEADER: "1"},
+    ) as http:
         yield http
+    app.dependency_overrides.clear()

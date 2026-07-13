@@ -48,7 +48,7 @@ function tripContentTags(tripId) {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['Trips', 'Trip', 'Verify', 'AiDocuments', 'Gaps'],
+  tagTypes: ['Trips', 'Trip', 'Verify', 'AiDocuments', 'Gaps', 'Share'],
   endpoints: (builder) => ({
     // ── queries ──────────────────────────────────────────────────────────
     getTrips: builder.query({
@@ -94,6 +94,27 @@ export const apiSlice = createApi({
     getTripGaps: builder.query({
       query: (tripId) => `/trips/${tripId}/gaps`,
       providesTags: (result, error, tripId) => [{ type: 'Gaps', id: tripId }],
+    }),
+
+    // ── Sharing (docs/share_links_plan.md) ───────────────────────────────
+    getTripShare: builder.query({
+      query: (tripId) => `/trips/${tripId}/share`,
+      providesTags: (result, error, tripId) => [{ type: 'Share', id: tripId }],
+    }),
+    createTripShare: builder.mutation({
+      // Idempotent: returns the live link if there already is one, so tapping
+      // "share" twice can't invalidate a URL you already sent someone.
+      query: (tripId) => ({ url: `/trips/${tripId}/share`, method: 'POST' }),
+      invalidatesTags: (result, error, tripId) => [{ type: 'Share', id: tripId }],
+    }),
+    revokeTripShare: builder.mutation({
+      query: (tripId) => ({ url: `/trips/${tripId}/share`, method: 'DELETE' }),
+      invalidatesTags: (result, error, tripId) => [{ type: 'Share', id: tripId }],
+    }),
+    getSharedTrip: builder.query({
+      // The public read. Needs no auth — the base query attaches a token if the
+      // viewer happens to have one, and the server ignores it.
+      query: (token) => `/shared/${token}`,
     }),
     submitTripGap: builder.mutation({
       // Costs no model call: the values go straight through the executor.
@@ -232,6 +253,10 @@ export const {
   useGetAiDocumentsQuery,
   useGetTripGapsQuery,
   useSubmitTripGapMutation,
+  useGetTripShareQuery,
+  useCreateTripShareMutation,
+  useRevokeTripShareMutation,
+  useGetSharedTripQuery,
   useSaveTripHeaderMutation,
   useDeleteTripMutation,
   useImportTripMutation,
