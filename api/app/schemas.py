@@ -561,17 +561,6 @@ class AIDocumentSaveResult(APIModel):
     travels_saved: int
 
 
-class AIDocumentListItem(APIModel):
-    document_id: str
-    trip_id: str
-    filename: str
-    document_type: AIDocumentType = AIDocumentType.DETAIL
-    workflow_mode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
-    stays_extracted: int = 0
-    travels_extracted: int = 0
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
 
 # ── Verify ───────────────────────────────────────────────────────────────────
 

@@ -8,10 +8,7 @@ import { selectIsAuthenticated } from './store/authSlice';
 // Route-level code splitting (review 2C-5). LoginPage stays eager so the
 // first paint for signed-out users needs no extra chunk.
 const HomePage = lazy(() => import('./pages/HomePage'));
-const DocumentImporterPage = lazy(() => import('./pages/DocumentImporterPage'));
-const DocumentImportReviewPage = lazy(() => import('./pages/DocumentImportReviewPage'));
 const ImportTripPage = lazy(() => import('./pages/ImportTripPage'));
-const ImportSummaryPage = lazy(() => import('./pages/ImportSummaryPage'));
 const NewTripPage = lazy(() => import('./pages/NewTripPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -69,22 +66,6 @@ export default function App() {
           }
         />
         <Route
-          path="/trip/:tripId/document-import"
-          element={
-            <ProtectedRoute>
-              <DocumentImporterPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trip/:tripId/document-import/review"
-          element={
-            <ProtectedRoute>
-              <DocumentImportReviewPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/trip/:tripId/stays"
           element={
             <ProtectedRoute>
@@ -121,14 +102,6 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ImportTripPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/import-summary/:tripId"
-          element={
-            <ProtectedRoute>
-              <ImportSummaryPage />
             </ProtectedRoute>
           }
         />

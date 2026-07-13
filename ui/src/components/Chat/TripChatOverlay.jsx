@@ -21,7 +21,6 @@ import {
 } from '../../api/tripImportService';
 import {
   apiSlice,
-  useGetTripQuery,
   useImportTripMutation,
   useLazyVerifyTripQuery,
   useSaveAiDocumentRecordsMutation,
@@ -148,12 +147,6 @@ export default function TripChatOverlay({
   const [saveAiDocumentRecords] = useSaveAiDocumentRecordsMutation();
   const [triggerVerify] = useLazyVerifyTripQuery();
 
-  // The trip snapshot decides which upload mode to offer; served from the
-  // RTK Query cache and kept fresh by mutation invalidation.
-  const { data: tripSnapshot } = useGetTripQuery(tripId, {
-    skip: !open || !tripId,
-  });
-
   useEffect(() => {
     let active = true;
     async function loadMessages() {
@@ -190,7 +183,16 @@ export default function TripChatOverlay({
 
   useEffect(() => () => sendAbortRef.current?.abort(), []);
 
-  const shouldUseItineraryUpload = !tripSnapshot || tripSnapshot.status === 'new';
+  // What kind of document is this? The entry point decides — not the trip's
+  // status. This used to be `!tripSnapshot || tripSnapshot.status === 'new'`,
+  // which meant a hotel confirmation uploaded to a trip that happened to still
+  // be `status: "new"` was run through the *itinerary* parser. The user knows
+  // which kind of document they have; the app should learn it from where they
+  // clicked, not infer it from a database column.
+  //
+  //   trip:new_trip  → "I have the whole trip in a file."
+  //   trip:manage    → "Here's my hotel booking."
+  const isItineraryUpload = workflowName === 'trip:new_trip';
 
   async function handleSend() {
     const text = draft.trim();
@@ -351,7 +353,7 @@ export default function TripChatOverlay({
     try {
       // The itinerary path chains four calls; say which one we're on rather
       // than showing a static "Uploading…" for a minute (review.md 2C-3).
-      if (shouldUseItineraryUpload) {
+      if (isItineraryUpload) {
         let targetTripId = tripId;
         if (!targetTripId) {
           setUploadStep('Creating your trip…');
@@ -556,8 +558,14 @@ export default function TripChatOverlay({
           }}
         >
           <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+            {/* The label says which kind of document this button wants, because
+                that is exactly what the app used to have to guess. */}
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={busy}>
-              {uploading ? 'Uploading…' : (shouldUseItineraryUpload ? 'Upload itinerary (.xlsx, pdf)' : 'Upload document')}
+              {uploading
+                ? 'Uploading…'
+                : isItineraryUpload
+                  ? 'Upload an itinerary'
+                  : 'Upload a booking confirmation'}
               <input
                 hidden
                 type="file"

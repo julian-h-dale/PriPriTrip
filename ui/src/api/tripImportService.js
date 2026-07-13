@@ -31,13 +31,3 @@ export async function aiImportTripDocument(tripId, file, workflowMode = 'detail_
   });
   return data;
 }
-
-export async function getAiDocumentExtraction(documentId) {
-  const { data } = await client.get(`/ai-documents/${documentId}`);
-  return data;
-}
-
-export async function regenAiDocumentExtraction(documentId) {
-  const { data } = await client.post(`/ai-documents/${documentId}/regen`);
-  return data;
-}

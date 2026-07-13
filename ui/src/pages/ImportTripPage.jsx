@@ -36,12 +36,11 @@ export default function ImportTripPage() {
       const draft = await aiImportDocument(file);
       setStatus('saving');
       await importTrip(draft).unwrap();
-      navigate(`/import-summary/${draft.tripId}`, {
-        state: {
-          trip: draft,
-          fileName: file.name,
-        },
-      });
+      // Straight to the itinerary. The old summary screen existed to tell you
+      // what the import captured and what was missing — the trip page now does
+      // both, and does them better: the timeline shows what it got, and the
+      // gaps banner shows what's missing with a one-tap form to fix each.
+      navigate(`/trip/${draft.tripId}`);
     } catch (err) {
       setError(getErrorMessage(err, 'Could not import the document. Please try again.'));
       setStatus('idle');

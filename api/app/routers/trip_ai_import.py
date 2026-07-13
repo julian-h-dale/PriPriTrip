@@ -5,12 +5,15 @@ Trip-scoped endpoints:
   - POST /trips/{trip_id}/ai-import     : same, for an existing trip (records the document).
   - POST /trips/ai-enhance              : enrich a draft trip's descriptions.
   - POST /trips/{trip_id}/ai-documents  : extract stay/travel records from a document.
-  - GET  /trips/{trip_id}/ai-documents  : list a trip's AI documents.
 
 Document-scoped endpoints:
-  - GET  /ai-documents/{document_id}        : re-read a stored extraction.
-  - POST /ai-documents/{document_id}/regen  : re-run extraction on the stored text.
-  - POST /ai-documents/{document_id}/save   : persist selected extracted records.
+  - POST /ai-documents/{document_id}/save   : persist the extracted records.
+
+The list/re-read/regen endpoints are gone with the document-importer and review
+screens they served (docs/document_plan_july_13.md): a confirmation uploaded in
+the chat is extracted and saved in one go, so there is nothing to come back to.
+AIDocumentRecord itself stays — its content_hash is what detects a re-upload of
+the same file, and it backs the itinerary-reimport guard.
 
 Draft structuring persists nothing; the frontend saves via POST /trips/{trip_id}/import.
 """
@@ -30,7 +33,7 @@ from app.database import get_db
 from app.dependencies import get_owned_trip, require_owned_trip
 from app.enums import AIDocumentType, AIDocumentWorkflowMode
 from app.models import AIDocumentRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
-from app.schemas import AIDocumentExtraction, AIDocumentListItem, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
+from app.schemas import AIDocumentExtraction, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
 from app.services.detail_points import (
     CHECK_IN_DEFAULT_TIME,
     CHECK_OUT_DEFAULT_TIME,
@@ -47,6 +50,28 @@ logger = logging.getLogger("app.ai_import")
 router = APIRouter(tags=["import"])
 
 _MAX_BYTES = 15 * 1024 * 1024  # 15 MB
+
+
+def _remint_record_ids(payload: AIDocumentExtraction) -> None:
+    """Give a reused extraction fresh record ids.
+
+    The content-hash cache lets a document extracted once be reused on another
+    trip without paying for a second OpenAI call. But the extraction it copies
+    carries the record ids minted for the *original* trip, and those rows exist.
+    A stay keeping its old stayDetailId is a stay that already exists, so the
+    save skips it — the same hotel confirmation uploaded to a second trip
+    imported nothing at all and reported "0 stay records".
+
+    The extracted *content* is what's worth caching. The identities are not.
+    """
+    for stay in payload.stays:
+        stay.stay_detail_id = str(uuid.uuid4())
+        for location in stay.locations:
+            location.location_id = str(uuid.uuid4())
+    for travel in payload.travels:
+        travel.travel_detail_id = str(uuid.uuid4())
+        for location in travel.locations:
+            location.location_id = str(uuid.uuid4())
 
 
 def _document_payload(rec: AIDocumentRecord) -> AIDocumentExtraction:
@@ -323,6 +348,12 @@ async def ai_document_import(
         payload.cached = True
         payload.document_type = document_type
         payload.workflow_mode = workflowMode
+        # The cached payload was extracted for a *different* trip, and it still
+        # carries that trip's stayDetailId/travelDetailId. Reused as-is, the save
+        # step finds those ids already in the database and skips every record —
+        # so uploading the same hotel confirmation to a second trip imported
+        # absolutely nothing, silently, and told you "0 stay records".
+        _remint_record_ids(payload)
 
         db.add(
             AIDocumentRecord(
@@ -415,89 +446,6 @@ async def ai_document_import(
     return payload
 
 
-@router.get("/trips/{trip_id}/ai-documents", response_model=list[AIDocumentListItem])
-async def list_ai_documents(
-    trip: TripRecord = Depends(get_owned_trip),
-    db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
-):
-    result = await db.execute(
-        select(AIDocumentRecord).where(
-            AIDocumentRecord.user_id == str(user.id),
-            AIDocumentRecord.trip_id == trip.trip_id,
-        )
-    )
-    out = []
-    for rec in result.scalars().all():
-        payload = _document_payload(rec) if rec.extracted_payload else None
-        out.append(
-            AIDocumentListItem(
-                documentId=rec.document_id,
-                tripId=rec.trip_id,
-                filename=rec.filename,
-                documentType=AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value)),
-                workflowMode=AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value)),
-                staysExtracted=len(payload.stays) if payload else 0,
-                travelsExtracted=len(payload.travels) if payload else 0,
-                createdAt=rec.created_at.isoformat() if rec.created_at else None,
-                updatedAt=rec.updated_at.isoformat() if rec.updated_at else None,
-            )
-        )
-    return out
-
-
-@router.get("/ai-documents/{document_id}", response_model=AIDocumentExtraction)
-async def get_ai_document_extraction(
-    document_id: str,
-    db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
-):
-    rec = await db.get(AIDocumentRecord, document_id)
-    if rec is None or rec.user_id != str(user.id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    if not rec.extracted_payload:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Document has no extracted payload")
-    payload = _document_payload(rec)
-    payload.cached = True
-    return payload
-
-
-@router.post("/ai-documents/{document_id}/regen", response_model=AIDocumentExtraction)
-async def regen_ai_document_extraction(
-    document_id: str,
-    db: AsyncSession = Depends(get_db),
-    user: UserRecord = Depends(require_auth),
-):
-    rec = await db.get(AIDocumentRecord, document_id)
-    if rec is None or rec.user_id != str(user.id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-
-    try:
-        draft = await trip_ai.extract_document_records(rec.body_contents)
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("ai-document regen failed for %s", rec.filename)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI document regen failed. See server logs for details.",
-        )
-
-    payload = AIDocumentExtraction(
-        documentId=rec.document_id,
-        tripId=rec.trip_id,
-        filename=rec.filename,
-        documentType=AIDocumentType(getattr(rec, "document_type", AIDocumentType.DETAIL.value)),
-        workflowMode=AIDocumentWorkflowMode(getattr(rec, "workflow_mode", AIDocumentWorkflowMode.DETAIL_IMPORT.value)),
-        cached=False,
-        stays=draft.stays,
-        travels=draft.travels,
-    )
-    rec.extracted_payload = payload.model_dump_json(by_alias=True)
-    await db.commit()
-    return payload
-
-
 @router.post("/ai-documents/{document_id}/save", response_model=AIDocumentSaveResult)
 async def save_ai_document_records(
     document_id: str,
@@ -540,8 +488,15 @@ async def save_ai_document_records(
 
     for stay in stays_to_save:
         stay_id = stay.stay_detail_id or str(uuid.uuid4())
-        if await db.get(StayDetailRecord, stay_id):
-            continue
+        # Skipping an id that already exists is how re-saving the same document
+        # into the same trip stays idempotent. But it must be scoped to *this*
+        # trip: an id belonging to another trip means the payload was reused,
+        # and silently dropping the record is how "0 stay records" happened.
+        clash = await db.get(StayDetailRecord, stay_id)
+        if clash is not None:
+            if clash.trip_id == rec.trip_id:
+                continue
+            stay_id = str(uuid.uuid4())
 
         check_in_tzid = stay.check_in_timezone_id or infer_tzid_from_locations(
             stay.locations, role="venue", fallback=trip.default_timezone_id
@@ -579,8 +534,11 @@ async def save_ai_document_records(
 
     for travel in travels_to_save:
         travel_id = travel.travel_detail_id or str(uuid.uuid4())
-        if await db.get(TravelDetailRecord, travel_id):
-            continue
+        clash = await db.get(TravelDetailRecord, travel_id)
+        if clash is not None:
+            if clash.trip_id == rec.trip_id:
+                continue  # already saved into this trip — idempotent re-save
+            travel_id = str(uuid.uuid4())  # id reused from another trip's extraction
 
         departure_tzid = travel.departure_timezone_id or infer_tzid_from_locations(
             travel.locations, role="origin", fallback=trip.default_timezone_id

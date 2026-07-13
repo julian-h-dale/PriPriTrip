@@ -15,7 +15,6 @@ import WifiOffIcon from '@mui/icons-material/WifiOff';
 import ChatIcon from '@mui/icons-material/Chat';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import HouseIcon from '@mui/icons-material/House';
-import DescriptionIcon from '@mui/icons-material/Description';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import AppLayout from '../components/AppLayout';
 import TripChatOverlay from '../components/Chat/TripChatOverlay';
@@ -80,13 +79,6 @@ export default function HomePage() {
             onClick={() => setShareOpen(true)}
           >
             <IosShareIcon />
-          </IconButton>
-          <IconButton
-            color="inherit"
-            aria-label="Document importer"
-            onClick={() => navigate(`/trip/${tripId}/document-import`)}
-          >
-            <DescriptionIcon />
           </IconButton>
           <IconButton
             color="inherit"
@@ -155,7 +147,7 @@ export default function HomePage() {
           tripId={tripId}
           workflowName="trip:manage"
           title={trip.tripName ?? 'Trip Chat'}
-          emptyPrompt={`Ask me to change anything about ${trip.tripName ?? 'this trip'} — add a stay, fix a flight time, fill in a confirmation number.`}
+          emptyPrompt={`Ask me to change anything about ${trip.tripName ?? 'this trip'} — add a stay, fix a flight time, fill in a confirmation number. Or upload a booking confirmation and I'll read it in.`}
         />
       )}
 

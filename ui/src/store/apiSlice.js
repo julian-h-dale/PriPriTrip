@@ -48,7 +48,7 @@ function tripContentTags(tripId) {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuth,
-  tagTypes: ['Trips', 'Trip', 'Verify', 'AiDocuments', 'Gaps', 'Share'],
+  tagTypes: ['Trips', 'Trip', 'Verify', 'Gaps', 'Share'],
   endpoints: (builder) => ({
     // ── queries ──────────────────────────────────────────────────────────
     getTrips: builder.query({
@@ -86,10 +86,6 @@ export const apiSlice = createApi({
     verifyTrip: builder.query({
       query: (tripId) => `/trips/${tripId}/verify`,
       providesTags: (result, error, tripId) => [{ type: 'Verify', id: tripId }],
-    }),
-    getAiDocuments: builder.query({
-      query: (tripId) => `/trips/${tripId}/ai-documents`,
-      providesTags: (result, error, tripId) => [{ type: 'AiDocuments', id: tripId }],
     }),
     getTripGaps: builder.query({
       query: (tripId) => `/trips/${tripId}/gaps`,
@@ -157,15 +153,14 @@ export const apiSlice = createApi({
       ],
     }),
     saveAiDocumentRecords: builder.mutation({
+      // Writes the stays/travels the AI read out of an uploaded confirmation.
+      // Invalidating the trip is what makes the timeline show them immediately.
       query: ({ documentId, stays, travels }) => ({
         url: `/ai-documents/${documentId}/save`,
         method: 'POST',
         body: { stays, travels },
       }),
-      invalidatesTags: (result, error, { tripId }) =>
-        tripId
-          ? [...tripContentTags(tripId), { type: 'AiDocuments', id: tripId }]
-          : [],
+      invalidatesTags: (result, error, { tripId }) => (tripId ? tripContentTags(tripId) : []),
     }),
 
     // ── points ───────────────────────────────────────────────────────────
@@ -250,7 +245,6 @@ export const {
   useGetTripQuery,
   useVerifyTripQuery,
   useLazyVerifyTripQuery,
-  useGetAiDocumentsQuery,
   useGetTripGapsQuery,
   useSubmitTripGapMutation,
   useGetTripShareQuery,

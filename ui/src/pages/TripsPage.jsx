@@ -217,12 +217,11 @@ export default function TripsPage() {
         onTripIdChange={setChatTripId}
         onComplete={(response) => {
           setChatOpen(false);
-          navigate(`/trip-inspection/${response.tripId}`, {
-            state: {
-              verify: response.verify,
-              tripName: response.tripName,
-            },
-          });
+          // Land on the trip itself, whether it was built by conversation or by
+          // uploading an itinerary. The gaps banner is waiting there with
+          // whatever is still missing; the ✅ on the trip card still opens the
+          // full inspection breakdown when you want it.
+          navigate(`/trip/${response.tripId}`);
         }}
       />
     </AppLayout>
