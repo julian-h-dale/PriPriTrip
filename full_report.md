@@ -1,7 +1,8 @@
 # PriPriTrip — Full Technical Report
 
-*Written 2026-07-12. This is the "you know nothing about this project" document. It is not a
-quick-start; it is the map. Where something is subtle or was got wrong once, it says so.*
+*Written 2026-07-12, kept current (last checked 2026-07-13 against the code). This is the "you know
+nothing about this project" document. It is not a quick-start; it is the map. Where something is
+subtle or was got wrong once, it says so.*
 
 ---
 
@@ -25,10 +26,11 @@ telling the app what you know.*
 Redux Toolkit / RTK Query on the frontend; OpenAI for the assistant and document import; Google
 Places for location data. The app is a PWA with an offline read cache.
 
-**Current state:** local-only, single-user-per-trip, no deployment. Migrations are deliberately
-deferred — the database is recreated from `models.py` rather than migrated, and there is no Alembic.
-Two test tiers exist: 228 pytest tests against a real throwaway Postgres, and 15 live-model eval
-scenarios against the real OpenAI API.
+**Current state:** local-only, no deployment. A trip has one owner, who can hand out read-only
+share links (§11). A trip becomes **active** on its start date and swaps the timeline for a What's
+Next screen (§12). Migrations are deliberately deferred — the database is recreated from `models.py`
+rather than migrated, and there is no Alembic. Two test tiers exist: **285 pytest tests** against a
+real throwaway Postgres, and **15 live-model eval scenarios** against the real OpenAI API.
 
 ---
 
@@ -40,9 +42,10 @@ PriPriTrip/
 │   ├── app/
 │   │   ├── main.py               FastAPI app factory, CORS, router registration
 │   │   ├── database.py           Engine, session factory, declarative Base
-│   │   ├── models.py             All 8 SQLAlchemy models + soft-delete helpers
+│   │   ├── models.py             All 10 SQLAlchemy models + soft-delete helpers
 │   │   ├── schemas.py            Every Pydantic wire model (camelCase on the wire)
-│   │   ├── enums.py              PointType, LocationRole, TravelMode, StayType + DERIVED_POINT_TYPES
+│   │   ├── enums.py              TripStatus, PointType, LocationRole, TravelMode, StayType
+│   │   │                         + DERIVED_POINT_TYPES
 │   │   ├── settings.py           Pydantic settings, read from .env
 │   │   ├── auth.py               require_auth dependency
 │   │   ├── users.py              fastapi-users wiring (JWT)
@@ -55,7 +58,7 @@ PriPriTrip/
 │   └── pripritrip_system_prompt.md   The assistant's system prompt (sectioned)
 ├── ui/
 │   └── src/                      React app (§8)
-└── docs/                         Stopping-point docs, source PDFs, this file
+└── docs/                         This file, the design/plan docs, source PDFs
 ```
 
 ---
@@ -145,19 +148,38 @@ doesn't say. Pure dates (`trip.start_date`, `day.date`) are real `DATE` columns 
 
 ### 4.1 Database models
 
-All in `app/models.py`. Eight tables.
+All in `app/models.py`. Ten tables.
 
 | Model | Table | What it is |
 |---|---|---|
 | `UserRecord` | `users` | A person: fastapi-users' auth columns plus name, phone, and a home location (name, address, coords, place id, timezone) used to give the assistant a default context. |
-| `TripRecord` | `trips` | One trip: name, status (`new`/`draft`/…), start/end dates, start & destination location *names* (free text, not resolved places), default timezone. |
+| `TripRecord` | `trips` | One trip: name, `status`, start/end dates, start & destination location *names* (free text, not resolved places), default timezone. |
 | `TripDayRecord` | `trip_days` | One calendar day of a trip — the timeline's top-level grouping; `is_alternate` marks a competing plan for the same date. |
 | `TripPointRecord` | `trip_points` | One thing that happens at a time: an activity you authored, or a check-in/departure the backend derived from a stay or travel leg (`is_system_created`). |
 | `StayDetailRecord` | `stay_details` | One accommodation booking spanning multiple nights: name, type, check-in/out, room type, confirmation number. |
 | `TravelDetailRecord` | `travel_details` | One journey leg — flight, train, drive: mode, operator, vehicle number, cabin class, departure/arrival. |
 | `LocationRecord` | `locations` | A place, owned by *exactly one* of a point, stay, or travel (enforced by a `num_nonnulls(...) = 1` check constraint); carries the Google-resolved address, coordinates, place id and timezone. |
 | `AIDocumentRecord` | `ai_documents` | An uploaded itinerary/booking document: its extracted text, the AI's structured extraction, and the resulting import payload — kept so an import can be reviewed and re-run without re-uploading. |
+| `TripShareRecord` | `trip_shares` | A read-only share link: an unguessable token, whether it's been revoked or expired, and how many times it's been opened. At most one live link per trip (partial unique index). |
 | `ChatMessageRecord` | `chat_messages` | One turn of a chat, user or bot; the bot row also stores `structure_content` (actions taken, the `uiPayload`) and `reply_payload` (the exact response, for idempotent replay). |
+
+**Trip status.** `TripRecord.status` stores *intent*, not the current reality, and it does two jobs:
+
+| stored | means | consequences |
+|---|---|---|
+| `new` | no content yet | An itinerary import is allowed. Never active. |
+| `draft` | has content | Itinerary import is **locked** — it is a full replace and would delete everything. Goes active automatically while the trip is underway. |
+| `active` | forced on by hand | Active regardless of the dates (you arrived early). |
+
+Two things follow, and both have bitten:
+
+- **Anything that gives a trip content must promote it** `new → draft`, or an itinerary upload will
+  silently wipe a trip you built by hand. That is `promote_to_draft()` in `trip_state.py`, and it is
+  the *only* writer — five raw `status = "draft"` assignments used to exist, every one of which would
+  have demoted an `active` trip mid-flight.
+- **"Active" is never stored by the automatic rule.** It is derived from the dates on read
+  (`trip_status.py`), because a persisted `active` and a clock are two sources of truth that drift.
+  See §12.
 
 **Soft delete.** Most models carry `SoftDeleteMixin` (`is_deleted` + `deleted_at`). A row is only
 "deleted" when **both** agree — use the `active(Model)` / `deleted(Model)` helpers rather than
@@ -203,6 +225,8 @@ in `app/services/`.
 | `prompt_composer.py` | Loads `pripritrip_system_prompt.md`, splits it on `## [section]` markers, validates the required ones exist, and assembles the system prompt. Cached. |
 | `openai_client.py` | Shared async OpenAI client + model name from settings. |
 | `ai_trace.py` | Structured JSONL logging of every AI event to `ai.log` (rotating). This is how the pipeline is debugged and how token/cache usage was measured. |
+| `trip_share.py` | Share links: mint, revoke, and the one function (`resolve_share_token`) that decides whether a link is live — so "is this still valid?" has exactly one answer. |
+| `trip_status.py` | **When is a trip active?** Derived from the dates on every read, never stored — persist it and the column and the clock become two sources of truth that drift. |
 | `locations.py` | Shared `LocationRecord` row construction. |
 
 ### 4.3 API surface
@@ -212,6 +236,7 @@ Auth        POST   /auth/session, /auth/register/session, /auth/login, /auth/reg
 Profile     GET|PUT|DELETE /profile, POST /profile/timezone
 Trips       GET  /trips
             GET|PUT|DELETE /trips/{id}
+            PATCH /trips/{id}/status              (planning ⇄ on this trip — §12)
             GET  /trips/{id}/verify
 Days        GET|POST /trips/{id}/days, PATCH|DELETE /trips/{id}/days/{day_id}
             GET  /trips/{id}/days/deleted, POST .../restore
@@ -220,19 +245,53 @@ Points      GET|POST /trips/{id}/points, PATCH|DELETE /trips/{id}/points/{point_
 Details     GET|POST /trips/{id}/stay-details,   GET|PATCH|DELETE .../{stay_detail_id}
             GET|POST /trips/{id}/travel-details, GET|PATCH|DELETE .../{travel_detail_id}
 Import      POST /trips/{id}/import              (structured payload → rows)
-            POST /trips/{id}/ai-import, /trips/ai-import, /trips/ai-enhance
-            POST|GET /trips/{id}/ai-documents, GET /ai-documents/{id}, .../regen, .../save
+            POST /trips/{id}/ai-import, /trips/ai-import   (itinerary → TripImport)
+            POST /trips/{id}/ai-documents        (confirmation → stay/travel records)
+            POST /ai-documents/{id}/save         (persist those records)
+            POST /trips/ai-enhance               (exists, not wired to anything)
 Chat        POST /chat/reply           (SSE)
             GET  /chat/trips/{id}
             POST /chat/forms/submit
             POST /chat/choices/submit
 Gaps        GET  /trips/{id}/gaps
             POST /trips/{id}/gaps/submit
+Share       POST|GET|DELETE /trips/{id}/share      (owner: mint / read / revoke)
+            GET  /shared/{token}                   ** no auth **
 ```
+
+`GET /shared/{token}` is the **only unauthenticated endpoint in the app that returns user data**. It
+never reads the `Authorization` header, returns its own `SharedTripResponse` schema (so a field added
+to the owner's trip view can't silently start leaking), and 404s identically for unknown, revoked and
+expired tokens — a 403 would confirm the token had once existed. See §11.
 
 `GET /trips/{id}` returns the whole assembled trip (days → points → locations, plus stays and travels
 with their locations) in a **flat number of queries** — 8 SELECTs regardless of trip size, pinned by
 `tests/test_query_counts.py`.
+
+### 4.4 Authentication
+
+**fastapi-users**, wired in `app/users.py`: a `BearerTransport` (the `Authorization` header) over a
+`JWTStrategy` (a signed token, **stateless** — nothing is stored server-side). Passwords are bcrypt;
+`manager.authenticate()` runs a dummy hash on an unknown email so an attacker can't distinguish "no
+such user" from "wrong password" by timing.
+
+Every authenticated route in the app depends on **`require_auth`** (`app/auth.py`) — all 24 of them,
+none reaching past it to fastapi-users' `current_active_user` directly. That single choke point is
+what makes the whole thing testable: overriding one key in `app.dependency_overrides` covers the
+entire app.
+
+Two consequences of *stateless* that are easy to miss:
+
+- **`POST /auth/logout` does nothing.** The strategy has no token to destroy; the route returns
+  success and the token stays valid. Logging out is the browser deleting it from `localStorage`.
+- **The token lifetime is therefore the blast radius of a leak.** It is 7 days.
+
+There is no email-verification flow, so every account is marked verified in `on_after_register` —
+*after* creation, because both registration routes call `create(safe=True)` and `safe=True` strips
+`is_verified` (along with `is_active`/`is_superuser`) precisely so a stranger POSTing to
+`/auth/register` cannot promote themselves.
+
+Full analysis, including what is still wrong, in **`docs/auth_test_analysis.md`**.
 
 ---
 
@@ -563,7 +622,7 @@ without a reproducible cause. When judging a change, run it more than once.
 
 ## 7. The pytest suite (for contrast)
 
-228 tests, all against a **real, throwaway PostgreSQL database** (`pripritrip_test`, recreated per
+285 tests, all against a **real, throwaway PostgreSQL database** (`pripritrip_test`, recreated per
 session; `conftest.py` asserts it will never point at the dev DB). Each test runs in a transaction +
 savepoint that is rolled back, so tests don't accumulate state.
 
@@ -574,10 +633,13 @@ rollback, and a fixture whose user row was being erased by an endpoint's rollbac
 |---|---|---|
 | `test_location_choice.py` | 23 | The confidence rule, the executor no longer guessing, `apply_choice` security (an option we never offered is rejected; a location on another trip is rejected; a *searched* place is accepted but still can't cross trips). |
 | `test_chat_forms.py` | 21 | The form registry, form building, and submission re-validation. |
-| `test_auth.py` | 20 | Session/register endpoints on real DI. |
+| `test_trip_share.py` | 16 | Share links: revoked/expired/unknown tokens are indistinguishable 404s, the payload leaks nothing about the owner, another user can't share your trip, and a link grants no write anywhere. |
+| `test_auth.py` | 20 | Session/register endpoints, driven with a *fake* UserManager — routing and error mapping. |
+| `test_trip_status_auto.py` | 19 | A trip goes active on its start date and back afterwards, derived not stored; the trip's own midnight is the boundary; content promotes a trip out of `new` (or an itinerary import would wipe it). |
 | `test_trip.py` | 19 | Trip CRUD, ownership. |
 | `test_action_ids.py` | 17 | The executor's id handling (invented ids are rejected/regenerated, and the model is told). |
 | `test_trip_days.py` | 15 | Day CRUD, soft delete, restore. |
+| `test_trip_status.py` | 11 | `PATCH /status`; `promote_to_draft` never demotes an active trip; `startUtc` is serialised. |
 | `test_chat.py` | 13 | `/chat/reply`: SSE, idempotency, replay, failure rollback. |
 | `test_trip_verify.py` | 12 | All 9 verify issue codes. |
 | `test_trip_details.py` | 12 | Stay/travel CRUD. |
@@ -588,6 +650,8 @@ rollback, and a fixture whose user row was being erased by an endpoint's rollbac
 | `test_trip_gaps.py` | 9 | What counts as a gap, and that filling one **never calls the model** (the test fails loudly if it does). |
 | `test_trip_ai_import.py` | 8 | Document → `TripImport`. |
 | `test_chat_tool_loop.py` | 7 | Loop mechanics with a mock client: iteration cap, tool dispatch, error feedback. |
+| `test_auth_registration.py` | 6 | Registration through the **real** UserManager: the row really is `is_verified=True`, and a stranger still can't self-grant superuser. |
+| `test_document_reuse.py` | 5 | The same PDF on a second trip actually imports (the cached extraction used to carry the first trip's record ids, so the save skipped everything). |
 | `test_query_counts.py` | 5 | **N+1 protection.** `GET /trips/{id}` = 8 SELECTs, `GET /points` = 4, flat regardless of trip size. Uses a SQLAlchemy `before_cursor_execute` event to count. |
 | `test_date_normalizer.py` | 4 | Relative-date resolution. |
 
@@ -603,16 +667,14 @@ opened trip survives going offline.
 
 ```
 /login, /register              auth
+/shared/:token                 SharedTripPage — public, no account needed
 /                              TripsPage — your trips
-/trip/:tripId                  HomePage — the trip timeline (the main screen)
+/trip/:tripId                  HomePage — the trip timeline, or What's Next if the trip is active
 /trip/:tripId/stays            StayDetailsPage
 /trip/:tripId/travels          TravelDetailsPage
-/trip/:tripId/document-import          DocumentImporterPage
-/trip/:tripId/document-import/review   DocumentImportReviewPage
 /trip/:tripId/workflow         TripWorkflowPage
 /new-trip                      NewTripPage — the wizard
 /import-trip                   ImportTripPage
-/import-summary/:tripId        ImportSummaryPage
 /trip-inspection/:tripId       TripInspectionPage
 /profile                       ProfilePage
 ```
@@ -624,16 +686,14 @@ opened trip survives going offline.
 | File | What it is |
 |---|---|
 | `TripsPage.jsx` | The trip list — your trips, with delete, plus the entry point to the new-trip chat. |
-| `HomePage.jsx` | **The main screen.** The trip timeline (days → points), the gaps banner, and the chat FAB. |
+| `HomePage.jsx` | **The main screen.** Renders the timeline + gaps banner while you're planning, and swaps to What's Next once the trip is active (§12). Also hosts the chat FAB, the share dialog and the status menu. |
 | `NewTripPage.jsx` | The step-by-step new-trip wizard (dates, route, legs) for people who'd rather fill a form than talk. |
-| `ImportTripPage.jsx` | Entry point for importing a trip from a document. |
-| `DocumentImporterPage.jsx` | Upload an itinerary/booking document for AI extraction. |
-| `DocumentImportReviewPage.jsx` | Review and correct what the AI extracted from a document *before* it is written to the trip. |
-| `ImportSummaryPage.jsx` | Post-import summary of what was created. |
+| `ImportTripPage.jsx` | Upload an itinerary document → creates the trip → lands you straight on it. One of two upload paths; the other is the chat (§10). |
 | `TripInspectionPage.jsx` | A debug/inspection view of a trip's raw structure. |
 | `TripWorkflowPage.jsx` | The standalone chat workflow page. |
 | `StayDetailsPage.jsx` | Read-only timeline of the trip's stays, ordered by check-in, each editable. |
 | `TravelDetailsPage.jsx` | Read-only timeline of the trip's travel legs, ordered by departure, each editable. |
+| `SharedTripPage.jsx` | A trip seen through a share link. The **only** page that renders with no account — reuses the owner's `Timeline` in `readOnly` mode rather than growing a second copy. |
 | `ProfilePage.jsx` | Your name, phone, and home location (which seeds the assistant's context). |
 | `LoginPage.jsx` / `RegisterPage.jsx` | Auth. |
 
@@ -660,6 +720,16 @@ opened trip survives going offline.
 | File | What it is |
 |---|---|
 | `TripGapsBanner.jsx` | "3 things missing" on the trip page; tapping a gap expands the same server-built form inline and saves it with no model call. |
+| `ShareTripDialog.jsx` | The owner's control panel for the trip's share link: create, copy, see whether it's been opened, revoke. |
+| `TripStatusMenu.jsx` | Automatic (follow the dates) vs. "On this trip" (force it on). Reads `statusIntent`, not `status`, or its checkmark would lie. |
+
+**What's Next** (§12 — the screen for a trip you're on)
+
+| File | What it is |
+|---|---|
+| `WhatsNextView.jsx` | The screen: the next thing, what follows it, and a way into the full itinerary. Ticks the countdown every 30s. |
+| `NextUpCard.jsx` | The hero card — countdown, place, Maps link, flight number, one-tap confirmation copy, ✓ Done. |
+| `ThenList.jsx` | A flat list of what comes after. No day grouping, on purpose. |
 
 **Forms**
 
@@ -691,6 +761,7 @@ opened trip survives going offline.
 | `hooks/usePlacesAutocomplete.js` | Debounced Places autocomplete. Handles unmount, request failure, and **stale responses** (type "par", pause, type "is" — the slow "par" response must not overwrite "paris"). |
 | `utils/format.js` | `placeLabel` (name the place), `placeLocality` (where it is), date/time formatting, sorting. |
 | `utils/pointIcons.js` | Point type → icon and label. |
+| `utils/tripClock.js` | `nextPoint()` and `countdown()` — the whole of What's Next's logic, two pure functions. Compares `startUtc` instants, so the browser's timezone cannot change the answer. |
 | `utils/tripCache.js` | The IndexedDB read cache behind the offline fallback. |
 | `utils/newTripPayload.js` | Pure builders for the new-trip wizard's payload. Notably does **not** build departure/arrival points — the backend derives those. |
 | `utils/dayjs.js` | dayjs + a `parseWallClock` that reads a wall-clock string without applying a timezone. |
@@ -798,12 +869,31 @@ recounts.
 
 ## 10. Other flows, briefly
 
-**Document import.** Upload a PDF/XLSX → `document_ingest` extracts text → `trip_ai.structure_itinerary`
-(pass 1) turns it into an `AITrip` → `enhance_trip` (pass 2) makes it engaging → `to_trip_import`
-converts it to a `TripImport` → the user **reviews it** on `DocumentImportReviewPage` → `POST
-/trips/{id}/import` writes the rows. The importer writes stays, travels and *activity* points only;
-check-in and departure points are then generated from the stays and legs by `detail_points`, which is
-also what attaches the airports to them.
+**Document upload — two paths, and the entry point decides which.**
+
+There is exactly one question a document upload has to answer: *is this a whole itinerary, or one
+booking?* The app used to **guess**, from the trip's `status` column — so a hotel confirmation uploaded
+to a trip that happened to still be `status: "new"` was run through the itinerary parser. It now learns
+it from where you clicked (`workflowName === 'trip:new_trip'`).
+
+1. **Itinerary → a trip.** From the Trips-page toolbar, or the new-trip chat. `document_ingest` extracts
+   the text → `trip_ai.structure_itinerary` (pass 1) → `enhance_trip` (pass 2) → `to_trip_import` →
+   `POST /trips/{id}/import` writes the rows → **you land on the trip page**. No review screen: the
+   timeline shows what it got and the gaps banner shows what's missing, which is a better summary than
+   the summary screen was.
+
+2. **Booking confirmation → records on the open trip.** From the chat, on a trip page.
+   `POST /trips/{id}/ai-documents` extracts the stays/travels → `POST /ai-documents/{id}/save` writes
+   them → the assistant says what it added, in the transcript. **Auto-saved, no review.**
+
+The importer writes stays, travels and *activity* points only; check-in and departure points are then
+generated from the stays and legs by `detail_points`, which is also what attaches the airports to them.
+
+Extractions are cached by SHA-256 content hash so the same PDF is only ever sent to OpenAI once — but
+a reused payload gets **fresh record ids** (`_remint_record_ids`). Without that, uploading the same
+hotel confirmation to a second trip carried the *first* trip's `stayDetailId`, the save step saw an id
+that already existed and skipped every record, and the second trip imported nothing at all while
+cheerfully reporting `Imported 0 stay records`.
 
 **Gap filling.** `GET /trips/{id}/gaps` walks the assembled trip and returns each hole **with a
 server-built form already attached**, split into `blocking` and `worth_adding`. `TripGapsBanner`
@@ -813,18 +903,90 @@ There is a test that fails loudly if this path ever calls OpenAI.
 
 ---
 
-## 11. Known gaps and deliberate deferrals
+## 11. Share links
+
+Full design in `docs/share_links_plan.md`. The short version:
+
+The owner mints a link (`POST /trips/{id}/share`) and sends it to whoever they're travelling with.
+That person opens it with **no account** and sees the itinerary, read-only. The owner can revoke it,
+and can see whether it's been opened.
+
+- **The token is a bearer capability** — 256 bits from `secrets.token_urlsafe(32)`. It is stored in
+  **plaintext**, deliberately: the owner has to be able to copy the link again later, and you cannot
+  show a hash back to them. The protections are entropy and instant revocation, not secrecy at rest.
+- **One live link per trip**, held by a partial unique index. That's what makes "revoke" unambiguous.
+  Creating is idempotent, so tapping share twice can't invalidate a URL already sitting in someone's
+  messages.
+- **It includes confirmation numbers.** This is a decision, not an oversight: the person you share
+  with is the person travelling with you, and an itinerary that hides the hotel booking reference
+  from your partner isn't an itinerary. The mitigation for a leaked link is revocation, not
+  redaction. A "hide confirmations" toggle is the obvious follow-up if that trade ever feels wrong.
+- **It excludes** the chat transcript, the owner's identity/profile, other trips, uploaded documents,
+  and the verify/gaps tooling.
+- **Frontend:** `/shared/:token` is a public route outside `ProtectedRoute`, rendering the *same*
+  `Timeline` in `readOnly` mode (no add buttons, no edit pencils, no chat FAB) rather than a second
+  copy of it that would drift. `ShareTripDialog` is the owner's control panel.
+
+`tests/test_trip_share.py` (16 tests) covers the security boundary: revoked/expired/unknown tokens are
+indistinguishable 404s, another user can't share your trip, the payload leaks nothing about the owner,
+and holding a link grants no write anywhere.
+
+---
+
+## 12. Being on the trip: `active` and What's Next
+
+Full design in `docs/active_trip_plan.md`. This is the app's first step from *planner* to *companion*.
+
+**A trip goes active on its start date, by itself.** Open it and the day-by-day timeline is replaced by
+**What's Next**: one hero card for the next thing you have to do, with an urgent countdown
+(`in 3 days` → `in 2h 15m` → `in 40 min` → `NOW`), the place with a Maps link, the flight number, and
+the **confirmation number one tap from copy**. A **✓ Done** button ticks it off and the screen advances.
+Below it, a flat "Then" list of what follows. The full itinerary is one tap away.
+
+**Derived, never stored.** `services/trip_status.py` computes it on every read. Persisting `active`
+would give you two sources of truth — the column and the clock — and they drift: a trip stays active
+forever after it ends, or you need a cron job to notice it didn't. The column stores *intent* (§4.1);
+`TripResponse` carries both `status` (resolved) and `statusIntent` (stored), because otherwise the
+status menu cannot tell an automatically-active trip from a hand-forced one.
+
+**There is almost no date logic**, and that is the point. A point serialises `startUtc`/`endUtc` — the
+instants the backend already derived — so `nextPoint()` is one comparison rather than a reconstruction
+of a wall clock against a possibly-null timezone. `utils/tripClock.js` is two pure functions, and one
+of its tests asserts *the browser's timezone cannot change the answer*. The first draft of the screen
+had a "today" concept, a day-of-trip counter and today/tomorrow grouping; cutting them **removed** the
+timezone problem rather than solving it.
+
+The assistant is deliberately **not** told the derived status — it renders nothing and behaves no
+differently mid-trip, and feeding it a clock-dependent value made the eval harness non-deterministic on
+exactly one day of the year.
+
+---
+
+## 13. Known gaps and deliberate deferrals
 
 - **No migrations.** By choice, until just before release. The database is recreated from
   `models.py`. `api/sql/` holds the DDL applied by hand during development;
   `2026-07-11_add_indexes.sql` is written but **not applied**.
-- **Single-user trips.** No sharing. `get_owned_trip` is the single ownership choke point, so a
-  `trip_members` table would be tractable — this is the most-requested-shaped feature.
-- **No "Today" view.** The app is a trip *planner*, not yet a trip *companion*. Every feature serves
-  you before you leave; the moment the trip starts it has nothing special to say. This is the biggest
-  product hole (see `docs/july_11_stop.md`).
+- **No collaborative editing.** Read-only share links exist (§11), but a recipient cannot change
+  anything and does not appear in the app. `get_owned_trip` is still the single ownership choke
+  point, so a `trip_members` table remains the tractable next step.
+- **A JWT cannot be revoked.** `POST /auth/logout` is a no-op — the strategy is stateless, so there is
+  nothing to destroy, and the token stays valid until it expires. The lifetime (7 days) *is* the blast
+  radius of a leak. Making logout real means a `revoked_tokens` denylist or fastapi-users'
+  `DatabaseStrategy`. See `docs/auth_test_analysis.md` §3.2.
+- **The Maps API key is effectively public.** `/auth/session` hands it to every logged-in user and the
+  frontend stores it in `localStorage` — unavoidable, since a browser Maps key must reach the browser.
+  **Restrict it by HTTP referrer in the Google Cloud console before deploying.**
+- **No rate limiting on `/auth/session`.** Non-issue locally; first thing an attacker tries once
+  deployed.
+- **The trip's timezone is null on every trip**, so the active-window boundary currently resolves in
+  UTC — a few hours of slop at midnight. The fix is to populate `default_timezone_id`, not to make the
+  rule cleverer.
 - **`/trips/ai-enhance`** exists but is not wired to anything.
 - **`ai.log` may contain PII** (message contents, locations). Fine locally; not fine deployed.
 - **Verify checks for *missing* data, not *impossible* data.** A 20-minute gap between an activity in
   Shuri and a flight from Naha passes today.
+- **The inspection flow overlaps the gaps banner.** `TripInspectionPage` + `TripWorkflowPage` (reached
+  by the ✅ on a trip card) and `TripGapsBanner` now answer nearly the same question in two places.
+  Kept deliberately, to be resolved later rather than quietly broken.
 - **Eval flakiness.** ~1 run in 6 fails on model non-determinism at `--threshold 1.0 --runs 1`.

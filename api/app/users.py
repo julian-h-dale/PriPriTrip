@@ -2,10 +2,11 @@
 fastapi-users configuration.
 
 - Transport: Bearer token (Authorization header)
-- Strategy: JWT (stateless, no DB token storage)
+- Strategy: JWT (stateless, no DB token storage — see get_jwt_strategy)
 - User DB: SQLAlchemy async adapter
 - Password hashing: bcrypt via fastapi-users built-in
-- Email verification: disabled (is_verified defaults to True on create)
+- Email verification: there is no flow, so every account is marked verified
+  after it is created (on_after_register). See docs/auth_test_analysis.md §3.1.
 """
 
 import uuid
@@ -59,18 +60,26 @@ class UserManager(UUIDIDMixin, BaseUserManager[UserRecord, uuid.UUID]):
     verification_token_secret = property(lambda self: _jwt_secret())
 
     async def on_after_register(self, user: UserRecord, request=None):
-        pass  # no-op; extend here for welcome emails etc.
+        # There is no email-verification flow, so every account is verified by
+        # definition. Say so in the data: the day anything asks for
+        # `current_user(verified=True)`, an unverified backlog locks out every
+        # user at once and the cause looks like sorcery.
+        #
+        # It has to happen HERE, not by patching the incoming UserCreate. Both
+        # registration routes call create(safe=True), and `safe=True` makes
+        # fastapi-users strip is_verified (along with is_active/is_superuser)
+        # precisely so a stranger POSTing to /auth/register cannot promote
+        # themselves. The old create() override set is_verified on the payload
+        # and it was silently discarded — every user landed unverified while the
+        # module docstring claimed otherwise. See docs/auth_test_analysis.md §3.1.
+        if not user.is_verified:
+            await self.user_db.update(user, {"is_verified": True})
 
     async def validate_password(self, password: str, user) -> None:
         # Minimum 8 characters; fastapi-users enforces non-empty by default
         if len(password) < 8:
             from fastapi_users import InvalidPasswordException
             raise InvalidPasswordException(reason="Password must be at least 8 characters.")
-
-    async def create(self, user_create: UserCreate, safe: bool = False, request=None):
-        # Auto-verify on creation — no email verification flow
-        patched = user_create.model_copy(update={"is_verified": True})
-        return await super().create(patched, safe=safe, request=request)
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):
@@ -83,7 +92,22 @@ bearer_transport = BearerTransport(tokenUrl="/auth/login")
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=_jwt_secret(), lifetime_seconds=60 * 60 * 24 * 30)  # 30 days
+    """Stateless tokens — which means a token cannot be revoked.
+
+    POST /auth/logout is a no-op with this strategy: `destroy_token` raises
+    NotSupportedError, the backend swallows it, and the token stays valid.
+    Logging out is the browser deleting it from localStorage, and that is
+    genuinely all that happens — anyone who copied it keeps access.
+
+    So **the lifetime IS the blast radius of a leaked token.** It was 30 days.
+    Seven is still generous for a trip-planning app and cuts the exposure by 4x.
+
+    Making logout real means giving the token something server-side to check:
+    either fastapi-users' DatabaseStrategy, or keep JWTs and add a `revoked_tokens`
+    denylist keyed on the `jti` claim. That is real work and there are no real
+    users yet — see docs/auth_test_analysis.md §3.2.
+    """
+    return JWTStrategy(secret=_jwt_secret(), lifetime_seconds=60 * 60 * 24 * 7)  # 7 days
 
 
 auth_backend = AuthenticationBackend(
