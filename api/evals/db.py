@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import contextlib
 import os
-from urllib.parse import urlparse, urlunparse
 import uuid
+from urllib.parse import urlparse, urlunparse
 
 import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -45,7 +45,7 @@ async def setup() -> None:
             f"Cannot reach PostgreSQL at {admin_dsn} ({exc}).\n"
             "Evals now run against a real database. Start it with:\n"
             "    cd api && docker compose up -d"
-        )
+        ) from None
     try:
         await conn.execute(f'DROP DATABASE IF EXISTS "{db_name}" WITH (FORCE)')
         await conn.execute(f'CREATE DATABASE "{db_name}"')

@@ -11,13 +11,11 @@ SQL the live evals do.
 import pytest_asyncio
 
 from app.services.trip_state import WorkflowOutcome
-
 from evals import db as eval_db
 from evals import mock_client
 from evals.checks import evaluate
-from evals.scenario import Checks, Scenario, load_scenarios
 from evals.runner import run_scenario
-
+from evals.scenario import Checks, Scenario, load_scenarios
 from tests.factories import make_stay, make_trip
 
 

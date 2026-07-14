@@ -13,13 +13,12 @@ What the column stores is *intent*:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.enums import TripStatus
 from app.services.trip_status import effective_status, is_underway
-
 from tests.factories import as_date, make_trip
 
 pytestmark = pytest.mark.asyncio
@@ -30,7 +29,7 @@ END = as_date("2026-11-05")
 
 
 def at(iso: str) -> datetime:
-    return datetime.fromisoformat(iso).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(iso).replace(tzinfo=UTC)
 
 
 class TestIsUnderway:
@@ -103,7 +102,7 @@ class TestTheApiReportsTheDerivedStatus:
     async def test_a_trip_underway_reads_as_active_without_anyone_setting_it(
         self, client, db, user
     ):
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         trip = await make_trip(
             db, user,
             status=TripStatus.DRAFT,
@@ -124,7 +123,7 @@ class TestTheApiReportsTheDerivedStatus:
 
     async def test_the_list_and_the_detail_agree(self, client, db, user):
         """Two readers, one function — or the chip and the screen disagree."""
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         planned = await make_trip(
             db, user, trip_name="Later",
             status=TripStatus.DRAFT,
@@ -146,7 +145,7 @@ class TestTheApiReportsTheDerivedStatus:
         Echoing the stored value back would flicker the UI to the timeline and then
         flip straight back on the next fetch.
         """
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         trip = await make_trip(
             db, user, status=TripStatus.ACTIVE,
             start_date=today, end_date=today + timedelta(days=2),
@@ -233,7 +232,7 @@ class TestContentPromotesATrip:
     async def test_and_it_can_then_go_active_on_its_start_date(self, client, db, user):
         from datetime import date as _date
 
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         trip = await make_trip(
             db, user, status=TripStatus.NEW,
             start_date=today, end_date=today + timedelta(days=2),
@@ -265,7 +264,7 @@ class TestTheItineraryLockReadsTheStoredValue:
         """
         from app.routers.trip_ai_import import _itinerary_doc_locked
 
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         trip = await make_trip(
             db, user, status=TripStatus.NEW,
             start_date=today, end_date=today + timedelta(days=2),

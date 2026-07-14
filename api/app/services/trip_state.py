@@ -9,7 +9,7 @@ joins, no caller can forget it (review.md 1C-3).
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.enums import PROMOTABLE_TO_DRAFT, TripStatus
-from app.services.trip_status import effective_status
 from app.models import (
     StayDetailRecord,
     TravelDetailRecord,
@@ -34,13 +33,14 @@ from app.schemas import (
     TripResponse,
     VerifyResult,
 )
+from app.services.trip_status import effective_status
 
 
 class WorkflowOutcome(BaseModel):
     assistantMessage: str
     complete: bool = False
-    verify: Optional[VerifyResult] = None
-    structuredContent: Optional[dict] = None
+    verify: VerifyResult | None = None
+    structuredContent: dict | None = None
 
 
 def promote_to_draft(trip: TripRecord) -> None:
@@ -136,11 +136,11 @@ async def assembled_trip(db: AsyncSession, trip: TripRecord) -> TripResponse:
         )
     ).scalar_one()
 
-    stays = {
+    stays: dict[str | None, StayDetail] = {
         stay.stay_detail_id: StayDetail.from_record(stay, stay.locations)
         for stay in loaded.stays
     }
-    travels = {
+    travels: dict[str | None, TravelDetail] = {
         travel.travel_detail_id: TravelDetail.from_record(travel, travel.locations)
         for travel in loaded.travels
     }

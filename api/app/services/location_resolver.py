@@ -19,11 +19,11 @@ place that judgement is made.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 import logging
 import re
 import unicodedata
+from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 
 import httpx
 

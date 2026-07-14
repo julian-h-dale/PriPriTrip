@@ -61,12 +61,12 @@ async def register_and_login(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email already exists.",
-        )
+        ) from None
     except fu_exc.InvalidPasswordException as exc:
         # Previously a 500: validate_password's rejection propagated unhandled.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=exc.reason,
-        )
+        ) from exc
 
     return await _session_response(user)

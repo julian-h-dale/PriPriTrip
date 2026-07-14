@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from datetime import date, datetime, timedelta, timezone
 import uuid
+from collections.abc import Iterable
+from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums import LocationRole
 from app.models import (
-    active,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
     TripPointRecord,
     TripRecord,
+    active,
 )
 from app.services.timezones import derive_utc, parse_wall_clock, wall_clock_to_text
-
 
 CHECK_IN_DEFAULT_TIME = "16:00"
 CHECK_OUT_DEFAULT_TIME = "11:00"
@@ -121,7 +120,7 @@ async def _load_generated_points(
     stay_detail_id: str | None = None,
     travel_detail_id: str | None = None,
 ) -> dict[str, TripPointRecord]:
-    conditions = [
+    conditions: list[ColumnElement[bool]] = [
         TripPointRecord.is_system_created.is_(True),
     ]
     if stay_detail_id is not None:
@@ -135,7 +134,7 @@ async def _load_generated_points(
 
 async def _soft_delete_point(point: TripPointRecord) -> None:
     point.is_deleted = True
-    point.deleted_at = datetime.now(timezone.utc)
+    point.deleted_at = datetime.now(UTC)
 
 
 async def _parent_locations(
@@ -410,7 +409,7 @@ async def reconcile_trip_days(db: AsyncSession, trip: TripRecord) -> None:
             if points_by_day.get(day.day_id):
                 continue
             day.is_deleted = True
-            day.deleted_at = datetime.now(timezone.utc)
+            day.deleted_at = datetime.now(UTC)
 
     await db.flush()
 

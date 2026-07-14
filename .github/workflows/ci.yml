@@ -5,6 +5,32 @@ on:
   pull_request:
 
 jobs:
+  # Lint and type-check need no database and finish in seconds, so they run as
+  # their own job rather than delaying the suite behind a Postgres container.
+  static:
+    name: Backend (ruff + mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: api/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: api
+
+      - name: Lint
+        run: ruff check .
+        working-directory: api
+
+      - name: Type check
+        run: mypy
+        working-directory: api
+
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
@@ -47,7 +73,7 @@ jobs:
           EVAL_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/pripritrip_evals
 
   frontend:
-    name: Frontend (lint + build)
+    name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +90,12 @@ jobs:
 
       - name: Lint
         run: npm run lint
+        working-directory: ui
+
+      # `vitest run`, not `vitest` — the bare command watches, and a watcher in
+      # CI hangs until the job times out (review.md R8).
+      - name: Test
+        run: npm run test:run
         working-directory: ui
 
       - name: Build

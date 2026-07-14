@@ -20,11 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import (
-    active,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripRecord,
+    active,
 )
 from app.schemas import (
     StayDetail,
@@ -62,7 +62,7 @@ async def _locations_by_owner(db: AsyncSession, *, stay_ids=None, travel_ids=Non
     grouped: dict[str, list] = {}
     for loc in result.scalars().all():
         owner_id = loc.stay_detail_id if stay_ids else loc.travel_detail_id
-        if owner_id in owner_ids:
+        if owner_id is not None and owner_id in owner_ids:
             grouped.setdefault(owner_id, []).append(loc)
     return grouped
 

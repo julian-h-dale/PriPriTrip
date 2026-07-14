@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
-import re
-
 
 _REQUIRED_SECTIONS = {
     "base",
@@ -50,7 +49,7 @@ def _load_prompt_sections() -> dict[str, str]:
     try:
         text = prompt_path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise RuntimeError(f"Prompt file not found at {prompt_path}")
+        raise RuntimeError(f"Prompt file not found at {prompt_path}") from None
     cleaned = text.strip()
     if not cleaned:
         raise RuntimeError(f"Prompt file is empty at {prompt_path}")

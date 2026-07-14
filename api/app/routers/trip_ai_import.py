@@ -18,10 +18,9 @@ the same file, and it backs the itinerary-reimport guard.
 Draft structuring persists nothing; the frontend saves via POST /trips/{trip_id}/import.
 """
 
+import hashlib
 import logging
 import time
-
-import hashlib
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -32,10 +31,20 @@ from app.auth import require_auth
 from app.database import get_db
 from app.dependencies import get_owned_trip, require_owned_trip
 from app.enums import AIDocumentType, AIDocumentWorkflowMode
-from app.models import AIDocumentRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
-from app.schemas import AIDocumentExtraction, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
-from app.services import document_ingest, trip_ai
-from app.services import trip_write
+from app.models import (
+    AIDocumentRecord,
+    StayDetailRecord,
+    TravelDetailRecord,
+    TripRecord,
+    UserRecord,
+)
+from app.schemas import (
+    AIDocumentExtraction,
+    AIDocumentSaveRequest,
+    AIDocumentSaveResult,
+    TripImport,
+)
+from app.services import document_ingest, trip_ai, trip_write
 from app.services.trip_state import promote_to_draft
 
 logger = logging.getLogger("app.ai_import")
@@ -68,6 +77,14 @@ def _remint_record_ids(payload: AIDocumentExtraction) -> None:
 
 
 def _document_payload(rec: AIDocumentRecord) -> AIDocumentExtraction:
+    if rec.extracted_payload is None:
+        # The column is nullable, so this is reachable in principle: a row written
+        # before the extraction finished. Say which document, rather than letting
+        # Pydantic report "input should be a valid string" about a None nobody named.
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Document {rec.document_id} has no extracted payload.",
+        )
     payload = AIDocumentExtraction.model_validate_json(rec.extracted_payload)
     payload.document_id = rec.document_id
     payload.trip_id = rec.trip_id
@@ -136,19 +153,22 @@ async def _ai_import(
             detail=_itinerary_reimport_detail(trip=trip),
         )
 
-    if trip is None:
+    # No trip means no session: /trips/ai-import structures a document for a trip
+    # that does not exist yet and persists nothing. Testing both makes that pairing
+    # explicit instead of leaving it as an unwritten rule between the two callers.
+    if trip is None or db is None:
         document_text = document_ingest.extract_text(filename, data)
         logger.info("ai-import extracted %d chars of text from %s", len(document_text), filename)
         try:
             draft = await trip_ai.structure_document(document_text)
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("ai-import failed during structure pass for %s", filename)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="AI import failed. See server logs for details.",
-            )
+            ) from exc
         elapsed = time.monotonic() - started
         logger.info(
             "ai-import done: file=%s trip=%r days=%d in %.1fs",
@@ -185,12 +205,12 @@ async def _ai_import(
             draft = await trip_ai.structure_document(document_text)
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
             logger.exception("ai-import failed during structure pass for %s", filename)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="AI import failed. See server logs for details.",
-            )
+            ) from exc
 
     draft = draft.model_copy(update={"trip_id": trip.trip_id})
 
@@ -250,12 +270,12 @@ async def ai_enhance(
         enhanced = await trip_ai.enhance_trip_import(trip)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("ai-enhance failed for trip=%r", trip.trip_name)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI enhance failed. See server logs for details.",
-        )
+        ) from exc
 
     elapsed = time.monotonic() - started
     logger.info(
@@ -381,12 +401,12 @@ async def ai_document_import(
             trip_import_payload = None
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("ai-document failed during extraction for %s", filename)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI document import failed. See server logs for details.",
-        )
+        ) from exc
 
     document_id = cached_doc.document_id if cached_doc is not None else str(uuid.uuid4())
     payload = AIDocumentExtraction(

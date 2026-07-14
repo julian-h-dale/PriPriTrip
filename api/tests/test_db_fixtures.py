@@ -1,14 +1,13 @@
 """The test database itself: isolation and real constraints (review.md 1C-3)."""
 
-from datetime import date
 import uuid
+from datetime import date
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.models import TripRecord, active
-
 from tests.factories import make_day, make_location, make_point, make_stay, make_trip
 
 

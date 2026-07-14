@@ -8,14 +8,13 @@ the app that returns user data; most of this file is about that one route.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
 
 from app.models import TripShareRecord
 from app.services.trip_share import active_share, create_or_get_share
-
 from tests.factories import as_date, make_day, make_point, make_stay, make_travel, make_trip
 
 pytestmark = pytest.mark.asyncio
@@ -166,7 +165,7 @@ class TestTakingItBack:
     ):
         trip = await make_trip(db, user)
         share = await create_or_get_share(db, trip=trip)
-        share.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        share.expires_at = datetime.now(UTC) - timedelta(seconds=1)
         await db.commit()
 
         assert (await anon_client.get(f"/shared/{share.token}")).status_code == 404

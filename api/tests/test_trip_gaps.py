@@ -15,7 +15,6 @@ import pytest
 
 from app.services.trip_gaps import BLOCKING, WORTH_ADDING, find_gaps
 from app.services.trip_state import assembled_trip
-
 from tests.factories import as_date, make_stay, make_travel, make_trip
 
 pytestmark = pytest.mark.asyncio

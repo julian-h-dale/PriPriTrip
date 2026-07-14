@@ -19,8 +19,8 @@ TEST_DATABASE_URL.
 
 import os
 import sys
-from urllib.parse import urlparse, urlunparse
 import uuid
+from urllib.parse import urlparse, urlunparse
 
 import pytest
 import pytest_asyncio
@@ -32,15 +32,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # The app fails fast at boot without a JWT secret; tests don't need a real one.
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
-import asyncpg  # noqa: E402
-from fastapi import HTTPException, Request  # noqa: E402
-from httpx import ASGITransport, AsyncClient  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine  # noqa: E402
+import asyncpg
+from fastapi import HTTPException, Request
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from app.auth import require_auth  # noqa: E402
-from app.database import Base, get_db  # noqa: E402
-from app.main import app  # noqa: E402
-from app.models import UserRecord  # noqa: E402
+from app.auth import require_auth
+from app.database import Base, get_db
+from app.main import app
+from app.models import UserRecord
 
 DEFAULT_TEST_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5433/pripritrip_test"
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_DB_URL)

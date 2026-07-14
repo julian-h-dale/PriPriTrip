@@ -10,7 +10,6 @@ fastapi-users configuration.
 """
 
 import uuid
-from typing import Optional
 
 from fastapi import Depends
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
@@ -21,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import UserRecord
 from app.settings import get_settings
-
 
 # ── User schemas ──────────────────────────────────────────────────────────────
 
@@ -34,7 +32,7 @@ class UserCreate(schemas.BaseUserCreate):
 
 
 class UserUpdate(schemas.BaseUserUpdate):
-    name: Optional[str] = None
+    name: str | None = None
 
 
 # ── DB adapter ────────────────────────────────────────────────────────────────

@@ -7,9 +7,9 @@ dependency — no database, no monkeypatching of module attributes.
 
 import uuid
 
-from fastapi_users import exceptions as fu_exc
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
+from fastapi_users import exceptions as fu_exc
 
 from app.main import app
 from app.settings import get_settings

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
 import logging
+from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
@@ -73,7 +73,7 @@ def _normalize(value: Any) -> Any:
 def log_ai_event(event: str, **data: Any) -> None:
     logger = get_ai_logger()
     payload = {
-        "timestampUtc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "timestampUtc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "event": event,
         **{k: _normalize(v) for k, v in data.items()},
     }

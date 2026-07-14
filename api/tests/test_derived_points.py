@@ -28,7 +28,6 @@ from app.services.detail_points import (
 )
 from app.services.llm_contract import AssistantAction
 from app.services.trip_action_executor import execute_action
-
 from tests.factories import make_day, make_location, make_point, make_stay, make_travel, make_trip
 
 pytestmark = pytest.mark.asyncio

@@ -23,7 +23,6 @@ from app.schemas import StayDetailImport
 from app.services import trip_ai
 from app.services.trip_ai import AIDocumentDraft
 from app.services.trip_state import promote_to_draft
-
 from tests.factories import as_date, make_trip
 
 pytestmark = pytest.mark.asyncio
@@ -179,8 +178,8 @@ class TestThePointCarriesItsInstant:
         """What's Next compares against `now`; a wall clock cannot be compared."""
         from datetime import datetime
 
-        from tests.factories import make_travel
         from app.services.detail_points import sync_travel_generated_points
+        from tests.factories import make_travel
 
         trip = await make_trip(
             db, user, start_date=as_date("2026-10-30"), end_date=as_date("2026-10-30"),

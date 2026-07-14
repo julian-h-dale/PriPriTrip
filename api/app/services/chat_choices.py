@@ -14,6 +14,7 @@ so the user's tap decides the record — no re-guessing, and no model call.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -119,6 +120,7 @@ async def apply_choice(
 async def _owner_trip_id(db: AsyncSession, location: LocationRecord) -> str | None:
     from app.models import StayDetailRecord, TravelDetailRecord, TripPointRecord
 
+    owner: Any
     if location.point_id:
         owner = await db.get(TripPointRecord, location.point_id)
     elif location.stay_detail_id:

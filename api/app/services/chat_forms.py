@@ -16,9 +16,9 @@ other write, with no LLM call at all: a plain save is instant and free.
 
 from __future__ import annotations
 
-from datetime import date, datetime
 import uuid
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,7 +74,7 @@ FIELD_SPECS: dict[str, dict[str, FieldSpec]] = {
         # Only the authored type. Check-in/departure points are generated from a
         # stay or travel leg (app.enums.DERIVED_POINT_TYPES), so offering them
         # here would let a form create the duplicate the rest of the app refuses.
-        "type": FieldSpec("Type", SELECT, "type", sorted(AUTHORED_POINT_TYPES)),
+        "type": FieldSpec("Type", SELECT, "type", tuple(sorted(t.value for t in AUTHORED_POINT_TYPES))),
         "startDateTime": FieldSpec("Starts", DATETIME, "start_local"),
         "endDateTime": FieldSpec("Ends", DATETIME, "end_local"),
         "confirmationNumber": FieldSpec("Confirmation number", TEXT, "confirmation_number"),
@@ -102,7 +102,7 @@ FIELD_SPECS: dict[str, dict[str, FieldSpec]] = {
     },
 }
 
-_RECORD_BY_TARGET = {
+_RECORD_BY_TARGET: dict[str, tuple[type[Any], str]] = {
     "day": (TripDayRecord, "day_id"),
     "point": (TripPointRecord, "point_id"),
     "stay": (StayDetailRecord, "stay_detail_id"),
@@ -149,7 +149,7 @@ async def _load_record(db: AsyncSession, trip: TripRecord, target: str, record_i
     except (AttributeError, TypeError, ValueError):
         raise FormError(
             f"{record_id!r} is not a valid {target} id. Use an id from get_trip_snapshot."
-        )
+        ) from None
     record = await db.get(model, str(record_id))
     if (
         record is None

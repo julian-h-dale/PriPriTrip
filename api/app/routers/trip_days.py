@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_owned_trip
-from app.models import active, deleted, TripDayRecord, TripRecord
+from app.models import TripDayRecord, TripRecord, active, deleted
 from app.schemas import TripDayCreate, TripDayPatch, TripDayResponse
 from app.services import trip_write
 

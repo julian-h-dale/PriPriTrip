@@ -1,0 +1,53 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+# Beyond pyflakes (which is all we had, and which was run by hand):
+#   E,W  pycodestyle    F    pyflakes
+#   I    import order   UP   pyupgrade (py312 idioms)
+#   B    bugbear        the real-bug rules: mutable defaults, loop-variable capture
+#   ASYNC                    blocking calls inside async def
+#   C4   comprehensions RUF  ruff's own
+select = ["E", "W", "F", "I", "UP", "B", "ASYNC", "C4", "RUF"]
+
+ignore = [
+    "E501",    # line length — the formatter owns this, and prose comments run long
+    "B008",    # function call in a default argument: `Depends(...)` IS FastAPI's API
+    "RUF012",  # ClassVar annotations on mutable class attrs — noisy for Pydantic/SQLA
+    # The comments in this codebase are prose, and prose uses en dashes and arrows.
+    # These rules exist to catch homoglyph attacks in identifiers, not typography.
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests say `assert` for a living, and re-import inside a test for locality.
+"tests/*" = ["B011"]
+# The prompt/contract modules keep camelCase names on purpose — they are the wire
+# format the model speaks, not Python style.
+"app/services/llm_contract.py" = ["N815"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "evals", "tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app"]
+# Pydantic generates each model's __init__, so without this plugin every
+# `TripResponse(tripName=...)` is a false "unexpected keyword argument" — 105 of
+# them, a wall of noise that would bury the real findings. SQLAlchemy needs no
+# plugin: the models use 2.0 `Mapped[...]` annotations, which mypy reads directly.
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true          # timezonefinder, fastapi_users, … ship no stubs
+# Not strict. This codebase was written without annotations, and a type checker
+# that reports 500 errors nobody fixes is worse than no type checker. These are
+# the settings that catch the bug this project actually has: a `str | None`
+# flowing into something that assumes a value.
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true

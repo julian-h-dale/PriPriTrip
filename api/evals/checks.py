@@ -6,9 +6,9 @@ trip state, message patterns — never exact model wording.
 
 from __future__ import annotations
 
-from datetime import date, datetime
 import re
 from dataclasses import dataclass
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +23,6 @@ from app.models import (
     active,
 )
 from app.services.trip_state import WorkflowOutcome
-
 from evals.scenario import Checks, PersistedSpec
 
 _COUNT_MODELS = {

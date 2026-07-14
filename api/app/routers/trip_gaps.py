@@ -95,7 +95,9 @@ async def submit_trip_gap(
         # re-checked against the registry rather than trusted.
         values = validate_submission(body.target, body.values)
     except FormError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
     if not values:
         raise HTTPException(

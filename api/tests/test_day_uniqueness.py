@@ -29,7 +29,6 @@ from app.services.detail_points import (
 from app.services.llm_contract import AssistantAction
 from app.services.trip_action_executor import execute_action
 from app.services.trip_state import assembled_trip
-
 from tests.factories import as_date, make_day, make_travel, make_trip
 
 pytestmark = pytest.mark.asyncio

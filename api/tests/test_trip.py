@@ -1,7 +1,6 @@
 """Tests for the /trips CRUD endpoints, against a real database."""
 
 from app.models import TripRecord
-
 from tests.factories import make_day, make_point, make_stay, make_travel, make_trip, new_id
 
 

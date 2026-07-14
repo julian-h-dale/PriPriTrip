@@ -15,7 +15,8 @@ import asyncio
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 
 from evals import db as eval_db
 from evals.runner import ScenarioResult, run_scenario
@@ -66,7 +67,7 @@ def _print_result(result: ScenarioResult, threshold: float, verbose: bool):
 
 def _report_dict(results: list[ScenarioResult], threshold: float, elapsed: float) -> dict:
     return {
-        "ranAt": datetime.now(timezone.utc).isoformat(),
+        "ranAt": datetime.now(UTC).isoformat(),
         "threshold": threshold,
         "elapsedSeconds": round(elapsed, 1),
         "passed": sum(1 for r in results if r.passed(threshold)),
@@ -128,8 +129,8 @@ async def _main(argv=None) -> int:
     print(f"\n{passed}/{len(results)} scenarios passed (threshold {args.threshold}, {elapsed:.0f}s)")
 
     if args.json_path:
-        with open(args.json_path, "w", encoding="utf-8") as fh:
-            json.dump(_report_dict(results, args.threshold, elapsed), fh, indent=2)
+        report = json.dumps(_report_dict(results, args.threshold, elapsed), indent=2)
+        await asyncio.to_thread(Path(args.json_path).write_text, report, encoding="utf-8")
         print(f"Report written to {args.json_path}")
 
     return 0 if passed == len(results) else 1

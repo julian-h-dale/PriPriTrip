@@ -44,10 +44,11 @@ Conventions
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Iterable
 import uuid
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,7 +75,6 @@ from app.services.detail_points import (
     sync_travel_generated_points,
 )
 from app.services.llm_contract import LocationDecision
-from app.services.trip_state import promote_to_draft
 from app.services.location_resolver import enrich_location_dict
 from app.services.locations import location_rows
 from app.services.timezones import (
@@ -83,6 +83,7 @@ from app.services.timezones import (
     parse_wall_clock,
     wall_clock_to_text,
 )
+from app.services.trip_state import promote_to_draft
 
 
 class WriteError(ValueError):
@@ -119,7 +120,7 @@ def new_id() -> str:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _as_location_dicts(locations: Iterable[Any] | None) -> list[dict[str, Any]]:

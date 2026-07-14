@@ -19,10 +19,11 @@ and the two copies drifted. See `review.md` R1–R4.
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Awaitable, Callable
-import uuid
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -130,7 +131,7 @@ def _normalize_trip_dates(fields: dict[str, Any], *, trip: TripRecord) -> dict[s
     result = dict(fields)
     today = date.today().isoformat()
 
-    for key, other in (("startDate", "endDate"), ("endDate", "startDate")):
+    for key in ("startDate", "endDate"):
         if key not in result or result[key] is None:
             continue
         normalized = normalize_date(
@@ -155,7 +156,7 @@ def _normalize_trip_dates(fields: dict[str, Any], *, trip: TripRecord) -> dict[s
 @dataclass(frozen=True)
 class _Target:
     noun: str  # "Stay" — for the model-facing messages
-    model: type
+    model: type[Any]
     id_field: str  # the camelCase key the model uses
     create_schema: type[BaseModel]
     patch_schema: type[BaseModel]
@@ -258,8 +259,8 @@ async def _dispatch(db: AsyncSession, trip: TripRecord, action: AssistantAction)
         )
 
     if action.op == "update":
-        patch = spec.patch_schema.model_validate(fields)
-        result = await spec.update(db, trip, rec, patch)
+        record_patch: Any = spec.patch_schema.model_validate(fields)
+        result = await spec.update(db, trip, rec, record_patch)
         return _result(
             action, id=action.id, status="ok", locations=result.location_decisions
         )
@@ -310,7 +311,7 @@ async def _create(
                 detail="Day create requires a title and a date (ISO YYYY-MM-DD).",
             )
 
-    data = spec.create_schema.model_validate(payload)
+    data: Any = spec.create_schema.model_validate(payload)
 
     if action.target == "point":
         result = await spec.create(db, trip, day, data)
@@ -325,6 +326,7 @@ async def _create(
 
     # A "created" day that landed on a date which already had one was *renamed*,
     # not duplicated. Tell the model which id to use for the points it adds next.
+    detail: str | None
     if action.target == "day" and getattr(result, "adopted", False):
         detail = (
             f"{data.date.isoformat()} already had a day, so it was renamed to "

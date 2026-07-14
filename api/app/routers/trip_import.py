@@ -8,13 +8,13 @@ from app.auth import require_auth
 from app.database import get_db
 from app.enums import DERIVED_POINT_TYPES, TripStatus
 from app.models import (
-    active,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
     TripPointRecord,
     TripRecord,
     UserRecord,
+    active,
 )
 from app.schemas import ImportResult, TripImport
 from app.services import trip_write
@@ -77,12 +77,12 @@ async def import_trip(
     # become two July 25ths — the later one's points move onto the day already there.
     days_inserted = 0
     points_inserted = 0
-    primary_by_date: dict[date, str] = {}
+    primary_by_date: dict[date, TripDayRecord] = {}
     day_for_point: list[tuple[TripDayRecord, list]] = []
 
     for day_data in body.days:
         if not day_data.is_alternate and day_data.date in primary_by_date:
-            day = await db.get(TripDayRecord, primary_by_date[day_data.date])
+            day = primary_by_date[day_data.date]
         else:
             day = TripDayRecord(
                 day_id=day_data.day_id,
@@ -97,7 +97,7 @@ async def import_trip(
             await db.flush()
             days_inserted += 1
             if not day_data.is_alternate:
-                primary_by_date[day_data.date] = day.day_id
+                primary_by_date[day_data.date] = day
         day_for_point.append((day, day_data.points))
 
     # ── 5. Stays & travels, through the write layer ──────────────────────────

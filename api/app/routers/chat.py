@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 import json
 import uuid
+from collections.abc import Sequence
+from datetime import UTC, date, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -59,7 +61,9 @@ def _safe_json_dict(raw: str | None) -> dict:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _build_transcript_window(messages: list[ChatMessageRecord]) -> tuple[list[dict], list[ChatMessageRecord]]:
+def _build_transcript_window(
+    messages: Sequence[ChatMessageRecord],
+) -> tuple[list[dict], list[ChatMessageRecord]]:
     if len(messages) <= _TRANSCRIPT_WINDOW_TURNS:
         return [
             {
@@ -68,7 +72,7 @@ def _build_transcript_window(messages: list[ChatMessageRecord]) -> tuple[list[di
             }
             for rec in messages
         ], []
-    older = messages[:-_TRANSCRIPT_WINDOW_TURNS]
+    older = list(messages[:-_TRANSCRIPT_WINDOW_TURNS])
     window = messages[-_TRANSCRIPT_WINDOW_TURNS:]
     return [
         {
@@ -132,9 +136,9 @@ def _app_current_date(user: UserRecord) -> str:
 
     tzid = _safe_str(getattr(user, "home_timezone_id", None))
     try:
-        tz = ZoneInfo(tzid) if tzid else timezone.utc
+        tz = ZoneInfo(tzid) if tzid else UTC
     except Exception:
-        tz = timezone.utc
+        tz = UTC
     return datetime.now(tz).date().isoformat()
 
 
@@ -274,7 +278,7 @@ async def reply_in_chat(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A request with this id is already being processed.",
-        )
+        ) from None
 
     transcript_result = await db.execute(
         select(ChatMessageRecord)
@@ -360,10 +364,17 @@ async def reply_in_chat(
                         yield _sse("status", {"tool": event["tool"], "label": event["label"]})
                     else:
                         outcome = event["outcome"]
+                if outcome is None:
+                    # The loop always ends with an "outcome" event. If it did not,
+                    # there is no reply to persist — fail loudly rather than
+                    # storing a half-turn.
+                    raise RuntimeError("The chat loop ended without an outcome.")
                 bot_text = outcome.assistantMessage
                 complete = outcome.complete
                 verify = outcome.verify
-                structure_content = json.dumps(outcome.structuredContent) if outcome.structuredContent else None
+                structure_content = (
+                    json.dumps(outcome.structuredContent) if outcome.structuredContent else None
+                )
             else:
                 bot_text = f"Hello world - {date.today().isoformat()}"
                 complete = False
@@ -495,9 +506,11 @@ async def submit_chat_choice(
         )
     except ChoiceError as exc:
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
-    picked = next(
+    picked: dict[str, Any] = next(
         (o for o in choice.get("options", []) if o.get("optionId") == body.option_id), {}
     )
     # A searched place has no option to take a label from — use what Places
@@ -581,7 +594,9 @@ async def submit_chat_form(
     try:
         values = validate_submission(body.target, body.values)
     except FormError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
     action = AssistantAction(
         op="update" if (body.record_id or body.target == "trip") else "create",

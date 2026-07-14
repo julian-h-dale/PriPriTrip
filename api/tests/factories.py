@@ -6,8 +6,8 @@ all apply — which is the point of moving off the fake sessions (review.md 1C-3
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 import uuid
+from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +39,7 @@ def _soft_delete_fields(overrides: dict) -> dict:
     deleted. (Two fields encoding one fact — see review.md 1C-3.)
     """
     if overrides.get("is_deleted") and "deleted_at" not in overrides:
-        overrides["deleted_at"] = datetime.now(timezone.utc)
+        overrides["deleted_at"] = datetime.now(UTC)
     return overrides
 
 

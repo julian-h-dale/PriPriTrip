@@ -21,7 +21,6 @@ from app.services.trip_ai import (
     to_trip_import,
 )
 
-
 client = TestClient(app)
 
 

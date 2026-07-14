@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
-import re
 
 _WEEKDAY_INDEX = {
     "monday": 0,
@@ -99,16 +99,9 @@ def normalize_date(value: DateNormalizerInput) -> str | None:
         candidate = _month_day_next_occurrence(anchor, month, day)
         if candidate is None:
             return None
-
-        if value.tripStartDate and value.tripEndDate:
-            try:
-                start = date.fromisoformat(value.tripStartDate)
-                end = date.fromisoformat(value.tripEndDate)
-            except ValueError:
-                start = end = None
-            if start and end and start <= candidate <= end:
-                return candidate.isoformat()
-
+        # No trip-range check here on purpose: "Oct 30" resolves to the next
+        # Oct 30 from the anchor, whether or not that lands inside the trip.
+        # Silently snapping it into range would invent a date the user never said.
         return candidate.isoformat()
 
     md_numeric = re.fullmatch(r"(\d{1,2})/(\d{1,2})", raw)

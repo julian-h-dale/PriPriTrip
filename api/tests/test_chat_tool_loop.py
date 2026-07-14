@@ -11,7 +11,6 @@ from sqlalchemy import func, select
 
 from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord
 from app.services.chat_tool_loop import run_chat_tool_loop, stream_chat_tool_loop
-
 from evals.mock_client import ScriptedClient, response, tool_call
 from tests.factories import make_trip
 

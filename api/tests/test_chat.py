@@ -15,7 +15,6 @@ from sqlalchemy import func, select
 from app.models import ChatMessageRecord
 from app.routers import chat as chat_router
 from app.services.trip_state import WorkflowOutcome
-
 from tests.factories import make_trip
 
 

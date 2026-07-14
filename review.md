@@ -13,6 +13,12 @@ actual output is quoted.
 > the four REST routers, and both importers) and none of them contains a rule. R1, R2 and R3 are fixed
 > — not individually patched, but made *structurally impossible*, because there is no longer a second
 > place for a rule to be missing from. See [What shipped](#what-shipped-s1).
+>
+> ### ✅ Update 2026-07-13 — the safety nets are on: R8, R9, R11, R19
+>
+> CI now gates on **ruff** (clean), **mypy** (clean, 0 errors), **302 pytest** and **88 frontend tests**
+> — 29 of which render an actual React component, which nothing did before. The N+1 point serializer is
+> gone. See [What shipped](#what-shipped-r8-r9-r11-r19).
 
 ---
 
@@ -70,11 +76,11 @@ not in a config file. `pyflakes` is being run by hand.
 | **R1** | ✅ | Correctness | ~~A chat-built trip stays `status="new"` → an itinerary upload **silently deletes it**.~~ **FIXED** |
 | **R2** | ✅ | Correctness | ~~Chat-created stays get **`UTC` instead of the venue's timezone** — a 9-hour error in `startUtc`.~~ **FIXED** |
 | **R3** | ✅ | Correctness | ~~The assistant **cannot clear a field**, and the tool reports `ok`.~~ **FIXED** |
-| **R8** | 🔴 | CI | **CI never runs the frontend tests.** 58 tests, none of them gating a merge. |
+| **R8** | ✅ | CI | ~~**CI never runs the frontend tests.**~~ Fixed — `npm run test:run` gates CI. |
 | **R4** | ✅ | Architecture | ~~Two write paths implementing the same rules.~~ **FIXED — `services/trip_write.py`** |
 | **R5** | ✅ | Architecture | ~~`execute_action` is a **single ~510-line function**.~~ **FIXED — table-driven, 739 → 343 lines** |
-| **R9** | 🟠 | Tooling | No ruff/black/mypy. No Python lint step in CI. |
-| **R11** | 🟠 | Frontend | **Zero component tests.** Nothing renders a React component in a test. |
+| **R9** | ✅ | Tooling | ~~No ruff/black/mypy.~~ Fixed — both clean, both gate CI. |
+| **R11** | ✅ | Frontend | ~~**Zero component tests.**~~ Fixed — 29 render tests across 4 components. |
 | **R6** | 🟠 | Duplication | A travel leg's field list is declared in **6 places across 5 files**. |
 | **R10** | 🟠 | Supply chain | **Zero pinned Python dependencies**, no lockfile. |
 
@@ -364,7 +370,7 @@ If R4 lands (a real domain layer with per-entity input types), this class disapp
 
 ## Tooling, CI and process
 
-### R8 🔴 CI never runs the frontend tests
+### R8 ✅ CI never runs the frontend tests — *fixed*
 
 `.github/workflows/ci.yml`:
 
@@ -394,7 +400,7 @@ three.
         working-directory: ui
 ```
 
-### R9 🟠 There is no Python linter, formatter or type checker
+### R9 ✅ There is no Python linter, formatter or type checker — *fixed*
 
 No `pyproject.toml`. No `ruff.toml`, no `setup.cfg`, no `mypy.ini`. No lint step in CI. `pyflakes` is
 invoked by hand, and it catches unused imports and essentially nothing else.
@@ -439,7 +445,7 @@ or `openai` will arrive as a mystery CI failure with no code change.
 The frontend does this correctly — `package-lock.json` is committed. Do the same on the backend:
 `uv`/`pip-tools` producing a lock file, or `pyproject.toml` + `uv.lock`.
 
-### R11 🟠 Zero component tests
+### R11 ✅ Zero component tests — *fixed*
 
 All 58 frontend tests are utils, hooks and the store:
 
@@ -576,7 +582,7 @@ trip?.status === 'active'         // HomePage.jsx
 
 Cheap to fix; R12 (OpenAPI-generated types) would fix the frontend half for free.
 
-### R19 🟡 Two point serializers, one N+1-safe and one not
+### R19 ✅ Two point serializers, one N+1-safe and one not — *fixed*
 
 `trip_points.py` has both `_load_point_responses()` (batched — 4 queries total) and `_load_point_response()`
 (per point — 5 queries *each*). The singular one is only safe because it is currently used on single
@@ -660,6 +666,86 @@ PASS  bonus: 4 imported airports now have coordinates
 
 ---
 
+## What shipped (R8, R9, R11, R19)
+
+### R8 — the frontend tests gate a merge
+
+`ui/package.json` gained `"test:run": "vitest run"` (the bare `vitest` watches, and a watcher in CI hangs
+until the job times out), and the `frontend` job runs it between lint and build.
+
+### R9 — ruff and mypy, both clean, both gating
+
+`api/pyproject.toml` configures both, `requirements-dev.txt` pins them exactly (a floating minor that adds
+a rule turns an unrelated PR red), and a new `static` CI job runs them. It needs no database, so it does
+not wait behind the Postgres container.
+
+**ruff** — `E, W, F, I, UP, B, ASYNC, C4, RUF`. First run: **526 findings**. 494 were auto-fixed
+(`X | None` over `Optional[X]`, `list` over `List`, import sorting, `datetime.UTC`). The rest were
+hand-fixed, and a few were real:
+
+* **ASYNC230** — the eval runner opened its report file with blocking `open()` inside an `async def`.
+* **B904** ×13 — `raise HTTPException(...)` inside an `except` with no `from`, discarding the cause. Now
+  each one either chains (`from exc`, where the cause is the diagnostic) or suppresses deliberately
+  (`from None`, where it is expected control flow — an already-registered email, a duplicate request id).
+* **B905** ×5 — `zip()` with no `strict=`. Now explicit, with a note on why `strict=False` is right there.
+
+**mypy** — non-strict but `check_untyped_defs`. First run: **153 errors**. 105 of them were Pydantic
+`__init__` false positives, killed by the `pydantic.mypy` plugin. (SQLAlchemy needs no plugin: the models
+use 2.0 `Mapped[...]` annotations, which mypy reads directly. Its own plugin is deprecated anyway.) Of the
+remaining 48, most were annotation debt — but **four were latent bugs**:
+
+* `date_normalizer.py` — the trip-range check on a `"Oct 30"` style date was **dead code**: both branches
+  returned the identical value, so the whole block had no effect. Deleted, with a comment saying why
+  snapping a date into range would be wrong anyway.
+* `chat_tool_loop.py` ×2 — `msg` is initialised to `None` and only set by the stream's final event. If the
+  stream died mid-flight, the next line raised `AttributeError: 'NoneType' has no attribute 'tool_calls'`.
+  Same shape in `chat.py` with `outcome`. All three now fail with a sentence that says what happened.
+* `trip_ai_import.py` — `_ai_import(trip=None, db=None)` relied on an unwritten rule that the two are
+  always passed together. Now it tests both.
+* `dependencies.py` — `require_owned_trip` was annotated `-> TripRecord` while returning `TripRecord | None`.
+
+Two incidental wins: `trip_import.py` was re-fetching a `TripDayRecord` it had inserted moments earlier
+just to get it back out of the identity map — it now keeps the record. And `trip_action_executor.py` had
+two different variables called `patch` in one function.
+
+### R11 — 29 component tests, where there were none
+
+`@testing-library/react` was installed and unused. Now:
+
+| component | what the tests pin |
+|---|---|
+| `NextUpCard` | 10 — the confirmation number is one tap from the screen, the copy button copies it, and **"be at the airport by…" appears on a departure but never on an arrival** |
+| `WhatsNextView` | 7 — the thing happening *now* beats the thing that is merely next; ticking one off sends `completed: true` |
+| `TripGapsBanner` | 7 — it never renders an empty "0 things missing" alert; "1 thing missing", not "1 things" |
+| `ChatChoiceCard` | 6 — a picked place sends **only** an `optionId` or a `placeId`, never coordinates |
+
+Those are the two bugs that shipped (`"in 4h 60m"`, the airport hint on an arrival) and the property that
+keeps the model from inventing geography. I confirmed the tests bite rather than passing vacuously by
+reintroducing the arrival bug into `tripClock.js` and watching that one test — and only that one — fail.
+
+### R19 — one point serializer
+
+`_load_point_response()` (5 queries for a single point) was a second, hand-written implementation of
+`_load_point_responses()` (4 queries for any number). It is now a three-line wrapper over the batched one.
+Two loaders for one response shape meant two places for the soft-delete filter to be forgotten.
+
+**Verified**: ruff clean, mypy clean (0 errors, 45 files), 302 pytest, 88 frontend tests, 15/15 live evals.
+
+> **One thing this turned up, for the record.** The first full eval run came back **14/15**:
+> `partial-capture-flight` failed, then passed 4/4 in isolation and 15/15 on a second full run. Nothing
+> the model reads had changed (the system prompt and every tool description are byte-identical; the eval
+> diff is pure `Optional[X]` → `X | None`), so this is nondeterminism, not a regression.
+>
+> It is nondeterminism the eval *invites*, though. `partial-capture-flight` asserts the reply
+> **`message matches /\?/`** — a literal question mark. The model had answered *"If you want, I can add
+> when you arrive…"*, which is the right behaviour phrased as an offer instead of a question. **That is an
+> assertion on wording**, which is the one thing [this harness is praised above for never
+> doing](#what-is-genuinely-good). Worth rewriting to assert the structural consequence (the turn ends
+> without a completed travel leg and with `complete=false`) rather than the punctuation. Left alone here:
+> loosening an eval while changing the code it guards is how a real regression gets waved through.
+
+---
+
 ## Priority roadmap
 
 **~~This week — stop the bleeding~~ ✅ done**
@@ -670,18 +756,24 @@ PASS  bonus: 4 imported airports now have coordinates
 4. ~~**S1 / R4**~~ ✅ — the single domain layer. 1–3 cannot recur.
 5. ~~**S2 / R5**~~ ✅ — the executor is table-driven and 343 lines.
 
+**~~Next — the safety nets~~ ✅ done**
+
+6. ~~**R8**~~ ✅ — `test:run` added; the frontend suite gates a merge.
+7. ~~**R9**~~ ✅ — ruff + mypy, both clean, both in CI, both pinned.
+8. ~~**R11**~~ ✅ — 29 component tests across the four screens that keep breaking.
+9. ~~**R19**~~ ✅ — one point serializer, not two.
+
 **Next**
 
-6. **R8** — add `test:run`, put it in CI. *(5 min. Still the single cheapest safety net available.)*
-7. **R9** — ruff + mypy, in CI.
-8. **R10** — pin and lock the Python dependencies.
+10. **R10** — pin and lock the Python dependencies. *(The last open item from the original top 10, and now
+    the only unfixed one. `ruff` and `mypy` are pinned exactly; the other 14 are still `>=`.)*
 
 **Then — pay down**
 
-9. **R11** — component tests for the screens that keep breaking.
-10. **S4** — OpenAPI → TypeScript types.
-11. **S3** — delete the hand-written forms (`FIELD_SPECS` + `ChatFormCard` already do the job).
-12. **S5 / S6 / R16 / R17 / R18** — schema collapse, dead code, dangling references, magic strings.
+11. **S4** — OpenAPI → TypeScript types.
+12. **S3** — delete the hand-written forms (`FIELD_SPECS` + `ChatFormCard` already do the job).
+13. **S5 / S6 / R16 / R17 / R18** — schema collapse, dead code, dangling references, magic strings.
+14. **The brittle eval** — `partial-capture-flight` asserts on a question mark; make it structural.
 
 ---
 

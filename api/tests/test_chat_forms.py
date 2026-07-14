@@ -9,6 +9,7 @@ from datetime import datetime
 
 import pytest
 import pytest_asyncio
+from pydantic import ValidationError
 
 from app.enums import StayType, TravelMode
 from app.services.chat_forms import (
@@ -18,7 +19,6 @@ from app.services.chat_forms import (
     validate_submission,
 )
 from app.services.chat_tools import TOOL_REGISTRY, RequestFormArgs
-
 from tests.factories import make_stay, make_travel, make_trip
 
 
@@ -224,7 +224,7 @@ class TestRequestFormTool:
         assert outcome.form is None  # nothing shown to the user
 
     def test_the_model_cannot_ask_for_zero_fields(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             RequestFormArgs(target="stay", fields=[])
 
 

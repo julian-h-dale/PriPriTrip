@@ -1,7 +1,7 @@
 from fastapi import Depends
 
-from app.users import current_active_user
 from app.models import UserRecord
+from app.users import current_active_user
 
 
 async def require_auth(user: UserRecord = Depends(current_active_user)) -> UserRecord:

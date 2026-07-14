@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
 
 from app.models import StayDetailRecord, TravelDetailRecord, TripDayRecord, TripRecord
-from app.services.detail_points import reconcile_trip_days
 from app.services.chat_tool_loop import run_chat_tool_loop
+from app.services.detail_points import reconcile_trip_days
 from app.services.timezones import parse_wall_clock
 from app.services.trip_state import WorkflowOutcome
-
 from evals import db as eval_db
 from evals.checks import CheckResult, evaluate
 from evals.scenario import Scenario

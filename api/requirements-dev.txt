@@ -2,3 +2,9 @@
 pytest>=8.0
 pytest-asyncio>=0.24
 httpx>=0.27
+
+# Lint + type check (review.md R9). Both are configured in pyproject.toml and
+# both gate CI, so they are pinned exactly: a floating minor that adds a rule
+# turns an unrelated PR red.
+ruff==0.15.21
+mypy==2.3.0

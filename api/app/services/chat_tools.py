@@ -14,16 +14,14 @@ backend resolves place metadata server-side (review.md 3C-6).
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums import PointType, StayType, TravelMode
-
-# The only point type anyone may author; see app.enums.DERIVED_POINT_TYPES.
-AuthoredPointType = Literal[PointType.ACTIVITY]
 from app.models import TripRecord
 from app.schemas import ChatChoice, ChatForm
 from app.services.chat_choices import build_choice
@@ -36,6 +34,9 @@ from app.services.llm_contract import (
 )
 from app.services.location_resolver import _normalize, resolve_location
 from app.services.trip_action_executor import execute_action
+
+# The only point type anyone may author; see app.enums.DERIVED_POINT_TYPES.
+AuthoredPointType = Literal[PointType.ACTIVITY]
 
 
 class _ToolArgs(BaseModel):
@@ -52,7 +53,7 @@ _LOCATIONS_HINT = (
 )
 
 
-def _locations() -> Optional[list[ActionLocationFields]]:
+def _locations() -> list[ActionLocationFields] | None:
     """The `locations` field, described identically on every tool that takes one."""
     return Field(default=None, description=_LOCATIONS_HINT)
 
@@ -60,13 +61,13 @@ def _locations() -> Optional[list[ActionLocationFields]]:
 # ── Trip ─────────────────────────────────────────────────────────────────────
 
 class UpdateTripArgs(_ToolArgs):
-    tripName: Optional[str] = None
-    status: Optional[str] = None
-    startLocationName: Optional[str] = None
-    destinationLocationName: Optional[str] = None
-    defaultTimezoneId: Optional[str] = None
-    startDate: Optional[str] = None
-    endDate: Optional[str] = None
+    tripName: str | None = None
+    status: str | None = None
+    startLocationName: str | None = None
+    destinationLocationName: str | None = None
+    defaultTimezoneId: str | None = None
+    startDate: str | None = None
+    endDate: str | None = None
 
 
 # ── Day ──────────────────────────────────────────────────────────────────────
@@ -74,16 +75,16 @@ class UpdateTripArgs(_ToolArgs):
 class CreateDayArgs(_ToolArgs):
     title: str
     date: str
-    description: Optional[str] = None
-    isAlternate: Optional[bool] = None
+    description: str | None = None
+    isAlternate: bool | None = None
 
 
 class UpdateDayArgs(_ToolArgs):
     dayId: str
-    title: Optional[str] = None
-    date: Optional[str] = None
-    description: Optional[str] = None
-    isAlternate: Optional[bool] = None
+    title: str | None = None
+    date: str | None = None
+    description: str | None = None
+    isAlternate: bool | None = None
 
 
 class DeleteDayArgs(_ToolArgs):
@@ -101,27 +102,27 @@ class CreatePointArgs(_ToolArgs):
     # express the duplicate, rather than being told off for it afterwards.
     type: AuthoredPointType
     title: str
-    startDateTime: Optional[str] = None
-    startTimezoneId: Optional[str] = None
-    endDateTime: Optional[str] = None
-    endTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = _locations()
+    startDateTime: str | None = None
+    startTimezoneId: str | None = None
+    endDateTime: str | None = None
+    endTimezoneId: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[ActionLocationFields] | None = _locations()
 
 
 class UpdatePointArgs(_ToolArgs):
     pointId: str
-    dayId: Optional[str] = None
-    type: Optional[AuthoredPointType] = None
-    title: Optional[str] = None
-    startDateTime: Optional[str] = None
-    startTimezoneId: Optional[str] = None
-    endDateTime: Optional[str] = None
-    endTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = _locations()
+    dayId: str | None = None
+    type: AuthoredPointType | None = None
+    title: str | None = None
+    startDateTime: str | None = None
+    startTimezoneId: str | None = None
+    endDateTime: str | None = None
+    endTimezoneId: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[ActionLocationFields] | None = _locations()
 
 
 class DeletePointArgs(_ToolArgs):
@@ -131,30 +132,30 @@ class DeletePointArgs(_ToolArgs):
 # ── Stay ─────────────────────────────────────────────────────────────────────
 
 class CreateStayArgs(_ToolArgs):
-    name: Optional[str] = None
-    stayType: Optional[StayType] = None
-    checkIn: Optional[str] = None
-    checkInTimezoneId: Optional[str] = None
-    checkOut: Optional[str] = None
-    checkOutTimezoneId: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = _locations()
+    name: str | None = None
+    stayType: StayType | None = None
+    checkIn: str | None = None
+    checkInTimezoneId: str | None = None
+    checkOut: str | None = None
+    checkOutTimezoneId: str | None = None
+    roomType: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[ActionLocationFields] | None = _locations()
 
 
 class UpdateStayArgs(_ToolArgs):
     stayDetailId: str
-    name: Optional[str] = None
-    stayType: Optional[StayType] = None
-    checkIn: Optional[str] = None
-    checkInTimezoneId: Optional[str] = None
-    checkOut: Optional[str] = None
-    checkOutTimezoneId: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = _locations()
+    name: str | None = None
+    stayType: StayType | None = None
+    checkIn: str | None = None
+    checkInTimezoneId: str | None = None
+    checkOut: str | None = None
+    checkOutTimezoneId: str | None = None
+    roomType: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[ActionLocationFields] | None = _locations()
 
 
 class DeleteStayArgs(_ToolArgs):
@@ -164,34 +165,34 @@ class DeleteStayArgs(_ToolArgs):
 # ── Travel ───────────────────────────────────────────────────────────────────
 
 class CreateTravelArgs(_ToolArgs):
-    name: Optional[str] = None
-    mode: Optional[TravelMode] = None
-    operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
-    departureDateTime: Optional[str] = None
-    departureTimezoneId: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    arrivalTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = _locations()
+    name: str | None = None
+    mode: TravelMode | None = None
+    operator: str | None = None
+    vehicleNumber: str | None = None
+    cabinClass: str | None = None
+    departureDateTime: str | None = None
+    departureTimezoneId: str | None = None
+    arrivalDateTime: str | None = None
+    arrivalTimezoneId: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[ActionLocationFields] | None = _locations()
 
 
 class UpdateTravelArgs(_ToolArgs):
     travelDetailId: str
-    name: Optional[str] = None
-    mode: Optional[TravelMode] = None
-    operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
-    departureDateTime: Optional[str] = None
-    departureTimezoneId: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    arrivalTimezoneId: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[list[ActionLocationFields]] = _locations()
+    name: str | None = None
+    mode: TravelMode | None = None
+    operator: str | None = None
+    vehicleNumber: str | None = None
+    cabinClass: str | None = None
+    departureDateTime: str | None = None
+    departureTimezoneId: str | None = None
+    arrivalDateTime: str | None = None
+    arrivalTimezoneId: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[ActionLocationFields] | None = _locations()
 
 
 class DeleteTravelArgs(_ToolArgs):
@@ -221,12 +222,12 @@ class RequestFormArgs(_ToolArgs):
 
     target: Literal["trip", "day", "point", "stay", "travel"]
     fields: list[str] = Field(min_length=1)
-    recordId: Optional[str] = Field(
+    recordId: str | None = Field(
         default=None,
         description="Id of the record to edit. Omit to have the form create a new record.",
     )
-    title: Optional[str] = None
-    submitLabel: Optional[str] = None
+    title: str | None = None
+    submitLabel: str | None = None
 
 
 # ── Handlers ─────────────────────────────────────────────────────────────────
@@ -400,7 +401,9 @@ class ToolSpec:
     name: str
     description: str
     args_model: type[_ToolArgs]
-    handler: Callable[[AsyncSession, TripRecord, _ToolArgs], Awaitable[ToolOutcome]]
+    # Each handler takes its own _ToolArgs subclass, so this cannot be typed more
+    # tightly than Any without a generic ToolSpec[T] the registry could not hold.
+    handler: Callable[[AsyncSession, TripRecord, Any], Awaitable[ToolOutcome]]
 
 
 TOOL_REGISTRY: dict[str, ToolSpec] = {

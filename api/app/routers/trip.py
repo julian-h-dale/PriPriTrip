@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
@@ -8,21 +8,21 @@ from app.auth import require_auth
 from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import (
-    active,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
     TripPointRecord,
     TripRecord,
     UserRecord,
+    active,
 )
 from app.schemas import (
     TripHeader,
     TripHeaderResponse,
     TripListItem,
     TripPatch,
-    TripStatusUpdate,
     TripResponse,
+    TripStatusUpdate,
     VerifyResult,
 )
 from app.services import trip_write
@@ -167,7 +167,7 @@ async def delete_trip(
     db: AsyncSession = Depends(get_db),
 ):
     trip_id = trip.trip_id
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     trip.is_deleted = True
     trip.deleted_at = now
 

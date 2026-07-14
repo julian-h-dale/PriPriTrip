@@ -6,7 +6,6 @@ being handed back by a fake session.
 """
 
 from app.models import LocationRecord, StayDetailRecord, TravelDetailRecord
-
 from tests.factories import make_location, make_stay, make_travel, make_trip, new_id
 
 

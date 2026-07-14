@@ -13,8 +13,8 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from types import SimpleNamespace
-from typing import AsyncIterator
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
@@ -289,6 +289,11 @@ async def stream_chat_tool_loop(
                 yield {"type": "delta", "text": payload}
             else:
                 msg, usage = payload, chunk_usage
+        if msg is None:
+            # _stream_completion always ends with a "message" event. Reaching here
+            # means the stream died mid-flight; say so, rather than throwing
+            # AttributeError on None one line down.
+            raise RuntimeError("The model stream ended without producing a message.")
         tool_calls = list(msg.tool_calls or [])
 
         if not tool_calls:
@@ -381,6 +386,8 @@ async def stream_chat_tool_loop(
                     yield {"type": "delta", "text": payload}
                 else:
                     msg, usage = payload, chunk_usage
+            if msg is None:
+                raise RuntimeError("The model stream ended without producing a message.")
             final_text = (msg.content or "").strip()
             log_ai_event(
                 "ai.chat_loop.final",

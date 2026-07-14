@@ -19,7 +19,7 @@ What's Next screen, so there is nothing to escape from.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.enums import TripStatus
@@ -46,9 +46,9 @@ def trip_timezone(trip: TripRecord) -> ZoneInfo:
 
 def local_today(trip: TripRecord, now: datetime | None = None) -> date:
     """Today's date where the trip is happening."""
-    moment = now or datetime.now(timezone.utc)
+    moment = now or datetime.now(UTC)
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=UTC)
     return moment.astimezone(trip_timezone(trip)).date()
 
 

@@ -3,7 +3,6 @@
 from datetime import date
 
 from app.models import TripDayRecord
-
 from tests.factories import make_day, make_trip, new_id
 
 

@@ -11,7 +11,7 @@ through HTTP and compares the rows.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone as _tz
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -23,7 +23,6 @@ from app.services.llm_contract import AssistantAction
 from app.services.trip_action_executor import execute_action
 from app.services.trip_status import effective_status
 from app.services.trip_write import ConflictError, WriteError
-
 from tests.factories import as_date, make_day, make_stay, make_travel, make_trip
 
 pytestmark = pytest.mark.asyncio
@@ -89,7 +88,7 @@ class TestR1ContentPromotesTheTrip:
         # A +/-1 day window: date.today() is the *local* date while the active window
         # resolves in UTC (default_timezone_id is null on every trip), so a same-day
         # range is flaky either side of midnight.
-        today = datetime.now(_tz.utc).date()
+        today = datetime.now(UTC).date()
         trip = await make_trip(
             db, user, status=TripStatus.NEW,
             start_date=today - timedelta(days=1), end_date=today + timedelta(days=1),

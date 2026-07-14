@@ -21,7 +21,6 @@ from openpyxl import Workbook
 from app.schemas import StayDetailImport
 from app.services import trip_ai
 from app.services.trip_ai import AIDocumentDraft
-
 from tests.factories import as_date, make_trip
 
 pytestmark = pytest.mark.asyncio

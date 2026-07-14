@@ -5,8 +5,8 @@ Called by dev.sh on every local start after the Postgres container is wiped.
 import asyncio
 import sys
 
-from app.database import Base, engine
 import app.models  # noqa: F401 — registers all models against Base
+from app.database import Base, engine
 
 
 async def main() -> None:

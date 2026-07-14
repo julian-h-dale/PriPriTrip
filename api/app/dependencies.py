@@ -28,7 +28,10 @@ def is_active_trip(trip: TripRecord | None, user: UserRecord) -> bool:
 async def require_owned_trip(db: AsyncSession, trip_id: str, user: UserRecord) -> TripRecord:
     """Plain helper for handlers whose trip id comes from the body, not the path."""
     trip = await db.get(TripRecord, trip_id)
-    if not is_active_trip(trip, user):
+    # `trip is None` is checked here rather than left to is_active_trip so that
+    # the return below is a TripRecord, not a TripRecord | None. is_active_trip
+    # cannot be a TypeIs: it also returns False for a live-but-soft-deleted trip.
+    if trip is None or not is_active_trip(trip, user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
     return trip
 

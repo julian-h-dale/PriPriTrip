@@ -4,16 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_owned_trip
-from app.services import trip_write
 from app.models import (
-    active,
-    deleted,
     LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
     TripPointRecord,
     TripRecord,
+    active,
+    deleted,
 )
 from app.schemas import (
     StayDetail,
@@ -22,6 +21,7 @@ from app.schemas import (
     TripPointPatch,
     TripPointResponse,
 )
+from app.services import trip_write
 
 router = APIRouter(
     prefix="/trips/{trip_id}/points",
@@ -116,43 +116,15 @@ async def _load_point_responses(
 
 
 async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> TripPointResponse:
-    loc_result = await db.execute(
-        select(LocationRecord)
-        .where(LocationRecord.point_id == point.point_id)
-        .order_by(LocationRecord.sort_order)
-    )
-    locations = loc_result.scalars().all()
+    """One point, through the batched loader (review.md R19).
 
-    travel_detail = None
-    if point.travel_detail_id:
-        travel = await db.get(TravelDetailRecord, point.travel_detail_id)
-        if travel and not travel.is_deleted and travel.deleted_at is None:
-            tlocs = (
-                await db.execute(
-                    select(LocationRecord).where(
-                        LocationRecord.travel_detail_id == travel.travel_detail_id
-                    )
-                )
-            ).scalars().all()
-            travel_detail = TravelDetail.from_record(travel, tlocs)
-
-    stay_detail = None
-    if point.stay_detail_id:
-        stay = await db.get(StayDetailRecord, point.stay_detail_id)
-        if stay and not stay.is_deleted and stay.deleted_at is None:
-            slocs = (
-                await db.execute(
-                    select(LocationRecord).where(
-                        LocationRecord.stay_detail_id == stay.stay_detail_id
-                    )
-                )
-            ).scalars().all()
-            stay_detail = StayDetail.from_record(stay, slocs)
-
-    return TripPointResponse.from_record(point, locations, travel_detail, stay_detail)
-
-
-
+    This used to be a second, hand-written implementation that fired five queries
+    for a single point. Two loaders for one response shape meant two places for the
+    soft-delete filter to be forgotten; now there is only one, and it costs four
+    queries whether you ask for one point or a hundred.
+    """
+    [response] = await _load_point_responses([point], db)
+    return response
 
 
 

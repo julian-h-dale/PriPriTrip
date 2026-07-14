@@ -20,7 +20,6 @@ from sqlalchemy import func, select
 from app.models import StayDetailRecord
 from app.services.llm_contract import AssistantAction
 from app.services.trip_action_executor import execute_action
-
 from tests.factories import make_trip
 
 

@@ -16,9 +16,9 @@ in plaintext, because the owner has to be able to copy the link again). It is:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +30,7 @@ _TOKEN_BYTES = 32
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def new_token() -> str:

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -36,73 +35,73 @@ logger = logging.getLogger("app.trip_ai")
 class AILocation(BaseModel):
     role: LocationRole
     name: str
-    description: Optional[str] = None
-    link: Optional[str] = None
+    description: str | None = None
+    link: str | None = None
 
 
 class AIStay(BaseModel):
     ref: str  # temporary id the model assigns, referenced by points
-    name: Optional[str] = None
+    name: str | None = None
     stayType: StayType
-    checkIn: Optional[str] = None
-    checkOut: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[AILocation] = []
+    checkIn: str | None = None
+    checkOut: str | None = None
+    roomType: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[AILocation] = []
 
 
 class AITravel(BaseModel):
     ref: str  # temporary id the model assigns, referenced by points
-    name: Optional[str] = None
+    name: str | None = None
     mode: TravelMode
-    operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
-    departureDateTime: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[AILocation] = []
+    operator: str | None = None
+    vehicleNumber: str | None = None
+    cabinClass: str | None = None
+    departureDateTime: str | None = None
+    arrivalDateTime: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[AILocation] = []
 
 
 class AIPoint(BaseModel):
     type: PointType
     title: str
-    stayRef: Optional[str] = None  # -> AIStay.ref for check-in/check-out
-    travelRef: Optional[str] = None  # -> AITravel.ref for departure/arrival
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[AILocation] = []
+    stayRef: str | None = None  # -> AIStay.ref for check-in/check-out
+    travelRef: str | None = None  # -> AITravel.ref for departure/arrival
+    startDateTime: str | None = None
+    endDateTime: str | None = None
+    confirmationNumber: str | None = None
+    description: str | None = None
+    locations: list[AILocation] = []
 
 
 class AIDay(BaseModel):
     title: str
     date: str
-    description: Optional[str] = None
+    description: str | None = None
     isAlternate: bool = False
-    points: List[AIPoint] = []
+    points: list[AIPoint] = []
 
 
 class AITrip(BaseModel):
     tripName: str
     startDate: str
     endDate: str
-    stays: List[AIStay] = []
-    travels: List[AITravel] = []
-    days: List[AIDay] = []
+    stays: list[AIStay] = []
+    travels: list[AITravel] = []
+    days: list[AIDay] = []
 
 
 class AIDocumentExtract(BaseModel):
-    stays: List[AIStay] = []
-    travels: List[AITravel] = []
+    stays: list[AIStay] = []
+    travels: list[AITravel] = []
 
 
 class AIDocumentDraft(BaseModel):
-    stays: List[StayDetailImport] = []
-    travels: List[TravelDetailImport] = []
+    stays: list[StayDetailImport] = []
+    travels: list[TravelDetailImport] = []
 
 
 # ── Prompts ───────────────────────────────────────────────────────────────
@@ -223,7 +222,7 @@ async def enhance_trip(trip: AITrip, client=None) -> AITrip:
     return await _parse(client, _ENHANCE_SYSTEM, user, pass_name="enhance")
 
 
-def _ai_locations(ai_locs, *, stay_id=None, travel_id=None) -> List[LocationCreate]:
+def _ai_locations(ai_locs, *, stay_id=None, travel_id=None) -> list[LocationCreate]:
     return [
         LocationCreate(
             locationId=str(uuid.uuid4()),
@@ -244,7 +243,7 @@ def to_trip_import(trip: AITrip) -> TripImport:
     stay_ref_to_id = {s.ref: str(uuid.uuid4()) for s in trip.stays}
     travel_ref_to_id = {t.ref: str(uuid.uuid4()) for t in trip.travels}
 
-    stays: List[StayDetailImport] = [
+    stays: list[StayDetailImport] = [
         StayDetailImport(
             stayDetailId=stay_ref_to_id[s.ref],
             name=s.name,
@@ -258,7 +257,7 @@ def to_trip_import(trip: AITrip) -> TripImport:
         )
         for s in trip.stays
     ]
-    travels: List[TravelDetailImport] = [
+    travels: list[TravelDetailImport] = [
         TravelDetailImport(
             travelDetailId=travel_ref_to_id[t.ref],
             name=t.name,
@@ -275,10 +274,10 @@ def to_trip_import(trip: AITrip) -> TripImport:
         for t in trip.travels
     ]
 
-    days: List[TripDayImport] = []
+    days: list[TripDayImport] = []
     for ai_day in trip.days:
         day_id = str(uuid.uuid4())
-        points: List[TripPointCreate] = []
+        points: list[TripPointCreate] = []
         for ai_point in ai_day.points:
             points.append(
                 TripPointCreate(
@@ -336,7 +335,7 @@ async def extract_document_records(document_text: str, client=None) -> AIDocumen
     user = f"Document text:\n\n{document_text}"
     parsed = await _parse_document(client, _DOCUMENT_SYSTEM, user, pass_name="document")
 
-    stays: List[StayDetailImport] = []
+    stays: list[StayDetailImport] = []
     for s in parsed.stays:
         stays.append(
             StayDetailImport(
@@ -352,7 +351,7 @@ async def extract_document_records(document_text: str, client=None) -> AIDocumen
             )
         )
 
-    travels: List[TravelDetailImport] = []
+    travels: list[TravelDetailImport] = []
     for t in parsed.travels:
         travels.append(
             TravelDetailImport(
@@ -376,7 +375,7 @@ async def extract_document_records(document_text: str, client=None) -> AIDocumen
     )
 
 
-def _ai_locs_from(locations) -> List[AILocation]:
+def _ai_locs_from(locations) -> list[AILocation]:
     return [
         AILocation(role=loc.role, name=loc.name, description=loc.description, link=loc.link)
         for loc in locations
@@ -463,24 +462,29 @@ async def enhance_trip_import(trip: TripImport, client=None) -> TripImport:
     )
     enhanced = await enhance_trip(_trip_import_to_ai(trip), client=client)
 
+    # strict=False everywhere below: the merge pairs records up by position, and
+    # _ENHANCE_SYSTEM forbids the model adding or removing any. If it disobeys and
+    # returns a short list, stopping at the shorter one leaves the extra records
+    # with their original descriptions — degraded, but the facts survive. Raising
+    # would fail the whole import over a cosmetic pass.
     def _merge_locs(locs, ai_locs):
-        for loc, ai_loc in zip(locs, ai_locs):
+        for loc, ai_loc in zip(locs, ai_locs, strict=False):
             if ai_loc.description:
                 loc.description = ai_loc.description
 
     result = trip.model_copy(deep=True)
-    for stay, ai_stay in zip(result.stays, enhanced.stays):
+    for stay, ai_stay in zip(result.stays, enhanced.stays, strict=False):
         if ai_stay.description:
             stay.description = ai_stay.description
         _merge_locs(stay.locations, ai_stay.locations)
-    for travel, ai_travel in zip(result.travels, enhanced.travels):
+    for travel, ai_travel in zip(result.travels, enhanced.travels, strict=False):
         if ai_travel.description:
             travel.description = ai_travel.description
         _merge_locs(travel.locations, ai_travel.locations)
-    for day, ai_day in zip(result.days, enhanced.days):
+    for day, ai_day in zip(result.days, enhanced.days, strict=False):
         if ai_day.description:
             day.description = ai_day.description
-        for pt, ai_pt in zip(day.points, ai_day.points):
+        for pt, ai_pt in zip(day.points, ai_day.points, strict=False):
             if ai_pt.description:
                 pt.description = ai_pt.description
             _merge_locs(pt.locations, ai_pt.locations)

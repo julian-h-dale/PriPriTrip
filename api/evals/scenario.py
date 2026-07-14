@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,28 +15,28 @@ class SeedDay(BaseModel):
 
     title: str
     date: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class SeedStay(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: Optional[str] = None
+    name: str | None = None
     stayType: str = "hotel"
-    checkIn: Optional[str] = None
-    checkOut: Optional[str] = None
-    roomType: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    checkIn: str | None = None
+    checkOut: str | None = None
+    roomType: str | None = None
+    confirmationNumber: str | None = None
 
 
 class SeedTravel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: Optional[str] = None
+    name: str | None = None
     mode: str = "flight"
-    departureDateTime: Optional[str] = None
-    arrivalDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
+    departureDateTime: str | None = None
+    arrivalDateTime: str | None = None
+    confirmationNumber: str | None = None
 
 
 class SeedTrip(BaseModel):
@@ -45,11 +44,11 @@ class SeedTrip(BaseModel):
 
     tripName: str = "New Trip Draft"
     status: str = "new"
-    startDate: Optional[str] = None
-    endDate: Optional[str] = None
-    startLocationName: Optional[str] = None
-    destinationLocationName: Optional[str] = None
-    defaultTimezoneId: Optional[str] = None
+    startDate: str | None = None
+    endDate: str | None = None
+    startLocationName: str | None = None
+    destinationLocationName: str | None = None
+    defaultTimezoneId: str | None = None
 
 
 class PersistedSpec(BaseModel):
@@ -77,7 +76,7 @@ class LocationSpec(BaseModel):
     nameMatches: str  # case-insensitive regex against the saved location name
     # True: must carry a Google place id (we were sure). False: must NOT (we
     # refused to guess, and the user is choosing).
-    resolved: Optional[bool] = None
+    resolved: bool | None = None
 
 
 class Checks(BaseModel):
@@ -94,10 +93,10 @@ class Checks(BaseModel):
     finalMessageNotMatches: list[str] = Field(default_factory=list)
     # What the assistant handed the user to interact with: "choice", "form", or
     # "none" for a plain prose reply.
-    uiPayloadKind: Optional[str] = None
-    maxIterations: Optional[int] = None
-    capHit: Optional[bool] = None
-    complete: Optional[bool] = None
+    uiPayloadKind: str | None = None
+    maxIterations: int | None = None
+    capHit: bool | None = None
+    complete: bool | None = None
 
 
 class Scenario(BaseModel):
@@ -105,7 +104,7 @@ class Scenario(BaseModel):
 
     name: str
     description: str
-    requirement: Optional[str] = None  # pointer into the requirements doc / review.md
+    requirement: str | None = None  # pointer into the requirements doc / review.md
     workflowName: str = "trip:manage"
     trip: SeedTrip = Field(default_factory=SeedTrip)
     days: list[SeedDay] = Field(default_factory=list)
@@ -114,7 +113,7 @@ class Scenario(BaseModel):
     transcript: list[dict] = Field(default_factory=list)  # [{"role": ..., "message": ...}]
     message: str
     appCurrentDate: str = "2026-07-09"  # fixed date so relative-date checks are deterministic
-    conversationSummary: Optional[str] = None
+    conversationSummary: str | None = None
     checks: Checks
 
 

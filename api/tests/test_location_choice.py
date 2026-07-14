@@ -17,7 +17,6 @@ from app.services.chat_tools import TOOL_REGISTRY
 from app.services.llm_contract import AssistantAction, LocationDecision
 from app.services.location_resolver import _bias_query, classify, similarity
 from app.services.trip_action_executor import execute_action
-
 from tests.factories import make_stay, make_trip
 
 
@@ -259,7 +258,7 @@ class TestApplyChoice:
         return trip, location, choice
 
     async def test_the_picked_place_is_written_to_the_location(self, db, user, monkeypatch):
-        trip, location, choice = await self._setup_choice(db, user, monkeypatch)
+        trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
 
         updated = await apply_choice(db, trip=trip, choice=choice, option_id="place-0")
 
@@ -276,7 +275,7 @@ class TestApplyChoice:
             await apply_choice(db, trip=trip, choice=choice, option_id="place-i-made-up")
 
     async def test_a_location_on_another_trip_is_rejected(self, db, user, monkeypatch):
-        trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
+        _trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
         other_trip = await make_trip(db, user, trip_name="Someone else's")
 
         with pytest.raises(ChoiceError):
@@ -297,7 +296,7 @@ class TestApplyChoice:
         assert updated.lat is not None  # real coordinates, so it maps
 
     async def test_a_searched_place_still_cannot_reach_another_trip(self, db, user, monkeypatch):
-        trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
+        _trip, _location, choice = await self._setup_choice(db, user, monkeypatch)
         other_trip = await make_trip(db, user, trip_name="Someone else's")
 
         with pytest.raises(ChoiceError):

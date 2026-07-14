@@ -11,13 +11,21 @@ their camelCase field names are part of the LLM contract.
 """
 
 import uuid
-from datetime import date as CalendarDate, datetime
-from typing import List, Optional
+from datetime import date as CalendarDate
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.enums import AIDocumentType, AIDocumentWorkflowMode, LocationRole, PointType, StayType, TravelMode, TripStatus
+from app.enums import (
+    AIDocumentType,
+    AIDocumentWorkflowMode,
+    LocationRole,
+    PointType,
+    StayType,
+    TravelMode,
+    TripStatus,
+)
 from app.services.timezones import wall_clock_to_text
 
 
@@ -46,29 +54,29 @@ class AuthResponse(APIModel):
 
 
 class UserProfileLocation(APIModel):
-    name: Optional[str] = None
-    full_address: Optional[str] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    google_place_id: Optional[str] = None
-    google_maps_uri: Optional[str] = None
+    name: str | None = None
+    full_address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    google_place_id: str | None = None
+    google_maps_uri: str | None = None
 
 
 class UserProfileResponse(APIModel):
     email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
     home_location: UserProfileLocation = UserProfileLocation()
-    home_timezone_id: Optional[str] = None
-    phone_number: Optional[str] = None
+    home_timezone_id: str | None = None
+    phone_number: str | None = None
 
 
 class UserProfileUpdate(APIModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    home_location: Optional[UserProfileLocation] = None
-    home_timezone_id: Optional[str] = None
-    phone_number: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    home_location: UserProfileLocation | None = None
+    home_timezone_id: str | None = None
+    phone_number: str | None = None
 
 
 class TimezoneLookupRequest(APIModel):
@@ -77,18 +85,18 @@ class TimezoneLookupRequest(APIModel):
 
 
 class TimezoneLookupResponse(APIModel):
-    timezone_id: Optional[str] = None
+    timezone_id: str | None = None
 
 
 # ── Trip header ─────────────────────────────────────────────────────────────
 
 class TripHeader(APIModel):
     # Optional: the PUT /trips/{trip_id} path segment is authoritative.
-    trip_id: Optional[str] = None
+    trip_id: str | None = None
     trip_name: str
-    start_location_name: Optional[str] = None
-    destination_location_name: Optional[str] = None
-    default_timezone_id: Optional[str] = None
+    start_location_name: str | None = None
+    destination_location_name: str | None = None
+    default_timezone_id: str | None = None
     start_date: CalendarDate
     end_date: CalendarDate
 
@@ -109,13 +117,13 @@ class TripPatch(APIModel):
     "clear it".
     """
 
-    trip_name: Optional[str] = None
-    status: Optional[TripStatus] = None
-    start_location_name: Optional[str] = None
-    destination_location_name: Optional[str] = None
-    default_timezone_id: Optional[str] = None
-    start_date: Optional[CalendarDate] = None
-    end_date: Optional[CalendarDate] = None
+    trip_name: str | None = None
+    status: TripStatus | None = None
+    start_location_name: str | None = None
+    destination_location_name: str | None = None
+    default_timezone_id: str | None = None
+    start_date: CalendarDate | None = None
+    end_date: CalendarDate | None = None
 
 
 class TripStatusUpdate(APIModel):
@@ -134,35 +142,35 @@ class LocationCreate(APIModel):
     location_id: str = Field(default_factory=_uuid)
     role: LocationRole
     name: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    full_address: Optional[str] = None
-    description: Optional[str] = None
-    link: Optional[str] = None
-    google_place_id: Optional[str] = None
-    google_maps_uri: Optional[str] = None
-    timezone_id: Optional[str] = None
+    lat: float | None = None
+    lng: float | None = None
+    full_address: str | None = None
+    description: str | None = None
+    link: str | None = None
+    google_place_id: str | None = None
+    google_maps_uri: str | None = None
+    timezone_id: str | None = None
 
 
 class LocationResponse(APIModel):
     location_id: str
     # Exactly one owner is set depending on what the location is attached to.
-    point_id: Optional[str] = None
-    stay_detail_id: Optional[str] = None
-    travel_detail_id: Optional[str] = None
+    point_id: str | None = None
+    stay_detail_id: str | None = None
+    travel_detail_id: str | None = None
     role: LocationRole
     name: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    full_address: Optional[str] = None
-    description: Optional[str] = None
-    link: Optional[str] = None
-    google_place_id: Optional[str] = None
-    google_maps_uri: Optional[str] = None
-    timezone_id: Optional[str] = None
+    lat: float | None = None
+    lng: float | None = None
+    full_address: str | None = None
+    description: str | None = None
+    link: str | None = None
+    google_place_id: str | None = None
+    google_maps_uri: str | None = None
+    timezone_id: str | None = None
 
 
-def _location_responses(locations: list | None) -> List[LocationResponse]:
+def _location_responses(locations: list | None) -> list[LocationResponse]:
     ordered = sorted(locations or [], key=lambda loc: loc.sort_order)
     return [LocationResponse.model_validate(loc) for loc in ordered]
 
@@ -171,19 +179,19 @@ def _location_responses(locations: list | None) -> List[LocationResponse]:
 
 class TravelDetail(APIModel):
     travel_detail_id: str = Field(default_factory=_uuid)
-    trip_id: Optional[str] = None
-    name: Optional[str] = None
+    trip_id: str | None = None
+    name: str | None = None
     mode: TravelMode
-    operator: Optional[str] = None
-    vehicle_number: Optional[str] = None
-    cabin_class: Optional[str] = None
-    departure_date_time: Optional[str] = None
-    departure_timezone_id: Optional[str] = None
-    arrival_date_time: Optional[str] = None
-    arrival_timezone_id: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[LocationResponse] = []
+    operator: str | None = None
+    vehicle_number: str | None = None
+    cabin_class: str | None = None
+    departure_date_time: str | None = None
+    departure_timezone_id: str | None = None
+    arrival_date_time: str | None = None
+    arrival_timezone_id: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    locations: list[LocationResponse] = []
 
     @classmethod
     def from_record(cls, rec, locations: list | None = None) -> "TravelDetail":
@@ -207,17 +215,17 @@ class TravelDetail(APIModel):
 
 class StayDetail(APIModel):
     stay_detail_id: str = Field(default_factory=_uuid)
-    trip_id: Optional[str] = None
-    name: Optional[str] = None
+    trip_id: str | None = None
+    name: str | None = None
     stay_type: StayType
-    check_in: Optional[str] = None
-    check_in_timezone_id: Optional[str] = None
-    check_out: Optional[str] = None
-    check_out_timezone_id: Optional[str] = None
-    room_type: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[LocationResponse] = []
+    check_in: str | None = None
+    check_in_timezone_id: str | None = None
+    check_out: str | None = None
+    check_out_timezone_id: str | None = None
+    room_type: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    locations: list[LocationResponse] = []
 
     @classmethod
     def from_record(cls, rec, locations: list | None = None) -> "StayDetail":
@@ -239,60 +247,60 @@ class StayDetail(APIModel):
 
 class TravelDetailImport(APIModel):
     travel_detail_id: str = Field(default_factory=_uuid)
-    name: Optional[str] = None
+    name: str | None = None
     mode: TravelMode
-    operator: Optional[str] = None
-    vehicle_number: Optional[str] = None
-    cabin_class: Optional[str] = None
-    departure_date_time: Optional[str] = None
-    departure_timezone_id: Optional[str] = None
-    arrival_date_time: Optional[str] = None
-    arrival_timezone_id: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[LocationCreate] = []
+    operator: str | None = None
+    vehicle_number: str | None = None
+    cabin_class: str | None = None
+    departure_date_time: str | None = None
+    departure_timezone_id: str | None = None
+    arrival_date_time: str | None = None
+    arrival_timezone_id: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    locations: list[LocationCreate] = []
 
 
 class StayDetailImport(APIModel):
     stay_detail_id: str = Field(default_factory=_uuid)
-    name: Optional[str] = None
+    name: str | None = None
     stay_type: StayType
-    check_in: Optional[str] = None
-    check_in_timezone_id: Optional[str] = None
-    check_out: Optional[str] = None
-    check_out_timezone_id: Optional[str] = None
-    room_type: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    locations: List[LocationCreate] = []
+    check_in: str | None = None
+    check_in_timezone_id: str | None = None
+    check_out: str | None = None
+    check_out_timezone_id: str | None = None
+    room_type: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    locations: list[LocationCreate] = []
 
 
 class TravelDetailPatch(APIModel):
-    name: Optional[str] = None
-    mode: Optional[TravelMode] = None
-    operator: Optional[str] = None
-    vehicle_number: Optional[str] = None
-    cabin_class: Optional[str] = None
-    departure_date_time: Optional[str] = None
-    departure_timezone_id: Optional[str] = None
-    arrival_date_time: Optional[str] = None
-    arrival_timezone_id: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[List[LocationCreate]] = None
+    name: str | None = None
+    mode: TravelMode | None = None
+    operator: str | None = None
+    vehicle_number: str | None = None
+    cabin_class: str | None = None
+    departure_date_time: str | None = None
+    departure_timezone_id: str | None = None
+    arrival_date_time: str | None = None
+    arrival_timezone_id: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    locations: list[LocationCreate] | None = None
 
 
 class StayDetailPatch(APIModel):
-    name: Optional[str] = None
-    stay_type: Optional[StayType] = None
-    check_in: Optional[str] = None
-    check_in_timezone_id: Optional[str] = None
-    check_out: Optional[str] = None
-    check_out_timezone_id: Optional[str] = None
-    room_type: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    locations: Optional[List[LocationCreate]] = None
+    name: str | None = None
+    stay_type: StayType | None = None
+    check_in: str | None = None
+    check_in_timezone_id: str | None = None
+    check_out: str | None = None
+    check_out_timezone_id: str | None = None
+    room_type: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    locations: list[LocationCreate] | None = None
 
 
 # ── Trip Day ────────────────────────────────────────────────────────────────
@@ -301,17 +309,17 @@ class TripDayCreate(APIModel):
     day_id: str
     title: str
     date: CalendarDate
-    description: Optional[str] = None
+    description: str | None = None
     is_alternate: bool = False
     completed: bool = False
 
 
 class TripDayPatch(APIModel):
-    title: Optional[str] = None
-    date: Optional[CalendarDate] = None
-    description: Optional[str] = None
-    is_alternate: Optional[bool] = None
-    completed: Optional[bool] = None
+    title: str | None = None
+    date: CalendarDate | None = None
+    description: str | None = None
+    is_alternate: bool | None = None
+    completed: bool | None = None
 
 
 class TripDayResponse(APIModel):
@@ -319,12 +327,12 @@ class TripDayResponse(APIModel):
     trip_id: str
     title: str
     date: CalendarDate
-    description: Optional[str] = None
+    description: str | None = None
     is_alternate: bool = False
     completed: bool
-    deleted_at: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    deleted_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
     @classmethod
     def from_record(cls, r) -> "TripDayResponse":
@@ -332,61 +340,61 @@ class TripDayResponse(APIModel):
 
 
 def _day_fields(r) -> dict:
-    return dict(
-        day_id=r.day_id,
-        trip_id=r.trip_id,
-        title=r.title,
-        date=r.date,
-        description=r.description,
-        is_alternate=r.is_alternate,
-        completed=r.completed,
-        deleted_at=r.deleted_at.isoformat() if r.deleted_at else None,
-        created_at=r.created_at.isoformat() if r.created_at else None,
-        updated_at=r.updated_at.isoformat() if r.updated_at else None,
-    )
+    return {
+        "day_id": r.day_id,
+        "trip_id": r.trip_id,
+        "title": r.title,
+        "date": r.date,
+        "description": r.description,
+        "is_alternate": r.is_alternate,
+        "completed": r.completed,
+        "deleted_at": r.deleted_at.isoformat() if r.deleted_at else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+    }
 
 
 # ── Trip Point ───────────────────────────────────────────────────────────────
 
 class TripPointCreate(APIModel):
     point_id: str = Field(default_factory=_uuid)
-    day_id: Optional[str] = None
+    day_id: str | None = None
     type: PointType
     title: str
-    stay_detail_id: Optional[str] = None
-    travel_detail_id: Optional[str] = None
-    start_date_time: Optional[str] = None
-    start_timezone_id: Optional[str] = None
-    end_date_time: Optional[str] = None
-    end_timezone_id: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    logo_url: Optional[str] = None
-    locations: List[LocationCreate] = []
+    stay_detail_id: str | None = None
+    travel_detail_id: str | None = None
+    start_date_time: str | None = None
+    start_timezone_id: str | None = None
+    end_date_time: str | None = None
+    end_timezone_id: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    logo_url: str | None = None
+    locations: list[LocationCreate] = []
     is_system_created: bool = False
     completed: bool = False
-    completed_date_time: Optional[datetime] = None
+    completed_date_time: datetime | None = None
 
 
 class TripPointPatch(APIModel):
-    day_id: Optional[str] = None
-    type: Optional[PointType] = None
-    title: Optional[str] = None
-    stay_detail_id: Optional[str] = None
-    travel_detail_id: Optional[str] = None
-    start_date_time: Optional[str] = None
-    start_timezone_id: Optional[str] = None
-    end_date_time: Optional[str] = None
-    end_timezone_id: Optional[str] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    logo_url: Optional[str] = None
-    locations: Optional[List[LocationCreate]] = None
-    is_system_created: Optional[bool] = None
-    completed: Optional[bool] = None
-    completed_date_time: Optional[datetime] = None
+    day_id: str | None = None
+    type: PointType | None = None
+    title: str | None = None
+    stay_detail_id: str | None = None
+    travel_detail_id: str | None = None
+    start_date_time: str | None = None
+    start_timezone_id: str | None = None
+    end_date_time: str | None = None
+    end_timezone_id: str | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    logo_url: str | None = None
+    locations: list[LocationCreate] | None = None
+    is_system_created: bool | None = None
+    completed: bool | None = None
+    completed_date_time: datetime | None = None
 
 
 class TripPointResponse(APIModel):
@@ -395,41 +403,41 @@ class TripPointResponse(APIModel):
     day_id: str
     type: PointType
     title: str
-    stay_detail_id: Optional[str] = None
-    travel_detail_id: Optional[str] = None
-    start_date_time: Optional[str] = None
-    start_timezone_id: Optional[str] = None
-    end_date_time: Optional[str] = None
-    end_timezone_id: Optional[str] = None
+    stay_detail_id: str | None = None
+    travel_detail_id: str | None = None
+    start_date_time: str | None = None
+    start_timezone_id: str | None = None
+    end_date_time: str | None = None
+    end_timezone_id: str | None = None
     # The derived instants. start_date_time is a *wall clock* ("09:00" — what the
     # ticket says), which cannot be compared to "now" without knowing the clock.
     # These can. They are what lets the What's Next screen ask "is this still
     # ahead of me?" with a plain comparison instead of timezone arithmetic in the
     # browser (docs/active_trip_plan.md).
-    start_utc: Optional[datetime] = None
-    end_utc: Optional[datetime] = None
-    confirmation_number: Optional[str] = None
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    logo_url: Optional[str] = None
-    locations: List[LocationResponse] = []
+    start_utc: datetime | None = None
+    end_utc: datetime | None = None
+    confirmation_number: str | None = None
+    description: str | None = None
+    image_url: str | None = None
+    logo_url: str | None = None
+    locations: list[LocationResponse] = []
     is_system_created: bool = False
     # The referenced first-class detail, embedded for convenience.
-    travel_detail: Optional[TravelDetail] = None
-    stay_detail: Optional[StayDetail] = None
+    travel_detail: TravelDetail | None = None
+    stay_detail: StayDetail | None = None
     completed: bool
-    completed_date_time: Optional[datetime] = None
-    deleted_at: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    completed_date_time: datetime | None = None
+    deleted_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
     @classmethod
     def from_record(
         cls,
         point,
         locations: list,
-        travel: Optional[TravelDetail] = None,
-        stay: Optional[StayDetail] = None,
+        travel: TravelDetail | None = None,
+        stay: StayDetail | None = None,
     ) -> "TripPointResponse":
         return cls(
             point_id=point.point_id,
@@ -464,10 +472,10 @@ class TripPointResponse(APIModel):
 # ── Assembled trip response ──────────────────────────────────────────────────
 
 class TripDayWithPoints(TripDayResponse):
-    points: List[TripPointResponse] = []
+    points: list[TripPointResponse] = []
 
     @classmethod
-    def from_record(cls, r, points: Optional[List[TripPointResponse]] = None) -> "TripDayWithPoints":
+    def from_record(cls, r, points: list[TripPointResponse] | None = None) -> "TripDayWithPoints":
         return cls(points=points or [], **_day_fields(r))
 
 
@@ -489,14 +497,14 @@ class TripResponse(APIModel):
     # forced on. Without it the UI cannot tell an automatically-active trip from
     # a forced one, and the status menu's checkmark would lie.
     status_intent: str = "new"
-    start_location_name: Optional[str] = None
-    destination_location_name: Optional[str] = None
-    default_timezone_id: Optional[str] = None
+    start_location_name: str | None = None
+    destination_location_name: str | None = None
+    default_timezone_id: str | None = None
     start_date: CalendarDate
     end_date: CalendarDate
-    stays: List[StayDetail] = []
-    travels: List[TravelDetail] = []
-    days: List[TripDayWithPoints] = []
+    stays: list[StayDetail] = []
+    travels: list[TravelDetail] = []
+    days: list[TripDayWithPoints] = []
 
 
 # ── Sharing (docs/share_links_plan.md) ───────────────────────────────────────
@@ -509,9 +517,9 @@ class TripShareResponse(APIModel):
     token: str
     url: str  # the whole link, ready to copy
     view_count: int
-    last_viewed_at: Optional[str] = None
-    expires_at: Optional[str] = None
-    created_at: Optional[str] = None
+    last_viewed_at: str | None = None
+    expires_at: str | None = None
+    created_at: str | None = None
 
 
 class SharedTripResponse(APIModel):
@@ -524,13 +532,13 @@ class SharedTripResponse(APIModel):
     """
 
     trip_name: str
-    start_location_name: Optional[str] = None
-    destination_location_name: Optional[str] = None
+    start_location_name: str | None = None
+    destination_location_name: str | None = None
     start_date: CalendarDate
     end_date: CalendarDate
-    stays: List[StayDetail] = []
-    travels: List[TravelDetail] = []
-    days: List[TripDayWithPoints] = []
+    stays: list[StayDetail] = []
+    travels: list[TravelDetail] = []
+    days: list[TripDayWithPoints] = []
 
     @classmethod
     def from_trip(cls, trip: "TripResponse") -> "SharedTripResponse":
@@ -552,21 +560,21 @@ class TripDayImport(APIModel):
     day_id: str = Field(default_factory=_uuid)
     title: str
     date: CalendarDate
-    description: Optional[str] = None
+    description: str | None = None
     is_alternate: bool = False
     completed: bool = False
-    points: List[TripPointCreate] = []
+    points: list[TripPointCreate] = []
 
 
 class TripImport(APIModel):
     trip_id: str = Field(default_factory=_uuid)
     trip_name: str
-    default_timezone_id: Optional[str] = None
+    default_timezone_id: str | None = None
     start_date: CalendarDate
     end_date: CalendarDate
-    stays: List[StayDetailImport] = []
-    travels: List[TravelDetailImport] = []
-    days: List[TripDayImport] = []
+    stays: list[StayDetailImport] = []
+    travels: list[TravelDetailImport] = []
+    days: list[TripDayImport] = []
 
 
 class ImportResult(APIModel):
@@ -585,15 +593,15 @@ class AIDocumentExtraction(APIModel):
     document_type: AIDocumentType = AIDocumentType.DETAIL
     workflow_mode: AIDocumentWorkflowMode = AIDocumentWorkflowMode.DETAIL_IMPORT
     cached: bool = False
-    stays: List[StayDetailImport] = []
-    travels: List[TravelDetailImport] = []
+    stays: list[StayDetailImport] = []
+    travels: list[TravelDetailImport] = []
 
 
 class AIDocumentSaveRequest(APIModel):
-    stays: Optional[List[StayDetailImport]] = None
-    travels: Optional[List[TravelDetailImport]] = None
-    stay_detail_ids: Optional[List[str]] = None
-    travel_detail_ids: Optional[List[str]] = None
+    stays: list[StayDetailImport] | None = None
+    travels: list[TravelDetailImport] | None = None
+    stay_detail_ids: list[str] | None = None
+    travel_detail_ids: list[str] | None = None
 
 
 class AIDocumentSaveResult(APIModel):
@@ -611,14 +619,14 @@ class VerifyIssue(APIModel):
     code: str
     severity: str  # "error" | "warning"
     date: CalendarDate
-    day_id: Optional[str] = None
+    day_id: str | None = None
     message: str
 
 
 class VerifyResult(APIModel):
     ok: bool
     days_checked: int
-    issues: List[VerifyIssue] = []
+    issues: list[VerifyIssue] = []
 
 
 class TripGapResponse(APIModel):
@@ -626,11 +634,11 @@ class TripGapResponse(APIModel):
 
     gap_id: str
     target: str  # "trip" | "stay" | "travel"
-    record_id: Optional[str] = None
+    record_id: str | None = None
     record_label: str
     severity: str  # "blocking" | "worth_adding"
     message: str
-    fields: List[str] = []
+    fields: list[str] = []
     # The same server-owned form the chat uses (review.md 3F-2), so the banner
     # and the assistant put up exactly the same inputs.
     form: "ChatForm"
@@ -640,14 +648,14 @@ class TripGapsResponse(APIModel):
     trip_id: str
     blocking_count: int
     total_count: int
-    gaps: List[TripGapResponse] = []
+    gaps: list[TripGapResponse] = []
 
 
 class TripGapSubmitRequest(APIModel):
     """Fill a gap from the trip page. Not a chat turn — no model call."""
 
     target: str
-    record_id: Optional[str] = None
+    record_id: str | None = None
     values: dict = {}
 
 
@@ -656,9 +664,9 @@ class ChatMessageResponse(APIModel):
     trip_id: str
     workflow_name: str
     message: str
-    structure_content: Optional[str] = None
+    structure_content: str | None = None
     is_bot: bool
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 # ── Dynamic chat forms (review.md 3F-2) ─────────────────────────────────────
@@ -673,9 +681,9 @@ class ChatFormField(APIModel):
     label: str
     # text | textarea | date | datetime | select — the frontend renders by this.
     type: str
-    value: Optional[str] = None
-    options: List[ChatFormOption] = []
-    help_text: Optional[str] = None
+    value: str | None = None
+    options: list[ChatFormOption] = []
+    help_text: str | None = None
 
 
 class ChatForm(APIModel):
@@ -685,8 +693,8 @@ class ChatForm(APIModel):
     # trip | day | point | stay | travel
     target: str
     # None means the form creates a new record.
-    record_id: Optional[str] = None
-    fields: List[ChatFormField] = []
+    record_id: str | None = None
+    fields: list[ChatFormField] = []
 
 
 # ── Location choice (review.md 3F-5) ────────────────────────────────────────
@@ -696,8 +704,8 @@ class ChatChoiceOption(APIModel):
     # invents one (review.md 3C-6).
     option_id: str
     label: str
-    sublabel: Optional[str] = None
-    maps_uri: Optional[str] = None
+    sublabel: str | None = None
+    maps_uri: str | None = None
 
 
 class ChatChoice(APIModel):
@@ -706,7 +714,7 @@ class ChatChoice(APIModel):
     # The location row whose place is being decided.
     location_id: str
     query: str
-    options: List[ChatChoiceOption] = []
+    options: list[ChatChoiceOption] = []
 
 
 class ChatChoiceSubmitRequest(APIModel):
@@ -717,8 +725,8 @@ class ChatChoiceSubmitRequest(APIModel):
     # Exactly one of these. `option_id` is one of the places we offered;
     # `place_id` is one the user found through the card's own Places search,
     # because none of ours was the place they meant.
-    option_id: Optional[str] = None
-    place_id: Optional[str] = None
+    option_id: str | None = None
+    place_id: str | None = None
 
 
 class ChatFormSubmitRequest(APIModel):
@@ -727,15 +735,15 @@ class ChatFormSubmitRequest(APIModel):
     request_id: str  # same idempotency contract as /chat/reply (review.md 3D-5)
     form_id: str
     target: str
-    record_id: Optional[str] = None
+    record_id: str | None = None
     values: dict
 
 
 class ChatReplyRequest(APIModel):
-    trip_id: Optional[str] = None
+    trip_id: str | None = None
     workflow_name: str
     message: str
-    context: Optional[dict] = None
+    context: dict | None = None
     # Client-generated id for this send; required. Repeating it replays the
     # original reply instead of running the pipeline twice (review.md 3D-5).
     # Not optional by design: an optional key means the protection is off by
@@ -746,6 +754,6 @@ class ChatReplyRequest(APIModel):
 class ChatReplyResponse(APIModel):
     trip_id: str
     complete: bool = False
-    trip_name: Optional[str] = None
-    verify: Optional[VerifyResult] = None
-    messages: List[ChatMessageResponse] = []
+    trip_name: str | None = None
+    verify: VerifyResult | None = None
+    messages: list[ChatMessageResponse] = []
