@@ -1,8 +1,12 @@
 # PriPriTrip — Full Technical Report
 
-*Written 2026-07-12, kept current (last checked 2026-07-13 against the code). This is the "you know
-nothing about this project" document. It is not a quick-start; it is the map. Where something is
-subtle or was got wrong once, it says so.*
+*Written 2026-07-12. **Last checked 2026-07-13**, line by line against the code — after S1 (the single
+domain layer, `services/trip_write.py`) and R8/R9/R11/R19 (frontend tests in CI, ruff + mypy, component
+tests, one point serializer). §3.1 was rewritten: the executor is no longer the write path. Counts,
+route totals and the service table were re-derived from the tree rather than trusted.*
+
+*This is the "you know nothing about this project" document. It is not a quick-start; it is the map.
+Where something is subtle or was got wrong once, it says so.*
 
 ---
 
@@ -29,8 +33,17 @@ Places for location data. The app is a PWA with an offline read cache.
 **Current state:** local-only, no deployment. A trip has one owner, who can hand out read-only
 share links (§11). A trip becomes **active** on its start date and swaps the timeline for a What's
 Next screen (§12). Migrations are deliberately deferred — the database is recreated from `models.py`
-rather than migrated, and there is no Alembic. Two test tiers exist: **285 pytest tests** against a
-real throwaway Postgres, and **15 live-model eval scenarios** against the real OpenAI API.
+rather than migrated, and there is no Alembic.
+
+**Three test tiers**, all gating CI (§7):
+
+| tier | count | against |
+|---|---|---|
+| pytest | **302** | a real throwaway PostgreSQL |
+| frontend (vitest) | **88** (29 of them render React components) | jsdom |
+| evals | **15 scenarios** | the *live* OpenAI API — the only tier that costs money |
+
+Plus **ruff** and **mypy**, both clean and both blocking a merge.
 
 ---
 
@@ -40,7 +53,8 @@ real throwaway Postgres, and **15 live-model eval scenarios** against the real O
 PriPriTrip/
 ├── api/
 │   ├── app/
-│   │   ├── main.py               FastAPI app factory, CORS, router registration
+│   │   ├── main.py               FastAPI app factory, CORS, router registration,
+│   │   │                         and the one WriteError → HTTP status handler
 │   │   ├── database.py           Engine, session factory, declarative Base
 │   │   ├── models.py             All 10 SQLAlchemy models + soft-delete helpers
 │   │   ├── schemas.py            Every Pydantic wire model (camelCase on the wire)
@@ -51,13 +65,17 @@ PriPriTrip/
 │   │   ├── users.py              fastapi-users wiring (JWT)
 │   │   ├── dependencies.py       get_owned_trip / require_owned_trip
 │   │   ├── routers/              HTTP layer — thin, no business logic
-│   │   └── services/             All the actual logic
+│   │   └── services/             All the actual logic — trip_write.py is the write path (§3.1)
 │   ├── evals/                    The live-model prompt test harness (§6)
 │   ├── tests/                    pytest, against a real Postgres (§7)
 │   ├── sql/                      Hand-written DDL applied during development
+│   ├── pyproject.toml            ruff + mypy config (there is no packaging here — this
+│   │                             file exists only to configure the tools)
 │   └── pripritrip_system_prompt.md   The assistant's system prompt (sectioned)
 ├── ui/
 │   └── src/                      React app (§8)
+├── .github/workflows/ci.yml      3 jobs: static (ruff+mypy), backend (pytest), frontend
+├── review.md                     The standing code review — findings R1–R21, S1–S8
 └── docs/                         This file, the design/plan docs, source PDFs
 ```
 
@@ -68,17 +86,47 @@ PriPriTrip/
 Almost every design decision in the backend follows from one of these. If you understand these, the
 code stops being surprising.
 
-### 3.1 The executor is the single write path
+### 3.1 `trip_write.py` is the single write path
 
-Every mutation to trip content — from the chat assistant, from a submitted form, from a gap-fill —
-goes through **`services/trip_action_executor.py::execute_action`**. It takes an `AssistantAction`
-(`{op, target, id, fields}`) and applies it.
+Every mutation to trip content goes through **`services/trip_write.py`** — `create_stay`,
+`update_travel`, `delete_point`, `create_day`, `update_trip` and their siblings. It owns *every*
+domain rule: Google Places resolution, timezone inference, UTC derivation, the "a date-only check-in
+means 4pm" normalisation, generated-point syncing, `promote_to_draft`, day adoption, the
+derived-point guards, and the `model_fields_set` semantics that let an explicit `null` clear a column
+while an absent key leaves it alone.
 
-This is why the assistant cannot corrupt the database in ways a form can't: they run the same code.
-Validation, timezone derivation, location resolution, and generated-point syncing all live behind
-that one door. The REST routers (`trip_points.py`, `trip_details.py`, …) are a second door used by
-the UI's own forms, and they are kept deliberately in step with the executor — when a rule is added
-to one, it is added to both, and there is a test for each.
+**Six callers adapt to it, and not one of them contains a rule:**
+
+```
+chat assistant ──► trip_action_executor.py ──┐
+UI forms       ──► trip_points.py            │
+               ──► trip_details.py           ├──► trip_write.py ──► DB
+               ──► trip_days.py              │
+structured     ──► trip_import.py            │
+document       ──► trip_ai_import.py         ┘
+```
+
+> **This is recent, and it is the single most important thing to understand about the backend.**
+> Until 2026-07-13 there were **two** write paths — the chat executor and the REST routers — each
+> implementing the same rules independently. Every rule added to one and not the other gave the app a
+> split personality, and **all three of the correctness bugs in `review.md` were instances of it**:
+> a chat-built trip that an itinerary upload would silently delete; chat-created stays stamped `UTC`
+> instead of the venue's timezone (a 9-hour error); an assistant that could not clear a field and
+> reported success anyway. They are not patched — they are *unrepresentable*, because there is no
+> longer a second place for a rule to be missing from.
+
+Two divergences nobody had even noticed fell out of the merge: Places resolution ran only in the
+executor (so airport codes typed into the new-trip wizard were stored with **no coordinates**), and
+the 4pm check-in normalisation ran only in the routers (so *"check in on the 30th"* said to the
+assistant landed at **midnight**).
+
+`trip_write` refuses work by raising `WriteError` / `ConflictError`, which carry their own HTTP status.
+One handler in `main.py` turns those into responses, so a refusal looks the same through every door —
+while the executor catches them and hands them to the model as a tool result it can act on (§5.3).
+
+The executor is now a **thin adapter**: 343 lines, mostly a per-target dispatch table plus the
+model-specific plumbing (coercing invented ids, resolving date prose, turning refusals into tool
+results). It was 739 lines.
 
 ### 3.2 The model may not invent facts it cannot know
 
@@ -174,9 +222,11 @@ All in `app/models.py`. Ten tables.
 Two things follow, and both have bitten:
 
 - **Anything that gives a trip content must promote it** `new → draft`, or an itinerary upload will
-  silently wipe a trip you built by hand. That is `promote_to_draft()` in `trip_state.py`, and it is
-  the *only* writer — five raw `status = "draft"` assignments used to exist, every one of which would
-  have demoted an `active` trip mid-flight.
+  silently wipe a trip you built by hand. That is `promote_to_draft()` in `trip_state.py` — the
+  *only* writer of the column (five raw `status = "draft"` assignments used to exist, every one of
+  which would have demoted an `active` trip mid-flight). Since S1 it is called from `trip_write.py`,
+  so **every** door promotes: chat, form, importer and REST alike. It used to be called from the
+  routers only, which is exactly how a chat-built trip stayed `new` and stayed wipeable.
 - **"Active" is never stored by the automatic rule.** It is derived from the dates on read
   (`trip_status.py`), because a persisted `active` and a clock are two sources of truth that drift.
   See §12.
@@ -188,7 +238,7 @@ dies with its owner (`ON DELETE CASCADE`).
 
 **Relationships bake in the soft-delete filter.** `TripRecord.days`, `.stays`, `.travels` and
 `TripDayRecord.points` are `viewonly` relationships whose `primaryjoin` already excludes deleted
-rows, so a caller *cannot forget* the filter. Writes still go through the executor explicitly.
+rows, so a caller *cannot forget* the filter. Writes still go through `trip_write` explicitly.
 
 **Indexes.** Every FK that gets filtered on is indexed (Postgres does not do this for you), plus
 partial indexes on `NOT is_deleted` for the hot paths.
@@ -207,7 +257,8 @@ in `app/services/`.
 
 | Service | Responsibility |
 |---|---|
-| `trip_action_executor.py` | **The single write path.** Applies an `AssistantAction` to the DB: validates, normalizes dates, resolves locations, derives UTC, syncs generated points, and returns an `ActionResult` (`ok`/`error` + a `detail` the model can act on). |
+| `trip_write.py` | **The single write path (§3.1).** The only place trip content is written, by anyone. Owns Places resolution, timezone inference, UTC derivation, wall-clock normalisation, generated-point syncing, `promote_to_draft`, day adoption and the derived-point guards. Refuses with `WriteError` / `ConflictError`, which carry their own HTTP status. |
+| `trip_action_executor.py` | **The assistant's adapter onto `trip_write`** — *not* a write path of its own. Turns an `AssistantAction` (`{op, target, id, fields}`) into a `trip_write` call via a per-target dispatch table, and turns the result — including a refusal — into an `ActionResult` the model can read and act on. Also does the model-specific plumbing: invented ids, date prose. |
 | `detail_points.py` | The **only** writer of derived points. Syncs check-in/out & departure/arrival points from their parent stay/travel, mirrors the parent's locations onto them, reconciles a trip's day rows against its date range, and owns `primary_day_for_date`. |
 | `chat_tool_loop.py` | The agent loop: builds the prompt, streams completions, dispatches tool calls, feeds results back, caps iterations, and emits the final `WorkflowOutcome`. |
 | `chat_tools.py` | The 16 tools: per-tool camelCase Pydantic argument models, handlers, and the OpenAI JSON schema. Also turns location decisions into guidance for the model. |
@@ -257,7 +308,12 @@ Gaps        GET  /trips/{id}/gaps
             POST /trips/{id}/gaps/submit
 Share       POST|GET|DELETE /trips/{id}/share      (owner: mint / read / revoke)
             GET  /shared/{token}                   ** no auth **
+Health      GET  /health                           ** no auth **
 ```
+
+**There is no `POST /trips`.** A trip is created by `PUT /trips/{id}` with a client-generated UUID
+(the wizard and the chat both mint one), which is also how a trip is updated. Worth knowing before you
+go looking for the create endpoint.
 
 `GET /shared/{token}` is the **only unauthenticated endpoint in the app that returns user data**. It
 never reads the `Authorization` header, returns its own `SharedTripResponse` schema (so a field added
@@ -265,8 +321,8 @@ to the owner's trip view can't silently start leaking), and 404s identically for
 expired tokens — a 403 would confirm the token had once existed. See §11.
 
 `GET /trips/{id}` returns the whole assembled trip (days → points → locations, plus stays and travels
-with their locations) in a **flat number of queries** — 8 SELECTs regardless of trip size, pinned by
-`tests/test_query_counts.py`.
+with their locations) in a **flat number of queries** — at most 8 SELECTs regardless of trip size,
+pinned by `tests/test_query_counts.py`.
 
 ### 4.4 Authentication
 
@@ -275,10 +331,14 @@ with their locations) in a **flat number of queries** — 8 SELECTs regardless o
 `manager.authenticate()` runs a dummy hash on an unknown email so an attacker can't distinguish "no
 such user" from "wrong password" by timing.
 
-Every authenticated route in the app depends on **`require_auth`** (`app/auth.py`) — all 24 of them,
-none reaching past it to fastapi-users' `current_active_user` directly. That single choke point is
-what makes the whole thing testable: overriding one key in `app.dependency_overrides` covers the
-entire app.
+Every authenticated route in the app depends on **`require_auth`** (`app/auth.py`) — all **47** of
+them, none reaching past it to fastapi-users' `current_active_user` directly. Most get there through
+`get_owned_trip`, which depends on `require_auth` and then does the ownership check, so a handler
+cannot accidentally authenticate without also authorising. That single choke point is what makes the
+whole thing testable: overriding one key in `app.dependency_overrides` covers the entire app.
+
+**Exactly 7 routes are unauthenticated**, and they are the ones you would expect: `/health`, the five
+`/auth/*` entry points, and `GET /shared/{token}` — the only one of them that returns user data (§11).
 
 Two consequences of *stateless* that are easy to miss:
 
@@ -326,6 +386,7 @@ that asked the model for a JSON blob of actions; it was deleted. There is exactl
                   │   │        yes ─▶ SSE "status"             │    │
                   │   │               dispatch (chat_tools)    │    │
                   │   │               ──▶ execute_action       │    │
+                  │   │                   ──▶ trip_write       │    │
                   │   │               result back as tool msg  │    │
                   │   │               loop again               │    │
                   │   │        no  ─▶ this is the final answer │    │
@@ -383,8 +444,9 @@ model, the date policy, the location policy, the day policy, tool-usage rules, a
 | `get_trip_snapshot` | Fetch the full assembled trip JSON — used on demand rather than shipped every turn. |
 | `request_form` | Put a small form on screen. The model names the target and the fields; the **server** decides types, labels, options and current values. |
 
-Every mutating tool converts its arguments into an `AssistantAction` and runs `execute_action`. The
-executor's `ActionResult` — including its errors — is returned to the model as the tool result. **That
+Every mutating tool converts its arguments into an `AssistantAction` and runs `execute_action`, which
+adapts it onto `trip_write` (§3.1) — the same function the UI's own forms call. The `ActionResult` —
+including its errors — is returned to the model as the tool result. **That
 is the feedback loop:** the model sees its own failures inside the turn and corrects them. The error
 messages are written for that audience; they always name what to do instead. For example:
 
@@ -407,7 +469,7 @@ message rather than an abandoned tool call. `capHit` is recorded and asserted `f
 
 A bot message's `structure_content` can carry a `uiPayload` of `kind: "form"` or `kind: "choice"`. The
 frontend renders it under the message bubble. Both are answered by endpoints that **make no model
-call at all** — they go straight through the executor:
+call at all** — they go straight through the write layer:
 
 - **`POST /chat/forms/submit`** — a filled `request_form`. The submitted values are re-validated
   against the server's `FIELD_SPECS` registry (the form came from us, but the submission comes from a
@@ -506,6 +568,16 @@ looks like afterwards, whether a `uiPayload` was attached. The two message-level
 
 Asserting the model's prose would make the suite a brittle snapshot test of a non-deterministic
 system. Asserting its *effects* makes it a real behavioural contract.
+
+> **One scenario breaks this rule, and it is the one that flakes.** `partial-capture-flight` asserts
+> `finalMessageMatches: "\\?"` — a **literal question mark** — to check the assistant follows up on a
+> half-captured flight. On 2026-07-13 it failed a full-suite run because the model had answered *"If
+> you want, I can add when you arrive…"*: the right behaviour, phrased as an offer rather than a
+> question. It then passed 4/4 in isolation and 15/15 on a re-run.
+>
+> This is the exact brittleness the rule exists to prevent, and it should be rewritten to assert the
+> structural consequence (the travel leg exists but is incomplete; `complete=false`) rather than the
+> punctuation. Logged in `review.md`'s roadmap. **If you are chasing a 14/15, check this one first.**
 
 ### 6.3 Anatomy
 
@@ -615,14 +687,20 @@ This is not a theoretical suite. Concretely:
   path** (§4.1, `eager_defaults`) that no test had ever hit.
 
 **Known flakiness:** the model is non-deterministic and the default `--threshold 1.0` with `--runs 1`
-means one unlucky run fails the suite. Across recent history one run in roughly six came back 14/15
-without a reproducible cause. When judging a change, run it more than once.
+means one unlucky run fails the suite. Roughly one run in six comes back 14/15. **Before blaming your
+change, re-run** — and check whether the failure is `partial-capture-flight`, whose question-mark
+assertion (§6.2) is the known-brittle one rather than a real signal.
+
+The honest procedure for judging a change: `--runs 3` or more, and if something fails, run *that*
+scenario in isolation. A failure that reproduces in isolation is real (that is how the dropped
+`stayType` regression was confirmed); one that doesn't is usually the model choosing different
+wording.
 
 ---
 
 ## 7. The pytest suite (for contrast)
 
-285 tests, all against a **real, throwaway PostgreSQL database** (`pripritrip_test`, recreated per
+**302 tests**, all against a **real, throwaway PostgreSQL database** (`pripritrip_test`, recreated per
 session; `conftest.py` asserts it will never point at the dev DB). Each test runs in a transaction +
 savepoint that is rolled back, so tests don't accumulate state.
 
@@ -631,18 +709,19 @@ rollback, and a fixture whose user row was being erased by an endpoint's rollbac
 
 | File | Tests | Covers |
 |---|---|---|
-| `test_location_choice.py` | 23 | The confidence rule, the executor no longer guessing, `apply_choice` security (an option we never offered is rejected; a location on another trip is rejected; a *searched* place is accepted but still can't cross trips). |
+| `test_location_choice.py` | 23 | The confidence rule, the write layer no longer guessing, `apply_choice` security (an option we never offered is rejected; a location on another trip is rejected; a *searched* place is accepted but still can't cross trips). |
 | `test_chat_forms.py` | 21 | The form registry, form building, and submission re-validation. |
-| `test_trip_share.py` | 16 | Share links: revoked/expired/unknown tokens are indistinguishable 404s, the payload leaks nothing about the owner, another user can't share your trip, and a link grants no write anywhere. |
 | `test_auth.py` | 20 | Session/register endpoints, driven with a *fake* UserManager — routing and error mapping. |
 | `test_trip_status_auto.py` | 19 | A trip goes active on its start date and back afterwards, derived not stored; the trip's own midnight is the boundary; content promotes a trip out of `new` (or an itinerary import would wipe it). |
 | `test_trip.py` | 19 | Trip CRUD, ownership. |
+| `test_trip_write.py` | **17** | **The domain layer (§3.1).** Pins the three bugs the split write paths caused — and, crucially, drives the *same* scenario through **both doors** (the chat executor *and* HTTP) and compares the resulting rows. If the two ever diverge again, this is what says so. |
 | `test_action_ids.py` | 17 | The executor's id handling (invented ids are rejected/regenerated, and the model is told). |
+| `test_trip_share.py` | 16 | Share links: revoked/expired/unknown tokens are indistinguishable 404s, the payload leaks nothing about the owner, another user can't share your trip, and a link grants no write anywhere. |
 | `test_trip_days.py` | 15 | Day CRUD, soft delete, restore. |
-| `test_trip_status.py` | 11 | `PATCH /status`; `promote_to_draft` never demotes an active trip; `startUtc` is serialised. |
 | `test_chat.py` | 13 | `/chat/reply`: SSE, idempotency, replay, failure rollback. |
 | `test_trip_verify.py` | 12 | All 9 verify issue codes. |
 | `test_trip_details.py` | 12 | Stay/travel CRUD. |
+| `test_trip_status.py` | 11 | `PATCH /status`; `promote_to_draft` never demotes an active trip; `startUtc` is serialised. |
 | `test_eval_harness.py` | 11 | **The eval harness itself**, using the mock OpenAI client. |
 | `test_derived_points.py` | 11 | Generated points carry their parent's place; nobody else may write them; `completed` is still the user's to set. |
 | `test_day_uniqueness.py` | 11 | One primary day per date; the exact ordering that caused the bug; alternates exempt; `PUT /trips` creates its days; the `eager_defaults` regression. |
@@ -652,8 +731,46 @@ rollback, and a fixture whose user row was being erased by an endpoint's rollbac
 | `test_chat_tool_loop.py` | 7 | Loop mechanics with a mock client: iteration cap, tool dispatch, error feedback. |
 | `test_auth_registration.py` | 6 | Registration through the **real** UserManager: the row really is `is_verified=True`, and a stranger still can't self-grant superuser. |
 | `test_document_reuse.py` | 5 | The same PDF on a second trip actually imports (the cached extraction used to carry the first trip's record ids, so the save skipped everything). |
-| `test_query_counts.py` | 5 | **N+1 protection.** `GET /trips/{id}` = 8 SELECTs, `GET /points` = 4, flat regardless of trip size. Uses a SQLAlchemy `before_cursor_execute` event to count. |
+| `test_query_counts.py` | 5 | **N+1 protection.** `GET /trips/{id}` ≤ 8 SELECTs, `GET /points` ≤ 4 — flat regardless of trip size (the fixture builds 12 points). Uses a SQLAlchemy `before_cursor_execute` event to count. |
 | `test_date_normalizer.py` | 4 | Relative-date resolution. |
+
+### 7.1 The frontend suite
+
+**88 vitest tests** (`npm run test:run` — note the `run`; the bare `vitest` watches, which hangs CI).
+jsdom, `@testing-library/react`, no browser.
+
+| Area | Tests | Covers |
+|---|---|---|
+| `utils/tripClock.test.js` | | The What's Next clock: countdown thresholds, `nextPoint` ordering. Pins `"in 4h 60m"`, a real bug caused by flooring hours and rounding minutes separately. |
+| `utils/format.test.js`, `newTripPayload.test.js`, `tripCache.test.js` | | The pure helpers, the wizard's payload builders, and the IndexedDB offline cache. |
+| `store/apiSlice.test.js` | | The RTK Query tag graph and the offline fallback. |
+| `hooks/usePlacesAutocomplete.test.jsx` | | Debounce, unmount, and **stale responses** — type "par", pause, type "is"; the slow "par" reply must not overwrite "paris". |
+| **Component tests** (added 2026-07-13) | **29** | `NextUpCard` (10), `WhatsNextView` (7), `TripGapsBanner` (7), `ChatChoiceCard` (6). Until then **nothing rendered a React component** — `@testing-library/react` was installed and unused, which is why every UI bug had to be found by driving a browser by hand. They pin the two that shipped ("in 4h 60m", and "be at the airport by…" appearing on an *arrival*) and the property that stops the model inventing geography: a picked place sends **only** an `optionId` or a `placeId`, never coordinates. |
+
+### 7.2 CI and tooling
+
+`.github/workflows/ci.yml`, three jobs:
+
+| Job | Runs |
+|---|---|
+| **static** | `ruff check .` + `mypy`. No database, so it doesn't queue behind Postgres. |
+| **backend** | `pytest -q` against a real `postgres:16` service container. |
+| **frontend** | `npm run lint` → `npm run test:run` → `npm run build`. |
+
+Both Python tools are configured in `api/pyproject.toml` and **pinned exactly** in
+`requirements-dev.txt` — a floating minor that adds a rule would turn an unrelated PR red.
+
+- **ruff** — `E, W, F, I, UP, B, ASYNC, C4, RUF`. Currently clean. Adopting it surfaced a blocking
+  `open()` inside an `async def`, 13 `except` blocks that discarded the original traceback, and 5
+  `zip()`s with no `strict=`.
+- **mypy** — non-strict, but `check_untyped_defs`. Currently clean, 0 errors over 45 files. The
+  `pydantic.mypy` plugin is **required** (without it, every `TripResponse(tripName=…)` is a false
+  "unexpected keyword argument" — 105 of them). SQLAlchemy needs **no** plugin: the models use 2.0
+  `Mapped[...]` annotations, which mypy reads natively. Adopting it found four latent bugs, including
+  a dead code block in `date_normalizer.py` whose two branches returned the identical value.
+
+**The evals are deliberately not in CI.** They cost money and hit a non-deterministic third party.
+Run them by hand before merging anything that touches the prompt, the tools or the write layer.
 
 ---
 
@@ -761,7 +878,7 @@ opened trip survives going offline.
 | `hooks/usePlacesAutocomplete.js` | Debounced Places autocomplete. Handles unmount, request failure, and **stale responses** (type "par", pause, type "is" — the slow "par" response must not overwrite "paris"). |
 | `utils/format.js` | `placeLabel` (name the place), `placeLocality` (where it is), date/time formatting, sorting. |
 | `utils/pointIcons.js` | Point type → icon and label. |
-| `utils/tripClock.js` | `nextPoint()` and `countdown()` — the whole of What's Next's logic, two pure functions. Compares `startUtc` instants, so the browser's timezone cannot change the answer. |
+| `utils/tripClock.js` | The whole of What's Next's logic as four pure functions: `nextPoint`, `followingPoints`, `countdown`, and `leaveByHint` ("be at the airport by…" — **departures only**; it once fired on arrivals too). Compares `startUtc` instants, so the browser's timezone cannot change the answer. |
 | `utils/tripCache.js` | The IndexedDB read cache behind the offline fallback. |
 | `utils/newTripPayload.js` | Pure builders for the new-trip wizard's payload. Notably does **not** build departure/arrival points — the backend derives those. |
 | `utils/dayjs.js` | dayjs + a `parseWallClock` that reads a wall-clock string without applying a timezone. |
@@ -819,7 +936,9 @@ title. (Both of those sentences exist because their absence caused a bug.)
 
 An SSE **`status`** event goes to the browser — *"Adding a stay…"* — and the tool is dispatched.
 
-**5. The executor.** `execute_action` creates the `StayDetailRecord`. Then, for the location:
+**5. The write layer.** `execute_action` validates the arguments into a `StayDetailCreate` and hands
+them to **`trip_write.create_stay`** — the same function `POST /trips/{id}/stay-details` calls when
+you fill in the stay form by hand (§3.1). It creates the `StayDetailRecord`. Then, for the location:
 
 `location_resolver.resolve_location("Hyatt", near="Okinawa")` → `_bias_query` sends
 `"Hyatt Okinawa"` to Google Places Text Search → **two** candidates come back: *Hyatt Regency Naha*
@@ -898,7 +1017,7 @@ cheerfully reporting `Imported 0 stay records`.
 **Gap filling.** `GET /trips/{id}/gaps` walks the assembled trip and returns each hole **with a
 server-built form already attached**, split into `blocking` and `worth_adding`. `TripGapsBanner`
 renders them on the trip page; tapping one expands the form inline; `POST /trips/{id}/gaps/submit`
-applies it through the executor and returns the *remaining* gaps, so the count visibly goes down.
+applies it through the write layer and returns the *remaining* gaps, so the count visibly goes down.
 There is a test that fails loudly if this path ever calls OpenAI.
 
 ---
@@ -989,4 +1108,10 @@ exactly one day of the year.
 - **The inspection flow overlaps the gaps banner.** `TripInspectionPage` + `TripWorkflowPage` (reached
   by the ✅ on a trip card) and `TripGapsBanner` now answer nearly the same question in two places.
   Kept deliberately, to be resolved later rather than quietly broken.
-- **Eval flakiness.** ~1 run in 6 fails on model non-determinism at `--threshold 1.0 --runs 1`.
+- **Eval flakiness.** ~1 run in 6 fails on model non-determinism at `--threshold 1.0 --runs 1`. One
+  scenario (`partial-capture-flight`) makes this worse than it needs to be by asserting on a literal
+  question mark — see §6.2.
+- **Python dependencies are not pinned.** `requirements.txt` is 14 lines of `>=` with no lockfile, so
+  `pip install` today and in three months resolve to different builds and CI is not reproducible. The
+  frontend does this right (`package-lock.json` is committed); `ruff` and `mypy` are pinned exactly.
+  The rest are not. **This is the last open item from `review.md`'s original top ten** (R10).
