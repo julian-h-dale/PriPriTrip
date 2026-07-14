@@ -34,16 +34,8 @@ from app.dependencies import get_owned_trip, require_owned_trip
 from app.enums import AIDocumentType, AIDocumentWorkflowMode
 from app.models import AIDocumentRecord, StayDetailRecord, TravelDetailRecord, TripRecord, UserRecord
 from app.schemas import AIDocumentExtraction, AIDocumentSaveRequest, AIDocumentSaveResult, TripImport
-from app.services.detail_points import (
-    CHECK_IN_DEFAULT_TIME,
-    CHECK_OUT_DEFAULT_TIME,
-    normalize_stay_wall_clock,
-    sync_stay_generated_points,
-    sync_travel_generated_points,
-)
 from app.services import document_ingest, trip_ai
-from app.services.locations import location_rows
-from app.services.timezones import derive_utc, infer_tzid_from_locations, parse_wall_clock
+from app.services import trip_write
 from app.services.trip_state import promote_to_draft
 
 logger = logging.getLogger("app.ai_import")
@@ -487,94 +479,37 @@ async def save_ai_document_records(
     stays_saved = 0
     travels_saved = 0
 
+    async def _free_id(model, record_id: str | None) -> str | None:
+        """None means "already saved into this trip" — skip it.
+
+        Skipping an id that already exists is how re-saving the same document into
+        the same trip stays idempotent. But it must be scoped to *this* trip: an id
+        belonging to another trip means the extraction was reused from the content
+        cache, and silently dropping the record is how "Imported 0 stay records"
+        happened.
+        """
+        candidate = record_id or str(uuid.uuid4())
+        clash = await db.get(model, candidate)
+        if clash is None:
+            return candidate
+        if clash.trip_id == rec.trip_id:
+            return None
+        return str(uuid.uuid4())
+
     for stay in stays_to_save:
-        stay_id = stay.stay_detail_id or str(uuid.uuid4())
-        # Skipping an id that already exists is how re-saving the same document
-        # into the same trip stays idempotent. But it must be scoped to *this*
-        # trip: an id belonging to another trip means the payload was reused,
-        # and silently dropping the record is how "0 stay records" happened.
-        clash = await db.get(StayDetailRecord, stay_id)
-        if clash is not None:
-            if clash.trip_id == rec.trip_id:
-                continue
-            stay_id = str(uuid.uuid4())
-
-        check_in_tzid = stay.check_in_timezone_id or infer_tzid_from_locations(
-            stay.locations, role="venue", fallback=trip.default_timezone_id
-        )
-        check_out_tzid = stay.check_out_timezone_id or check_in_tzid
-        check_in_text = normalize_stay_wall_clock(stay.check_in, default_time=CHECK_IN_DEFAULT_TIME)
-        check_out_text = normalize_stay_wall_clock(stay.check_out, default_time=CHECK_OUT_DEFAULT_TIME)
-        check_in_local = parse_wall_clock(check_in_text)
-        check_out_local = parse_wall_clock(check_out_text)
-
-        db.add(
-            StayDetailRecord(
-                stay_detail_id=stay_id,
-                trip_id=rec.trip_id,
-                name=stay.name,
-                stay_type=stay.stay_type,
-                check_in_local=check_in_local,
-                check_in_tzid=check_in_tzid,
-                check_in_utc=derive_utc(check_in_local, check_in_tzid),
-                check_out_local=check_out_local,
-                check_out_tzid=check_out_tzid,
-                check_out_utc=derive_utc(check_out_local, check_out_tzid),
-                room_type=stay.room_type,
-                confirmation_number=stay.confirmation_number,
-                description=stay.description,
-            )
-        )
-        await db.flush()
-        rec_stay = await db.get(StayDetailRecord, stay_id)
-        for row in location_rows(stay.locations, stay_detail_id=stay_id):
-            db.add(row)
-        if rec_stay is not None:
-            await sync_stay_generated_points(db, stay=rec_stay)
+        stay_id = await _free_id(StayDetailRecord, stay.stay_detail_id)
+        if stay_id is None:
+            continue
+        stay.stay_detail_id = stay_id
+        await trip_write.create_stay(db, trip, stay)
         stays_saved += 1
 
     for travel in travels_to_save:
-        travel_id = travel.travel_detail_id or str(uuid.uuid4())
-        clash = await db.get(TravelDetailRecord, travel_id)
-        if clash is not None:
-            if clash.trip_id == rec.trip_id:
-                continue  # already saved into this trip — idempotent re-save
-            travel_id = str(uuid.uuid4())  # id reused from another trip's extraction
-
-        departure_tzid = travel.departure_timezone_id or infer_tzid_from_locations(
-            travel.locations, role="origin", fallback=trip.default_timezone_id
-        )
-        arrival_tzid = travel.arrival_timezone_id or infer_tzid_from_locations(
-            travel.locations, role="destination", fallback=trip.default_timezone_id
-        )
-        departure_local = parse_wall_clock(travel.departure_date_time)
-        arrival_local = parse_wall_clock(travel.arrival_date_time)
-
-        db.add(
-            TravelDetailRecord(
-                travel_detail_id=travel_id,
-                trip_id=rec.trip_id,
-                name=travel.name,
-                mode=travel.mode,
-                operator=travel.operator,
-                vehicle_number=travel.vehicle_number,
-                cabin_class=travel.cabin_class,
-                departure_local=departure_local,
-                departure_tzid=departure_tzid,
-                departure_utc=derive_utc(departure_local, departure_tzid),
-                arrival_local=arrival_local,
-                arrival_tzid=arrival_tzid,
-                arrival_utc=derive_utc(arrival_local, arrival_tzid),
-                confirmation_number=travel.confirmation_number,
-                description=travel.description,
-            )
-        )
-        await db.flush()
-        rec_travel = await db.get(TravelDetailRecord, travel_id)
-        for row in location_rows(travel.locations, travel_detail_id=travel_id):
-            db.add(row)
-        if rec_travel is not None:
-            await sync_travel_generated_points(db, travel=rec_travel)
+        travel_id = await _free_id(TravelDetailRecord, travel.travel_detail_id)
+        if travel_id is None:
+            continue
+        travel.travel_detail_id = travel_id
+        await trip_write.create_travel(db, trip, travel)
         travels_saved += 1
 
     await db.commit()

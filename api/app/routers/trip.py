@@ -20,11 +20,12 @@ from app.schemas import (
     TripHeader,
     TripHeaderResponse,
     TripListItem,
+    TripPatch,
     TripStatusUpdate,
     TripResponse,
     VerifyResult,
 )
-from app.services.detail_points import reconcile_trip_days
+from app.services import trip_write
 from app.services.trip_state import assembled_trip
 from app.services.trip_status import effective_status
 from app.services.trip_verify import verify_trip
@@ -94,16 +95,7 @@ async def upsert_trip(
     # The path is authoritative; body.tripId is still accepted but ignored.
     record = await db.get(TripRecord, trip_id)
     if record is None:
-        record = TripRecord(
-            trip_id=trip_id,
-            user_id=str(user.id),
-            trip_name=body.trip_name,
-            start_location_name=body.start_location_name,
-            destination_location_name=body.destination_location_name,
-            default_timezone_id=body.default_timezone_id,
-            start_date=body.start_date,
-            end_date=body.end_date,
-        )
+        record = TripRecord(trip_id=trip_id, user_id=str(user.id))
         db.add(record)
     else:
         if record.user_id != str(user.id):
@@ -111,20 +103,19 @@ async def upsert_trip(
         if bool(record.is_deleted) or record.deleted_at is not None:
             record.is_deleted = False
             record.deleted_at = None
-        record.trip_name = body.trip_name
-        record.start_location_name = body.start_location_name
-        record.destination_location_name = body.destination_location_name
-        record.default_timezone_id = body.default_timezone_id
-        record.start_date = body.start_date
-        record.end_date = body.end_date
 
-    # A trip's dates and its day rows are the same fact, so they are reconciled
-    # together — otherwise a trip saved here has a date range and an empty
-    # timeline, and the first flight to land on one of those dates silently
-    # invents the day it needed. The chat executor already did this on a date
-    # change; the REST path did not.
-    await db.flush()
-    await reconcile_trip_days(db, record)
+    # A PUT replaces the header wholesale, so every column it owns is "set".
+    # trip_write.update_trip applies them and keeps the day rows aligned with the
+    # dates — the same call the assistant's executor makes.
+    patch = TripPatch(
+        trip_name=body.trip_name,
+        start_location_name=body.start_location_name,
+        destination_location_name=body.destination_location_name,
+        default_timezone_id=body.default_timezone_id,
+        start_date=body.start_date,
+        end_date=body.end_date,
+    )
+    await trip_write.update_trip(db, record, patch)
     await db.commit()
     return TripHeaderResponse(
         trip_id=record.trip_id,

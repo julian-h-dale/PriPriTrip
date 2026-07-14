@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import (
@@ -17,6 +18,7 @@ from app.routers import (
     trip_share,
 )
 from app.services.prompt_composer import validate_prompt_sections
+from app.services.trip_write import WriteError
 from app.settings import get_settings
 from app.users import UserCreate, UserRead, _jwt_secret, auth_backend, fastapi_users
 
@@ -89,6 +91,17 @@ def create_app() -> FastAPI:
     application.include_router(trip_ai_import.router)
     application.include_router(chat.router)
     application.include_router(profile.router)
+
+    @application.exception_handler(WriteError)
+    async def _write_error(_request: Request, exc: WriteError):
+        """One refusal, one status, wherever it surfaces.
+
+        The write layer decides *whether* a write is allowed and what to say about
+        it; the status code rides along on the exception so no router has to
+        re-derive it. The executor never sees these — it catches WriteError itself
+        and hands the message to the model as a tool result.
+        """
+        return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
 
     @application.get("/health", tags=["meta"])
     async def health():

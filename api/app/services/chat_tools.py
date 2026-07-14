@@ -249,7 +249,12 @@ class ToolOutcome:
 
 
 def _to_action(op: str, target: str, args: _ToolArgs, *, id_field: str | None = None) -> AssistantAction:
-    data = args.model_dump(mode="json", exclude_none=True)
+    # `exclude_unset`, NOT `exclude_none`. A field the model explicitly set to
+    # null means "clear this" — "that confirmation number is wrong, remove it" —
+    # and it has to survive as far as `model_fields_set` in the write layer.
+    # `exclude_none` deleted it here, nothing was written, and the tool still
+    # returned `ok`: the assistant then told the user it had done it. (review.md R3)
+    data = args.model_dump(mode="json", exclude_unset=True)
     action_id = data.pop(id_field, None) if id_field else None
     return AssistantAction(
         op=op,

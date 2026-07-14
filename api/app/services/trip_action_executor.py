@@ -1,15 +1,33 @@
+"""Adapter: an `AssistantAction` from the model → a call into `trip_write`.
+
+**There are no domain rules in this file.** Timezone inference, UTC derivation,
+location resolution, generated-point syncing, day adoption, `promote_to_draft` —
+all of that lives in `services/trip_write.py`, and the REST routers call the same
+functions. This module only does the things that are specific to *the model being
+the caller*:
+
+* the model invents ids, so a create coerces them and an update rejects a
+  non-UUID rather than handing "stay-1" to a UUID column;
+* the model writes dates as prose ("Oct 30"), so trip dates go through the
+  normalizer first;
+* a refusal is not an exception here, it is a **tool result** — the model reads
+  the message and corrects itself inside the same turn.
+
+Before this split, the rules were implemented once here and again in the routers,
+and the two copies drifted. See `review.md` R1–R4.
+"""
+
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from dataclasses import dataclass
+from datetime import date
+from typing import Any, Awaitable, Callable
 import uuid
-from typing import Any
 
-from sqlalchemy import delete
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.enums import DERIVED_POINT_TYPES
 from app.models import (
-    LocationRecord,
     StayDetailRecord,
     TravelDetailRecord,
     TripDayRecord,
@@ -21,27 +39,22 @@ from app.schemas import (
     StayDetailPatch,
     TravelDetailImport,
     TravelDetailPatch,
+    TripDayCreate,
+    TripDayPatch,
+    TripPatch,
     TripPointCreate,
     TripPointPatch,
 )
+from app.services import trip_write
 from app.services.date_normalizer import DateNormalizerInput, normalize_date
-from app.services.detail_points import (
-    generated_point_conflict,
-    primary_day_for_date,
-    reconcile_trip_days,
-    soft_delete_generated_points_for_stay,
-    soft_delete_generated_points_for_travel,
-    sync_stay_generated_points,
-    sync_travel_generated_points,
-)
-from app.services.llm_contract import ActionResult, AssistantAction, LocationDecision
-from app.services.location_resolver import enrich_location_dict
-from app.services.locations import location_rows
-from app.services.timezones import derive_utc, parse_wall_clock
+from app.services.llm_contract import ActionResult, AssistantAction
+from app.services.trip_write import WriteError
+
+# ── Model-specific plumbing ──────────────────────────────────────────────────
 
 
 def _coerce_uuid(value: str | None) -> str:
-    """Server id for a create: the client's id if it is a real UUID, else a new one."""
+    """Server id for a create: the model's id if it is a real UUID, else a new one."""
     if value:
         try:
             return str(uuid.UUID(str(value)))
@@ -50,23 +63,11 @@ def _coerce_uuid(value: str | None) -> str:
     return str(uuid.uuid4())
 
 
-def _created_id_detail(target: str, requested: str | None, assigned: str) -> str | None:
-    """Tell the model when we ignored the id it invented (review.md 3D-5).
-
-    Silent regeneration meant the model believed it had named a record while
-    the DB had a different id — and the same invented id used twice mapped to
-    two different rows.
-    """
-    if requested and requested != assigned:
-        return f"Ignored the supplied id {requested!r}; this {target} was created as {assigned}."
-    return None
-
-
 def _existing_id(value: str | None) -> str | None:
     """Canonical id for an update/delete, or None if it is not a server id.
 
     Rejecting here is deliberate: a non-UUID like "stay-1" would otherwise be
-    handed straight to the UUID column and blow up the whole turn.
+    handed straight to a UUID column and blow up the whole turn.
     """
     if not value:
         return None
@@ -76,31 +77,32 @@ def _existing_id(value: str | None) -> str | None:
         return None
 
 
-def _bad_id_detail(target: str, value: str | None) -> str:
+def _created_id_detail(target: str, requested: str | None, assigned: str) -> str | None:
+    """Tell the model when we ignored the id it invented.
+
+    Silent regeneration meant the model believed it had named a record while the
+    DB had a different id — and the same invented id used twice mapped to two
+    different rows.
+    """
+    if requested and requested != assigned:
+        return f"Ignored the supplied id {requested!r}; this {target} was created as {assigned}."
+    return None
+
+
+def _bad_id_detail(noun: str, value: str | None) -> str:
     if not value:
-        return f"{target} id is required."
+        return f"{noun} id is required."
     return (
-        f"{value!r} is not a valid {target.lower()} id. "
+        f"{value!r} is not a valid {noun.lower()} id. "
         f"Use an id from get_trip_snapshot, or create the record instead."
     )
 
 
-# Names the record to touch instead, so the model can recover on its own rather
-# than retrying the same forbidden write (review.md 3C-3).
-_DERIVED_POINT_REFUSAL = (
-    "A {type!r} point is generated from the stay or travel leg it belongs to, so it "
-    "cannot be created or edited directly. Create the stay (with checkIn/checkOut) or "
-    "the travel leg (with departureDateTime/arrivalDateTime) instead, and the point "
-    "appears on the timeline by itself. Only 'activity' points are authored directly."
-)
-
-
-def _trip_tz(trip: TripRecord) -> str:
-    return trip.default_timezone_id or "UTC"
+def _iso(value: date | None) -> str | None:
+    return value.isoformat() if value else None
 
 
 def _as_date(value: Any) -> date | None:
-    """ISO text (what the model and the normalizer speak) -> a real date."""
     if isinstance(value, date):
         return value
     if isinstance(value, str):
@@ -111,629 +113,231 @@ def _as_date(value: Any) -> date | None:
     return None
 
 
-def _iso(value: date | None) -> str | None:
-    return value.isoformat() if value else None
+def _action_fields(action: AssistantAction) -> dict[str, Any]:
+    """What the model actually sent.
+
+    `exclude_unset` — **not** `exclude_none`. The difference is the whole reason
+    the assistant can clear a value: an explicit `null` ("remove that confirmation
+    number, it's wrong") must survive all the way to `model_fields_set` in the
+    write layer. `exclude_none` dropped it, the executor never saw it, nothing was
+    written, and the tool cheerfully returned `ok`. See review.md R3.
+    """
+    return action.fields.model_dump(mode="json", exclude_unset=True)
 
 
 def _normalize_trip_dates(fields: dict[str, Any], *, trip: TripRecord) -> dict[str, Any]:
-    """Resolve the model's date text, returning real `date` objects."""
+    """The model writes dates as prose. Resolve them to real dates before the column."""
     result = dict(fields)
     today = date.today().isoformat()
 
-    if "startDate" in result:
+    for key, other in (("startDate", "endDate"), ("endDate", "startDate")):
+        if key not in result or result[key] is None:
+            continue
         normalized = normalize_date(
             DateNormalizerInput(
-                rawText=str(result["startDate"]),
+                rawText=str(result[key]),
                 appCurrentDate=today,
-                tripStartDate=_iso(trip.start_date),
-                tripEndDate=_iso(trip.end_date),
+                tripStartDate=_iso(_as_date(result.get("startDate")) or trip.start_date),
+                tripEndDate=_iso(_as_date(result.get("endDate")) or trip.end_date),
             )
         )
-        result["startDate"] = _as_date(normalized or result["startDate"])
-
-    if "endDate" in result:
-        normalized = normalize_date(
-            DateNormalizerInput(
-                rawText=str(result["endDate"]),
-                appCurrentDate=today,
-                tripStartDate=_iso(result.get("startDate") or trip.start_date),
-                tripEndDate=_iso(trip.end_date),
-            )
-        )
-        result["endDate"] = _as_date(normalized or result["endDate"])
-
-    # A date the model wrote that we could not parse must not reach the column.
-    for key in ("startDate", "endDate"):
-        if key in result and result[key] is None:
+        result[key] = _as_date(normalized or result[key])
+        # A date the model wrote that we could not parse must not reach the column.
+        if result[key] is None:
             del result[key]
 
     return result
 
 
-def _ensure_location_id(loc: dict[str, Any]) -> dict[str, Any]:
-    loc["locationId"] = _coerce_uuid(loc.get("locationId"))
-    return loc
+# ── The target table ─────────────────────────────────────────────────────────
 
 
-async def _prepare_locations(
-    locations: list[dict[str, Any]], *, near: str | None = None
-) -> tuple[list[dict[str, Any]], list[LocationDecision]]:
-    """Resolve each location, and report what was decided about it.
-
-    A `medium` decision means the place was ambiguous and NOT applied — the
-    caller offers the user a choice rather than silently taking candidate #1,
-    which is what this used to do (review.md 3F-5).
-    """
-    prepared: list[dict[str, Any]] = []
-    decisions: list[LocationDecision] = []
-    for raw_loc in locations:
-        loc = _ensure_location_id(dict(raw_loc))
-        # The chat contract strips coords/place IDs from model output, so
-        # every location is resolved server-side here (review.md 3C-6).
-        loc, resolution = await enrich_location_dict(loc, near=near)
-        prepared.append(loc)
-        if resolution is not None:
-            decisions.append(
-                LocationDecision(
-                    location_id=loc["locationId"],
-                    query=resolution.query,
-                    confidence=resolution.confidence,
-                    resolved_name=(resolution.chosen or {}).get("name"),
-                    candidates=[
-                        {
-                            "googlePlaceId": c.get("googlePlaceId"),
-                            "name": c.get("name"),
-                            "fullAddress": c.get("fullAddress"),
-                            "googleMapsUri": c.get("googleMapsUri"),
-                        }
-                        for c in resolution.candidates
-                    ] if resolution.is_ambiguous else [],
-                )
-            )
-    return prepared, decisions
+@dataclass(frozen=True)
+class _Target:
+    noun: str  # "Stay" — for the model-facing messages
+    model: type
+    id_field: str  # the camelCase key the model uses
+    create_schema: type[BaseModel]
+    patch_schema: type[BaseModel]
+    create: Callable[..., Awaitable[trip_write.WriteResult]]
+    update: Callable[..., Awaitable[trip_write.WriteResult]]
+    delete: Callable[..., Awaitable[None]]
 
 
-def _action_fields_dict(action: AssistantAction) -> dict[str, Any]:
-    return action.fields.model_dump(mode="json", exclude_none=True)
+TARGETS: dict[str, _Target] = {
+    "stay": _Target(
+        "Stay", StayDetailRecord, "stayDetailId",
+        StayDetailImport, StayDetailPatch,
+        trip_write.create_stay, trip_write.update_stay, trip_write.delete_stay,
+    ),
+    "travel": _Target(
+        "Travel", TravelDetailRecord, "travelDetailId",
+        TravelDetailImport, TravelDetailPatch,
+        trip_write.create_travel, trip_write.update_travel, trip_write.delete_travel,
+    ),
+    "point": _Target(
+        "Point", TripPointRecord, "pointId",
+        TripPointCreate, TripPointPatch,
+        trip_write.create_point, trip_write.update_point, trip_write.delete_point,
+    ),
+    "day": _Target(
+        "Day", TripDayRecord, "dayId",
+        TripDayCreate, TripDayPatch,
+        trip_write.create_day, trip_write.update_day, trip_write.delete_day,
+    ),
+}
 
 
-async def _replace_point_locations(
-    db: AsyncSession, point_id: str, locations: list[dict[str, Any]], *, near: str | None = None
-) -> list[LocationDecision]:
-    await db.execute(delete(LocationRecord).where(LocationRecord.point_id == point_id))
-    prepared, decisions = await _prepare_locations(locations, near=near)
-    for row in location_rows(prepared, point_id=point_id):
-        db.add(row)
-    return decisions
+async def _load(db: AsyncSession, trip: TripRecord, spec: _Target, record_id: str):
+    rec = await db.get(spec.model, record_id)
+    if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
+        return None
+    return rec
 
 
-async def _replace_detail_locations(
-    db: AsyncSession,
-    *,
-    stay_id: str | None = None,
-    travel_id: str | None = None,
-    locations: list[dict[str, Any]],
-    near: str | None = None,
-) -> list[LocationDecision]:
-    if stay_id is not None:
-        await db.execute(delete(LocationRecord).where(LocationRecord.stay_detail_id == stay_id))
-    if travel_id is not None:
-        await db.execute(delete(LocationRecord).where(LocationRecord.travel_detail_id == travel_id))
-
-    prepared, decisions = await _prepare_locations(locations, near=near)
-    for row in location_rows(prepared, stay_detail_id=stay_id, travel_detail_id=travel_id):
-        db.add(row)
-    return decisions
+def _result(action: AssistantAction, **kw) -> ActionResult:
+    return ActionResult(op=action.op, target=action.target, **kw)
 
 
-async def execute_action(db: AsyncSession, *, trip: TripRecord, action: AssistantAction) -> ActionResult:
-    action_fields = _action_fields_dict(action)
-    decisions: list[LocationDecision] = []
+# ── Entry point ──────────────────────────────────────────────────────────────
 
+
+async def execute_action(
+    db: AsyncSession, *, trip: TripRecord, action: AssistantAction
+) -> ActionResult:
+    """Apply one model action. A refusal comes back as a tool result, never a raise."""
+    try:
+        return await _dispatch(db, trip, action)
+    except WriteError as exc:
+        # The write layer's refusals are written *for the model* — they say what to
+        # do instead, so it can recover inside the same turn.
+        return _result(action, id=action.id, status="error", detail=str(exc))
+    except ValidationError as exc:
+        return _result(action, id=action.id, status="error", detail=str(exc))
+
+
+async def _dispatch(db: AsyncSession, trip: TripRecord, action: AssistantAction) -> ActionResult:
+    fields = _action_fields(action)
+
+    # ── the trip header ──────────────────────────────────────────────────────
     if action.target == "trip":
         if action.op != "update":
-            return ActionResult(op=action.op, target=action.target, status="error", detail="Only update is supported for trip")
+            return _result(action, status="error", detail="Only update is supported for trip")
 
-        fields = _normalize_trip_dates(action_fields, trip=trip)
-        field_map = {
-            "tripName": "trip_name",
-            "status": "status",
-            "startLocationName": "start_location_name",
-            "destinationLocationName": "destination_location_name",
-            "defaultTimezoneId": "default_timezone_id",
-            "startDate": "start_date",
-            "endDate": "end_date",
-        }
-        applied = 0
-        dates_changed = False
-        for key, orm_field in field_map.items():
-            if key in fields:
-                setattr(trip, orm_field, fields[key])
-                applied += 1
-                if key in ("startDate", "endDate"):
-                    dates_changed = True
-        if applied == 0:
-            return ActionResult(op=action.op, target=action.target, status="error", detail="No supported trip fields provided")
-        if dates_changed:
-            # Keep day rows aligned with the new date range.
-            await reconcile_trip_days(db, trip)
-        await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=trip.trip_id, status="ok", detail=f"Updated {applied} trip field(s)")
+        patch = TripPatch.model_validate(_normalize_trip_dates(fields, trip=trip))
+        if not patch.model_fields_set:
+            return _result(action, status="error", detail="No supported trip fields provided")
+
+        await trip_write.update_trip(db, trip, patch)
+        return _result(
+            action,
+            id=trip.trip_id,
+            status="ok",
+            detail=f"Updated {len(patch.model_fields_set)} trip field(s)",
+        )
+
+    spec = TARGETS.get(action.target)
+    if spec is None:
+        return _result(action, status="error", detail=f"Unsupported target: {action.target}")
+
+    # ── create ───────────────────────────────────────────────────────────────
+    if action.op == "create":
+        return await _create(db, trip, action, spec, fields)
+
+    # ── update / delete need an existing record ──────────────────────────────
+    record_id = _existing_id(action.id)
+    if record_id is None:
+        return _result(
+            action, id=action.id, status="error", detail=_bad_id_detail(spec.noun, action.id)
+        )
+
+    rec = await _load(db, trip, spec, record_id)
+    if rec is None:
+        return _result(
+            action, id=action.id, status="error", detail=f"{spec.noun} not found"
+        )
+
+    if action.op == "update":
+        patch = spec.patch_schema.model_validate(fields)
+        result = await spec.update(db, trip, rec, patch)
+        return _result(
+            action, id=action.id, status="ok", locations=result.location_decisions
+        )
+
+    if action.op == "delete":
+        await spec.delete(db, trip, rec)
+        return _result(action, id=action.id, status="ok")
+
+    return _result(action, id=action.id, status="error", detail=f"Unsupported op: {action.op}")
+
+
+async def _create(
+    db: AsyncSession,
+    trip: TripRecord,
+    action: AssistantAction,
+    spec: _Target,
+    fields: dict[str, Any],
+) -> ActionResult:
+    payload = dict(fields)
+    assigned = _coerce_uuid(action.id or payload.get(spec.id_field))
+    payload[spec.id_field] = assigned
+    payload.setdefault("locations", [])
+
+    # A point hangs off a day, so the day has to exist and be this trip's.
+    day: TripDayRecord | None = None
+    if action.target == "point":
+        day_id = payload.get("dayId")
+        if not day_id:
+            return _result(action, status="error", detail="Point create requires dayId")
+        day = await db.get(TripDayRecord, day_id)
+        if (
+            day is None
+            or day.trip_id != trip.trip_id
+            or day.is_deleted
+            or day.deleted_at is not None
+        ):
+            return _result(action, id=assigned, status="error", detail="Day not found")
+
+    if action.target == "stay" and not payload.get("stayType"):
+        payload["stayType"] = "hotel"  # a stay the model didn't classify is a hotel
 
     if action.target == "day":
-        if action.op == "create":
-            day_id = _coerce_uuid(action.id)
-            if await db.get(TripDayRecord, day_id):
-                return ActionResult(op=action.op, target=action.target, id=day_id, status="error", detail="Day already exists")
-            title = action_fields.get("title")
-            day_date = action_fields.get("date")
-            if day_date is not None:
-                normalized = normalize_date(
-                    DateNormalizerInput(
-                        rawText=str(day_date),
-                        appCurrentDate=date.today().isoformat(),
-                        tripStartDate=_iso(trip.start_date),
-                        tripEndDate=_iso(trip.end_date),
-                    )
-                )
-                day_date = _as_date(normalized or day_date)
-            if not title or not day_date:
-                return ActionResult(
-                    op=action.op, target=action.target, status="error",
-                    detail="Day create requires a title and a date (ISO YYYY-MM-DD).",
-                )
-
-            is_alternate = bool(action_fields.get("isAlternate", False))
-
-            # A date already has its day: the trip's date range creates one, and
-            # so does saving a flight that lands on it. "Create" the same date
-            # again and you mean *name* it — so adopt the row that is there
-            # rather than stacking a second July 25th onto the timeline.
-            # (An alternate is a deliberate second plan for a date, so it is
-            # exempt: several may coexist.)
-            if not is_alternate:
-                existing = await primary_day_for_date(
-                    db, trip_id=trip.trip_id, day_date=day_date
-                )
-                if existing is not None:
-                    existing.title = title
-                    if action_fields.get("description") is not None:
-                        existing.description = action_fields["description"]
-                    await db.flush()
-                    return ActionResult(
-                        op=action.op, target=action.target, id=existing.day_id, status="ok",
-                        detail=(
-                            f"{day_date.isoformat()} already had a day, so it was renamed to "
-                            f"{title!r} rather than duplicated. Its id is {existing.day_id} — "
-                            f"use that when adding points to this date."
-                        ),
-                    )
-
-            db.add(
-                TripDayRecord(
-                    day_id=day_id,
-                    trip_id=trip.trip_id,
-                    title=title,
-                    date=day_date,
-                    description=action_fields.get("description"),
-                    is_alternate=is_alternate,
-                    completed=bool(action_fields.get("completed", False)),
-                )
-            )
-            await db.flush()
-            return ActionResult(
-                op=action.op, target=action.target, id=day_id, status="ok",
-                detail=_created_id_detail("day", action.id, day_id),
-            )
-
-        record_id = _existing_id(action.id)
-        if record_id is None:
-            return ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
+        payload["date"] = _as_date(payload.get("date"))
+        if not payload.get("title") or not payload["date"]:
+            return _result(
+                action,
                 status="error",
-                detail=_bad_id_detail("Day", action.id),
+                detail="Day create requires a title and a date (ISO YYYY-MM-DD).",
             )
-        rec = await db.get(TripDayRecord, record_id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Day not found")
 
-        if action.op == "update":
-            fields = dict(action_fields)
-            if fields.get("date") is not None:
-                normalized = normalize_date(
-                    DateNormalizerInput(
-                        rawText=str(fields["date"]),
-                        appCurrentDate=date.today().isoformat(),
-                        tripStartDate=_iso(trip.start_date),
-                        tripEndDate=_iso(trip.end_date),
-                    )
-                )
-                parsed = _as_date(normalized or fields["date"])
-                if parsed is None:
-                    return ActionResult(
-                        op=action.op, target=action.target, id=action.id, status="error",
-                        detail=f"{fields['date']!r} is not a date I can read. Use ISO YYYY-MM-DD.",
-                    )
-                fields["date"] = parsed
-
-                # Moving a day onto a date that already has one would duplicate
-                # it just as surely as creating it there.
-                if not rec.is_alternate and parsed != rec.date:
-                    clash = await primary_day_for_date(db, trip_id=trip.trip_id, day_date=parsed)
-                    if clash is not None and clash.day_id != rec.day_id:
-                        return ActionResult(
-                            op=action.op, target=action.target, id=action.id, status="error",
-                            detail=(
-                                f"{parsed.isoformat()} already has a day ({clash.day_id}, "
-                                f"{clash.title!r}). Edit that one, or move its points across, "
-                                f"rather than moving a second day onto the same date."
-                            ),
-                        )
-            field_map = {
-                "title": "title",
-                "date": "date",
-                "description": "description",
-                "isAlternate": "is_alternate",
-                "completed": "completed",
-            }
-            for key, orm_field in field_map.items():
-                if key in fields:
-                    setattr(rec, orm_field, fields[key])
-            await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
+    data = spec.create_schema.model_validate(payload)
 
     if action.target == "point":
-        if action.op == "create":
-            payload = dict(action_fields)
-            payload["pointId"] = _coerce_uuid(action.id or payload.get("pointId"))
-            payload.setdefault("locations", [])
-            day_id = payload.get("dayId")
-            if not day_id:
-                return ActionResult(op=action.op, target=action.target, status="error", detail="Point create requires dayId")
-            day = await db.get(TripDayRecord, day_id)
-            if day is None or day.trip_id != trip.trip_id or day.is_deleted or day.deleted_at is not None:
-                return ActionResult(op=action.op, target=action.target, id=payload["pointId"], status="error", detail="Day not found")
-            if payload.get("type") in DERIVED_POINT_TYPES:
-                return ActionResult(
-                    op=action.op,
-                    target=action.target,
-                    id=payload["pointId"],
-                    status="error",
-                    detail=_DERIVED_POINT_REFUSAL.format(type=payload["type"]),
-                )
-            try:
-                body = TripPointCreate.model_validate(payload)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=payload["pointId"], status="error", detail=str(exc))
+        result = await spec.create(db, trip, day, data)
+    elif action.target == "day":
+        # "create_day" from the model means *name this date*. If the date already
+        # has a day, rename it and hand back its id rather than adding a second.
+        result = await spec.create(db, trip, data, adopt_existing=True)
+    else:
+        result = await spec.create(db, trip, data)
 
-            rec = TripPointRecord(
-                point_id=body.point_id,
-                trip_id=trip.trip_id,
-                day_id=body.day_id,
-                type=body.type,
-                title=body.title,
-                stay_detail_id=body.stay_detail_id,
-                travel_detail_id=body.travel_detail_id,
-                confirmation_number=body.confirmation_number,
-                description=body.description,
-                image_url=body.image_url,
-                logo_url=body.logo_url,
-                is_system_created=body.is_system_created,
-                completed=body.completed,
-                completed_date_time=body.completed_date_time,
-            )
-            rec.start_local = parse_wall_clock(body.start_date_time)
-            rec.start_tzid = body.start_timezone_id or _trip_tz(trip)
-            rec.start_utc = derive_utc(rec.start_local, rec.start_tzid)
-            rec.end_local = parse_wall_clock(body.end_date_time)
-            rec.end_tzid = body.end_timezone_id or rec.start_tzid
-            rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
-            db.add(rec)
-            await db.flush()
-            decisions = await _replace_point_locations(
-                db, body.point_id, [loc.model_dump(by_alias=True) for loc in body.locations],
-                near=trip.destination_location_name,
-            )
-            await db.flush()
-            return ActionResult(
-                op=action.op, target=action.target, id=body.point_id, status="ok", locations=decisions,
-                detail=_created_id_detail("point", action.id, body.point_id),
-            )
+    created_id = getattr(result.record, spec.model.__mapper__.primary_key[0].name)
 
-        record_id = _existing_id(action.id)
-        if record_id is None:
-            return ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
-                status="error",
-                detail=_bad_id_detail("Point", action.id),
-            )
-        rec = await db.get(TripPointRecord, record_id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Point not found")
+    # A "created" day that landed on a date which already had one was *renamed*,
+    # not duplicated. Tell the model which id to use for the points it adds next.
+    if action.target == "day" and getattr(result, "adopted", False):
+        detail = (
+            f"{data.date.isoformat()} already had a day, so it was renamed to "
+            f"{data.title!r} rather than duplicated. Its id is {created_id} — use that "
+            f"when adding points to this date."
+        )
+    else:
+        detail = _created_id_detail(spec.noun.lower(), action.id, created_id)
 
-        if action.op == "update":
-            try:
-                patch = TripPointPatch.model_validate(action_fields)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
-            if patch.type in DERIVED_POINT_TYPES:
-                return ActionResult(
-                    op=action.op,
-                    target=action.target,
-                    id=action.id,
-                    status="error",
-                    detail=_DERIVED_POINT_REFUSAL.format(type=patch.type),
-                )
-            conflict = generated_point_conflict(rec, patch.model_fields_set)
-            if conflict:
-                return ActionResult(
-                    op=action.op, target=action.target, id=action.id, status="error", detail=conflict
-                )
-
-            # Field names match the ORM columns 1:1 now that schemas are snake_case.
-            for field in (
-                "day_id",
-                "type",
-                "title",
-                "stay_detail_id",
-                "travel_detail_id",
-                "confirmation_number",
-                "description",
-                "image_url",
-                "logo_url",
-                "is_system_created",
-                "completed",
-                "completed_date_time",
-            ):
-                if field in patch.model_fields_set:
-                    setattr(rec, field, getattr(patch, field))
-
-            if "start_date_time" in patch.model_fields_set:
-                rec.start_local = parse_wall_clock(patch.start_date_time)
-            if "end_date_time" in patch.model_fields_set:
-                rec.end_local = parse_wall_clock(patch.end_date_time)
-
-            if "start_timezone_id" in patch.model_fields_set:
-                rec.start_tzid = patch.start_timezone_id or _trip_tz(trip)
-            if "end_timezone_id" in patch.model_fields_set:
-                rec.end_tzid = patch.end_timezone_id or rec.start_tzid or _trip_tz(trip)
-
-            rec.start_utc = derive_utc(rec.start_local, rec.start_tzid)
-            rec.end_utc = derive_utc(rec.end_local, rec.end_tzid)
-
-            if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
-                decisions = await _replace_point_locations(
-                    db, rec.point_id, locs, near=trip.destination_location_name
-                )
-
-            await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
-
-        # delete
-        if rec.is_system_created:
-            parent = "stay" if rec.stay_detail_id else "travel leg"
-            parent_id = rec.stay_detail_id or rec.travel_detail_id
-            return ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
-                status="error",
-                detail=(
-                    f"{rec.title!r} is generated from its {parent} and would come straight "
-                    f"back on the next sync. To remove it, delete the {parent} ({parent_id}) "
-                    f"or clear the time it is generated from."
-                ),
-            )
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-
-    if action.target == "stay":
-        if action.op == "create":
-            payload = dict(action_fields)
-            payload["stayDetailId"] = _coerce_uuid(action.id or payload.get("stayDetailId"))
-            payload.setdefault("locations", [])
-            if not payload.get("stayType"):
-                payload["stayType"] = "hotel"
-            try:
-                body = StayDetailImport.model_validate(payload)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=payload["stayDetailId"], status="error", detail=str(exc))
-
-            rec = StayDetailRecord(
-                stay_detail_id=body.stay_detail_id,
-                trip_id=trip.trip_id,
-                name=body.name,
-                stay_type=body.stay_type,
-                room_type=body.room_type,
-                confirmation_number=body.confirmation_number,
-                description=body.description,
-            )
-            rec.check_in_local = parse_wall_clock(body.check_in)
-            rec.check_in_tzid = body.check_in_timezone_id or _trip_tz(trip)
-            rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
-            rec.check_out_local = parse_wall_clock(body.check_out)
-            rec.check_out_tzid = body.check_out_timezone_id or rec.check_in_tzid
-            rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
-            db.add(rec)
-            await db.flush()
-            decisions = await _replace_detail_locations(
-                db, stay_id=rec.stay_detail_id,
-                locations=[loc.model_dump(by_alias=True) for loc in body.locations],
-                near=trip.destination_location_name,
-            )
-            await sync_stay_generated_points(db, stay=rec)
-            await db.flush()
-            return ActionResult(
-                op=action.op, target=action.target, id=rec.stay_detail_id, status="ok", locations=decisions,
-                detail=_created_id_detail("stay", action.id, rec.stay_detail_id),
-            )
-
-        record_id = _existing_id(action.id)
-        if record_id is None:
-            return ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
-                status="error",
-                detail=_bad_id_detail("Stay", action.id),
-            )
-        rec = await db.get(StayDetailRecord, record_id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Stay not found")
-
-        if action.op == "update":
-            try:
-                patch = StayDetailPatch.model_validate(action_fields)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
-
-            # Field names match the ORM columns 1:1 now that schemas are snake_case.
-            for field in ("name", "stay_type", "room_type", "confirmation_number", "description"):
-                if field in patch.model_fields_set:
-                    setattr(rec, field, getattr(patch, field))
-
-            if "check_in" in patch.model_fields_set:
-                rec.check_in_local = parse_wall_clock(patch.check_in)
-            if "check_out" in patch.model_fields_set:
-                rec.check_out_local = parse_wall_clock(patch.check_out)
-            if "check_in_timezone_id" in patch.model_fields_set:
-                rec.check_in_tzid = patch.check_in_timezone_id or _trip_tz(trip)
-            if "check_out_timezone_id" in patch.model_fields_set:
-                rec.check_out_tzid = patch.check_out_timezone_id or rec.check_in_tzid
-
-            rec.check_in_utc = derive_utc(rec.check_in_local, rec.check_in_tzid)
-            rec.check_out_utc = derive_utc(rec.check_out_local, rec.check_out_tzid)
-
-            if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
-                decisions = await _replace_detail_locations(
-                    db, stay_id=rec.stay_detail_id, locations=locs, near=trip.destination_location_name
-                )
-
-            await sync_stay_generated_points(db, stay=rec)
-            await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        await soft_delete_generated_points_for_stay(db, stay_detail_id=rec.stay_detail_id)
-        await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-
-    if action.target == "travel":
-        if action.op == "create":
-            payload = dict(action_fields)
-            payload["travelDetailId"] = _coerce_uuid(action.id or payload.get("travelDetailId"))
-            payload.setdefault("locations", [])
-            if not payload.get("mode"):
-                payload["mode"] = "flight"
-            try:
-                body = TravelDetailImport.model_validate(payload)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=payload["travelDetailId"], status="error", detail=str(exc))
-
-            rec = TravelDetailRecord(
-                travel_detail_id=body.travel_detail_id,
-                trip_id=trip.trip_id,
-                name=body.name,
-                mode=body.mode,
-                operator=body.operator,
-                vehicle_number=body.vehicle_number,
-                cabin_class=body.cabin_class,
-                confirmation_number=body.confirmation_number,
-                description=body.description,
-            )
-            rec.departure_local = parse_wall_clock(body.departure_date_time)
-            rec.departure_tzid = body.departure_timezone_id or _trip_tz(trip)
-            rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
-            rec.arrival_local = parse_wall_clock(body.arrival_date_time)
-            rec.arrival_tzid = body.arrival_timezone_id or rec.departure_tzid
-            rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
-            db.add(rec)
-            await db.flush()
-            decisions = await _replace_detail_locations(
-                db, travel_id=rec.travel_detail_id,
-                locations=[loc.model_dump(by_alias=True) for loc in body.locations],
-                near=trip.destination_location_name,
-            )
-            await sync_travel_generated_points(db, travel=rec)
-            await db.flush()
-            return ActionResult(
-                op=action.op, target=action.target, id=rec.travel_detail_id, status="ok", locations=decisions,
-                detail=_created_id_detail("travel", action.id, rec.travel_detail_id),
-            )
-
-        record_id = _existing_id(action.id)
-        if record_id is None:
-            return ActionResult(
-                op=action.op,
-                target=action.target,
-                id=action.id,
-                status="error",
-                detail=_bad_id_detail("Travel", action.id),
-            )
-        rec = await db.get(TravelDetailRecord, record_id)
-        if rec is None or rec.trip_id != trip.trip_id or rec.is_deleted or rec.deleted_at is not None:
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Travel not found")
-
-        if action.op == "update":
-            try:
-                patch = TravelDetailPatch.model_validate(action_fields)
-            except Exception as exc:
-                return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail=str(exc))
-
-            # Field names match the ORM columns 1:1 now that schemas are snake_case.
-            for field in (
-                "name",
-                "mode",
-                "operator",
-                "vehicle_number",
-                "cabin_class",
-                "confirmation_number",
-                "description",
-            ):
-                if field in patch.model_fields_set:
-                    setattr(rec, field, getattr(patch, field))
-
-            if "departure_date_time" in patch.model_fields_set:
-                rec.departure_local = parse_wall_clock(patch.departure_date_time)
-            if "arrival_date_time" in patch.model_fields_set:
-                rec.arrival_local = parse_wall_clock(patch.arrival_date_time)
-            if "departure_timezone_id" in patch.model_fields_set:
-                rec.departure_tzid = patch.departure_timezone_id or _trip_tz(trip)
-            if "arrival_timezone_id" in patch.model_fields_set:
-                rec.arrival_tzid = patch.arrival_timezone_id or rec.departure_tzid
-
-            rec.departure_utc = derive_utc(rec.departure_local, rec.departure_tzid)
-            rec.arrival_utc = derive_utc(rec.arrival_local, rec.arrival_tzid)
-
-            if "locations" in patch.model_fields_set:
-                locs = [loc.model_dump(by_alias=True) for loc in (patch.locations or [])]
-                decisions = await _replace_detail_locations(
-                    db, travel_id=rec.travel_detail_id, locations=locs, near=trip.destination_location_name
-                )
-
-            await sync_travel_generated_points(db, travel=rec)
-            await db.flush()
-            return ActionResult(op=action.op, target=action.target, id=action.id, status="ok", locations=decisions)
-
-        rec.is_deleted = True
-        rec.deleted_at = datetime.now(timezone.utc)
-        await soft_delete_generated_points_for_travel(db, travel_detail_id=rec.travel_detail_id)
-        await db.flush()
-        return ActionResult(op=action.op, target=action.target, id=action.id, status="ok")
-
-    return ActionResult(op=action.op, target=action.target, id=action.id, status="error", detail="Unsupported action target")
+    return _result(
+        action,
+        id=created_id,
+        status="ok",
+        locations=result.location_decisions,
+        detail=detail,
+    )

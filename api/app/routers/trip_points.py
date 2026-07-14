@@ -1,14 +1,10 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_owned_trip
-from app.enums import DERIVED_POINT_TYPES
-from app.services.detail_points import generated_point_conflict
-from app.services.trip_state import promote_to_draft
+from app.services import trip_write
 from app.models import (
     active,
     deleted,
@@ -25,14 +21,6 @@ from app.schemas import (
     TripPointCreate,
     TripPointPatch,
     TripPointResponse,
-)
-from app.services.locations import location_rows
-from app.services.timezones import (
-    derive_utc,
-    infer_tzid_from_locations,
-    parse_wall_clock,
-    tzid_from_coords,
-    wall_clock_to_text,
 )
 
 router = APIRouter(
@@ -164,84 +152,8 @@ async def _load_point_response(point: TripPointRecord, db: AsyncSession) -> Trip
     return TripPointResponse.from_record(point, locations, travel_detail, stay_detail)
 
 
-async def _replace_locations(point_id: str, locations_payload: list, db: AsyncSession) -> None:
-    await db.execute(delete(LocationRecord).where(LocationRecord.point_id == point_id))
-    for row in location_rows(locations_payload, point_id=point_id):
-        db.add(row)
 
 
-async def _infer_tzid_from_day_stay(
-    db: AsyncSession,
-    *,
-    trip_id: str,
-    day_id: str,
-    fallback: str | None,
-) -> str | None:
-    day = await db.get(TripDayRecord, day_id)
-    if day is None:
-        return fallback
-
-    stays_result = await db.execute(
-        select(StayDetailRecord).where(
-            StayDetailRecord.trip_id == trip_id,
-            active(StayDetailRecord),
-        )
-    )
-    for stay in stays_result.scalars().all():
-        if stay.check_in_local is None or stay.check_out_local is None:
-            continue
-        if stay.check_in_local.date() <= day.date <= stay.check_out_local.date():
-            locs = await db.execute(
-                select(LocationRecord).where(LocationRecord.stay_detail_id == stay.stay_detail_id)
-            )
-            for loc in locs.scalars().all():
-                tzid = loc.timezone_id or tzid_from_coords(loc.lat, loc.lng)
-                if tzid:
-                    return tzid
-            if stay.check_in_tzid:
-                return stay.check_in_tzid
-    return fallback
-
-
-async def _infer_point_tzid(
-    db: AsyncSession,
-    *,
-    trip: TripRecord,
-    day_id: str,
-    locations_payload: list,
-    explicit_tzid: str | None,
-) -> str:
-    if explicit_tzid:
-        return explicit_tzid
-
-    fallback = trip.default_timezone_id
-
-    tzid = infer_tzid_from_locations(locations_payload, fallback=None)
-    if tzid:
-        return tzid
-
-    tzid = await _infer_tzid_from_day_stay(db, trip_id=trip.trip_id, day_id=day_id, fallback=None)
-    if tzid:
-        return tzid
-
-    return fallback or "UTC"
-
-
-def _reject_derived_type(point_type: str | None) -> None:
-    """Only 'activity' points are authored; the rest are generated.
-
-    See app.enums.DERIVED_POINT_TYPES — detail_points.py is their single writer,
-    and a second one is what put two departures on every flight.
-    """
-    if point_type in DERIVED_POINT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"A {point_type!r} point is generated from the stay or travel leg it belongs "
-                f"to and cannot be created directly. Create the stay or the travel leg with "
-                f"its times, and the point appears on the timeline by itself."
-            ),
-        )
 
 
 async def _validate_detail_refs(
@@ -310,46 +222,12 @@ async def create_point(
     day = await db.get(TripDayRecord, body.day_id)
     if day is None or day.is_deleted or day.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day not found")
-    _reject_derived_type(body.type)
     await _validate_detail_refs(trip.trip_id, body.stay_detail_id, body.travel_detail_id, db)
 
-    point = TripPointRecord(
-        point_id=body.point_id,
-        trip_id=trip.trip_id,
-        day_id=body.day_id,
-        type=body.type,
-        title=body.title,
-        stay_detail_id=body.stay_detail_id,
-        travel_detail_id=body.travel_detail_id,
-        confirmation_number=body.confirmation_number,
-        description=body.description,
-        image_url=body.image_url,
-        logo_url=body.logo_url,
-        is_system_created=body.is_system_created,
-        completed=body.completed,
-        completed_date_time=body.completed_date_time,
-    )
-    db.add(point)
-    # Content, so the trip is no longer `new` — see create_travel_detail.
-    promote_to_draft(trip)
-    await db.flush()
-    inferred_tzid = await _infer_point_tzid(
-        db,
-        trip=trip,
-        day_id=body.day_id,
-        locations_payload=body.locations,
-        explicit_tzid=body.start_timezone_id or body.end_timezone_id,
-    )
-    point.start_local = parse_wall_clock(body.start_date_time)
-    point.start_tzid = body.start_timezone_id or inferred_tzid
-    point.start_utc = derive_utc(point.start_local, point.start_tzid)
-    point.end_local = parse_wall_clock(body.end_date_time)
-    point.end_tzid = body.end_timezone_id or inferred_tzid
-    point.end_utc = derive_utc(point.end_local, point.end_tzid)
-    await _replace_locations(body.point_id, body.locations, db)
+    result = await trip_write.create_point(db, trip, day, body)
     await db.commit()
-    await db.refresh(point)
-    return await _load_point_response(point, db)
+    await db.refresh(result.record)
+    return await _load_point_response(result.record, db)
 
 
 
@@ -364,83 +242,13 @@ async def patch_point(
     if point is None or point.is_deleted or point.deleted_at is not None or point.trip_id != trip.trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
 
-    # Field names match the ORM columns 1:1 now that schemas are snake_case.
-    _scalar_fields = (
-        "day_id",
-        "type",
-        "title",
-        "stay_detail_id",
-        "travel_detail_id",
-        "start_date_time",
-        "end_date_time",
-        "confirmation_number",
-        "description",
-        "image_url",
-        "logo_url",
-        "is_system_created",
-        "completed",
-        "completed_date_time",
-    )
-    _reject_derived_type(body.type)
-    conflict = generated_point_conflict(point, body.model_fields_set)
-    if conflict:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict)
-
     await _validate_detail_refs(
         trip.trip_id,
         body.stay_detail_id if "stay_detail_id" in body.model_fields_set else None,
         body.travel_detail_id if "travel_detail_id" in body.model_fields_set else None,
         db,
     )
-    for field in _scalar_fields:
-        if field in body.model_fields_set:
-            setattr(point, field, getattr(body, field))
-
-    effective_day_id = point.day_id
-    effective_locations = body.locations if "locations" in body.model_fields_set else (
-        (await db.execute(select(LocationRecord).where(LocationRecord.point_id == point_id))).scalars().all()
-    )
-    inferred_tzid = await _infer_point_tzid(
-        db,
-        trip=trip,
-        day_id=effective_day_id,
-        locations_payload=effective_locations,
-        explicit_tzid=(
-            body.start_timezone_id
-            if "start_timezone_id" in body.model_fields_set
-            else point.start_tzid
-        ) or (
-            body.end_timezone_id
-            if "end_timezone_id" in body.model_fields_set
-            else point.end_tzid
-        ),
-    )
-
-    start_text = (
-        body.start_date_time
-        if "start_date_time" in body.model_fields_set
-        else wall_clock_to_text(point.start_local)
-    )
-    end_text = (
-        body.end_date_time
-        if "end_date_time" in body.model_fields_set
-        else wall_clock_to_text(point.end_local)
-    )
-
-    point.start_local = parse_wall_clock(start_text)
-    point.start_tzid = (
-        body.start_timezone_id if "start_timezone_id" in body.model_fields_set else point.start_tzid
-    ) or inferred_tzid
-    point.start_utc = derive_utc(point.start_local, point.start_tzid)
-    point.end_local = parse_wall_clock(end_text)
-    point.end_tzid = (
-        body.end_timezone_id if "end_timezone_id" in body.model_fields_set else point.end_tzid
-    ) or inferred_tzid
-    point.end_utc = derive_utc(point.end_local, point.end_tzid)
-
-    if "locations" in body.model_fields_set:
-        await _replace_locations(point_id, body.locations or [], db)
-
+    await trip_write.update_point(db, trip, point, body)
     await db.commit()
     await db.refresh(point)
     return await _load_point_response(point, db)
@@ -455,17 +263,7 @@ async def delete_point(
     point = await db.get(TripPointRecord, point_id)
     if point is None or point.is_deleted or point.deleted_at is not None or point.trip_id != trip.trip_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point not found")
-    if point.is_system_created:
-        parent = "stay" if point.stay_detail_id else "travel leg"
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"{point.title!r} is generated from its {parent} and would come straight back "
-                f"on the next sync. Delete the {parent}, or clear the time it is generated from."
-            ),
-        )
-    point.is_deleted = True
-    point.deleted_at = datetime.now(timezone.utc)
+    await trip_write.delete_point(db, trip, point)
     await db.commit()
 
 

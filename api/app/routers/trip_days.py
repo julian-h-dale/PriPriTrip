@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +6,7 @@ from app.database import get_db
 from app.dependencies import get_owned_trip
 from app.models import active, deleted, TripDayRecord, TripRecord
 from app.schemas import TripDayCreate, TripDayPatch, TripDayResponse
-from app.services.detail_points import primary_day_for_date
+from app.services import trip_write
 
 router = APIRouter(
     prefix="/trips/{trip_id}/days",
@@ -59,32 +57,6 @@ async def list_deleted_days(
     return [_day_to_response(d) for d in result.scalars().all()]
 
 
-async def _reject_occupied_date(
-    db: AsyncSession,
-    trip: TripRecord,
-    day_date,
-    *,
-    is_alternate: bool,
-    moving: TripDayRecord | None = None,
-) -> None:
-    """One primary day per date (see detail_points.primary_day_for_date).
-
-    Alternates are exempt — a second plan for the same date is the point of
-    them. Everything else would put that date on the timeline twice.
-    """
-    if is_alternate or day_date is None:
-        return
-    clash = await primary_day_for_date(db, trip_id=trip.trip_id, day_date=day_date)
-    if clash is None or (moving is not None and clash.day_id == moving.day_id):
-        return
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail=(
-            f"{day_date.isoformat()} already has a day ({clash.title!r}). Edit that one, "
-            f"or mark this an alternate if you mean a second plan for the same date."
-        ),
-    )
-
 
 @router.post("", response_model=TripDayResponse, status_code=status.HTTP_201_CREATED)
 async def create_day(
@@ -94,20 +66,13 @@ async def create_day(
 ):
     if await db.get(TripDayRecord, body.day_id) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Day already exists")
-    await _reject_occupied_date(db, trip, body.date, is_alternate=body.is_alternate)
-    day = TripDayRecord(
-        day_id=body.day_id,
-        trip_id=trip.trip_id,
-        title=body.title,
-        date=body.date,
-        description=body.description,
-        is_alternate=body.is_alternate,
-        completed=body.completed,
-    )
-    db.add(day)
+    # adopt_existing=False: a REST client that POSTs onto a date which already has
+    # a day gets a 409. (The assistant means "name this date", so it adopts — same
+    # rule, different way of surfacing the collision. See trip_write.create_day.)
+    result = await trip_write.create_day(db, trip, body, adopt_existing=False)
     await db.commit()
-    await db.refresh(day)
-    return _day_to_response(day)
+    await db.refresh(result.record)
+    return _day_to_response(result.record)
 
 
 @router.patch("/{day_id}", response_model=TripDayResponse)
@@ -118,15 +83,7 @@ async def patch_day(
     db: AsyncSession = Depends(get_db),
 ):
     day = await _require_day(db, day_id, trip)
-    if "date" in body.model_fields_set and body.date != day.date:
-        is_alternate = (
-            body.is_alternate if "is_alternate" in body.model_fields_set else day.is_alternate
-        )
-        await _reject_occupied_date(db, trip, body.date, is_alternate=is_alternate, moving=day)
-    # Field names match the ORM columns 1:1 now that schemas are snake_case.
-    for field in ("title", "date", "description", "is_alternate", "completed"):
-        if field in body.model_fields_set:
-            setattr(day, field, getattr(body, field))
+    await trip_write.update_day(db, trip, day, body)
     await db.commit()
     await db.refresh(day)
     return _day_to_response(day)
@@ -139,8 +96,7 @@ async def delete_day(
     db: AsyncSession = Depends(get_db),
 ):
     day = await _require_day(db, day_id, trip)
-    day.is_deleted = True
-    day.deleted_at = datetime.now(timezone.utc)
+    await trip_write.delete_day(db, trip, day)
     await db.commit()
 
 

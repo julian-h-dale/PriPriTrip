@@ -101,6 +101,23 @@ class TripHeaderResponse(APIModel):
     status: str
 
 
+class TripPatch(APIModel):
+    """A partial trip-header update.
+
+    `model_fields_set` is what tells the write layer which columns the caller
+    actually touched — an absent key means "leave it", an explicit null means
+    "clear it".
+    """
+
+    trip_name: Optional[str] = None
+    status: Optional[TripStatus] = None
+    start_location_name: Optional[str] = None
+    destination_location_name: Optional[str] = None
+    default_timezone_id: Optional[str] = None
+    start_date: Optional[CalendarDate] = None
+    end_date: Optional[CalendarDate] = None
+
+
 class TripStatusUpdate(APIModel):
     """Move a trip between planning and being on it (docs/active_trip_plan.md).
 
