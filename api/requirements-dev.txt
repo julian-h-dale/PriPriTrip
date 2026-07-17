@@ -1,7 +1,9 @@
+# Direct dev/test dependencies, pinned exactly (review.md R10). See requirements.txt
+# for how this relates to the lock. CI installs requirements.lock, not this file.
 -r requirements.txt
-pytest>=8.0
-pytest-asyncio>=0.24
-httpx>=0.27
+pytest==9.0.3
+pytest-asyncio==1.4.0
+httpx==0.28.1
 
 # Lint + type check (review.md R9). Both are configured in pyproject.toml and
 # both gate CI, so they are pinned exactly: a floating minor that adds a rule
