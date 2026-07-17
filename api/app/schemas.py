@@ -177,11 +177,14 @@ def _location_responses(locations: list | None) -> list[LocationResponse]:
 
 # ── Travel / Stay details (first-class trip entities) ────────────────────────
 
-class TravelDetail(APIModel):
-    travel_detail_id: str = Field(default_factory=_uuid)
-    trip_id: str | None = None
+# The scalar field list for a travel leg lives in exactly one place (review.md
+# R6/S5). It is declared all-optional here — that IS the PATCH shape — and the
+# Import/response variants below re-require `mode` and add ids + the right
+# `locations` type. Adding a scalar field to a travel leg is now a one-line edit
+# to this base instead of three near-identical edits.
+class _TravelFields(APIModel):
     name: str | None = None
-    mode: TravelMode
+    mode: TravelMode | None = None
     operator: str | None = None
     vehicle_number: str | None = None
     cabin_class: str | None = None
@@ -191,6 +194,12 @@ class TravelDetail(APIModel):
     arrival_timezone_id: str | None = None
     confirmation_number: str | None = None
     description: str | None = None
+
+
+class TravelDetail(_TravelFields):
+    travel_detail_id: str = Field(default_factory=_uuid)
+    trip_id: str | None = None
+    mode: TravelMode
     locations: list[LocationResponse] = []
 
     @classmethod
@@ -213,11 +222,10 @@ class TravelDetail(APIModel):
         )
 
 
-class StayDetail(APIModel):
-    stay_detail_id: str = Field(default_factory=_uuid)
-    trip_id: str | None = None
+# The scalar field list for a stay, in one place (review.md R6/S5). See _TravelFields.
+class _StayFields(APIModel):
     name: str | None = None
-    stay_type: StayType
+    stay_type: StayType | None = None
     check_in: str | None = None
     check_in_timezone_id: str | None = None
     check_out: str | None = None
@@ -225,6 +233,12 @@ class StayDetail(APIModel):
     room_type: str | None = None
     confirmation_number: str | None = None
     description: str | None = None
+
+
+class StayDetail(_StayFields):
+    stay_detail_id: str = Field(default_factory=_uuid)
+    trip_id: str | None = None
+    stay_type: StayType
     locations: list[LocationResponse] = []
 
     @classmethod
@@ -245,61 +259,26 @@ class StayDetail(APIModel):
         )
 
 
-class TravelDetailImport(APIModel):
+class TravelDetailImport(_TravelFields):
     travel_detail_id: str = Field(default_factory=_uuid)
-    name: str | None = None
     mode: TravelMode
-    operator: str | None = None
-    vehicle_number: str | None = None
-    cabin_class: str | None = None
-    departure_date_time: str | None = None
-    departure_timezone_id: str | None = None
-    arrival_date_time: str | None = None
-    arrival_timezone_id: str | None = None
-    confirmation_number: str | None = None
-    description: str | None = None
     locations: list[LocationCreate] = []
 
 
-class StayDetailImport(APIModel):
+class StayDetailImport(_StayFields):
     stay_detail_id: str = Field(default_factory=_uuid)
-    name: str | None = None
     stay_type: StayType
-    check_in: str | None = None
-    check_in_timezone_id: str | None = None
-    check_out: str | None = None
-    check_out_timezone_id: str | None = None
-    room_type: str | None = None
-    confirmation_number: str | None = None
-    description: str | None = None
     locations: list[LocationCreate] = []
 
 
-class TravelDetailPatch(APIModel):
-    name: str | None = None
-    mode: TravelMode | None = None
-    operator: str | None = None
-    vehicle_number: str | None = None
-    cabin_class: str | None = None
-    departure_date_time: str | None = None
-    departure_timezone_id: str | None = None
-    arrival_date_time: str | None = None
-    arrival_timezone_id: str | None = None
-    confirmation_number: str | None = None
-    description: str | None = None
+# _TravelFields is already all-optional, so the PATCH body is just the base plus a
+# nullable locations list. `exclude_unset` on the router side still distinguishes
+# "field omitted" from "explicitly null".
+class TravelDetailPatch(_TravelFields):
     locations: list[LocationCreate] | None = None
 
 
-class StayDetailPatch(APIModel):
-    name: str | None = None
-    stay_type: StayType | None = None
-    check_in: str | None = None
-    check_in_timezone_id: str | None = None
-    check_out: str | None = None
-    check_out_timezone_id: str | None = None
-    room_type: str | None = None
-    confirmation_number: str | None = None
-    description: str | None = None
+class StayDetailPatch(_StayFields):
     locations: list[LocationCreate] | None = None
 
 
@@ -356,28 +335,12 @@ def _day_fields(r) -> dict:
 
 # ── Trip Point ───────────────────────────────────────────────────────────────
 
-class TripPointCreate(APIModel):
-    point_id: str = Field(default_factory=_uuid)
-    day_id: str | None = None
-    type: PointType
-    title: str
-    stay_detail_id: str | None = None
-    travel_detail_id: str | None = None
-    start_date_time: str | None = None
-    start_timezone_id: str | None = None
-    end_date_time: str | None = None
-    end_timezone_id: str | None = None
-    confirmation_number: str | None = None
-    description: str | None = None
-    image_url: str | None = None
-    logo_url: str | None = None
-    locations: list[LocationCreate] = []
-    is_system_created: bool = False
-    completed: bool = False
-    completed_date_time: datetime | None = None
-
-
-class TripPointPatch(APIModel):
+# A point's writable field list, in one place (review.md R6/S5), declared
+# all-optional — that IS TripPointPatch. TripPointCreate re-requires `type`/`title`,
+# adds the id, and gives the bool/locations fields their create-time defaults.
+# TripPointResponse is *not* generated from this: it carries server-derived fields
+# (trip_id, startUtc/endUtc, embedded details, timestamps) that a write never sends.
+class _PointFields(APIModel):
     day_id: str | None = None
     type: PointType | None = None
     title: str | None = None
@@ -395,6 +358,19 @@ class TripPointPatch(APIModel):
     is_system_created: bool | None = None
     completed: bool | None = None
     completed_date_time: datetime | None = None
+
+
+class TripPointCreate(_PointFields):
+    point_id: str = Field(default_factory=_uuid)
+    type: PointType
+    title: str
+    locations: list[LocationCreate] = []
+    is_system_created: bool = False
+    completed: bool = False
+
+
+class TripPointPatch(_PointFields):
+    pass
 
 
 class TripPointResponse(APIModel):
