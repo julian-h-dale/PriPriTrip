@@ -562,6 +562,26 @@ class ImportResult(APIModel):
     travels_imported: int = 0
 
 
+class TripSnapshotSummary(APIModel):
+    """A restore point's metadata — the list view. Never carries the payload."""
+
+    snapshot_id: str
+    trip_id: str
+    reason: str
+    created_by: str
+    created_at: str | None = None
+
+    @classmethod
+    def from_record(cls, rec) -> "TripSnapshotSummary":
+        return cls(
+            snapshotId=rec.snapshot_id,
+            tripId=rec.trip_id,
+            reason=rec.reason,
+            createdBy=rec.created_by,
+            createdAt=rec.created_at.isoformat() if rec.created_at else None,
+        )
+
+
 class AIDocumentExtraction(APIModel):
     document_id: str
     trip_id: str

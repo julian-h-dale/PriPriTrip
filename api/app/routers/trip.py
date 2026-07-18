@@ -26,6 +26,7 @@ from app.schemas import (
     VerifyResult,
 )
 from app.services import trip_write
+from app.services.trip_snapshot import snapshot_trip
 from app.services.trip_state import assembled_trip
 from app.services.trip_status import effective_status
 from app.services.trip_verify import verify_trip
@@ -168,6 +169,11 @@ async def delete_trip(
 ):
     trip_id = trip.trip_id
     now = datetime.now(UTC)
+
+    # A restore point before the delete. The trip delete is only a soft-delete,
+    # so the snapshot (and its CASCADE-linked row) survives it.
+    await snapshot_trip(db, trip, reason="trip-delete", created_by=str(trip.user_id))
+
     trip.is_deleted = True
     trip.deleted_at = now
 

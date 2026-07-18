@@ -18,6 +18,7 @@ from app.models import (
 )
 from app.schemas import ImportResult, TripImport
 from app.services import trip_write
+from app.services.trip_snapshot import snapshot_trip
 from app.services.trip_state import promote_to_draft
 
 router = APIRouter(tags=["import"])
@@ -40,6 +41,12 @@ async def import_trip(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         if trip.is_deleted or trip.deleted_at is not None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+
+    # ── 1b. Snapshot the pre-import trip so this replace is undoable. Same
+    #        transaction as the delete below: either both land or neither does,
+    #        so a clobbered trip always has a restore point.
+    if trip is not None:
+        await snapshot_trip(db, trip, reason="import-replace", created_by=str(user.id))
 
     # ── 2. Delete existing data for this trip (import is a full replace —
     #       hard delete by design, unlike the soft-delete CRUD endpoints).

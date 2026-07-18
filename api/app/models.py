@@ -32,6 +32,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -457,6 +458,43 @@ class TripShareRecord(Base):
             unique=True,
             postgresql_where=text("revoked_at IS NULL"),
         ),
+    )
+
+
+class TripSnapshotRecord(Base):
+    """A point-in-time copy of a whole trip subtree — the "cheap insurance".
+
+    Written immediately before a coarse, machine-driven mutation (an itinerary
+    import replace, an enhance/import merge, a whole-trip delete, or a restore),
+    in the *same transaction* as that mutation, so a protected change can never
+    exist without its restore point. Fine-grained form edits are not snapshotted:
+    they are deliberate, small and already soft-deletable.
+
+    `payload` is the raw column values of the trip header and every child row
+    (days, stays, travels, points, locations) — DB fidelity, not the API view —
+    so a restore re-inserts with the same ids and references stay intact.
+    See docs and review S6/enhance work.
+    """
+
+    __tablename__ = "trip_snapshots"
+
+    snapshot_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True)
+    # CASCADE: snapshots are meaningless once the trip is *hard*-deleted. A trip
+    # delete is only a soft-delete, so snapshots survive it and can restore it.
+    trip_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("trips.trip_id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=text("NOW()")
+    )
+    # The user id, or a 'system:...' label for a machine-initiated snapshot.
+    created_by: Mapped[str] = mapped_column(String)
+    reason: Mapped[str] = mapped_column(String)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    payload: Mapped[dict] = mapped_column(JSONB)
+
+    __table_args__ = (
+        Index("ix_trip_snapshots_trip_created", "trip_id", "created_at"),
     )
 
 
