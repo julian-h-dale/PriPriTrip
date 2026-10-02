@@ -73,9 +73,10 @@
 
 ## Next
 
-1. Julian: a human look at phone width (manual gates in Phases 3, 4 and 6).
-2. Julian provides an itinerary; convert it to a trip document and import it.
-3. Then: editing stays and travels, or verification (see the backlog).
+1. Julian answers the open questions in "Walk stage 2" of
+   `implementation_plan.md` (stay/travel editing plus the vertical timeline).
+2. Then Phases 7–9.
+3. Still pending: a human look at phone width, and the real itinerary import.
 
 ## Notes / decisions
 

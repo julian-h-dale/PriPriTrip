@@ -424,6 +424,180 @@ travels stay read-only. Their markers get no edit controls.
    - Recommendation: **PUT**.
    - **Answer:** recommended (2026-10-02).
 
+## Walk stage 2 — editing stays & travel, and a vertical timeline (draft, awaiting answers)
+
+Asked 2026-10-02:
+- **Travel:** must have a type (fly, boat, train, …) and a departure date and
+  location. The user sees a warning when the arrival is unset. Departure and
+  arrival times are each in their own timezone.
+- **Stays:** check-in and check-out are required.
+- **Both:** confirmation number and the other booking details.
+- **Timeline:** the UI should flow like a timeline, after react-chrono's
+  vertical mode (each point is a date, its card is that day's details), which
+  should suit a phone better.
+
+### Findings: react-chrono
+
+- `react-chrono@3.3.3` (current) peer-requires **React 19.2**. Every release
+  from 2.7 on requires React 19. The last one supporting React 18 is
+  **2.6.1**, which is about 18 months behind.
+- We're on React 18.3 because that's what the template pins. Adopting chrono
+  means either:
+  - a React 19 upgrade, which moves us off the template; or
+  - pinning a stale 2.x release.
+- It's about 1.5 MB unpacked, with its own styling system (vanilla-extract)
+  and a 36-property theme. We'd map that onto our design tokens (dark only,
+  4px radius, borders over shadows) and then maintain the mapping.
+- Card content can be our own components (`children`). Day expansion, the
+  edit buttons and the markers would still be our code; chrono would only
+  draw the line, the points and the scrolling.
+- The vertical layout itself is small: a line, a dot per date, and a card per
+  day, roughly 100 lines of Tailwind.
+- **Recommendation:** build the vertical timeline ourselves, using chrono's
+  vertical mode as the visual reference (see Q1).
+
+### Design (assuming the recommended answers)
+
+**Timeline (vertical):**
+- One continuous vertical line down the left edge. Each date is a point on the
+  line, labelled with the weekday, date and "Day N". Its card sits to the
+  right.
+- A **day card** holds the title, summary and entries (activities plus stay
+  and travel markers, merged by time as today). Entries still expand to their
+  details and actions.
+- Day cards are **open by default**, so the page reads top to bottom like a
+  story.
+- A date with nothing on it gets a slim point with "No plans" and an "Add"
+  action, not a full card.
+- The tab strip becomes a **compact sticky date jumper** (Q3). Tapping a date
+  scrolls to its card, and the jumper highlights whichever date is in view.
+  `?day=` keeps working as a scroll target.
+
+**Editing stays and travel**, following the same pattern as activities:
+- **API:**
+  - `POST /trips/{id}/stays`, `PUT|DELETE /trips/{id}/stays/{stay_id}`
+  - `POST /trips/{id}/travels`, `PUT|DELETE /trips/{id}/travels/{travel_id}`
+  - Bodies are `StayDoc` / `TravelDoc`, validated by the same rules as an
+    import (4 and 5, factored into `check_stay` / `check_travel`).
+  - Full replace; every write returns the whole trip.
+  - Ownership is checked through the trip (404 otherwise).
+  - No reordering: bookings are placed by time, and `position` is just
+    insertion order.
+- **Where the controls live:**
+  - An expanded stay or travel marker gets **Edit** and **Delete**. It edits
+    the *booking*, so the edit is the same from its check-in, staying,
+    check-out, depart or arrive marker.
+  - A day card's **Add** button becomes a small menu: Activity / Travel /
+    Stay, with that date prefilled.
+- **Travel form:**
+  - Type (required).
+  - Title, prefilled as "From → To" (Q5).
+  - Carrier and number (flight or train number).
+  - From location (required) and To location.
+  - Departure: date, time and timezone (required).
+  - Arrival: date, time and timezone (optional).
+  - Confirmation number and notes.
+  - **Warning, non-blocking:** with no arrival time or no "to" location, the
+    form shows "No arrival yet: the timeline can't show when you land" and
+    still saves. On the timeline, the depart marker carries a small warning
+    badge until the arrival is filled in.
+- **Timezones:** departure and arrival each have their own zone. The picker
+  defaults to the trip's zone and lists first the zones already used on this
+  trip, then every IANA zone (Q6). Times are entered as wall-clock values
+  exactly as written on the ticket.
+- **Stay form:**
+  - Name and type.
+  - Check-in date and time (required); check-out date and time (required).
+  - Times prefill to 15:00 and 11:00 (Q8).
+  - Timezone (defaults to the trip's).
+  - Place, confirmation number and notes.
+  - The server enforces check-out after check-in, both as instants.
+- **Schema changes:**
+  - A travel's `from` becomes **required**. The sample already has it.
+    Existing documents without it will be rejected on import.
+  - The travel types may change (Q4).
+  - The schema regenerates.
+
+### Proposed phases
+
+- **Phase 7 — Walk: stay & travel edit API.**
+  - `check_stay` / `check_travel` extracted from `check_rules`.
+  - The schema changes (`from` required; types per Q4).
+  - Endpoints and tests mirroring `test_items.py`, including import/edit
+    parity.
+- **Phase 8 — Walk: vertical timeline.** The layout above replaces the tab
+  view, keeping every current behaviour: markers, entry expansion, activity
+  editing, the deep link, and timezone labels. Tests are updated; phone-width
+  check.
+- **Phase 9 — Walk: stay & travel forms.**
+  - `TravelForm` and `StayForm` (hand-written), with an IANA timezone picker.
+  - Edit and Delete on markers; the Add menu.
+  - The missing-arrival warning in the form and on the timeline.
+  - Tests and a phone-width check.
+
+The redesign goes *before* the new forms so their controls are built into
+the new layout once, not twice.
+
+### Open questions
+
+1. **react-chrono, or our own vertical timeline in its style?**
+   - (a) Our own: Tailwind, no dependency, no React upgrade, our design tokens.
+   - (b) react-chrono 3.x plus a React 18 → 19 upgrade, moving off the
+     template.
+   - (c) Pin react-chrono 2.6.1 on React 18.
+   - Recommendation: **(a)**.
+   - **Answer:**
+2. **Day cards open or collapsed by default?**
+   - Recommendation: **open**, so the trip reads top to bottom. Entries stay
+     collapsed until tapped.
+   - **Answer:**
+3. **What happens to the tab strip?**
+   - (a) It becomes a compact sticky date jumper that scrolls to a day.
+   - (b) Drop it and scroll only.
+   - Recommendation: **(a)**. A two-week trip is a long scroll on a phone.
+   - **Answer:**
+4. **Travel types.** Today: flight, train, bus, ferry, car, other.
+   - Add **boat** next to ferry? Anything else, such as taxi, cable car or
+     walk?
+   - Recommendation: add **boat** and keep the rest; "other" plus the title
+     covers the rest.
+   - Labels in the form: Fly, Train, Bus, Ferry, Boat, Car, Other.
+   - **Answer:**
+5. **Travel title: required, or derived?**
+   - Recommendation: the form prefills "From → To" and you can change it.
+     The schema keeps the title required.
+   - **Answer:**
+6. **Timezone picker.**
+   - A select with the trip's zone first, then zones already used on this
+     trip, then the full IANA list (about 400 entries, grouped by region).
+   - The alternative is a type-to-search box.
+   - Recommendation: **the grouped select** (native, which works well on
+     phones).
+   - **Answer:**
+7. **What triggers the arrival warning?**
+   - A missing arrival time, a missing "to" location, or either?
+   - Recommendation: **either**, shown as one warning.
+   - **Answer:**
+8. **Default stay times.**
+   - Prefill check-in 15:00 and check-out 11:00, editable?
+   - Recommendation: **yes**.
+   - **Answer:**
+9. **Extra booking fields?**
+   - Today travel has carrier, number, confirmation number and notes; stays
+     have confirmation number and notes.
+   - Add structured fields like **seat**, **terminal/gate**, **room type**,
+     **booking site**, or **cost**?
+   - Recommendation: **room type for stays and seat for travel only**;
+     everything else lives in notes (markdown) for now.
+   - **Answer:**
+10. **Overlapping bookings** (two stays on the same night, two legs at once).
+    - Recommendation: **save, no warning now**. Overlap checks belong to the
+      verification work in the backlog, so they get designed once.
+    - **Answer:**
+11. **Phase order.** API, then redesign, then forms (recommended), or the
+    forms first on the current tab layout?
+    - **Answer:**
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it
@@ -433,8 +607,8 @@ express goes into the backlog rather than being forced in.
 ## Later / Backlog
 
 - **Walk:**
-  - Editing stays, travels and the trip header through hand-written forms
-    (activities are planned above).
+  - Editing the trip header (name, dates, timezone). Activities are done;
+    stays and travel are planned above.
   - Export a trip as a document.
 - **Walk:** verification/gaps, rebuilt from `docs/lessons_learned.md`. Decide up
   front whether a screen answers "is it sound?" or "what's missing?". Stay and
