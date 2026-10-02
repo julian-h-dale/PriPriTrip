@@ -1,0 +1,16 @@
+# Keep the build context small and deterministic. Notably, exclude the
+# frontend's local node_modules/dist so `COPY ui/` can't clobber the clean
+# `npm ci` build, and keep dev-only state (venv, sqlite, env) out of the image.
+**/node_modules
+ui/dist
+api/.venv
+api/data
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.git
+.env
+.env.*
+!.env.example

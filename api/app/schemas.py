@@ -1,229 +1,85 @@
-from typing import List, Optional
+"""Pydantic v2 request/response schemas.
 
-from pydantic import BaseModel
+Kept separate from SQLAlchemy models so internal columns never leak onto
+the wire. camelCase aliases keep the frontend contract stable regardless
+of Python style.
+"""
 
-from app.enums import LocationRole, PointType, StayType, TravelMode
+from __future__ import annotations
 
+import uuid
+from datetime import datetime, time
+from typing import Annotated
 
-# ── Auth ────────────────────────────────────────────────────────────────────
-
-class AuthResponse(BaseModel):
-    token: str
-    mapsApiKey: str
-
-
-# ── Trip header ─────────────────────────────────────────────────────────────
-
-class TripHeader(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
+from fastapi_users import schemas
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 
-# ── Location ────────────────────────────────────────────────────────────────
-
-class LocationCreate(BaseModel):
-    locationId: str
-    role: LocationRole
-    name: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    fullAddress: Optional[str] = None
-    description: Optional[str] = None
-    link: Optional[str] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
+class CamelModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
-class LocationResponse(BaseModel):
-    locationId: str
-    pointId: str
-    role: LocationRole
-    name: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    fullAddress: Optional[str] = None
-    description: Optional[str] = None
-    link: Optional[str] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
+def _reject_tzinfo(value: time) -> time:
+    # Swagger's auto-generated example for a `time` field is "08:25:57.353Z",
+    # which Pydantic parses into a tz-aware time and SQLAlchemy round-trips
+    # intact — then it explodes at the first comparison against a naive time.
+    # Reject it at the boundary with a clear 422 instead of a 500 three calls
+    # later. Silently stripping the offset is the tempting fix and the wrong
+    # one — it would store 08:25 local for a client that meant 08:25 UTC.
+    if value.tzinfo is not None:
+        raise ValueError("wall-clock time must not carry a timezone offset")
+    return value
 
 
-# ── Type-specific details ────────────────────────────────────────────────────
-
-class TravelDetail(BaseModel):
-    mode: TravelMode
-    operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
+# A wall-clock time (no offset). Use for values like "this routine ends at
+# 09:00", as opposed to instants, which are UTC-aware datetimes.
+WallClockTime = Annotated[time, AfterValidator(_reject_tzinfo), Field(examples=["08:30:00"])]
 
 
-class StayDetail(BaseModel):
-    stayType: StayType
-    checkInTime: Optional[str] = None
-    checkOutTime: Optional[str] = None
-    roomType: Optional[str] = None
+# ---- Users (fastapi-users) ----
+#
+# NOTE: fastapi-users owns these schemas and they are snake_case
+# (`is_active`, `is_superuser`); the camelCase wire rule applies to domain
+# endpoints only. fastapi-users constructs and validates these internally, so
+# they deliberately do not extend CamelModel.
 
 
-# ── Trip Day ────────────────────────────────────────────────────────────────
+class UserRead(schemas.BaseUser[uuid.UUID]):
+    name: str = ""
+    timezone: str = "UTC"
 
-class TripDayCreate(BaseModel):
-    dayId: str
+
+class UserCreate(schemas.BaseUserCreate):
+    name: str = ""
+    timezone: str = "UTC"
+
+
+class UserUpdate(schemas.BaseUserUpdate):
+    name: str | None = None
+    timezone: str | None = None
+
+
+# ---- Things (example vertical slice) ----
+
+
+class ThingCreate(CamelModel):
     title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
+    notes: str = ""
 
 
-class TripDayUpdate(BaseModel):
+class ThingUpdate(CamelModel):
+    title: str | None = None
+    notes: str | None = None
+
+
+class ThingRead(CamelModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
     title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
-
-
-class TripDayPatch(BaseModel):
-    title: Optional[str] = None
-    date: Optional[str] = None
-    description: Optional[str] = None
-    isAlternate: Optional[bool] = None
-    completed: Optional[bool] = None
-
-
-class TripDayResponse(BaseModel):
-    dayId: str
-    tripId: str
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool
-    deletedAt: Optional[str] = None
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
-
-
-# ── Trip Point ───────────────────────────────────────────────────────────────
-
-class TripPointCreate(BaseModel):
-    pointId: str
-    dayId: str
-    type: PointType
-    title: str
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationCreate] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: bool = False
-    completedDateTime: Optional[str] = None
-
-
-class TripPointUpdate(BaseModel):
-    dayId: str
-    type: PointType
-    title: str
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationCreate] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: bool = False
-    completedDateTime: Optional[str] = None
-
-
-class TripPointPatch(BaseModel):
-    dayId: Optional[str] = None
-    type: Optional[PointType] = None
-    title: Optional[str] = None
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: Optional[List[LocationCreate]] = None
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: Optional[bool] = None
-    completedDateTime: Optional[str] = None
-
-
-class TripPointResponse(BaseModel):
-    pointId: str
-    tripId: str
-    dayId: str
-    type: PointType
-    title: str
-    startDateTime: str
-    endDateTime: str
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationResponse] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: bool
-    completedDateTime: Optional[str] = None
-    deletedAt: Optional[str] = None
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
-
-
-# ── Assembled trip response ──────────────────────────────────────────────────
-
-class TripDayWithPoints(TripDayResponse):
-    points: List[TripPointResponse] = []
-
-
-class TripListItem(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
-
-
-class TripResponse(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
-    days: List[TripDayWithPoints] = []
-
-
-# ── Import ───────────────────────────────────────────────────────────────────
-
-class TripDayImport(BaseModel):
-    dayId: str
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
-    points: List[TripPointCreate] = []
-
-
-class TripImport(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
-    days: List[TripDayImport] = []
-
-
-class ImportResult(BaseModel):
-    status: str
-    daysImported: int
-    pointsImported: int
+    notes: str
+    created_at: datetime

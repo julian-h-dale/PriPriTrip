@@ -2,7 +2,8 @@
 
 This document defines the technology stack and architectural conventions for building a full-stack web application using this codebase as its foundation. It is intentionally generic — free of any application-specific domain logic. The goal is to give an agent or developer a complete "hello world" baseline they can build on top of.
 
-Deployment and cloud infrastructure are out of scope.
+Deployment ships as a single unified container (UI + API behind one nginx) —
+see the Containerization section and `deploy/README.md`.
 
 ---
 
@@ -42,12 +43,12 @@ The frontend communicates with the backend exclusively through JSON REST endpoin
 |---|---|
 | UI framework | **React** 18 |
 | Build tool | **Vite** 6 |
-| Design / component library | **MUI** (Material UI) v6 |
-| Styling engine | **Emotion** (MUI default) |
+| Design / component library | **shadcn/ui** (Radix primitives, vendored) |
+| Styling engine | **Tailwind CSS** |
 | Routing | **React Router DOM** v6 |
 | State management | **Redux Toolkit** + **React Redux** |
 | HTTP client | **Axios** |
-| Date handling | **Day.js** + MUI `AdapterDayjs` |
+| Date handling | **Day.js** (format) + **react-day-picker** (shadcn Calendar) |
 | Unit / component tests | **Vitest** + **@testing-library/react** |
 | End-to-end tests | **Playwright** |
 | Linting | **ESLint** |
@@ -73,9 +74,12 @@ api/
 ├── tests/               # pytest test suite
 ├── requirements.txt
 ├── alembic.ini
-├── dev.sh               # Start uvicorn with --reload for local dev
-└── start.sh             # Run alembic upgrade head, then start gunicorn
+└── dev.sh               # Start uvicorn with --reload for local dev
 ```
+
+The production entrypoint lives at `deploy/start.sh` (part of the unified
+container image) — it runs `alembic upgrade head`, then starts Gunicorn
+alongside nginx. See the Containerization section.
 
 Keep route handlers thin. Any logic beyond a simple DB read/write belongs in `services/`.
 
@@ -107,7 +111,7 @@ Each feature router lives in its own file under `app/routers/` and is included e
 - **Dev**: `uvicorn app.main:app --port 8000 --host 0.0.0.0 --reload`
 - **Prod**: `gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --workers 2 --bind 0.0.0.0:80`
 
-`start.sh` runs migrations then starts Gunicorn. `dev.sh` runs Uvicorn directly with hot reload.
+`deploy/start.sh` runs migrations then starts Gunicorn (behind nginx in the unified image). `dev.sh` runs Uvicorn directly with hot reload.
 
 ### ORM — SQLAlchemy async
 
@@ -156,6 +160,8 @@ Important: the default stack here is asynchronous. Do not assume a sync `Session
 
 Early on, use `Base.metadata.create_all` inside the FastAPI `lifespan` to create tables automatically on startup. This avoids migration overhead while the schema is still evolving.
 
+**You will hit this:** `create_all` creates *missing* tables but never alters *existing* ones. Adding a column to a table that already exists produces `OperationalError: no such column` (which surfaces from `make seed`, reading like a broken seed script rather than a moved schema). While Alembic is deferred, a schema change means dropping the dev database and re-seeding — `make reset-db` does exactly that.
+
 Once the schema stabilises, remove `create_all`, introduce Alembic, and generate a baseline migration:
 
 ```bash
@@ -165,7 +171,7 @@ alembic upgrade head
 
 `migrations/env.py` must import all models so `Base.metadata` is populated for autogenerate.
 
-In production, `start.sh` runs `alembic upgrade head` on every container start so migrations apply automatically on deploy.
+In production, `deploy/start.sh` runs `alembic upgrade head` on every container start so migrations apply automatically on deploy.
 
 ### Settings
 
@@ -178,7 +184,7 @@ from functools import lru_cache
 class AuthSettings(BaseSettings):
     jwt_secret: str           # no default — fails to boot if missing
     jwt_expiry_hours: int = 24
-    allowed_origins: str = "http://localhost:3002"
+    allowed_origins: str = "http://localhost:3000"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 @lru_cache()
@@ -254,8 +260,12 @@ The minimum user table is the fastapi-users base table plus any app-specific pro
 | `is_superuser` | bool | admin / privileged access |
 | `is_verified` | bool | standard verification flag |
 | `name` | str | application-specific display name |
+| `timezone` | str | IANA name (e.g. `America/Chicago`), default `UTC` |
 
-Extend with profile fields as needed. This project adds fields such as timezone, home location, and profile details to the custom user record.
+Extend with profile fields as needed. The baseline already ships `timezone`
+(an IANA name, never a fixed UTC offset — an offset is wrong twice a year);
+add further fields such as home location or profile details to the custom user
+record as your product needs them.
 
 ### Multi-user assumptions (baseline)
 
@@ -265,9 +275,8 @@ This starter assumes a multi-user, multi-tenant-by-user app — not a single-use
 - **Ownership is enforced in one place.** A shared dependency (e.g. `get_owned_resource`) loads the row *and* checks it belongs to the current user, returning **404** (not 403) for missing, foreign, or deleted rows so you don't leak whether a record exists.
 - **Soft delete over hard delete.** A reusable mixin (`is_deleted`, `deleted_at`) plus an `active(Model)` filter helper. Deletes are reversible and hidden from normal queries rather than destroying data.
 - **UUID primary keys, not sequential ints.** IDs are exposed to clients; sequential IDs are enumerable and leak how much data exists.
-- **camelCase at the wire boundary.** snake_case Python fields with camelCase aliases, so the frontend contract stays stable regardless of Python style.
-
-None of this is domain-specific — it's the shape any serious multi-user product needs, and it's the shape this codebase is built on.
+- **camelCase at the wire boundary.** snake_case Python fields with camelCase aliases, so the frontend contract stays stable regardless of Python style. (The fastapi-users user schemas are the one exception — fastapi-users owns them and keeps them snake_case.)
+- **Time resolves against the user's clock.** User rows carry an IANA `timezone`; anything date-shaped resolves against it, not the server's clock. Separate **instants** (stored UTC-aware) from **wall-clock** values ("ends at 09:00", no offset) — they are two different types with two different rules.
 
 ### Route Structure
 
@@ -351,24 +360,28 @@ DATABASE_URL=sqlite+aiosqlite:///./data/app.db
 ui/
 ├── src/
 │   ├── main.jsx             # App entry — Redux Provider, BrowserRouter, store injection
+│   ├── index.css            # Tailwind directives (@tailwind base/components/utilities) + design tokens
 │   ├── app/
-│   │   ├── App.jsx          # Route definitions, theme, auth bootstrap
-│   │   ├── store.js         # Redux store — assembles all slices
-│   │   └── theme.js         # MUI theme customisation
+│   │   ├── App.jsx          # Route definitions, auth bootstrap
+│   │   └── store.js         # Redux store — assembles all slices
 │   ├── features/            # One folder per domain feature
 │   │   └── <feature>/
 │   │       ├── components/  # Feature-specific React components
 │   │       └── <feature>Slice.js   # Redux slice (state + async thunks)
 │   └── shared/
 │       ├── components/      # Reusable layout and UI components
+│       │   └── ui/          # shadcn/ui components (vendored into the repo)
 │       ├── services/        # Axios client(s), external API wrappers
 │       ├── config/          # Runtime config reader
 │       ├── hooks/           # Shared custom hooks
-│       ├── utils/           # Shared utilities
+│       ├── utils/           # Shared utilities (incl. `cn()` class-merge helper)
 │       ├── errorSlice.js    # Global error state
 │       └── notificationSlice.js  # Global toast/notification state
 ├── public/
 │   └── runtime-config.js   # Injected at container start for env-specific URLs
+├── components.json          # shadcn/ui config (paths, style, base color)
+├── tailwind.config.js       # Tailwind theme + content globs
+├── postcss.config.js        # PostCSS: tailwindcss + autoprefixer
 ├── package.json
 └── vite.config.js
 ```
@@ -390,21 +403,55 @@ npm run lint       # eslint
 
 This project also wires in `vite-plugin-pwa` for an installable, offline-capable app shell. It's optional for a new project — drop it if you don't need PWA behavior.
 
-### Design / Components — MUI
+### Design / Components — Tailwind CSS + shadcn/ui
 
-MUI v6 (`@mui/material`) is the component and design library. Use MUI components as the baseline for all UI elements. The MUI `ThemeProvider` wraps the entire app in `App.jsx`; customise the theme in `app/theme.js`. MUI's styling engine is **Emotion** — no additional CSS-in-JS library is needed.
+**Tailwind CSS** is the styling engine — utility classes in JSX, no CSS-in-JS. Define the design system (colors, spacing, fonts, dark mode) in `tailwind.config.js`, and expose design tokens as CSS variables in `src/index.css` (which also holds the `@tailwind base/components/utilities` directives).
 
-Date pickers use `@mui/x-date-pickers` with Day.js as the date adapter:
+**shadcn/ui** is the component layer. It is not a package you install and import — its CLI copies component source (built on **Radix UI** primitives, styled with Tailwind) directly into `src/shared/components/ui/`, so you own and can edit every component.
+
+> **What the baseline actually ships.** To keep the dependency tree light, the
+> components already in `src/shared/components/ui/` (`button`, `card`, `input`,
+> `label`) are lightweight **hand-rolled equivalents in the shadcn *shape*** —
+> not Radix-backed, and not vendored via the CLI (`button.jsx` is a `cva`
+> wrapper over a plain `<button>`). New components should match that hand-rolled
+> style for consistency. The `npx shadcn@latest add …` flow below is the
+> alternative if you'd rather adopt real shadcn/Radix — note the CLI needs
+> network access an agent may not have.
+
+```bash
+# Install Tailwind + the shadcn/ui runtime deps (versions resolved by npm — see package.json)
+npm install -D tailwindcss postcss autoprefixer
+npm install clsx tailwind-merge class-variance-authority lucide-react tailwindcss-animate
+
+# Wire up shadcn/ui, then vendor components as needed (needs network access)
+npx shadcn@latest init          # one-time: creates components.json, wires Tailwind
+npx shadcn@latest add button    # vendor a component into shared/components/ui/
+```
+
+`react-day-picker` is pulled in automatically when you `npx shadcn@latest add calendar`.
+
+Use shadcn/ui components as the baseline for all UI elements and compose/restyle them with Tailwind utilities rather than pulling in a separate component library. The `cn()` helper (`clsx` + `tailwind-merge`) in `shared/utils/` is the standard way to compose conditional classes.
+
+Dark mode is class-based (`darkMode: "class"` in `tailwind.config.js`) — toggle it by adding or removing `dark` on the root element.
+
+Date pickers use shadcn/ui's **Calendar** (built on **react-day-picker**) inside a **Popover**. Day.js stays as the parse/format library:
 
 ```jsx
-<LocalizationProvider dateAdapter={AdapterDayjs}>
-  ...
-</LocalizationProvider>
+<Popover>
+  <PopoverTrigger asChild>
+    <Button variant="outline">
+      {date ? dayjs(date).format("MMM D, YYYY") : "Pick a date"}
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent>
+    <Calendar mode="single" selected={date} onSelect={setDate} />
+  </PopoverContent>
+</Popover>
 ```
 
 ### Routing — React Router DOM v6
 
-All navigation uses React Router in `BrowserRouter` mode. Routes are declared in `App.jsx`. Wrap authenticated areas in a `ProtectedRoute` component that checks for a token and redirects to `/login` if absent. Wrap admin areas in an `AdminRoute` component.
+All navigation uses React Router in `BrowserRouter` mode. Routes are declared in `App.jsx`. Wrap authenticated areas in a `ProtectedRoute` component that checks for a token and redirects to `/login` if absent. Wrap admin areas in an `AdminRoute` component (`shared/components/AdminRoute.jsx`) that additionally redirects non-superusers to `/`. Both are convenience gates — the real boundary is the server's `current_superuser` (403); the `AdminRoute` redirect and the superuser-only nav button just mirror it.
 
 ### State Management — Redux Toolkit
 
@@ -460,7 +507,7 @@ Serving a React SPA from a static host requires all paths to fall back to `index
 | **@testing-library/react** | Render components and query the DOM |
 | **ESLint** | Linting (eslint-plugin-react, eslint-plugin-react-hooks) |
 
-Vitest is configured in `vite.config.js` under the `test` key (jsdom environment, a `setupFiles` entry for test globals). A browser end-to-end runner (e.g. Playwright) is **not** part of this baseline — add one when you need full-browser coverage.
+Vitest is configured in `vite.config.js` under the `test` key (jsdom environment, a `setupFiles` entry for test globals). A browser end-to-end runner (e.g. Playwright) is **not** part of this baseline — it's deferred the same way Alembic is. jsdom confirms component *behaviour* but never that anything is actually *visible* (a broken layout, an off-screen element at 375px, or a dark-on-dark contrast failure all pass). Until a browser runner is added, **a human looking at the UI at phone width is a required part of the phase gate**, not an optional extra. Add Playwright when you want that check automated.
 
 ### Coding Standards & Linting
 
@@ -494,44 +541,39 @@ Sensitive keys (third-party API tokens) should not live in the frontend env — 
 
 ## Containerization
 
-Each service ships as its own Docker image.
+The app ships as a **single** unified image: the React UI compiled to static
+assets and served by nginx, which reverse-proxies `/api/*` to a FastAPI process
+on the loopback interface. One public port (`8080`), one deployable unit —
+built for low-cost single-machine deployment (e.g. a single Fly.io Machine).
 
-### Backend (`api/Dockerfile`)
-
-```dockerfile
-FROM python:3.11-bookworm
-WORKDIR /usr/src/app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app ./app
-COPY migrations ./migrations
-COPY alembic.ini start.sh ./
-RUN chmod +x ./start.sh
-EXPOSE 80
-CMD ["./start.sh"]
+```
+browser ──▶ nginx :8080 ──┬─▶ /            static UI (/var/www/html)
+                          └─▶ /api/*  ──▶  gunicorn/uvicorn 127.0.0.1:8000
+                                            (nginx rewrite-and-strips /api)
 ```
 
-`start.sh` runs `alembic upgrade head` then starts Gunicorn. This applies any pending migrations automatically on every deploy.
+- **Root `Dockerfile`** — multi-stage: a Node stage compiles the UI and is
+  discarded; the final Python image carries the runtime, the compiled assets,
+  and nginx.
+- **`deploy/nginx.conf`** — single ingress on `:8080`; `location /api/`
+  rewrite-and-strips the prefix (`/api/things/` → `/things/`) and proxies to the
+  backend. The API's own routes stay unprefixed.
+- **`deploy/start.sh`** — entrypoint: `mkdir -p /data`, seed the database
+  (idempotent), start nginx + Gunicorn. Once Alembic is introduced it runs
+  `alembic upgrade head` first, so migrations apply automatically on every
+  deploy.
+- **`deploy/runtime-config.js`** — overwrites the dev API base with same-origin
+  `/api` at image build time (the dev default in `ui/public/runtime-config.js`
+  points at `http://localhost:8000`).
 
-### Frontend (`ui/dockerfile`)
+Because the UI and API share one origin, the browser makes no cross-origin
+requests, so no CORS configuration is needed in the container. Keep the dev
+CORS origins as-is; do **not** widen `allow_origins` to `["*"]` with credentials.
 
-Multi-stage build:
-
-```dockerfile
-FROM node:lts-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-The `runtime-config.js` file in `/usr/share/nginx/html/` is the injection point for environment-specific config at container start time (overwrite it via an entrypoint script or ConfigMap).
+State is decoupled onto a mounted volume (`/data`); SQLite writes to
+`/data/app.db` via `DATABASE_URL`. Build locally with `make image` /
+`make run-container`. See `deploy/README.md` and `fly.toml` for the full
+Fly.io deployment workflow.
 
 ---
 
@@ -558,6 +600,8 @@ That's the baseline. The backend exposes `/auth/login` and `/users/me`. The fron
 
 ## Dependency Versions
 
+> **These numbers are directional, not authoritative.** The source of truth for exact versions is `api/requirements.txt` / `api/pyproject.toml` and `ui/package.json`. Treat this table as "install current within this major line"; don't hand-sync it on every dependency bump.
+
 | Package | Version |
 |---|---|
 | Python | 3.12 |
@@ -574,7 +618,10 @@ That's the baseline. The backend exposes `/auth/login` and `/users/me`. The fron
 | Node | LTS |
 | React | 18.3.x |
 | Vite | 6.x |
-| MUI | 6.3.x |
+| Tailwind CSS | 3.4.x |
+| shadcn/ui | CLI (components vendored) |
+| Radix UI | latest |
+| react-day-picker | 9.x |
 | Redux Toolkit | 2.6.x |
 | React Router DOM | 6.x |
 | Axios | 1.7.x |
@@ -725,11 +772,17 @@ Follow these steps in order for every new resource. Each step names the file it 
 | GET | `/users/me` | Current user (users router) |
 | PATCH | `/users/me` | Update current user |
 
+**Admin endpoints** (behind `current_superuser`, under the `/admin` prefix)
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/admin/users` | List all users → `list[UserRead]` (403 for non-admin, 401 for anonymous) |
+
 **Wire format**
 
-- All request/response bodies are camelCase on the wire, snake_case in Python, via Pydantic `alias_generator=to_camel` + `populate_by_name=True`.
+- All request/response bodies are camelCase on the wire, snake_case in Python, via Pydantic `alias_generator=to_camel` + `populate_by_name=True`. Exception: the fastapi-users user schemas (`UserRead`/`UserCreate`/`UserUpdate`, used by `/auth/register`, `/users/me`, `/admin/users`) stay snake_case — fastapi-users owns them.
 - IDs exposed to clients are UUIDs (strings on the wire).
-- Timestamps are ISO-8601 UTC.
+- Timestamps are ISO-8601 UTC. Instants use the `UtcDateTime` column type so the offset survives SQLite; wall-clock times (no offset) are a separate `time` type.
 
 ### 4. Verification gates
 

@@ -1,110 +1,62 @@
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Uuid,
-    text,
-)
+"""SQLAlchemy declarative models.
 
-from app.database import Base
+Baseline conventions baked in from the first commit:
+- UUID primary keys (not enumerable sequential ints)
+- every domain row is owned via user_id
+- soft delete via the SoftDeleteMixin
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID
+from sqlalchemy import ForeignKey, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from app.db_types import UtcDateTime
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class SoftDeleteMixin:
+    """Reversible deletes hidden from normal queries."""
+
+    is_deleted: Mapped[bool] = mapped_column(default=False, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(UtcDateTime, default=None)
 
 
 class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
-    """
-    Extends the fastapi-users base table (id, email, hashed_password,
-    is_active, is_superuser, is_verified) with an application-level name.
-    """
+    """fastapi-users base table plus app-specific profile fields."""
 
     __tablename__ = "users"
 
-    name = Column(String, nullable=False, default="")
+    name: Mapped[str] = mapped_column(default="")
+    # IANA name (e.g. "America/Chicago"), never a fixed UTC offset — an offset
+    # is wrong twice a year. Anything date-shaped resolves against this, not the
+    # server clock. UTC is the right template default; a real product detects
+    # the browser zone at registration or asks.
+    timezone: Mapped[str] = mapped_column(default="UTC")
+
+    things: Mapped[list[Thing]] = relationship(back_populates="owner")
 
 
-class TripRecord(Base):
-    __tablename__ = "trips"
+class Thing(SoftDeleteMixin, Base):
+    """Example owned domain entity — the vertical-slice reference.
 
-    trip_id = Column(Uuid(as_uuid=False), primary_key=True)
-    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
-    trip_name = Column(String, nullable=False)
-    start_date = Column(String, nullable=False)
-    end_date = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    Replace/extend with real domain models; keep the ownership +
+    soft-delete + UUID shape.
+    """
 
+    __tablename__ = "things"
 
-class TripDayRecord(Base):
-    __tablename__ = "trip_days"
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    title: Mapped[str]
+    notes: Mapped[str] = mapped_column(default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, server_default=func.now())
 
-    day_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
-    title = Column(String, nullable=False)
-    date = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    is_alternate = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed = Column(Boolean, nullable=False, default=False, server_default="false")
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
-
-
-class TripPointRecord(Base):
-    __tablename__ = "trip_points"
-
-    point_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
-    day_id = Column(Uuid(as_uuid=False), ForeignKey("trip_days.day_id"), nullable=False)
-    type = Column(String, nullable=False)
-    title = Column(String, nullable=False)
-    start_date_time = Column(String, nullable=True)
-    end_date_time = Column(String, nullable=True)
-    confirmation_number = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    image_url = Column(String, nullable=True)
-    logo_url = Column(String, nullable=True)
-    completed = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed_date_time = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
-
-
-class LocationRecord(Base):
-    __tablename__ = "locations"
-
-    location_id = Column(Uuid(as_uuid=False), primary_key=True)
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), nullable=False)
-    role = Column(String, nullable=False)
-    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
-    name = Column(String, nullable=False)
-    lat = Column(Float, nullable=True)
-    lng = Column(Float, nullable=True)
-    full_address = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    link = Column(String, nullable=True)
-    google_place_id = Column(String, nullable=True)
-    google_maps_uri = Column(String, nullable=True)
-
-
-class TravelDetailRecord(Base):
-    __tablename__ = "travel_details"
-
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
-    mode = Column(String, nullable=False)
-    operator = Column(String, nullable=True)
-    vehicle_number = Column(String, nullable=True)
-    cabin_class = Column(String, nullable=True)
-
-
-class StayDetailRecord(Base):
-    __tablename__ = "stay_details"
-
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
-    stay_type = Column(String, nullable=False)
-    check_in_time = Column(String, nullable=True)
-    check_out_time = Column(String, nullable=True)
-    room_type = Column(String, nullable=True)
+    owner: Mapped[UserRecord] = relationship(back_populates="things")
