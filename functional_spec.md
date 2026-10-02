@@ -51,11 +51,14 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 2. **Pick a trip.** As a user, the home screen lists my trips (name, dates),
    soonest first. With no trips, it shows an empty state with the import action.
    I can delete a trip (soft delete, after a confirmation).
-3. **View the timeline.** As a user, I open a trip and see its days in order.
-   1. Every date from start to end is shown, collapsed by default, with its
-      date and title. A date with nothing on it shows as "No plans".
-   2. Tapping a day expands its summary and its entries: activities in the
-      order written, with stay and travel markers merged in by time.
+3. **View the timeline.** As a user, I open a trip and see its days as tabs.
+   1. A strip of day tabs runs across the top (one per date from start to end,
+      scrolling sideways on a phone) and stays visible while scrolling. The
+      selected day is in the URL (`?day=YYYY-MM-DD`). A dimmed bar on a tab marks
+      a date with nothing on it.
+   2. The selected day shows its title, summary and entries: activities in the
+      order written, with stay and travel markers merged in by time. A date with
+      nothing on it says so. Previous/next buttons step between days.
    3. Tapping an entry expands its details: notes (markdown), location (with a
       maps link when there are coordinates or a URL), confirmation number, and
       for travel, the mode, carrier, number and from → to.
@@ -90,7 +93,7 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 - [ ] Uploading an invalid document creates nothing and returns every error
       with its path.
 - [ ] The home screen lists the user's trips and has an empty state.
-- [ ] The trip view shows every day; days and items expand and collapse;
+- [ ] The trip view shows every day as a tab; entries expand and collapse;
       notes render as markdown; stays show as computed markers.
 - [ ] Wall-clock times render identically regardless of the browser's timezone.
 - [ ] A user cannot see or delete another user's trip (404).

@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
-import { describeEntry } from "@/features/timeline/describeEntry";
+import { panelId, tabId } from "@/features/timeline/dayIds";
+import { DayTabs } from "@/features/timeline/DayTabs";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
 import { Markdown } from "@/shared/components/Markdown";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
-import { cn } from "@/shared/utils/cn";
-import { formatDateRange, formatShortDate, formatWeekday, zoneLabel } from "@/shared/utils/time";
+import { formatDateRange, formatDayHeading, zoneLabel } from "@/shared/utils/time";
 
 function toggleIn(set, key) {
   const next = new Set(set);
@@ -20,94 +20,89 @@ function toggleIn(set, key) {
   return next;
 }
 
-function DayRow({ row, index, trip, open, onToggle, openEntries, onToggleEntry }) {
+function DayPanel({ row, index, trip, openEntries, onToggleEntry, prev, next, onSelect }) {
   const empty = row.entries.length === 0;
-  // A date with no day entry is titled by what's on it ("Chicago → Zürich"),
-  // shown muted so it reads as derived, not authored.
-  const fallback = empty
-    ? "No plans"
-    : row.entries.map((e) => describeEntry(e, trip).title).join(" · ");
-  const panelId = `day-${row.date}`;
+  const dayLabel = row.afterTrip ? "After the trip" : `Day ${index + 1}`;
 
   return (
-    <li>
-      <Card className={cn("overflow-hidden", open && "border-primary/50")}>
-        <h2>
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={open}
-            aria-controls={panelId}
-            className="flex w-full items-start gap-3 p-3 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <span className="flex w-[5rem] shrink-0 flex-col">
-              <span className="whitespace-nowrap text-xs text-muted-foreground">
-                {formatWeekday(row.date)} · {row.afterTrip ? "After" : `Day ${index + 1}`}
-              </span>
-              <span className="whitespace-nowrap text-sm font-semibold">{formatShortDate(row.date)}</span>
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span
-                className={cn(
-                  "break-words text-sm",
-                  row.title ? "font-medium" : "text-muted-foreground",
-                  !row.title && !empty && "line-clamp-2"
-                )}
-              >
-                {row.title ?? fallback}
-              </span>
-              {!empty && (
-                <span className="text-xs text-muted-foreground">
-                  {row.entries.length} {row.entries.length === 1 ? "entry" : "entries"}
-                </span>
-              )}
-            </span>
-            <ChevronDown
-              className={cn("mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
-              aria-hidden="true"
-            />
-          </button>
+    <section
+      id={panelId(row.date)}
+      role="tabpanel"
+      aria-labelledby={tabId(row.date)}
+      className="flex flex-col gap-3"
+    >
+      {/* A date with no day entry is headed by its date; its entries say the rest. */}
+      <header className="flex flex-col gap-0.5">
+        <p className="text-sm text-muted-foreground">
+          {row.title ? `${formatDayHeading(row.date)} · ${dayLabel}` : dayLabel}
+        </p>
+        <h2 className="break-words text-lg font-semibold leading-snug">
+          {row.title ?? formatDayHeading(row.date)}
         </h2>
+      </header>
 
-        {open && (
-          <div id={panelId} className="border-t border-border">
-            {row.summary && (
-              <Markdown className="border-b border-border px-3 py-2.5 text-muted-foreground">
-                {row.summary}
-              </Markdown>
-            )}
-            {empty ? (
-              <p className="px-3 py-2.5 text-sm text-muted-foreground">Nothing planned for this day.</p>
-            ) : (
-              <ul>
-                {row.entries.map((entry) => (
-                  <TimelineEntry
-                    key={entry.key}
-                    entry={entry}
-                    trip={trip}
-                    expanded={openEntries.has(`${row.date}:${entry.key}`)}
-                    onToggle={() => onToggleEntry(`${row.date}:${entry.key}`)}
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
+      {row.summary && <Markdown className="text-muted-foreground">{row.summary}</Markdown>}
+
+      <Card className="overflow-hidden">
+        {empty ? (
+          <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+            Nothing planned for this day.
+          </p>
+        ) : (
+          <ul aria-label={`Plans for ${formatDayHeading(row.date)}`}>
+            {row.entries.map((entry) => (
+              <TimelineEntry
+                key={entry.key}
+                entry={entry}
+                trip={trip}
+                expanded={openEntries.has(`${row.date}:${entry.key}`)}
+                onToggle={() => onToggleEntry(`${row.date}:${entry.key}`)}
+              />
+            ))}
+          </ul>
         )}
       </Card>
-    </li>
+
+      <nav className="flex justify-between" aria-label="Day navigation">
+        {prev ? (
+          <Button variant="ghost" size="sm" onClick={() => onSelect(prev.date)}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            {formatDayHeading(prev.date)}
+          </Button>
+        ) : (
+          <span />
+        )}
+        {next && (
+          <Button variant="ghost" size="sm" onClick={() => onSelect(next.date)}>
+            {formatDayHeading(next.date)}
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        )}
+      </nav>
+    </section>
   );
 }
 
 /** The timeline for one loaded trip. Keyed by trip id, so expand state resets per trip. */
 function TripTimeline({ trip }) {
   const rows = useMemo(() => buildTimeline(trip), [trip]);
-  const [openDays, setOpenDays] = useState(() => new Set());
+  const [searchParams, setSearchParams] = useSearchParams();
   const [openEntries, setOpenEntries] = useState(() => new Set());
-  const allOpen = openDays.size === rows.length;
+
+  // The selected day lives in the URL (?day=2026-05-11) so a reload, the back
+  // button, or a shared link lands on the same day. Unknown dates fall back to
+  // the first day.
+  const requested = searchParams.get("day");
+  const index = Math.max(0, rows.findIndex((r) => r.date === requested));
+  const row = rows[index];
+
+  function select(date) {
+    setSearchParams({ day: date }, { replace: true });
+  }
 
   return (
     <>
-      <header className="mb-4 flex flex-col gap-1">
+      <header className="mb-3 flex flex-col gap-1">
         <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
         <p className="text-sm text-muted-foreground">
           {formatDateRange(trip.startDate, trip.endDate)} · Times are local
@@ -115,46 +110,35 @@ function TripTimeline({ trip }) {
         </p>
       </header>
 
-      <div className="mb-3 flex justify-end">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setOpenDays(allOpen ? new Set() : new Set(rows.map((r) => r.date)))}
-        >
-          {allOpen ? (
-            <ChevronsDownUp className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <ChevronsUpDown className="h-4 w-4" aria-hidden="true" />
-          )}
-          {allOpen ? "Collapse all" : "Expand all"}
-        </Button>
+      <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border bg-background/95 px-4 pt-2 backdrop-blur">
+        <DayTabs rows={rows} selected={row.date} onSelect={select} />
       </div>
 
-      <ol className="flex flex-col gap-2" aria-label="Trip days">
-        {rows.map((row, index) => (
-          <DayRow
-            key={row.date}
-            row={row}
-            index={index}
-            trip={trip}
-            open={openDays.has(row.date)}
-            onToggle={() => setOpenDays((s) => toggleIn(s, row.date))}
-            openEntries={openEntries}
-            onToggleEntry={(key) => setOpenEntries((s) => toggleIn(s, key))}
-          />
-        ))}
-      </ol>
+      <DayPanel
+        key={row.date}
+        row={row}
+        index={index}
+        trip={trip}
+        openEntries={openEntries}
+        onToggleEntry={(key) => setOpenEntries((s) => toggleIn(s, key))}
+        prev={rows[index - 1]}
+        next={rows[index + 1]}
+        onSelect={select}
+      />
     </>
   );
 }
 
 function TimelineSkeleton() {
   return (
-    <div aria-label="Loading trip" className="flex flex-col gap-2">
-      <div className="mb-4 h-12 w-3/4 animate-pulse rounded-md bg-card" />
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="h-16 animate-pulse rounded-lg border border-border bg-card" />
-      ))}
+    <div aria-label="Loading trip" className="flex flex-col gap-3">
+      <div className="h-12 w-3/4 animate-pulse rounded-md bg-card" />
+      <div className="flex gap-1.5">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-14 w-[4.25rem] animate-pulse rounded-md border border-border bg-card" />
+        ))}
+      </div>
+      <div className="h-48 animate-pulse rounded-lg border border-border bg-card" />
     </div>
   );
 }
