@@ -424,7 +424,7 @@ travels stay read-only. Their markers get no edit controls.
    - Recommendation: **PUT**.
    - **Answer:** recommended (2026-10-02).
 
-## Walk stage 2 — editing stays & travel, location-based timezones, vertical timeline (round 2, awaiting confirmation)
+## Walk stage 2 — editing stays & travel, location-based timezones, vertical timeline
 
 Asked 2026-10-02:
 - **Travel:** must have a type (fly, boat, train, …) and a departure date and
@@ -435,243 +435,141 @@ Asked 2026-10-02:
 - **Timeline:** should flow like react-chrono's vertical mode: each point a
   date, its card that day's details.
 
-Round 1 answers (2026-10-02): **all recommendations accepted**, with these
-specifics:
-- Roll our own vertical timeline (Q1a).
-- **Don't upgrade React** (Q1b: no).
-- **No timezone picker** (replaces Q6). A place is required, its timezone is
-  inferred from where it is, and the user only ever thinks in wall-clock
-  time. Everything below is designed around that.
+**Decisions** (answered 2026-10-02 over three rounds; all recommendations
+accepted except where noted):
+- Our own vertical timeline in react-chrono's style. **No React upgrade**:
+  chrono 3.x needs React 19, and although a trial needed no code changes, we're
+  staying on the template's React 18.
+- **No timezone pickers.** Every time's zone is inferred from its place; users
+  only ever enter wall-clock times.
+- **Google Places, in the browser.** Google's browser library is loaded only
+  when a place field opens, with the key from `GET /config`.
+  - The key is protected Google's way: restricted to our websites and to the
+    Maps JavaScript and Places APIs, with a budget alert and a daily quota cap.
+  - We considered a server-side proxy and rejected it: it added endpoints and
+    a provider layer for little gain (Julian's call).
+- Day cards open by default; a sticky date jumper; `boat` added as a travel
+  type; the title prefilled "From → To"; the arrival warning is non-blocking;
+  stay times prefilled 15:00/11:00; `roomType` (stays) and `seat` (travel)
+  added; no overlap warnings yet.
+- Order: API, then timeline, then forms.
+- Stay and travel places must be picked from search in the UI. Imports stay
+  lenient about coordinates. An activity without a place uses that night's
+  stay's clock. The activity form switches to the same place search. Arrival
+  time is enabled only once a "to" place is picked. Search is biased towards
+  the trip's area. Only the typed place text goes to Google.
 
-### Findings
+### The timezone rule
 
-**react-chrono.** 3.x needs React 19.2; the last React 18 release is 2.6.1.
-A React 19 trial needed no code changes, but we're staying on 18 and building
-our own vertical layout in chrono's style.
+One module, `app/zones.py`, is used both by validation (import and every edit)
+and by the read model. The zone for a time comes from:
+1. its place's coordinates, via `tzfpy` (offline, Rust, 21 MB; tested on our
+   sample places);
+2. otherwise an explicit timezone in the document (an import-only escape
+   hatch; the UI never shows it);
+3. for an activity only, otherwise the zone of the stay that covers that night
+   (or the stay checking out that morning);
+4. otherwise the trip's timezone.
 
-**Place → coordinates → timezone. Both halves tested 2026-10-02:**
-- **Coordinates → timezone (offline):** `tzfpy` (Rust, no dependencies,
-  21 MB installed).
-  - It resolved Zürich Airport → Europe/Zurich, O'Hare → America/Chicago,
-    Wengen → Europe/Zurich, Split → Europe/Zagreb and Naha → Asia/Tokyo.
-  - Import plus six lookups took 46 ms.
-  - `timezonefinder` (which v1 used) gives the same answers but pulls in numpy:
-    123 MB.
-- **Place → coordinates (online): Google Places API (New).** Decided
-  2026-10-02. Julian will create a key; a free OpenStreetMap service (Photon)
-  was tested and works, but isn't needed.
-  - It gives the best results for hotels and businesses, with English names
-    and Google place ids (for accurate map links).
-  - It's called **only from our server**, so the key never reaches the
-    browser (v1 handed its key to every client).
-  - It uses Google's recommended pattern for typing:
-    - **Autocomplete (New)** returns suggestions as you type: debounced, from
-      3 characters, biased towards the trip's area.
-    - **Place Details (New)** runs once on pick, returning the name, formatted
-      address and location.
-    - Both calls share a **session token**, so a search plus its pick bills as
-      one session, not one charge per keystroke.
-  - The details call asks for only the fields we use (`id`, `displayName`,
-    `formattedAddress`, `location`, `types`), which keeps it on the cheaper
-    price tier.
+Which place sets which clock: a stay's place sets its check-in and check-out; a
+travel leg's `from` sets departure and its `to` sets arrival; an activity's
+place sets its time, and failing that, the night's stay.
 
-**Key setup (Julian, before Phase 7's live check; the code and tests don't
-need it):**
-1. Google Cloud console → create (or reuse) a project, and attach billing.
-   For personal use the monthly free usage should cover it; set a **budget
-   alert** (for example $5) anyway.
-2. APIs & Services → Library → enable **Places API (New)**. (The Maps
-   JavaScript, Geocoding and Time Zone APIs aren't needed; timezones are
-   resolved offline.)
-3. Credentials → Create credentials → API key, then edit it:
-   - **API restrictions → Restrict key → Places API (New)** only.
-   - **Application restrictions → None** for local development. Our server
-     makes the calls, so an HTTP-referrer restriction would block them. Add
-     an IP restriction later if this gets deployed.
-4. Put it in `api/.env` as `GOOGLE_MAPS_API_KEY=…`. It's gitignored, so it's
-   never committed and never sent to the browser. `api/.env.example` gets
-   the empty key.
+**Computed when read, never stored** (lessons §2). An activity's fallback
+depends on another row, the stay, so a stored zone would go stale when the
+stay changes. `GET /trips/{id}` adds read-only `zone` fields (`stays[].zone`,
+`travels[].departZone`/`arriveZone`, `days[].items[].zone`), computed by the
+same function the rules use. Lookups take microseconds. The stored document
+keeps only what the author wrote, so an import still round-trips exactly.
 
-### Design (assuming the recommended answers)
+### API
 
-**The timezone rule: one function, used by import and every edit.** The zone
-for a time comes from:
-1. its place's coordinates (`tzfpy`), when the place has them; otherwise
-2. an explicit timezone in the document (an import-only escape hatch for
-   hand-written or AI-made documents; the UI never shows it); otherwise
-3. for an activity, the zone of that night's stay; otherwise
-4. the trip's timezone.
-
-The zones that apply:
-- **Stay:** its place.
-- **Travel departure:** its "from" place. **Travel arrival:** its "to" place.
-- **Activity:** its place (optional), else that night's stay.
-
-The resolved zone is **stored** on the row on every write, so reads, sorting
-and the timeline never recompute it, and a document read back shows what was
-used. When a place has coordinates, they win over an explicit timezone: the
-place is the truth.
-
-**Place search** (our server, proxying Google):
-- `GET /places/autocomplete?q=…&session=…&trip={id}` returns suggestions
-  (`{ placeId, primaryText, secondaryText }`), biased towards the trip's area:
-  its stays' coordinates, else its other picked places.
-- `GET /places/{placeId}?session=…` returns `{ placeId, name, address, lat,
-  lng, timezone }`, with the timezone resolved by `tzfpy`.
-- Both are authenticated and wrapped behind a `PlacesProvider` interface: the
-  Google implementation, plus a fake for tests (no network in CI).
-- 5 s timeout. An error, or a missing key, returns a clear 502/503 that the UI
-  shows as "Place search is unavailable", and the rest of the form still
-  works.
-- A location gains an optional `placeId` (schema), used for exact Google Maps
-  links.
-
-**The `PlaceField` component**, shared by every form:
-- You type, see results with their city and country, and pick one.
-- After picking, the **name is editable** while the coordinates are kept.
-  ("Flughafen Zürich" can become "Zürich Airport (ZRH)". If a small
-  guesthouse isn't found, you pick its street or town and rename it.)
-- Under the place, a read-only line says **which clock its times use**:
-  "Times here are Zurich time". There is never a picker.
-- An optional link field stays.
-
-**Travel form:**
-- Type (required): Fly, Train, Bus, Ferry, Boat, Car, Other.
-- Title, prefilled as "From → To" and editable.
-- Carrier, number (flight or train), seat.
-- **From** place (required), then departure date and time (required),
-  entered as the ticket shows them.
-- **To** place, then arrival date and time. The arrival time is enabled once
-  a "to" place is picked, because that's what sets its clock.
-- Confirmation number and notes.
-- **Warning, non-blocking:** with no arrival place or time, the form shows "No
-  arrival yet: the timeline can't show when you land" and still saves. The
-  timeline's depart marker carries a small warning badge until the arrival is
-  filled in.
-- When the two ends are in different zones, the form spells it out: "Departs
-  5:40 PM Chicago time · lands 9:25 AM Zurich time".
-
-**Stay form:**
-- Name and type.
-- **Place (required)**, which sets the stay's clock.
-- Check-in date and time, and check-out date and time (both required,
-  prefilled 15:00 and 11:00).
-- Room type, confirmation number and notes.
-
-**Activity form:** the existing free-text place fields become the same
-`PlaceField` (optional for activities). Without a place, an activity uses the
-night's stay's clock.
-
-**Where the edit controls live:**
-- An expanded stay or travel marker gets Edit and Delete. It edits the
-  booking, from any of its markers.
-- A day card's Add button opens a small menu: Activity / Travel / Stay, with
-  that date prefilled.
-
-**API** (same pattern as activities):
+- `GET /config` (authenticated) → `{ googleMapsApiKey }`, from
+  `GOOGLE_MAPS_API_KEY` in `api/.env`; null when unset.
+- `GET /timezone?lat=&lng=` (authenticated) → `{ timezone }`. This lets a form
+  show "Times here are Zurich time" before saving, using the same lookup the
+  server uses.
 - `POST /trips/{id}/stays`, `PUT|DELETE /trips/{id}/stays/{stay_id}`
 - `POST /trips/{id}/travels`, `PUT|DELETE /trips/{id}/travels/{travel_id}`
-- Full replace, validated by the import rules (4 and 5, factored into
-  `check_stay` / `check_travel`, which now use the resolved zones).
-- Every write returns the whole trip; ownership is checked through the trip.
+- Bookings are full replace, validated by the import rules (4 and 5, factored
+  into `check_stay` / `check_travel` and using the resolved zones). Every write
+  returns the whole trip. Ownership is checked through the trip (404).
+- **Schema changes:**
+  - Travel `from` is required.
+  - New fields: `seat` (travel), `roomType` (stays), `placeId` (any location).
+  - Travel types gain `boat`.
+  - The timezone fields are documented as "used only when the place has no
+    coordinates".
 
-**Schema changes** (the schema regenerates):
-- Travel `from` is required.
-- New fields: `seat` on travel and `roomType` on stays.
-- Travel types gain `boat`.
-- The timezone fields stay, documented as "only used when the place has no
-  coordinates".
+### UI
 
-**Vertical timeline:**
-- A line down the left; each date is a point (weekday, date, "Day N") with
-  its card beside it.
-- Day cards are **open by default**; entries stay collapsed until tapped.
-- An empty date is a slim point with "No plans" and an Add action.
-- The tab strip becomes a **compact sticky date jumper** that scrolls to a
-  day and highlights the one in view. `?day=` still works.
-- All current behaviour stays: markers, expansion, editing and zone labels.
+- **Vertical timeline:**
+  - A rail down the left; each date is a point (weekday, date, "Day N") with
+    its day card beside it.
+  - Cards are open by default and collapsible. An empty date is a slim point
+    with "No plans" and an Add action.
+  - A sticky compact **date jumper** scrolls to a day and highlights the one
+    in view. `?day=` scrolls there on load.
+- **`PlaceField`** (shared):
+  - You type, get Google suggestions (biased towards the trip's stays), and
+    pick one, which gives the name, address, coordinates and `placeId`.
+  - The name stays editable after picking, and a read-only line says "Times
+    here are Zurich time".
+  - If Places is unavailable (no key, or it failed to load), you can type a
+    name by hand, with a note that times will use the trip's clock.
+- **Travel form:**
+  - Type, title (prefilled "From → To" until edited), carrier, number, seat.
+  - From place (required), then departure date and time (required).
+  - To place, then arrival date and time. Arrival is enabled once a "to"
+    place is picked.
+  - Confirmation number and notes.
+  - A non-blocking warning while the arrival is incomplete.
+  - Spells out cross-zone legs: "Departs 5:40 PM Chicago time · lands
+    9:25 AM Zurich time".
+- **Stay form:** name, type, place (required), check-in and check-out dates and
+  times (required, prefilled 15:00/11:00), room type, confirmation number,
+  notes.
+- **Activity form:** its place fields become `PlaceField` (optional), plus a
+  link field.
+- Stay and travel markers get Edit and Delete (they edit the booking). The
+  day card's Add button offers Activity / Travel / Stay.
+- A depart marker shows a warning badge while its arrival is incomplete.
 
 ### Phases
 
-- **Phase 7 — Walk: timezone inference, place search, stay & travel API.**
-  - `tzfpy`; `resolve_zone` in the validation layer.
-  - Zones resolved and stored on import and on every edit.
-  - `/places/autocomplete` and `/places/{placeId}` with the Google provider
-    behind an interface (fake in tests).
-  - `placeId` on locations; `GOOGLE_MAPS_API_KEY` in settings and in
-    `.env.example`.
-  - Stay and travel endpoints; the schema changes.
+- **Phase 7 — Walk: zones, config, stay & travel API.**
+  - `tzfpy`, `app/zones.py`, `check_stay` / `check_travel` on resolved zones.
+  - Zone fields in the read model.
+  - `/config`, `/timezone`, and the booking endpoints.
+  - The schema changes; the sample gains a seat and a room type.
   - Tests:
-    - Zone inference cases, including the cross-zone flight and an activity
-      falling back to that night's stay.
-    - Import/edit parity.
-    - Place search with a fake provider, including bias, a missing key, and
-      a provider failure.
-  - A live check once the key is in `api/.env`.
-    - Ownership.
-- **Phase 8 — Walk: vertical timeline.** The layout above replaces the tabs.
-  Tests are updated; phone-width check.
+    - zone inference, including a cross-zone flight, a night's-stay fallback,
+      and an explicit timezone only applying without coordinates;
+    - import/edit parity for bookings;
+    - ownership;
+    - config with and without the key.
+- **Phase 8 — Walk: vertical timeline.** It replaces the tabs and keeps every
+  behaviour. Tests are rewritten; phone-width check.
 - **Phase 9 — Walk: stay & travel forms.**
-  - `PlaceField`, `TravelForm` and `StayForm`; `ActivityForm` switched to
-    `PlaceField`.
-  - Edit and Delete on markers; the Add menu.
-  - The arrival warning in the form and on the timeline.
+  - A small Google Places browser wrapper (mocked in tests), `PlaceField`,
+    `StayForm`, `TravelForm`; `ActivityForm` switched to `PlaceField`.
+  - Edit and Delete on markers; the Add menu; the arrival warning.
   - Tests and a phone-width check.
+  - A live Places check needs Julian's key.
 
-### Round 1 answers (recorded)
+### Key setup (Julian; only needed for live place search)
 
-1. Our own vertical timeline. **Yes.**
-   1b. Upgrade React to 19? **No.**
-2. Day cards open by default. **Yes.**
-3. Sticky date jumper. **Yes.**
-4. Add `boat`. **Yes.**
-5. Title prefilled "From → To". **Yes.**
-6. Timezone picker. **Replaced:** zones are inferred from places (see above).
-7. Arrival warning on a missing time or "to" place. **Yes.**
-8. Stay times prefilled 15:00 / 11:00. **Yes.**
-9. Add `roomType` (stays) and `seat` (travel); the rest goes in notes.
-   **Yes.**
-10. Overlaps: save, no warning for now. **Yes.**
-11. Phase order: API, then timeline, then forms. **Yes.**
-
-### Round 2 questions (about location-based timezones)
-
-1. **Geocoding provider?** **Answer:** Google Places (New), with a key Julian
-   creates. The design above uses it; the key setup steps are under Findings.
-2. **Must stay and travel places be picked from search in the UI?** That's
-   what gives coordinates, and so a timezone.
-   - Recommendation: **yes, required**. The name stays editable after
-     picking; if the exact place isn't found, pick the town or airport and
-     rename it.
-   - **Answer:**
-3. **Imports without coordinates: lenient or strict?**
-   - Lenient: fall back to the explicit timezone field, then the trip's.
-   - Strict: reject stays and travel without `lat`/`lng`.
-   - Recommendation: **lenient**. Hand-written and AI-made documents rarely
-     have coordinates, and when I convert your itinerary I'll look the places
-     up through the same Google search, so they will.
-   - **Answer:**
-4. **An activity with no place uses that night's stay's clock** (else the
-   trip's)?
-   - Recommendation: **yes**. On a multi-country trip that's nearly always
-     right.
-   - **Answer:**
-5. **Switch the activity form to the same place search** (place stays
-   optional)?
-   - Recommendation: **yes**, in Phase 9.
-   - **Answer:**
-6. **Arrival time only enabled after a "to" place is picked?** The arrival's
-   clock comes from that place.
-   - Recommendation: **yes**.
-   - **Answer:**
-7. **Bias search results towards the trip's area?**
-   - Recommendation: **yes**: the stays' coordinates, else other picked
-     places.
-   - **Answer:**
-8. **Privacy.** Search text goes to Google: only the place you type, never
-   trip details.
-   - OK?
-   - **Answer:**
+1. In the Google Cloud console, pick a project with billing attached and set a
+   **budget alert** (for example $5).
+2. Enable **Maps JavaScript API** and **Places API (New)**.
+3. Create an API key, then edit it:
+   - **Application restrictions → Websites:** `http://localhost:3000/*`, plus
+     the production domain when there is one.
+   - **API restrictions → Restrict key:** Maps JavaScript API and Places API
+     (New).
+4. Optional backstop: Places API (New) → Quotas → set a daily request cap.
+5. Put it in `api/.env` as `GOOGLE_MAPS_API_KEY=…` (gitignored). The browser
+   receives it from `GET /config`.
 
 ## After Phase 4 — First real trip
 
