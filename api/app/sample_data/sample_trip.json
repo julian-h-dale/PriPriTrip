@@ -13,6 +13,7 @@
       "location": {
         "name": "Hotel Goldener Schlüssel",
         "address": "Rathausgasse 72, 3011 Bern, Switzerland",
+        "city": "Bern",
         "lat": 46.9486227,
         "lng": 7.4487269
       },
@@ -42,8 +43,8 @@
       "carrier": "SWISS",
       "number": "LX 9",
       "seat": "23A",
-      "from": { "name": "Chicago O'Hare (ORD)", "lat": 41.9786, "lng": -87.9048 },
-      "to": { "name": "Zürich Airport (ZRH)", "lat": 47.4581, "lng": 8.5555 },
+      "from": { "name": "Chicago O'Hare (ORD)", "city": "Chicago", "lat": 41.9786, "lng": -87.9048 },
+      "to": { "name": "Zürich Airport (ZRH)", "city": "Zürich", "lat": 47.4581, "lng": 8.5555 },
       "depart": "2026-05-10T17:40",
       "departTimezone": "America/Chicago",
       "arrive": "2026-05-11T09:25",
@@ -55,8 +56,8 @@
       "mode": "train",
       "carrier": "SBB",
       "number": "IC 8",
-      "from": { "name": "Zürich Flughafen" },
-      "to": { "name": "Bern" },
+      "from": { "name": "Zürich Flughafen", "city": "Zürich" },
+      "to": { "name": "Bern", "city": "Bern" },
       "depart": "2026-05-11T10:28",
       "arrive": "2026-05-11T11:28"
     },
@@ -64,8 +65,8 @@
       "title": "Bern → Wengen",
       "mode": "train",
       "carrier": "BLS / BOB / WAB",
-      "from": { "name": "Bern" },
-      "to": { "name": "Wengen" },
+      "from": { "name": "Bern", "city": "Bern" },
+      "to": { "name": "Wengen", "city": "Wengen" },
       "depart": "2026-05-12T10:34",
       "arrive": "2026-05-12T12:41",
       "notes": "Change at **Interlaken Ost** and **Lauterbrunnen**. Wengen is car-free."
@@ -75,8 +76,8 @@
       "mode": "flight",
       "carrier": "SWISS",
       "number": "LX 8",
-      "from": { "name": "Zürich Airport (ZRH)", "lat": 47.4581, "lng": 8.5555 },
-      "to": { "name": "Chicago O'Hare (ORD)", "lat": 41.9786, "lng": -87.9048 },
+      "from": { "name": "Zürich Airport (ZRH)", "city": "Zürich", "lat": 47.4581, "lng": 8.5555 },
+      "to": { "name": "Chicago O'Hare (ORD)", "city": "Chicago", "lat": 41.9786, "lng": -87.9048 },
       "depart": "2026-05-14T13:05",
       "arrive": "2026-05-14T15:45",
       "arriveTimezone": "America/Chicago",
@@ -128,7 +129,7 @@
           "title": "Morning at the Rose Garden",
           "start": "2026-05-12T08:30",
           "end": "2026-05-12T09:30",
-          "location": { "name": "Rosengarten Bern", "lat": 46.9537, "lng": 7.4605 }
+          "location": { "name": "Rosengarten Bern", "city": "Bern", "lat": 46.9537, "lng": 7.4605 }
         },
         {
           "title": "Dinner at the hotel",
@@ -149,7 +150,7 @@
           "title": "Männlichen → Kleine Scheidegg hike",
           "start": "2026-05-13T09:30",
           "end": "2026-05-13T12:30",
-          "location": { "name": "Männlichen", "lat": 46.6133, "lng": 7.9403 },
+          "location": { "name": "Männlichen", "city": "Wengen", "lat": 46.6133, "lng": 7.9403 },
           "notes": "About **4.5 km**, mostly downhill.\n\n1. Cable car from Wengen\n2. Ridge path to Kleine Scheidegg\n3. Train back down to Wengen"
         },
         {

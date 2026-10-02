@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
@@ -10,6 +10,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { apiClient } from "@/shared/services/apiClient";
+import { formatDayHeading } from "@/shared/utils/time";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
@@ -18,11 +19,6 @@ vi.mock("@/shared/services/apiClient", () => ({
 
 // The API's read shape: the document plus ids.
 const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z" };
-
-function LocationProbe() {
-  const location = useLocation();
-  return <output data-testid="location">{location.pathname + location.search}</output>;
-}
 
 function renderPage(url = "/trips/trip-1") {
   const store = configureStore({
@@ -42,12 +38,7 @@ function renderPage(url = "/trips/trip-1") {
         <Routes>
           <Route
             path="/trips/:tripId"
-            element={
-              <>
-                <TripTimelinePage />
-                <LocationProbe />
-              </>
-            }
+            element={<TripTimelinePage />}
           />
         </Routes>
       </MemoryRouter>
@@ -82,8 +73,13 @@ afterEach(() => {
   delete Element.prototype.scrollIntoView;
 });
 
+/** The button that opens and closes a date's card. */
+function dayToggle(date) {
+  return within(day(date)).getByRole("button", { name: new RegExp(`^${formatDayHeading(date)}`) });
+}
+
 describe("TripTimelinePage", () => {
-  it("lists every date on the timeline, each day's card open", async () => {
+  it("lists every date on the timeline, each day collapsed", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: TRIP.name, level: 1 })).toBeInTheDocument();
     const days = within(screen.getByRole("list", { name: "Trip days" })).getAllByRole("listitem", {
@@ -96,88 +92,78 @@ describe("TripTimelinePage", () => {
       "day-2026-05-13",
       "day-2026-05-14",
     ]);
-    // Open by default: entries are visible without a tap.
-    expect(screen.getByText("Lunch at Altes Tramdepot")).toBeInTheDocument();
-    expect(screen.getByText("Fondue night")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /^Plans for/ })).not.toBeInTheDocument();
+    expect(dayToggle("2026-05-10")).toHaveAttribute("aria-expanded", "false");
     expect(apiClient.get).toHaveBeenCalledWith("/trips/trip-1", { silent: true });
   });
 
-  it("heads each card with the day's title, or its date when untitled", async () => {
+  it("rows a day as its date and cities, then its title and summary", async () => {
     renderPage();
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
-    expect(within(day("2026-05-11")).getByRole("heading", { name: "Arrive in Bern" })).toBeInTheDocument();
-    expect(within(day("2026-05-11")).getByText("Mon, May 11 · Day 2")).toBeInTheDocument();
-    expect(within(day("2026-05-10")).getByRole("heading", { name: "Sun, May 10" })).toBeInTheDocument();
+    expect(dayToggle("2026-05-12")).toHaveTextContent("Tue, May 12Bern → Wengen");
+    expect(within(day("2026-05-12")).getByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
+    expect(day("2026-05-12")).toHaveTextContent(
+      "Up to Wengen — A slow morning in Bern, then the train into the mountains."
+    );
+    expect(within(day("2026-05-12")).getByText("Up to Wengen").tagName).toBe("STRONG");
+    // No title or summary: just the date and cities.
+    expect(day("2026-05-10")).toHaveTextContent(/^Sun, May 10Chicago → Zürich$/);
   });
 
-  it("merges markers by time around activities", async () => {
+  it("opens a day on tap to show its entries, merged by time", async () => {
+    const user = userEvent.setup();
     renderPage();
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
+    await user.click(dayToggle("2026-05-11"));
+    expect(dayToggle("2026-05-11")).toHaveAttribute("aria-expanded", "true");
     const texts = entryTexts("2026-05-11");
     expect(texts[0]).toContain("Arrive · Zürich Airport (ZRH)");
     expect(texts[2]).toContain("Lunch at Altes Tramdepot");
     expect(texts[4]).toContain("Check in · Hotel Goldener Schlüssel");
   });
 
-  it("collapses and reopens a day", async () => {
+  it("opens a day from a tap on its summary, and leaves other days open", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
-    const toggle = within(day("2026-05-13")).getByRole("button", { name: /Männlichen ridge/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await user.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Fondue night")).not.toBeInTheDocument();
-    expect(within(day("2026-05-13")).getByText("4 entries")).toBeInTheDocument();
-    await user.click(toggle);
+    await user.click(dayToggle("2026-05-12"));
+    await user.click(within(day("2026-05-13")).getByText(/The big hiking day/));
     expect(screen.getByText("Fondue night")).toBeInTheDocument();
+    expect(dayToggle("2026-05-12")).toHaveAttribute("aria-expanded", "true");
+    await user.click(dayToggle("2026-05-13"));
+    expect(screen.queryByText("Fondue night")).not.toBeInTheDocument();
   });
 
-  it("shows a date with nothing on it as a slim point", async () => {
+  it("says when an opened day has nothing planned", async () => {
+    const user = userEvent.setup();
     const trip = structuredClone(TRIP);
     trip.travels = trip.travels.slice(1); // nothing left on May 10
     apiClient.get.mockResolvedValue({ data: trip });
     renderPage();
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
-    expect(day("2026-05-10")).toHaveTextContent("Sun, May 10 · Day 1 · No plans");
-    expect(within(day("2026-05-10")).queryByRole("list", { name: /^Plans for/ })).not.toBeInTheDocument();
+    expect(day("2026-05-10")).toHaveTextContent(/^Sun, May 10$/);
+    await user.click(dayToggle("2026-05-10"));
+    expect(within(day("2026-05-10")).getByText("Nothing planned for this day.")).toBeInTheDocument();
   });
 
-  it("jumps to a day from the date strip and keeps it in the URL", async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await user.click(await screen.findByRole("button", { name: "Jump to Wed, May 13" }));
-    expect(scrolled).toContain("day-2026-05-13");
-    expect(screen.getByRole("button", { name: "Jump to Wed, May 13" })).toHaveAttribute(
-      "aria-current",
-      "true"
-    );
-    expect(screen.getByTestId("location")).toHaveTextContent("/trips/trip-1?day=2026-05-13");
-  });
-
-  it("scrolls to the day named in the URL", async () => {
+  it("opens and scrolls to the day named in the URL", async () => {
     renderPage("/trips/trip-1?day=2026-05-12");
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
     expect(scrolled).toContain("day-2026-05-12");
-    expect(screen.getByRole("button", { name: "Jump to Tue, May 12" })).toHaveAttribute(
-      "aria-current",
-      "true"
-    );
+    expect(dayToggle("2026-05-12")).toHaveAttribute("aria-expanded", "true");
+    expect(dayToggle("2026-05-11")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("ignores an unknown date in the URL", async () => {
     renderPage("/trips/trip-1?day=1999-01-01");
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
     expect(scrolled.filter((id) => id?.startsWith("day-"))).toEqual([]);
-    expect(screen.getByRole("button", { name: "Jump to Sun, May 10" })).toHaveAttribute(
-      "aria-current",
-      "true"
-    );
+    expect(screen.queryByRole("list", { name: /^Plans for/ })).not.toBeInTheDocument();
   });
 
   it("expands an entry to markdown notes, map link and confirmation", async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage("/trips/trip-1?day=2026-05-11");
     await user.click(await screen.findByRole("button", { name: /Check in · Hotel Goldener/ }));
 
     const bold = screen.getByText("drop bags");
@@ -192,7 +178,7 @@ describe("TripTimelinePage", () => {
   });
 
   it("labels times outside the trip's timezone", async () => {
-    renderPage();
+    renderPage("/trips/trip-1?day=2026-05-10");
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
     expect(within(day("2026-05-10")).getByText("5:40 PM")).toBeInTheDocument();
     expect(within(day("2026-05-10")).getByText("Chicago")).toBeInTheDocument();

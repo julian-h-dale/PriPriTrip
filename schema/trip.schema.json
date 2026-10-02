@@ -238,6 +238,20 @@
           "default": null,
           "description": "Google place id, for exact map links.",
           "title": "Placeid"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The city or town it's in, for the timeline's day rows.",
+          "title": "City"
         }
       },
       "required": [

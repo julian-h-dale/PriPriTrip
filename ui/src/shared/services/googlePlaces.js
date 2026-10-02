@@ -5,7 +5,7 @@ import { getClientConfig } from "@/shared/services/clientConfig";
  * `places` library). Everything else works with plain objects:
  *
  *   suggestion: { placeId, primary, secondary }
- *   place:      { placeId, name, address, lat, lng }
+ *   place:      { placeId, name, address, city, lat, lng }
  *
  * The browser key comes from GET /config. It is public by design and protected
  * by its restrictions in the Google console (our websites; Maps JavaScript +
@@ -42,6 +42,12 @@ function loadPlacesLibrary(apiKey) {
   return loading;
 }
 
+/** The town a place is in: its locality, or the postal town (UK addresses). */
+function cityComponent(components = []) {
+  const find = (type) => components.find((c) => c.types.includes(type))?.longText;
+  return find("locality") ?? find("postal_town") ?? undefined;
+}
+
 /**
  * A place search for one field. Suggestions and the final pick share a
  * session token, so Google bills a search-and-pick as one session rather than
@@ -74,15 +80,18 @@ export async function createPlacesSearch() {
         });
     },
 
-    /** The chosen suggestion's details: name, address and coordinates. */
+    /** The chosen suggestion's details: name, address, city and coordinates. */
     async pick(suggestion) {
       const place = predictions.get(suggestion.placeId).toPlace();
-      await place.fetchFields({ fields: ["id", "displayName", "formattedAddress", "location"] });
+      await place.fetchFields({
+        fields: ["id", "displayName", "formattedAddress", "addressComponents", "location"],
+      });
       sessionToken = new places.AutocompleteSessionToken();
       return {
         placeId: place.id,
         name: place.displayName ?? suggestion.primary,
         address: place.formattedAddress ?? undefined,
+        city: cityComponent(place.addressComponents),
         lat: place.location.lat(),
         lng: place.location.lng(),
       };

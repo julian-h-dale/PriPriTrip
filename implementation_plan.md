@@ -582,6 +582,49 @@ keeps only what the author wrote, so an import still round-trips exactly.
 5. Put it in `api/.env` as `GOOGLE_MAPS_API_KEY=…` (gitignored). The browser
    receives it from `GET /config`.
 
+## Phase 10 — Walk: collapsed day rows with cities ✅
+
+The date strip didn't earn its space, especially with days collapsed. The
+timeline becomes the whole page.
+
+**Scope**
+- Remove the sticky date strip (`DateJumper`) and the scroll observer.
+- Every day starts collapsed, and every date gets the same row (no slim "No
+  plans" variant). The row is one button:
+  - the date on the left, and the day's cities on the right ("Bern → Wengen");
+  - underneath, the title in bold followed by the summary
+    ("**Arrive in Bern** — Land in Zürich, …"), or whichever of the two exists.
+- Tapping the row opens the day: entries (each still expandable), Add, and
+  Edit day. Any number of days can be open at once.
+- `?day=YYYY-MM-DD` opens that day and scrolls to it. Tapping doesn't rewrite
+  the URL.
+- **Cities.** They come from the day's entries in timeline order:
+  - travel gives its from and to places, and an overnight arrival gives its to
+    place;
+  - stay markers give the stay's place;
+  - activities give their place.
+
+  Repeats in a row are merged. A place whose city can't be judged adds nothing,
+  and a day with none shows nothing on the right.
+- **Where a place's city comes from.**
+  - A new optional `city` on `LocationDoc`. It isn't editable: it's set from
+    Google's address components (`locality`, else `postal_town`) when a place is
+    picked, and kept when the place is renamed.
+  - When `city` is missing (imports, typed names), a cautious guess is taken
+    from `address`: the second-to-last comma part with postal-code tokens
+    removed, skipping a US-style state code. With no address, there's no city.
+
+**Tests**
+- API: `city` round-trips through import and edits, and the schema includes it.
+- UI unit: `cityOf` (stored city, address guesses, nothing to judge) and
+  `dayCities` (order, merging, overnight arrival).
+- Page:
+  - days start collapsed, and the row shows the date, cities, title and summary;
+  - tapping opens a day;
+  - `?day=` opens and scrolls to that day, and an unknown date is ignored.
+- The editing tests open the day before editing.
+- A live browser check at phone width.
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it

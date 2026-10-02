@@ -232,7 +232,8 @@ describe("editing day activities", () => {
       { title: "Fly out" },
       { silent: true }
     );
-    expect(await screen.findByRole("heading", { name: "Fly out" })).toBeInTheDocument();
+    // The title leads the line under the date.
+    expect(await screen.findByText("Fly out")).toHaveProperty("tagName", "STRONG");
   });
 
   it("marks an end time that falls on the next day", async () => {

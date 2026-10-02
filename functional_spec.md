@@ -33,7 +33,7 @@ through their trip).
 | **Travel** | One booked/scheduled leg: flight, train, bus, ferry, car. Lives at trip level, **not** inside a day; the timeline places it by its departure time. | title, mode, depart (wall-clock, required), arrive?, departTimezone?, arriveTimezone?, from?, to?, carrier?, number?, confirmationNumber?, notes? | trip |
 | **Day** | One calendar date of the trip. At most one per date. | date, title, summary? (markdown) | trip |
 | **Item** | One planned activity on a day. Incidental movement ("walk to the old town") is an activity, not a Travel. | title, start?, end?, timezone?, location?, confirmationNumber?, notes? (markdown) | day |
-| **Location** | A place: a value embedded in a stay, travel (from/to) or item, not its own table. | name, address?, lat?, lng?, url? | its stay/travel/item |
+| **Location** | A place: a value embedded in a stay, travel (from/to) or item, not its own table. | name, address?, city?, lat?, lng?, url?, placeId? | its stay/travel/item |
 | **Trip document** | The JSON file describing a whole trip (trip, stays, travels, days, and items). Validated by the published JSON Schema. | `schemaVersion: 1` | — |
 
 **Timeline marker.** A row computed when the timeline renders, never stored:
@@ -55,13 +55,14 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 3. **View the timeline.** As a user, I open a trip and see it as a vertical
    timeline: one point per date from start to end on a rail down the left,
    with that day's card beside it.
-   1. Each day's card is open by default and collapsible. It shows the title
-      (or the date when untitled), the summary, and the entries: activities in
-      the order written, with stay and travel markers merged in by time. A
-      date with nothing on it is a slim point saying "No plans".
-   2. A compact date strip stays at the top while scrolling. Tapping a date
-      scrolls to its card, and the day in view is highlighted. The date is
-      kept in the URL (`?day=YYYY-MM-DD`), so a reload or link lands on it.
+   1. Days start collapsed. A day's row shows its date on the left and, on
+      the right, the cities it passes through ("Bern → Wengen", taken from
+      that day's places; nothing when they can't be told). Underneath are the
+      title in bold and the summary.
+   2. Tapping a day opens it to its entries: activities in the order written,
+      with stay and travel markers merged in by time. Opened days stay open
+      until tapped again. A link with `?day=YYYY-MM-DD` opens that day and
+      scrolls to it.
    3. Tapping an entry expands its details: notes (markdown), location (with a
       maps link), confirmation number, and for travel, the mode, carrier,
       number and from → to. Times are shown as written, labelled with their

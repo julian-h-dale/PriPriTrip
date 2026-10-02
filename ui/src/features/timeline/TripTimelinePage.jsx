@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
-import { DateJumper } from "@/features/timeline/DateJumper";
 import { DayCard } from "@/features/timeline/DayCard";
 import { dayId } from "@/features/timeline/dayIds";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
@@ -22,16 +21,14 @@ function toggleIn(set, key) {
 /** The timeline for one loaded trip. Keyed by trip id, so UI state resets per trip. */
 function TripTimeline({ trip }) {
   const rows = useMemo(() => buildTimeline(trip), [trip]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [collapsed, setCollapsed] = useState(() => new Set());
-  const [openEntries, setOpenEntries] = useState(() => new Set());
+  const [searchParams] = useSearchParams();
 
-  // `?day=YYYY-MM-DD` scrolls to that day on load (and is kept current when
-  // jumping), so a reload, the back button or a shared link lands on it.
+  // Days start collapsed. `?day=YYYY-MM-DD` opens that day and scrolls to it,
+  // so a shared link or a reload lands on it.
   const requested = searchParams.get("day");
-  const known = rows.some((r) => r.date === requested);
-  const [current, setCurrent] = useState(() => (known ? requested : rows[0]?.date));
-  const initialDay = useRef(known ? requested : null);
+  const initialDay = useRef(rows.some((r) => r.date === requested) ? requested : null);
+  const [openDays, setOpenDays] = useState(() => new Set(initialDay.current ? [initialDay.current] : []));
+  const [openEntries, setOpenEntries] = useState(() => new Set());
 
   useEffect(() => {
     if (initialDay.current) {
@@ -39,34 +36,9 @@ function TripTimeline({ trip }) {
     }
   }, []);
 
-  // Highlight whichever day is crossing the upper part of the screen.
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return undefined;
-    const observer = new IntersectionObserver(
-      (changes) => {
-        const visible = changes
-          .filter((c) => c.isIntersecting)
-          .sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
-        if (visible) setCurrent(visible.target.id.replace(/^day-/, ""));
-      },
-      { rootMargin: "-25% 0px -65% 0px" }
-    );
-    rows.forEach((r) => {
-      const el = document.getElementById(dayId(r.date));
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, [rows]);
-
-  function jump(date) {
-    setCurrent(date);
-    setSearchParams({ day: date }, { replace: true });
-    document.getElementById(dayId(date))?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <>
-      <header className="mb-3 flex flex-col gap-1">
+      <header className="mb-4 flex flex-col gap-1">
         <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
         <p className="text-sm text-muted-foreground">
           {formatDateRange(trip.startDate, trip.endDate)} · Times are local
@@ -74,19 +46,14 @@ function TripTimeline({ trip }) {
         </p>
       </header>
 
-      <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border bg-background/95 px-4 pt-2 backdrop-blur">
-        <DateJumper rows={rows} current={current} onJump={jump} />
-      </div>
-
       <ol aria-label="Trip days" className="flex flex-col">
-        {rows.map((row, index) => (
+        {rows.map((row) => (
           <DayCard
             key={row.date}
             row={row}
-            index={index}
             trip={trip}
-            open={!collapsed.has(row.date)}
-            onToggleOpen={() => setCollapsed((s) => toggleIn(s, row.date))}
+            open={openDays.has(row.date)}
+            onToggleOpen={() => setOpenDays((s) => toggleIn(s, row.date))}
             openEntries={openEntries}
             onToggleEntry={(key) => setOpenEntries((s) => toggleIn(s, key))}
           />
@@ -100,13 +67,8 @@ function TimelineSkeleton() {
   return (
     <div aria-label="Loading trip" className="flex flex-col gap-3">
       <div className="h-12 w-3/4 animate-pulse rounded-md bg-card" />
-      <div className="flex gap-1">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-10 w-14 animate-pulse rounded-md border border-border bg-card" />
-        ))}
-      </div>
-      {[0, 1].map((i) => (
-        <div key={i} className="ml-7 h-40 animate-pulse rounded-lg border border-border bg-card" />
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="ml-7 h-16 animate-pulse rounded-lg border border-border bg-card" />
       ))}
     </div>
   );

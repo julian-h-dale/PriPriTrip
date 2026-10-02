@@ -6,19 +6,22 @@
 
 ## Status
 
-- **Current phase:** Walk stage 2 (Phases 7–9) is done. Activities, days,
-  stays and travel are all editable on a vertical timeline, and timezones are
-  inferred from places.
+- **Current phase:** Phase 10 (collapsed day rows with cities) is done. Days
+  start collapsed, showing the date, the day's cities, and its title and
+  summary; the date strip is gone. Activities, days, stays and travel are all
+  editable, and timezones are inferred from places.
 - **Branch:** `rebuild`, pushed to `origin/rebuild`. Not merged to `main`.
-- **Last verified:** 2026-10-02. `make verify` green (101 API + 64 UI tests).
-  In a real browser at 375px, against a fresh database:
-  - the vertical timeline and date jumper work;
+- **Last verified:** 2026-10-02. `make verify` green (101 API + 68 UI tests).
+  Julian confirmed live Google Places works with his key. In a real browser
+  at 375px:
+  - collapsed day rows, opening a day, and no horizontal scroll (Phase 10);
   - editing a flight from its marker saves, and its zones stay Chicago →
     Zurich;
   - adding a stay with place search unavailable (no key yet) uses a typed name
     on the trip's clock.
-- **Not yet verified:** live Google Places search, which needs Julian's key
-  (setup steps are in `implementation_plan.md` → "Key setup").
+- **Note:** trips imported before Phase 10 have no stored `city`, so their
+  rows guess it from addresses and show nothing for bare names. A
+  `make reset-db` (then restart `make dev`) reloads the sample with cities.
 
 ## What exists (by phase)
 
@@ -46,27 +49,30 @@
   - Stay and travel CRUD; `GET /config` (Maps key) and
     `GET /timezone?lat&lng`.
   - Travel `from` is required; `boat`, `seat`, `roomType` and `placeId` added.
-- **8, vertical timeline:** a rail of dates with day cards (open by default,
-  collapsible), a sticky date jumper, and `?day=` deep links.
+- **8, vertical timeline:** a rail of dates with a day card per date, and
+  `?day=` deep links.
 - **9, booking forms:**
   - `PlaceField` (Google search, pick, rename, a read-only "Times here are X
     time" line, and a typed fallback).
   - `TravelForm` (arrival warning, cross-zone summary) and `StayForm`.
   - `ActivityForm` on `PlaceField`.
   - Edit and Delete on markers; an Add menu per day.
+- **10, collapsed day rows:**
+  - The date strip is removed and days start collapsed.
+  - A row shows the date, the cities (`dayCities.js`), and the bold title plus
+    the summary.
+  - `LocationDoc.city` is set from Google's `locality` (or `postal_town`) on
+    pick. Without it, the city is guessed from the address.
 
 ## Next
 
-1. **Julian:** create the Google key (Maps JavaScript API + Places API (New),
-   restricted to `http://localhost:3000/*`) and put it in `api/.env` as
-   `GOOGLE_MAPS_API_KEY`. Then do a live check: search and pick a place, see
-   "Times here are …", save.
-2. **Julian:** a human look at phone width (Phases 3, 4, 6, 8 and 9 have
-   manual gates; the agent checked headless screenshots).
-3. **Julian provides the real itinerary.** The agent converts it to a trip
+1. **Julian:** look at Phase 10 at phone width and confirm it. Phases 3, 4,
+   6, 8 and 9 also have manual phone-width gates; the agent checked headless
+   screenshots.
+2. **Julian provides the real itinerary.** The agent converts it to a trip
    document, looks places up with the same Google search so they get
    coordinates (and so timezones), and imports it.
-4. **Then, from the backlog:** editing the trip header; verification/gaps
+3. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`.
 
 ## Moving to another machine

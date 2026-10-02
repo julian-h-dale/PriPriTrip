@@ -13,7 +13,13 @@ from app.settings import get_app_settings
 
 Json = dict[str, Any]
 
-ZURICH_AIRPORT = {"name": "Zürich Airport", "lat": 47.4581, "lng": 8.5555, "placeId": "ChIJz"}
+ZURICH_AIRPORT = {
+    "name": "Zürich Airport",
+    "lat": 47.4581,
+    "lng": 8.5555,
+    "placeId": "ChIJz",
+    "city": "Kloten",
+}
 SPLIT = {"name": "Split Airport", "lat": 43.5389, "lng": 16.298}
 NAHA = {"name": "Naha Airport", "lat": 26.1967, "lng": 127.649}
 
@@ -80,6 +86,7 @@ async def test_create_stay(client: AsyncClient, trip: Json) -> None:
     assert resp.status_code == 201, resp.text
     added = stay_named(resp.json(), "Airport hotel")
     assert added["location"]["placeId"] == "ChIJz"
+    assert added["location"]["city"] == "Kloten"
     assert added["roomType"] == "Twin"
     assert added["zone"] == "Europe/Zurich"
 

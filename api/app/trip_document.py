@@ -147,6 +147,9 @@ class LocationDoc(DocModel):
     place_id: ShortText | None = Field(
         default=None, description="Google place id, for exact map links."
     )
+    city: ShortText | None = Field(
+        default=None, description="The city or town it's in, for the timeline's day rows."
+    )
 
     @model_validator(mode="after")
     def _coordinates_together(self) -> LocationDoc:

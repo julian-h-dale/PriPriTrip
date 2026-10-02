@@ -173,7 +173,8 @@ describe("editing travel", () => {
 
     await screen.findByRole("heading", { name: "Sun, May 10" });
     const may10 = document.getElementById("day-2026-05-10");
-    await user.click(within(may10).getByRole("button", { name: /Chicago → Zürich/ }));
+    const plans = within(may10).getByRole("list", { name: /^Plans for/ });
+    await user.click(within(plans).getByRole("button", { name: /Chicago → Zürich/ }));
     await user.click(within(may10).getByRole("button", { name: "Edit travel Chicago → Zürich" }));
     const dialog = screen.getByRole("dialog", { name: "Edit travel" });
     expect(within(dialog).getByLabelText("From")).toHaveValue("Chicago O'Hare (ORD)");
@@ -191,7 +192,8 @@ describe("editing travel", () => {
   it("flags a leg with no arrival on the timeline", async () => {
     delete trip.travels[3].arrive;
     renderDay("2026-05-14");
-    const card = await screen.findByRole("button", { name: /Zürich → Chicago/ });
+    const plans = await screen.findByRole("list", { name: "Plans for Thu, May 14" });
+    const card = within(plans).getByRole("button", { name: /Zürich → Chicago/ });
     expect(card).toHaveTextContent("No arrival yet");
   });
 });

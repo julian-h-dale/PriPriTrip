@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { ArrowDown, ArrowUp, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { DayForm } from "@/features/timeline/DayForm";
+import { dayCities } from "@/features/timeline/dayCities";
 import { dayHeadingId, dayId } from "@/features/timeline/dayIds";
 import { StayForm } from "@/features/timeline/StayForm";
 import {
@@ -106,13 +107,13 @@ function deleteMessage({ kind, record }) {
 }
 
 /**
- * One date on the vertical timeline: a point on the rail and that day's card —
- * heading, summary and entries (activities plus stay/travel markers), with
- * editing of the day's activities, its stays and travel, and its own
- * title/summary. The card is
- * collapsible; a date with nothing on it is a slim point with an Add action.
+ * One date on the vertical timeline: a point on the rail and that day's card.
+ * Collapsed, it shows the date, the cities the day passes through, and the
+ * title and summary. Open, it lists the entries (activities plus stay/travel
+ * markers) with editing of the day's activities, its stays and travel, and
+ * its own title/summary.
  */
-export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onToggleEntry }) {
+export function DayCard({ row, trip, open, onToggleOpen, openEntries, onToggleEntry }) {
   const dispatch = useDispatch();
   // `form` / `deleting`: null, or { kind: "activity" | "stay" | "travel", record }.
   // A null record in `form` means "add".
@@ -123,7 +124,6 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
   const [busy, setBusy] = useState(false);
 
   const empty = row.entries.length === 0;
-  const dayLabel = row.afterTrip ? "After the trip" : `Day ${index + 1}`;
   // Activities can only live on trip dates (not the morning-after row).
   const editable = !row.afterTrip;
   const day = trip.days.find((d) => d.date === row.date) ?? null;
@@ -207,124 +207,105 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
     </div>
   );
 
+  // Title and summary share the line under the date: "**Title** — summary".
+  const blurb = [row.title && `**${row.title}**`, row.summary].filter(Boolean).join(" — ");
+  const cities = dayCities(row);
+
+  // A mouse click anywhere on the header toggles the day (except on a link in
+  // the summary); keyboard users get the real button, whose click bubbles here.
+  function handleHeaderClick(e) {
+    if (e.target.closest("a")) return;
+    onToggleOpen();
+  }
+
   return (
-    <li id={dayId(row.date)} className="relative scroll-mt-28 pb-5 pl-7">
+    <li id={dayId(row.date)} className="relative scroll-mt-4 pb-3 pl-7">
       {/* The rail: one continuous line down the left, a point per date. */}
       <span className="absolute bottom-0 left-[0.4375rem] top-0 w-px bg-border" aria-hidden="true" />
       <span
         className={cn(
-          "absolute left-0 top-3.5 h-[0.9375rem] w-[0.9375rem] rounded-full border-2 border-background",
+          "absolute left-0 top-4 h-[0.9375rem] w-[0.9375rem] rounded-full border-2 border-background",
           empty ? "bg-muted-foreground/40" : "bg-primary"
         )}
         aria-hidden="true"
       />
 
-      {empty && !row.summary ? (
-        // A date with nothing on it is a slim point, not a full card.
-        <div className="flex flex-wrap items-center justify-between gap-2 py-1.5">
-          <p className="text-sm">
-            <span className="font-medium" id={dayHeadingId(row.date)}>
-              {row.title ?? heading}
-            </span>{" "}
-            <span className="text-muted-foreground">
-              · {row.title ? `${heading} · ` : ""}
-              {dayLabel} · No plans
+      <Card className="overflow-hidden">
+        {/* Not a button itself: the summary can hold links. The button inside is the keyboard path. */}
+        <div onClick={handleHeaderClick} className="flex cursor-pointer flex-col gap-1 p-3">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={`${dayId(row.date)}-body`}
+            className="flex w-full items-baseline gap-3 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <h2 id={dayHeadingId(row.date)} className="shrink-0 text-base font-semibold leading-snug">
+              {heading}
+            </h2>
+            <span className="min-w-0 flex-1 break-words text-right text-sm text-muted-foreground">
+              {cities.join(" → ")}
             </span>
-          </p>
-          {addButton}
+            <ChevronDown
+              className={cn("h-4 w-4 shrink-0 self-center text-muted-foreground transition-transform", open && "rotate-180")}
+              aria-hidden="true"
+            />
+          </button>
+          {blurb && <Markdown className="text-muted-foreground">{blurb}</Markdown>}
         </div>
-      ) : (
-        <Card className="overflow-hidden">
-          <header className="flex items-start gap-2 p-3">
-            <button
-              type="button"
-              onClick={onToggleOpen}
-              aria-expanded={open}
-              aria-controls={`${dayId(row.date)}-body`}
-              className="flex min-w-0 flex-1 items-start gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-xs text-muted-foreground">
-                  {row.title ? `${heading} · ${dayLabel}` : dayLabel}
-                </span>
-                <h2 id={dayHeadingId(row.date)} className="break-words text-base font-semibold leading-snug">
-                  {row.title ?? heading}
-                </h2>
-                {!open && (
-                  <span className="text-xs text-muted-foreground">
-                    {row.entries.length} {row.entries.length === 1 ? "entry" : "entries"}
-                  </span>
-                )}
-              </span>
-              <ChevronDown
-                className={cn("mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
-                aria-hidden="true"
-              />
-            </button>
-            {editable && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0"
-                onClick={() => setDayFormOpen(true)}
-                aria-label={`Edit ${heading} title and summary`}
-              >
-                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only">Edit day</span>
-              </Button>
-            )}
-          </header>
 
-          {open && (
-            <div
-              id={`${dayId(row.date)}-body`}
-              className={cn("flex flex-col gap-3 border-t border-border pb-3", !row.summary && "pt-0")}
-            >
-              {row.summary && (
-                <Markdown className="px-3 pt-3 text-muted-foreground">{row.summary}</Markdown>
-              )}
-              {empty ? (
-                <p className="px-3 pt-3 text-sm text-muted-foreground">Nothing planned for this day.</p>
-              ) : (
-                <ul
-                  aria-label={`Plans for ${heading}`}
-                  className={cn("border-b border-border", row.summary && "border-t")}
+        {open && (
+          <div id={`${dayId(row.date)}-body`} className="flex flex-col gap-3 border-t border-border pb-3">
+            {empty ? (
+              <p className="px-3 pt-3 text-sm text-muted-foreground">Nothing planned for this day.</p>
+            ) : (
+              <ul aria-label={`Plans for ${heading}`} className="border-b border-border">
+                {row.entries.map((entry) => (
+                  <TimelineEntry
+                    key={entry.key}
+                    entry={entry}
+                    trip={trip}
+                    expanded={openEntries.has(`${row.date}:${entry.key}`)}
+                    onToggle={() => onToggleEntry(`${row.date}:${entry.key}`)}
+                    actions={
+                      entry.kind === "activity" ? (
+                        <ActivityActions
+                          entry={entry}
+                          busy={busy}
+                          onEdit={() => setForm({ kind: "activity", record: entry.item })}
+                          onMove={(direction) => move(entry.item, direction)}
+                          onDelete={() => setDeleting({ kind: "activity", record: entry.item })}
+                        />
+                      ) : (
+                        // Stay and travel markers edit the booking itself.
+                        <BookingActions
+                          kind={entry.kind}
+                          record={entry.kind === "stay" ? entry.stay : entry.travel}
+                          onEdit={(record) => setForm({ kind: entry.kind, record })}
+                          onDelete={(record) => setDeleting({ kind: entry.kind, record })}
+                        />
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+            {editable && (
+              <div className="flex flex-wrap items-start justify-between gap-2 px-3">
+                {addButton}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDayFormOpen(true)}
+                  aria-label={`Edit ${heading} title and summary`}
                 >
-                  {row.entries.map((entry) => (
-                    <TimelineEntry
-                      key={entry.key}
-                      entry={entry}
-                      trip={trip}
-                      expanded={openEntries.has(`${row.date}:${entry.key}`)}
-                      onToggle={() => onToggleEntry(`${row.date}:${entry.key}`)}
-                      actions={
-                        entry.kind === "activity" ? (
-                          <ActivityActions
-                            entry={entry}
-                            busy={busy}
-                            onEdit={() => setForm({ kind: "activity", record: entry.item })}
-                            onMove={(direction) => move(entry.item, direction)}
-                            onDelete={() => setDeleting({ kind: "activity", record: entry.item })}
-                          />
-                        ) : (
-                          // Stay and travel markers edit the booking itself.
-                          <BookingActions
-                            kind={entry.kind}
-                            record={entry.kind === "stay" ? entry.stay : entry.travel}
-                            onEdit={(record) => setForm({ kind: entry.kind, record })}
-                            onDelete={(record) => setDeleting({ kind: entry.kind, record })}
-                          />
-                        )
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-              {addButton && <div className="px-3">{addButton}</div>}
-            </div>
-          )}
-        </Card>
-      )}
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  Edit day
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
 
       {form?.kind === "activity" && (
         <ActivityForm
