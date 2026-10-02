@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
-import thingsReducer from "@/features/things/thingsSlice";
+import tripsReducer from "@/features/trips/tripsSlice";
 import adminReducer from "@/features/admin/adminSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
@@ -8,7 +8,7 @@ import notificationReducer from "@/shared/notificationSlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    things: thingsReducer,
+    trips: tripsReducer,
     admin: adminReducer,
     error: errorReducer,
     notification: notificationReducer,

@@ -4,11 +4,11 @@ import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
-import thingsReducer from "@/features/things/thingsSlice";
+import tripsReducer from "@/features/trips/tripsSlice";
 import adminReducer from "@/features/admin/adminSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
-import { DashboardPage } from "@/features/things/DashboardPage";
+import { TripsPage } from "@/features/trips/TripsPage";
 import { AdminRoute } from "@/shared/components/AdminRoute";
 
 vi.mock("@/shared/services/apiClient", () => ({
@@ -19,7 +19,7 @@ function makeStore(preloadedState) {
   return configureStore({
     reducer: {
       auth: authReducer,
-      things: thingsReducer,
+      trips: tripsReducer,
       admin: adminReducer,
       error: errorReducer,
       notification: notificationReducer,
@@ -48,7 +48,7 @@ describe("Admin navigation button", () => {
     const store = makeStore({
       auth: { token: "t", user: { email: "a@x.com", is_superuser: true }, status: "idle" },
     });
-    renderWith(<DashboardPage />, store);
+    renderWith(<TripsPage />, store);
     expect(await screen.findByRole("button", { name: /admin/i })).toBeInTheDocument();
   });
 
@@ -56,8 +56,8 @@ describe("Admin navigation button", () => {
     const store = makeStore({
       auth: { token: "t", user: { email: "u@x.com", is_superuser: false }, status: "idle" },
     });
-    renderWith(<DashboardPage />, store);
-    // Flush the dashboard's on-mount fetch before asserting.
+    renderWith(<TripsPage />, store);
+    // Flush the trips page's on-mount fetch before asserting.
     await screen.findByRole("button", { name: /sign out/i });
     expect(screen.queryByRole("button", { name: /admin/i })).not.toBeInTheDocument();
   });

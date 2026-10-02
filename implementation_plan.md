@@ -242,7 +242,7 @@ same shape.
 
 ---
 
-## Phase 3 — Crawl: Home screen (trip select & import)
+## Phase 3 — Crawl: Home screen (trip select & import) ✅
 
 **Goal:** after logging in, I see my trips, can import a new one, and can open
 or delete one.
@@ -260,11 +260,12 @@ or delete one.
 - `shared/utils/time.js` (wall-clock and date formatting) with tests.
 
 **Tests / verification:**
-- [ ] `make verify` passes
-- [ ] `make seed` covers this phase's new data, and the result is visible in the app
-- [ ] Component tests: list renders, empty state, import success navigates,
+- [x] `make verify` passes
+- [x] `make seed` covers this phase's new data, and the result is visible in the app
+- [x] Component tests: list renders, empty state, import success navigates,
       import failure shows path-tagged errors, delete confirms first
-- [ ] Manual: phone width (375px), dark theme, keyboard focus visible
+- [ ] Manual: phone width (375px), dark theme, keyboard focus visible. (Agent checked
+      headless screenshots at 375px; a human look is still the gate.)
 
 ---
 

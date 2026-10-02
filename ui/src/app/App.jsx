@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMe } from "@/features/auth/authSlice";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { DashboardPage } from "@/features/things/DashboardPage";
+import { TripsPage } from "@/features/trips/TripsPage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { AdminRoute } from "@/shared/components/AdminRoute";
@@ -28,7 +28,7 @@ export function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <DashboardPage />
+              <TripsPage />
             </ProtectedRoute>
           }
         />

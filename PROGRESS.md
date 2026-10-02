@@ -6,11 +6,11 @@
 
 ## Status
 
-- **Current phase:** Phase 2 (import & read API) done. Next: Phase 3.
+- **Current phase:** Phase 3 (home screen) done. Next: Phase 4.
 - **Branch:** `rebuild`
-- **Last verified:** 2026-10-02, Phase 2. `make verify` green (55 API + 7 UI
-  tests). Live: seed replants the sample trip; curl import (file and JSON), list,
-  get, 422 with paths, and the public schema all work.
+- **Last verified:** 2026-10-02, Phase 3. `make verify` green (55 API + 17 UI
+  tests). Headless 375px screenshots checked: home, import errors, delete
+  confirm.
 
 ## Done
 
@@ -37,11 +37,17 @@
     `POST /trips/import`, `GET /trips`, `GET /trips/{id}`, `DELETE`, and
     `GET /schema/trip`.
   - Backend `things` removed; the seed replants the sample trip.
-  - Note: the UI home page still calls `/things` until Phase 3 replaces it.
+- **Phase 3:**
+  - `features/trips/`: `TripsPage`, `ImportTripDialog` (lists problems by
+    path), and delete with confirmation.
+  - Hand-rolled `Dialog`.
+  - `shared/utils/time.js`: wall-clock and date formatting with no timezone
+    conversion, tested under two `TZ` values.
+  - UI `things` removed.
 
 ## Next
 
-1. Phase 3: home screen (trip list, import dialog, delete), remove UI `things`.
+1. Phase 4: trip timeline (`/trips/:id`, `buildTimeline`).
 
 ## Notes / decisions
 
