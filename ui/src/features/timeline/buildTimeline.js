@@ -71,7 +71,15 @@ function composeDay(items, markers) {
         entries.push(pending.shift());
       }
     }
-    entries.push({ kind: "activity", key: `item-${j}`, time: item.start ?? null, item });
+    // Keyed by id when there is one, so UI state follows an activity that moves.
+    entries.push({
+      kind: "activity",
+      key: `item-${item.id ?? j}`,
+      time: item.start ?? null,
+      item,
+      index: j,
+      count: items.length,
+    });
   });
   return entries.concat(pending);
 }

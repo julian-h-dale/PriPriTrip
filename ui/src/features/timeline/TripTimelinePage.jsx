@@ -1,86 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
-import { panelId, tabId } from "@/features/timeline/dayIds";
+import { DayPanel } from "@/features/timeline/DayPanel";
 import { DayTabs } from "@/features/timeline/DayTabs";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
-import { TimelineEntry } from "@/features/timeline/TimelineEntry";
-import { Markdown } from "@/shared/components/Markdown";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
-import { formatDateRange, formatDayHeading, zoneLabel } from "@/shared/utils/time";
+import { formatDateRange, zoneLabel } from "@/shared/utils/time";
 
 function toggleIn(set, key) {
   const next = new Set(set);
   if (next.has(key)) next.delete(key);
   else next.add(key);
   return next;
-}
-
-function DayPanel({ row, index, trip, openEntries, onToggleEntry, prev, next, onSelect }) {
-  const empty = row.entries.length === 0;
-  const dayLabel = row.afterTrip ? "After the trip" : `Day ${index + 1}`;
-
-  return (
-    <section
-      id={panelId(row.date)}
-      role="tabpanel"
-      aria-labelledby={tabId(row.date)}
-      className="flex flex-col gap-3"
-    >
-      {/* A date with no day entry is headed by its date; its entries say the rest. */}
-      <header className="flex flex-col gap-0.5">
-        <p className="text-sm text-muted-foreground">
-          {row.title ? `${formatDayHeading(row.date)} · ${dayLabel}` : dayLabel}
-        </p>
-        <h2 className="break-words text-lg font-semibold leading-snug">
-          {row.title ?? formatDayHeading(row.date)}
-        </h2>
-      </header>
-
-      {row.summary && <Markdown className="text-muted-foreground">{row.summary}</Markdown>}
-
-      <Card className="overflow-hidden">
-        {empty ? (
-          <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-            Nothing planned for this day.
-          </p>
-        ) : (
-          <ul aria-label={`Plans for ${formatDayHeading(row.date)}`}>
-            {row.entries.map((entry) => (
-              <TimelineEntry
-                key={entry.key}
-                entry={entry}
-                trip={trip}
-                expanded={openEntries.has(`${row.date}:${entry.key}`)}
-                onToggle={() => onToggleEntry(`${row.date}:${entry.key}`)}
-              />
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <nav className="flex justify-between" aria-label="Day navigation">
-        {prev ? (
-          <Button variant="ghost" size="sm" onClick={() => onSelect(prev.date)}>
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            {formatDayHeading(prev.date)}
-          </Button>
-        ) : (
-          <span />
-        )}
-        {next && (
-          <Button variant="ghost" size="sm" onClick={() => onSelect(next.date)}>
-            {formatDayHeading(next.date)}
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        )}
-      </nav>
-    </section>
-  );
 }
 
 /** The timeline for one loaded trip. Keyed by trip id, so expand state resets per trip. */

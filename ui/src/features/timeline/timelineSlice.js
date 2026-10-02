@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
+import { notify } from "@/shared/notificationSlice";
 
 export const fetchTrip = createAsyncThunk("timeline/fetchTrip", async (tripId, { rejectWithValue }) => {
   try {
@@ -9,6 +10,64 @@ export const fetchTrip = createAsyncThunk("timeline/fetchTrip", async (tripId, {
     return rejectWithValue(err.response?.status === 404 ? "notFound" : "failed");
   }
 });
+
+/**
+ * Edits all return the whole updated trip, which replaces the one in state —
+ * so the timeline (markers included) recomputes from the server's truth.
+ * A rejected edit resolves to `{ detail, errors: [{ path, message }] }` for
+ * the form to show inline.
+ */
+function tripEdit(type, request, successMessage) {
+  return createAsyncThunk(type, async (args, { dispatch, rejectWithValue }) => {
+    try {
+      const { data } = await request(args);
+      if (successMessage) dispatch(notify({ type: "success", message: successMessage }));
+      return data;
+    } catch (err) {
+      const body = err.response?.data;
+      return rejectWithValue({
+        detail: typeof body?.detail === "string" ? body.detail : "Couldn’t save",
+        errors: Array.isArray(body?.errors) ? body.errors : [],
+      });
+    }
+  });
+}
+
+const quiet = { silent: true };
+
+export const createItem = tripEdit(
+  "timeline/createItem",
+  ({ tripId, item }) => apiClient.post(`/trips/${tripId}/items`, item, quiet),
+  "Activity added"
+);
+
+export const replaceItem = tripEdit(
+  "timeline/replaceItem",
+  ({ tripId, itemId, item }) => apiClient.put(`/trips/${tripId}/items/${itemId}`, item, quiet),
+  "Activity saved"
+);
+
+export const deleteItem = tripEdit(
+  "timeline/deleteItem",
+  ({ tripId, itemId }) => apiClient.delete(`/trips/${tripId}/items/${itemId}`, quiet),
+  "Activity deleted"
+);
+
+// No toast: the list visibly reorders, and a toast per tap would be noise.
+export const moveItem = tripEdit(
+  "timeline/moveItem",
+  ({ tripId, itemId, direction }) =>
+    apiClient.post(`/trips/${tripId}/items/${itemId}/move`, { direction }, quiet),
+  null
+);
+
+export const updateDay = tripEdit(
+  "timeline/updateDay",
+  ({ tripId, date, day }) => apiClient.put(`/trips/${tripId}/days/${date}`, day, quiet),
+  "Day saved"
+);
+
+const EDITS = [createItem, replaceItem, deleteItem, moveItem, updateDay];
 
 // `tripId` records which trip the state belongs to, so the page never shows
 // the previous trip while the next one loads (a v1 bug).
@@ -32,6 +91,11 @@ const timelineSlice = createSlice({
         if (state.tripId !== action.meta.arg) return;
         state.status = action.payload ?? "failed";
       });
+    EDITS.forEach((edit) =>
+      builder.addCase(edit.fulfilled, (state, action) => {
+        if (state.tripId === action.payload.id) state.trip = action.payload;
+      })
+    );
   },
 });
 

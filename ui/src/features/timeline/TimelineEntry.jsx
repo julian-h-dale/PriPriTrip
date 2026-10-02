@@ -3,7 +3,7 @@ import { Check, ChevronDown, Copy, ExternalLink, MapPin } from "lucide-react";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { Markdown } from "@/shared/components/Markdown";
 import { cn } from "@/shared/utils/cn";
-import { formatTime, zoneLabel } from "@/shared/utils/time";
+import { datePart, formatTime, zoneLabel } from "@/shared/utils/time";
 
 function mapsUrl(loc) {
   if (loc.lat != null && loc.lng != null) {
@@ -79,16 +79,28 @@ function TimeColumn({ d, tripZone }) {
     <span className="flex flex-col text-xs leading-tight">
       <span className="font-medium text-foreground">{formatTime(d.start)}</span>
       {showZone && <span className="text-muted-foreground">{zoneLabel(d.zone)}</span>}
-      {d.end && <span className="text-muted-foreground">– {formatTime(d.end)}</span>}
+      {d.end && (
+        <span className="text-muted-foreground">
+          – {formatTime(d.end)}
+          {datePart(d.end) > datePart(d.start) && <sup className="ml-0.5">+1</sup>}
+        </span>
+      )}
       {showEndZone && <span className="text-muted-foreground">{zoneLabel(d.endZone)}</span>}
     </span>
   );
 }
 
-export function TimelineEntry({ entry, trip, expanded, onToggle }) {
+/**
+ * One timeline row. `actions` (edit/move/delete for an activity) shows at the
+ * bottom of the expanded details, which also makes an otherwise bare activity
+ * expandable. Markers (stays, travel) never get actions.
+ */
+export function TimelineEntry({ entry, trip, expanded, onToggle, actions }) {
   const d = describeEntry(entry, trip);
   const Icon = d.icon;
-  const hasDetails = Boolean(d.notes || d.confirmation || d.locations.length || d.facts.length);
+  const hasDetails = Boolean(
+    actions || d.notes || d.confirmation || d.locations.length || d.facts.length
+  );
 
   const summary = (
     <>
@@ -151,6 +163,7 @@ export function TimelineEntry({ entry, trip, expanded, onToggle }) {
             <LocationBlock key={label} label={label} loc={loc} />
           ))}
           {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
+          {actions}
         </div>
       )}
     </li>

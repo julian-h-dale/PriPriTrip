@@ -365,7 +365,7 @@ travels stay read-only. Their markers get no edit controls.
   - Foreign or deleted items return 404; anonymous requests return 401.
   - Import and edit reject the same bad activity the same way.
 
-### Phase 6 — Walk: activity editing UI
+### Phase 6 — Walk: activity editing UI ✅
 
 - `ActivityForm` (time inputs on the day's date; end before start rolls to
   the next day).
@@ -375,7 +375,10 @@ travels stay read-only. Their markers get no edit controls.
   - Add, then edit, then delete, with mocked API calls.
   - Inline field errors from a 422.
   - Markers have no edit controls.
-  - Phone-width check.
+  - Phone-width check. (Agent: a live add/edit run at 375px, with the save
+    confirmed through the API. A human look is still the gate.)
+- Also fixed: the Dialog re-ran its focus effect on every render, which pulled
+  focus out of form fields mid-typing.
 
 ### Open questions (editing)
 

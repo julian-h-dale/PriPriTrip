@@ -13,20 +13,25 @@ export function Dialog({ open, onClose, title, description, children, className 
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef(null);
+  // Callers pass inline `onClose` functions, a new one every render. Reading
+  // it through a ref keeps the effect below tied to open/close only —
+  // otherwise every keystroke in a form re-ran it and yanked focus away.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
     const opener = document.activeElement;
     panelRef.current?.focus();
     function onKeyDown(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       if (opener instanceof HTMLElement) opener.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

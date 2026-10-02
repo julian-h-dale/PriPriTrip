@@ -6,11 +6,12 @@
 
 ## Status
 
-- **Current phase:** Crawl phases 1–4 done. Next: Julian reviews, then imports a real itinerary.
+- **Current phase:** Walk stage Phases 5–6 (editing day activities) done.
+  Next: Julian reviews, then imports a real itinerary.
 - **Branch:** `rebuild`
-- **Last verified:** 2026-10-02, Phase 4. `make verify` green (55 API + 31 UI
-  tests). Headless 375px screenshots checked for every screen, with the
-  browser set to Pacific/Auckland; times render as written.
+- **Last verified:** 2026-10-02. `make verify` green (75 API + 53 UI tests). A
+  live add/edit run at 375px in a real browser, with the saved activity
+  confirmed through the API.
 
 ## Done
 
@@ -53,11 +54,28 @@
     map links, and copy for confirmation numbers.
   - Loading, not-found and error states.
 
+- **After Phase 4:**
+  - `make dev` runs the API and UI together.
+  - The password field has an eye toggle.
+  - The timeline shows days as a scrolling tab strip, with the day in the URL.
+- **Phase 5:** activity and day edit API.
+  - Create, replace, move and delete activities; `PUT` a day's title and
+    summary.
+  - Validated by the same models and rules as import.
+  - Every edit returns the whole trip.
+  - Day titles are now optional.
+- **Phase 6:** editing UI.
+  - `ActivityForm` (hand-written; times are entered on the day, and an end
+    before the start rolls to the next day) and `DayForm`.
+  - Edit, Up/Down and Delete on expanded activities; "Add activity" and "Edit
+    day" on each day.
+  - Server errors are shown inline next to the field.
+
 ## Next
 
-1. Julian: a human look at phone width (Phase 3 and 4 manual gates).
+1. Julian: a human look at phone width (manual gates in Phases 3, 4 and 6).
 2. Julian provides an itinerary; convert it to a trip document and import it.
-3. Then plan the walk stage (editing, verification).
+3. Then: editing stays and travels, or verification (see the backlog).
 
 ## Notes / decisions
 
@@ -65,5 +83,6 @@
   knowledge, not code.
 - Chat/AI and verification are out of scope until the core timeline is solid.
 - Every import creates a new trip; invalid imports are rejected outright.
+- Commits carry no Claude attribution lines (Julian's request, 2026-10-02).
 - `ui/.env` doesn't exist (template `make env` only creates `api/.env`); the UI
   uses the defaults (:3000 → API :8000).
