@@ -75,11 +75,13 @@
 
 ## Next
 
-1. Julian answers the round 2 questions in "Walk stage 2" of
-   `implementation_plan.md` (timezones inferred from places: geocoding
-   provider, strictness, fallbacks).
-2. Then Phases 7–9.
-3. Still pending: a human look at phone width, and the real itinerary import.
+1. Julian answers the remaining round 2 questions in "Walk stage 2" of
+   `implementation_plan.md` (provider is decided: Google Places).
+2. Julian creates a Places API (New) key (setup steps in the plan) and puts
+   it in `api/.env` as `GOOGLE_MAPS_API_KEY`. That's only needed for the live
+   check; Phase 7 is built and tested against a fake provider.
+3. Then Phases 7–9.
+4. Still pending: a human look at phone width, and the real itinerary import.
 
 ## Moving to another machine
 
@@ -100,6 +102,8 @@ Tested with Python 3.12.3, Node 24.14 and npm 11.11.
 - `reference/private/`: personal PDFs and notes from v1, plus backups of the
   old `api/.env` and `ui/.env.local`. The old OpenAI and Maps keys are in
   there; nothing in the rebuild uses them yet.
+- `GOOGLE_MAPS_API_KEY` in `api/.env` (once created): `make setup` makes a
+  fresh `api/.env` without it, so copy the key across by hand.
 - `api/data/app.db`: the dev database. It's disposable: `make reset-db`
   recreates it, and edits made in the dev UI are lost.
 - Claude's per-machine memory notes. The decisions that matter are copied

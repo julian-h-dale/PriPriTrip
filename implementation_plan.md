@@ -457,25 +457,40 @@ our own vertical layout in chrono's style.
   - Import plus six lookups took 46 ms.
   - `timezonefinder` (which v1 used) gives the same answers but pulls in numpy:
     123 MB.
-- **Place → coordinates (online):** there is no offline way to turn "Hotel
-  Goldener Schlüssel" into a point. Options:
-  - **Photon** (komoot, OpenStreetMap data). Free, no key, built for
-    search-as-you-type, fair use on the public server.
-    - Tested on our places: it found Flughafen Zürich, the Goldener Schlüssel
-      hotel, Bern Bahnhof, Kornhauskeller, Beausite Park (Wengen), O'Hare and
-      Naha Airport, each within about 100 m.
-    - Results can be ambiguous ("Naha Airport" also matches one in Indonesia)
-      and come in local language (那覇空港), so the user picks from a short
-      list and can rename. Biasing results towards the trip's area fixes most
-      of the ambiguity.
-  - **Google Places.** The best results for businesses and hotels, with
-    English names, but it needs a server-side key with the Places API enabled
-    and billing (a monthly free credit). The old v1 key (in
-    `reference/private`) was a browser key and probably restricted to v1's
-    web address.
-  - Whichever we pick sits behind our own `/places/search` endpoint, so
-    switching providers later is a one-file change, and no key ever reaches
-    the browser.
+- **Place → coordinates (online): Google Places API (New).** Decided
+  2026-10-02. Julian will create a key; a free OpenStreetMap service (Photon)
+  was tested and works, but isn't needed.
+  - It gives the best results for hotels and businesses, with English names
+    and Google place ids (for accurate map links).
+  - It's called **only from our server**, so the key never reaches the
+    browser (v1 handed its key to every client).
+  - It uses Google's recommended pattern for typing:
+    - **Autocomplete (New)** returns suggestions as you type: debounced, from
+      3 characters, biased towards the trip's area.
+    - **Place Details (New)** runs once on pick, returning the name, formatted
+      address and location.
+    - Both calls share a **session token**, so a search plus its pick bills as
+      one session, not one charge per keystroke.
+  - The details call asks for only the fields we use (`id`, `displayName`,
+    `formattedAddress`, `location`, `types`), which keeps it on the cheaper
+    price tier.
+
+**Key setup (Julian, before Phase 7's live check; the code and tests don't
+need it):**
+1. Google Cloud console → create (or reuse) a project, and attach billing.
+   For personal use the monthly free usage should cover it; set a **budget
+   alert** (for example $5) anyway.
+2. APIs & Services → Library → enable **Places API (New)**. (The Maps
+   JavaScript, Geocoding and Time Zone APIs aren't needed; timezones are
+   resolved offline.)
+3. Credentials → Create credentials → API key, then edit it:
+   - **API restrictions → Restrict key → Places API (New)** only.
+   - **Application restrictions → None** for local development. Our server
+     makes the calls, so an HTTP-referrer restriction would block them. Add
+     an IP restriction later if this gets deployed.
+4. Put it in `api/.env` as `GOOGLE_MAPS_API_KEY=…`. It's gitignored, so it's
+   never committed and never sent to the browser. `api/.env.example` gets
+   the empty key.
 
 ### Design (assuming the recommended answers)
 
@@ -497,16 +512,19 @@ and the timeline never recompute it, and a document read back shows what was
 used. When a place has coordinates, they win over an explicit timezone: the
 place is the truth.
 
-**Place search:**
-- `GET /places/search?q=…&trip={id}` is authenticated and proxies to the
-  provider (Photon).
-- It's biased towards the trip's area: the trip's stays, or failing that its
-  other picked places.
-- Each result is `{ name, address, lat, lng, timezone, kind }`, with the
-  timezone already resolved.
-- The provider call has a 5 s timeout. A failure returns a clear 502 that the
-  UI shows as "Place search is unavailable, try again".
-- Tests use a fake provider; there is no network in CI.
+**Place search** (our server, proxying Google):
+- `GET /places/autocomplete?q=…&session=…&trip={id}` returns suggestions
+  (`{ placeId, primaryText, secondaryText }`), biased towards the trip's area:
+  its stays' coordinates, else its other picked places.
+- `GET /places/{placeId}?session=…` returns `{ placeId, name, address, lat,
+  lng, timezone }`, with the timezone resolved by `tzfpy`.
+- Both are authenticated and wrapped behind a `PlacesProvider` interface: the
+  Google implementation, plus a fake for tests (no network in CI).
+- 5 s timeout. An error, or a missing key, returns a clear 502/503 that the UI
+  shows as "Place search is unavailable", and the rest of the form still
+  works.
+- A location gains an optional `placeId` (schema), used for exact Google Maps
+  links.
 
 **The `PlaceField` component**, shared by every form:
 - You type, see results with their city and country, and pick one.
@@ -578,13 +596,18 @@ night's stay's clock.
 - **Phase 7 — Walk: timezone inference, place search, stay & travel API.**
   - `tzfpy`; `resolve_zone` in the validation layer.
   - Zones resolved and stored on import and on every edit.
-  - `/places/search` with the Photon provider behind an interface.
+  - `/places/autocomplete` and `/places/{placeId}` with the Google provider
+    behind an interface (fake in tests).
+  - `placeId` on locations; `GOOGLE_MAPS_API_KEY` in settings and in
+    `.env.example`.
   - Stay and travel endpoints; the schema changes.
   - Tests:
     - Zone inference cases, including the cross-zone flight and an activity
       falling back to that night's stay.
     - Import/edit parity.
-    - Place search with a fake provider, including bias and failure.
+    - Place search with a fake provider, including bias, a missing key, and
+      a provider failure.
+  - A live check once the key is in `api/.env`.
     - Ownership.
 - **Phase 8 — Walk: vertical timeline.** The layout above replaces the tabs.
   Tests are updated; phone-width check.
@@ -613,15 +636,8 @@ night's stay's clock.
 
 ### Round 2 questions (about location-based timezones)
 
-1. **Geocoding provider?**
-   - (a) **Photon**: free, no key, OpenStreetMap data, local-language names,
-     fair use.
-   - (b) **Google Places**: best for hotels and businesses, English names; it
-     needs a server key with Places enabled, and billing.
-   - Either way it sits behind our own endpoint, so switching later is cheap.
-   - Recommendation: **(a) now**, revisit if results disappoint on the real
-     itinerary.
-   - **Answer:**
+1. **Geocoding provider?** **Answer:** Google Places (New), with a key Julian
+   creates. The design above uses it; the key setup steps are under Findings.
 2. **Must stay and travel places be picked from search in the UI?** That's
    what gives coordinates, and so a timezone.
    - Recommendation: **yes, required**. The name stays editable after
@@ -633,7 +649,7 @@ night's stay's clock.
    - Strict: reject stays and travel without `lat`/`lng`.
    - Recommendation: **lenient**. Hand-written and AI-made documents rarely
      have coordinates, and when I convert your itinerary I'll look the places
-     up through the same search, so they will.
+     up through the same Google search, so they will.
    - **Answer:**
 4. **An activity with no place uses that night's stay's clock** (else the
    trip's)?
@@ -652,8 +668,8 @@ night's stay's clock.
    - Recommendation: **yes**: the stays' coordinates, else other picked
      places.
    - **Answer:**
-8. **Privacy.** Search text goes to the provider (komoot's public Photon
-   server, or Google). It's only the place you type, never trip details.
+8. **Privacy.** Search text goes to Google: only the place you type, never
+   trip details.
    - OK?
    - **Answer:**
 
