@@ -11,10 +11,19 @@
           "type": "string"
         },
         "title": {
-          "maxLength": 200,
-          "minLength": 1,
-          "title": "Title",
-          "type": "string"
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional; an untitled day is headed by its date.",
+          "title": "Title"
         },
         "summary": {
           "anyOf": [
@@ -39,8 +48,7 @@
         }
       },
       "required": [
-        "date",
-        "title"
+        "date"
       ],
       "title": "DayDoc",
       "type": "object"

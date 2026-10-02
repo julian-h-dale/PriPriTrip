@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Trip, UserRecord
+from app.models import Day, Item, Trip, UserRecord
 from app.users import current_active_user
 
 
@@ -41,3 +41,19 @@ async def get_owned_trip(
     if trip is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return trip
+
+
+async def get_owned_item(
+    item_id: uuid.UUID,
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> Item:
+    """A live activity on the current user's trip (through its live day), or 404."""
+    item = await db.scalar(
+        select(Item)
+        .join(Day, Item.day_id == Day.id)
+        .where(Item.id == item_id, Day.trip_id == trip.id, active(Item), active(Day))
+    )
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return item

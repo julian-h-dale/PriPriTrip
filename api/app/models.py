@@ -126,7 +126,7 @@ class Day(SoftDeleteMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
     date: Mapped[dt.date]
-    title: Mapped[str]
+    title: Mapped[str | None]  # optional: an untitled day is headed by its date
     summary: Mapped[str | None]
 
     items: Mapped[list[Item]] = relationship(order_by="Item.position", lazy="raise")

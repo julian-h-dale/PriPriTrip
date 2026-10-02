@@ -3,20 +3,29 @@ services/trips.py, document validation in app/trip_document.py."""
 
 from __future__ import annotations
 
+import datetime as dt
 import json
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile
 
 from app.database import get_db
-from app.dependencies import get_owned_trip
-from app.models import Trip, UserRecord
-from app.schemas import TripRead, TripSummary
+from app.dependencies import get_owned_item, get_owned_trip
+from app.models import Item, Trip, UserRecord
+from app.schemas import CamelModel, TripRead, TripSummary
 from app.services import trips as trips_service
-from app.trip_document import TripDocumentError, trip_json_schema, validate_trip_document
+from app.trip_document import (
+    DayWrite,
+    TripDocumentError,
+    parse_part,
+    trip_json_schema,
+    validate_day_date,
+    validate_item_write,
+    validate_trip_document,
+)
 from app.users import current_active_user
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -42,6 +51,18 @@ _IMPORT_BODY_DOCS: dict[str, Any] = {
         },
     }
 }
+
+
+def _invalid(exc: TripDocumentError, what: str) -> JSONResponse:
+    """422 with every problem and its path — the same shape for imports and edits."""
+    count = len(exc.errors)
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": f"{what} has {count} problem{'s' if count != 1 else ''}.",
+            "errors": [{"path": e.path, "message": e.message} for e in exc.errors],
+        },
+    )
 
 
 def _too_large() -> HTTPException:
@@ -94,14 +115,7 @@ async def import_trip(
     try:
         doc = validate_trip_document(data)
     except TripDocumentError as exc:
-        count = len(exc.errors)
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "detail": f"The trip document has {count} problem{'s' if count != 1 else ''}.",
-                "errors": [{"path": e.path, "message": e.message} for e in exc.errors],
-            },
-        )
+        return _invalid(exc, "The trip document")
     return await trips_service.import_trip(db, user.id, doc)
 
 
@@ -129,6 +143,94 @@ async def delete_trip(
 ) -> Response:
     await trips_service.delete_trip(db, trip)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---- Editing activities and days ----
+#
+# Bodies are validated by the trip-document models and rules (not FastAPI's
+# own validation), so an edit is rejected exactly as an import would be, with
+# the same {detail, errors: [{path, message}]} shape. Every write returns the
+# whole updated trip.
+
+JsonBody = Annotated[dict[str, Any], Body()]
+
+
+@router.post(
+    "/{trip_id}/items",
+    response_model=TripRead,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_item(
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    """Add an activity (an `ItemDoc` plus its `date`) at the end of that date."""
+    try:
+        write = validate_item_write(body, trip.start_date, trip.end_date)
+    except TripDocumentError as exc:
+        return _invalid(exc, "The activity")
+    return await trips_service.create_item(db, trip, write)
+
+
+@router.put("/{trip_id}/items/{item_id}", response_model=TripRead, response_model_exclude_none=True)
+async def replace_item(
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    item: Item = Depends(get_owned_item),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    """Replace a whole activity. A different `date` moves it to that day."""
+    try:
+        write = validate_item_write(body, trip.start_date, trip.end_date)
+    except TripDocumentError as exc:
+        return _invalid(exc, "The activity")
+    return await trips_service.replace_item(db, trip, item, write)
+
+
+@router.delete(
+    "/{trip_id}/items/{item_id}", response_model=TripRead, response_model_exclude_none=True
+)
+async def delete_item(
+    trip: Trip = Depends(get_owned_trip),
+    item: Item = Depends(get_owned_item),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead:
+    return await trips_service.delete_item(db, trip, item)
+
+
+class MoveRequest(CamelModel):
+    direction: Literal["up", "down"]
+
+
+@router.post(
+    "/{trip_id}/items/{item_id}/move", response_model=TripRead, response_model_exclude_none=True
+)
+async def move_item(
+    body: MoveRequest,
+    trip: Trip = Depends(get_owned_trip),
+    item: Item = Depends(get_owned_item),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead:
+    """Swap an activity with its neighbour in the day."""
+    return await trips_service.move_item(db, trip, item, body.direction)
+
+
+@router.put("/{trip_id}/days/{day_date}", response_model=TripRead, response_model_exclude_none=True)
+async def update_day(
+    day_date: dt.date,
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    """Set a date's title and summary (creates the day if the date has none)."""
+    try:
+        validate_day_date(day_date, trip.start_date, trip.end_date)
+        write = parse_part(DayWrite, body)
+    except TripDocumentError as exc:
+        return _invalid(exc, "The day")
+    return await trips_service.update_day(db, trip, day_date, write)
 
 
 @schema_router.get("/trip")

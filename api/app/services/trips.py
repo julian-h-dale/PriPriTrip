@@ -7,6 +7,7 @@ to these functions and contain no rules.
 
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -18,7 +19,7 @@ from sqlalchemy.orm import selectinload
 from app.dependencies import active
 from app.models import Day, Item, Stay, Travel, Trip
 from app.schemas import TripRead, TripSummary
-from app.trip_document import LocationDoc, TripDocument
+from app.trip_document import DayWrite, ItemWrite, LocationDoc, TripDocument
 
 
 def _location(loc: LocationDoc | None) -> dict[str, Any] | None:
@@ -155,3 +156,96 @@ async def delete_trip(db: AsyncSession, trip: Trip) -> None:
     trip.is_deleted = True
     trip.deleted_at = datetime.now(UTC)
     await db.commit()
+
+
+# ---- Editing activities and days ----
+#
+# Every edit returns the whole updated trip, so the UI swaps it into state in
+# one round trip and recomputes the timeline (markers included).
+
+
+async def _day_for(db: AsyncSession, trip: Trip, day_date: dt.date) -> Day:
+    """The trip's live day for a date, created (untitled) if the date has none."""
+    day = await db.scalar(
+        select(Day).where(Day.trip_id == trip.id, Day.date == day_date, active(Day))
+    )
+    if day is None:
+        day = Day(id=uuid.uuid4(), trip_id=trip.id, date=day_date)
+        db.add(day)
+        await db.flush()
+    return day
+
+
+async def _next_position(db: AsyncSession, day: Day) -> int:
+    last = await db.scalar(
+        select(func.max(Item.position)).where(Item.day_id == day.id, active(Item))
+    )
+    return 0 if last is None else last + 1
+
+
+def _apply_item(item: Item, write: ItemWrite) -> None:
+    item.title = write.title
+    item.start = write.start
+    item.end = write.end
+    item.timezone = write.timezone
+    item.location = _location(write.location)
+    item.confirmation_number = write.confirmation_number
+    item.notes = write.notes
+
+
+async def create_item(db: AsyncSession, trip: Trip, write: ItemWrite) -> TripRead:
+    """Add an activity at the end of its date."""
+    day = await _day_for(db, trip, write.date)
+    item = Item(day_id=day.id, position=await _next_position(db, day), title=write.title)
+    _apply_item(item, write)
+    db.add(item)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def replace_item(db: AsyncSession, trip: Trip, item: Item, write: ItemWrite) -> TripRead:
+    """Full replace. A new date moves the activity to the end of that day."""
+    current_day = await db.get(Day, item.day_id)
+    if current_day is None or current_day.date != write.date:
+        day = await _day_for(db, trip, write.date)
+        item.day_id = day.id
+        item.position = await _next_position(db, day)
+    _apply_item(item, write)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def delete_item(db: AsyncSession, trip: Trip, item: Item) -> TripRead:
+    item.is_deleted = True
+    item.deleted_at = datetime.now(UTC)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def move_item(db: AsyncSession, trip: Trip, item: Item, direction: str) -> TripRead:
+    """Swap an activity with its neighbour in the day. At either end it stays put."""
+    siblings = list(
+        (
+            await db.scalars(
+                select(Item).where(Item.day_id == item.day_id, active(Item)).order_by(Item.position)
+            )
+        ).all()
+    )
+    i = next(i for i, s in enumerate(siblings) if s.id == item.id)
+    j = i - 1 if direction == "up" else i + 1
+    if 0 <= j < len(siblings):
+        siblings[i], siblings[j] = siblings[j], siblings[i]
+        # Renumber the whole day: imports and moves can leave gaps or ties.
+        for position, sibling in enumerate(siblings):
+            sibling.position = position
+        await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def update_day(db: AsyncSession, trip: Trip, day_date: dt.date, write: DayWrite) -> TripRead:
+    """Set a date's title and summary, creating its day row if needed."""
+    day = await _day_for(db, trip, day_date)
+    day.title = write.title
+    day.summary = write.summary
+    await db.commit()
+    return await get_trip(db, trip.id)

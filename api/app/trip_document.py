@@ -28,7 +28,7 @@ import datetime as dt
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
@@ -202,7 +202,9 @@ class DayDoc(DocModel):
 
     # `dt.date`, not `date`: the field name would shadow the type.
     date: dt.date
-    title: Title
+    title: Title | None = Field(
+        default=None, description="Optional; an untitled day is headed by its date."
+    )
     summary: Markdown | None = None
     items: list[ItemDoc] = Field(default_factory=list)
 
@@ -284,6 +286,20 @@ def _instant(value: datetime, tz: str) -> datetime:
     return value.replace(tzinfo=ZoneInfo(tz))
 
 
+def check_item(item: ItemDoc, day_date: dt.date, *, prefix: str = "") -> list[DocError]:
+    """Rule (3) for one activity. Shared by import and editing, so both reject
+    the same activity the same way."""
+    errors: list[DocError] = []
+    if item.start is not None and item.start.date() != day_date:
+        errors.append(DocError(f"{prefix}start", f"must be on {day_date}, the date of its day"))
+    if item.end is not None:
+        if item.start is None:
+            errors.append(DocError(f"{prefix}end", "end requires start"))
+        elif item.end <= item.start:
+            errors.append(DocError(f"{prefix}end", "must be after start"))
+    return errors
+
+
 def check_rules(doc: TripDocument) -> list[DocError]:
     """Cross-field rules (1) to (5). Returns every violation, empty when sound."""
     errors: list[DocError] = []
@@ -309,14 +325,7 @@ def check_rules(doc: TripDocument) -> list[DocError]:
         else:
             seen[day.date] = i
         for j, item in enumerate(day.items):
-            ip = f"{p}.items[{j}]"
-            if item.start is not None and item.start.date() != day.date:
-                add(f"{ip}.start", f"must be on {day.date}, the date of its day")
-            if item.end is not None:
-                if item.start is None:
-                    add(f"{ip}.end", "end requires start")
-                elif item.end <= item.start:
-                    add(f"{ip}.end", "must be after start")
+            errors.extend(check_item(item, day.date, prefix=f"{p}.items[{j}]."))
 
     for i, stay in enumerate(doc.stays):
         p = f"stays[{i}]"
@@ -343,20 +352,69 @@ def check_rules(doc: TripDocument) -> list[DocError]:
     return errors
 
 
+M = TypeVar("M", bound=BaseModel)
+
+
+def parse_part(model: type[M], data: Any) -> M:
+    """Structural validation of any document model, errors with paths."""
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        raise TripDocumentError(_structural_errors(exc)) from exc
+
+
 def validate_trip_document(data: Any) -> TripDocument:
     """Parse and fully validate an uploaded document, or raise TripDocumentError.
 
     Structural errors are reported first; the cross-field rules only run on a
     structurally valid document (they need its values).
     """
-    try:
-        doc = TripDocument.model_validate(data)
-    except ValidationError as exc:
-        raise TripDocumentError(_structural_errors(exc)) from exc
+    doc = parse_part(TripDocument, data)
     errors = check_rules(doc)
     if errors:
         raise TripDocumentError(errors)
     return doc
+
+
+# ---- Editing ----
+#
+# Edits use the same models and rules as an import, so an activity the importer
+# rejects is rejected by the editor too, with the same path and message.
+
+
+class ItemWrite(ItemDoc):
+    """A whole activity plus the date it belongs on (create, or full replace)."""
+
+    date: dt.date
+
+
+class DayWrite(DocModel):
+    """A day's own fields: everything except its date and activities."""
+
+    title: Title | None = None
+    summary: Markdown | None = None
+
+
+def _outside_trip(day_date: dt.date, start: dt.date, end: dt.date) -> DocError | None:
+    if start <= day_date <= end:
+        return None
+    return DocError("date", f"{day_date} is outside the trip; the trip runs {start} to {end}")
+
+
+def validate_item_write(data: Any, start: dt.date, end: dt.date) -> ItemWrite:
+    """Parse and fully validate an edited activity, or raise TripDocumentError."""
+    write = parse_part(ItemWrite, data)
+    errors = [e for e in [_outside_trip(write.date, start, end)] if e]
+    errors += check_item(write, write.date)
+    if errors:
+        raise TripDocumentError(errors)
+    return write
+
+
+def validate_day_date(day_date: dt.date, start: dt.date, end: dt.date) -> None:
+    error = _outside_trip(day_date, start, end)
+    if error:
+        raise TripDocumentError([error])
 
 
 def trip_json_schema() -> dict[str, Any]:
