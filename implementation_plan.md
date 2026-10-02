@@ -548,7 +548,7 @@ keeps only what the author wrote, so an import still round-trips exactly.
     - import/edit parity for bookings;
     - ownership;
     - config with and without the key.
-- **Phase 8 — Walk: vertical timeline.** It replaces the tabs and keeps every
+- **Phase 8 — Walk: vertical timeline.** ✅ It replaces the tabs and keeps every
   behaviour. Tests are rewritten; phone-width check.
 - **Phase 9 — Walk: stay & travel forms.**
   - A small Google Places browser wrapper (mocked in tests), `PlaceField`,

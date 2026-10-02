@@ -1,8 +1,8 @@
-/** DOM ids linking each day tab to its panel (ARIA tabs pattern). */
-export function tabId(date) {
-  return `day-tab-${date}`;
+/** DOM ids for a date's card on the timeline, and its heading. */
+export function dayId(date) {
+  return `day-${date}`;
 }
 
-export function panelId(date) {
-  return `day-panel-${date}`;
+export function dayHeadingId(date) {
+  return `day-heading-${date}`;
 }

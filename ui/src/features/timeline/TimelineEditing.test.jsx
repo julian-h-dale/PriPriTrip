@@ -53,10 +53,12 @@ function renderDay(date) {
   return store;
 }
 
-function entries() {
-  return within(screen.getByRole("tabpanel"))
-    .getAllByRole("listitem")
-    .map((li) => li.textContent);
+/** Entry texts on one date's card. */
+function entries(date = "2026-05-11") {
+  const card = document.getElementById(`day-${date}`);
+  return within(within(card).getByRole("list", { name: /^Plans for/ }))
+    .getAllByRole("listitem", { name: "" })
+    .filter((li) => li.parentElement.getAttribute("aria-label")?.startsWith("Plans for")).map((li) => li.textContent);
 }
 
 beforeEach(() => {
@@ -96,7 +98,7 @@ describe("editing day activities", () => {
     apiClient.post.mockResolvedValue({ data: updated });
     renderDay("2026-05-11");
 
-    await user.click(await screen.findByRole("button", { name: "Add activity" }));
+    await user.click(await screen.findByRole("button", { name: "Add activity on Mon, May 11" }));
     const dialog = screen.getByRole("dialog", { name: "Add activity" });
     await user.type(within(dialog).getByLabelText("Title"), "Gelato");
     fireEvent.change(within(dialog).getByLabelText("Start"), { target: { value: "20:30" } });
@@ -114,7 +116,7 @@ describe("editing day activities", () => {
   it("checks the title before calling the server", async () => {
     const user = userEvent.setup();
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: "Add activity" }));
+    await user.click(await screen.findByRole("button", { name: "Add activity on Mon, May 11" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Give the activity a title")).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveAttribute("aria-invalid", "true");
@@ -217,7 +219,7 @@ describe("editing day activities", () => {
     apiClient.put.mockResolvedValue({ data: updated });
     renderDay("2026-05-10");
 
-    await user.click(await screen.findByRole("button", { name: "Edit day title and summary" }));
+    await user.click(await screen.findByRole("button", { name: "Edit Sun, May 10 title and summary" }));
     await user.type(screen.getByLabelText("Title"), "Fly out");
     await user.click(screen.getByRole("button", { name: "Save" }));
 

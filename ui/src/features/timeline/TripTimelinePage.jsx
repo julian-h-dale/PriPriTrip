@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
-import { DayPanel } from "@/features/timeline/DayPanel";
-import { DayTabs } from "@/features/timeline/DayTabs";
+import { DateJumper } from "@/features/timeline/DateJumper";
+import { DayCard } from "@/features/timeline/DayCard";
+import { dayId } from "@/features/timeline/dayIds";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
@@ -18,21 +19,49 @@ function toggleIn(set, key) {
   return next;
 }
 
-/** The timeline for one loaded trip. Keyed by trip id, so expand state resets per trip. */
+/** The timeline for one loaded trip. Keyed by trip id, so UI state resets per trip. */
 function TripTimeline({ trip }) {
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [collapsed, setCollapsed] = useState(() => new Set());
   const [openEntries, setOpenEntries] = useState(() => new Set());
 
-  // The selected day lives in the URL (?day=2026-05-11) so a reload, the back
-  // button, or a shared link lands on the same day. Unknown dates fall back to
-  // the first day.
+  // `?day=YYYY-MM-DD` scrolls to that day on load (and is kept current when
+  // jumping), so a reload, the back button or a shared link lands on it.
   const requested = searchParams.get("day");
-  const index = Math.max(0, rows.findIndex((r) => r.date === requested));
-  const row = rows[index];
+  const known = rows.some((r) => r.date === requested);
+  const [current, setCurrent] = useState(() => (known ? requested : rows[0]?.date));
+  const initialDay = useRef(known ? requested : null);
 
-  function select(date) {
+  useEffect(() => {
+    if (initialDay.current) {
+      document.getElementById(dayId(initialDay.current))?.scrollIntoView?.({ block: "start" });
+    }
+  }, []);
+
+  // Highlight whichever day is crossing the upper part of the screen.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      (changes) => {
+        const visible = changes
+          .filter((c) => c.isIntersecting)
+          .sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
+        if (visible) setCurrent(visible.target.id.replace(/^day-/, ""));
+      },
+      { rootMargin: "-25% 0px -65% 0px" }
+    );
+    rows.forEach((r) => {
+      const el = document.getElementById(dayId(r.date));
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [rows]);
+
+  function jump(date) {
+    setCurrent(date);
     setSearchParams({ day: date }, { replace: true });
+    document.getElementById(dayId(date))?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }
 
   return (
@@ -46,20 +75,23 @@ function TripTimeline({ trip }) {
       </header>
 
       <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border bg-background/95 px-4 pt-2 backdrop-blur">
-        <DayTabs rows={rows} selected={row.date} onSelect={select} />
+        <DateJumper rows={rows} current={current} onJump={jump} />
       </div>
 
-      <DayPanel
-        key={row.date}
-        row={row}
-        index={index}
-        trip={trip}
-        openEntries={openEntries}
-        onToggleEntry={(key) => setOpenEntries((s) => toggleIn(s, key))}
-        prev={rows[index - 1]}
-        next={rows[index + 1]}
-        onSelect={select}
-      />
+      <ol aria-label="Trip days" className="flex flex-col">
+        {rows.map((row, index) => (
+          <DayCard
+            key={row.date}
+            row={row}
+            index={index}
+            trip={trip}
+            open={!collapsed.has(row.date)}
+            onToggleOpen={() => setCollapsed((s) => toggleIn(s, row.date))}
+            openEntries={openEntries}
+            onToggleEntry={(key) => setOpenEntries((s) => toggleIn(s, key))}
+          />
+        ))}
+      </ol>
     </>
   );
 }
@@ -68,12 +100,14 @@ function TimelineSkeleton() {
   return (
     <div aria-label="Loading trip" className="flex flex-col gap-3">
       <div className="h-12 w-3/4 animate-pulse rounded-md bg-card" />
-      <div className="flex gap-1.5">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-14 w-[4.25rem] animate-pulse rounded-md border border-border bg-card" />
+      <div className="flex gap-1">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-10 w-14 animate-pulse rounded-md border border-border bg-card" />
         ))}
       </div>
-      <div className="h-48 animate-pulse rounded-lg border border-border bg-card" />
+      {[0, 1].map((i) => (
+        <div key={i} className="ml-7 h-40 animate-pulse rounded-lg border border-border bg-card" />
+      ))}
     </div>
   );
 }

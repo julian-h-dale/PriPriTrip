@@ -53,17 +53,20 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 2. **Pick a trip.** As a user, the home screen lists my trips (name, dates),
    soonest first. With no trips, it shows an empty state with the import action.
    I can delete a trip (soft delete, after a confirmation).
-3. **View the timeline.** As a user, I open a trip and see its days as tabs.
-   1. A strip of day tabs runs across the top (one per date from start to end,
-      scrolling sideways on a phone) and stays visible while scrolling. The
-      selected day is in the URL (`?day=YYYY-MM-DD`). A dimmed bar on a tab marks
-      a date with nothing on it.
-   2. The selected day shows its title, summary and entries: activities in the
-      order written, with stay and travel markers merged in by time. A date with
-      nothing on it says so. Previous/next buttons step between days.
+3. **View the timeline.** As a user, I open a trip and see it as a vertical
+   timeline: one point per date from start to end on a rail down the left,
+   with that day's card beside it.
+   1. Each day's card is open by default and collapsible. It shows the title
+      (or the date when untitled), the summary, and the entries: activities in
+      the order written, with stay and travel markers merged in by time. A
+      date with nothing on it is a slim point saying "No plans".
+   2. A compact date strip stays at the top while scrolling. Tapping a date
+      scrolls to its card, and the day in view is highlighted. The date is
+      kept in the URL (`?day=YYYY-MM-DD`), so a reload or link lands on it.
    3. Tapping an entry expands its details: notes (markdown), location (with a
-      maps link when there are coordinates or a URL), confirmation number, and
-      for travel, the mode, carrier, number and from → to.
+      maps link), confirmation number, and for travel, the mode, carrier,
+      number and from → to. Times are shown as written, labelled with their
+      place's zone when it differs from the trip's.
 4. **Edit a day's activities.** As a user, I can add, edit, reorder and delete
    the activities on a day, and edit the day's title and summary.
    1. Each day has an "Add activity" button and an "Edit day" button. An
@@ -104,7 +107,7 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 - [ ] Uploading an invalid document creates nothing and returns every error
       with its path.
 - [ ] The home screen lists the user's trips and has an empty state.
-- [ ] The trip view shows every day as a tab; entries expand and collapse;
+- [ ] The trip view shows every day on a vertical timeline; days and entries expand and collapse;
       notes render as markdown; stays show as computed markers.
 - [ ] Wall-clock times render identically regardless of the browser's timezone.
 - [ ] Activities can be added, edited, reordered and deleted; an invalid edit
