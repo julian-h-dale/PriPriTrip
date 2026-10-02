@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { AlertTriangle, Check, ChevronDown, Copy, ExternalLink, MapPin } from "lucide-react";
 import { describeEntry } from "@/features/timeline/describeEntry";
+import { RailDot } from "@/features/timeline/RailDot";
 import { Markdown } from "@/shared/components/Markdown";
+import { MiniMap } from "@/shared/components/MiniMap";
+import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { datePart, formatTime, zoneLabel } from "@/shared/utils/time";
 
@@ -16,13 +19,14 @@ function mapsUrl(loc) {
   return null;
 }
 
-function LocationBlock({ label, loc }) {
+export function LocationBlock({ label, loc }) {
   const map = mapsUrl(loc);
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="text-sm">{loc.name}</span>
       {loc.address && <span className="text-xs text-muted-foreground">{loc.address}</span>}
+      <MiniMap lat={loc.lat} lng={loc.lng} className="h-28 w-full" />
       {(map || loc.url) && (
         <span className="flex gap-3 text-xs">
           {map && (
@@ -43,7 +47,7 @@ function LocationBlock({ label, loc }) {
   );
 }
 
-function ConfirmationNumber({ value }) {
+export function ConfirmationNumber({ value }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -139,40 +143,43 @@ export function TimelineEntry({ entry, trip, expanded, onToggle, actions }) {
   );
 
   return (
-    <li className="border-t border-border first:border-t-0">
-      {hasDetails ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={expanded}
-          className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        >
-          {summary}
-        </button>
-      ) : (
-        <div className="flex items-start gap-3 px-3 py-2.5">{summary}</div>
-      )}
+    <li className="relative pb-3 pl-7">
+      <RailDot colorClassName={entry.kind === "activity" ? "bg-primary" : "bg-warning"} />
+      <Card className="overflow-hidden">
+        {hasDetails ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={expanded}
+            className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            {summary}
+          </button>
+        ) : (
+          <div className="flex items-start gap-3 px-3 py-2.5">{summary}</div>
+        )}
 
-      {hasDetails && expanded && (
-        <div className="flex flex-col gap-3 px-3 pb-3 sm:pl-[8.25rem]">
-          {d.notes && <Markdown className="text-muted-foreground">{d.notes}</Markdown>}
-          {d.facts.length > 0 && (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-              {d.facts.map(([label, value]) => (
-                <div key={label} className="contents">
-                  <dt className="text-muted-foreground">{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {d.locations.map(({ label, loc }) => (
-            <LocationBlock key={label} label={label} loc={loc} />
-          ))}
-          {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
-          {actions}
-        </div>
-      )}
+        {hasDetails && expanded && (
+          <div className="flex flex-col gap-3 border-t border-border px-3 pb-3 pt-3 sm:pl-[8.25rem]">
+            {d.notes && <Markdown className="text-muted-foreground">{d.notes}</Markdown>}
+            {d.facts.length > 0 && (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                {d.facts.map(([label, value]) => (
+                  <div key={label} className="contents">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {d.locations.map(({ label, loc }) => (
+              <LocationBlock key={label} label={label} loc={loc} />
+            ))}
+            {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
+            {actions}
+          </div>
+        )}
+      </Card>
     </li>
   );
 }

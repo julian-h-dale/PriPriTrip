@@ -8,7 +8,7 @@ import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
-import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
+import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { apiClient } from "@/shared/services/apiClient";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
@@ -41,11 +41,11 @@ function renderDay(date) {
   render(
     <Provider store={store}>
       <MemoryRouter
-        initialEntries={[`/trips/trip-1?day=${date}`]}
+        initialEntries={[`/trips/trip-1/days/${date}`]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
-          <Route path="/trips/:tripId" element={<TripTimelinePage />} />
+          <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -53,12 +53,11 @@ function renderDay(date) {
   return store;
 }
 
-/** Entry texts on one date's card. */
-function entries(date = "2026-05-11") {
-  const card = document.getElementById(`day-${date}`);
-  return within(within(card).getByRole("list", { name: /^Plans for/ }))
-    .getAllByRole("listitem", { name: "" })
-    .filter((li) => li.parentElement.getAttribute("aria-label")?.startsWith("Plans for")).map((li) => li.textContent);
+/** Entry texts on the rendered day. */
+function entries() {
+  return within(screen.getByRole("list", { name: /^Plans for/ }))
+    .getAllByRole("listitem")
+    .map((li) => li.textContent);
 }
 
 beforeEach(() => {
@@ -100,8 +99,7 @@ describe("editing day activities", () => {
     apiClient.post.mockResolvedValue({ data: updated });
     renderDay("2026-05-11");
 
-    await user.click(await screen.findByRole("button", { name: "Add to Mon, May 11" }));
-    await user.click(screen.getByRole("button", { name: "Add activity on Mon, May 11" }));
+    await user.click(await screen.findByRole("button", { name: "Add activity to Mon, May 11" }));
     const dialog = screen.getByRole("dialog", { name: "Add activity" });
     await user.type(within(dialog).getByLabelText("Title"), "Gelato");
     fireEvent.change(within(dialog).getByLabelText("Start"), { target: { value: "20:30" } });
@@ -119,8 +117,7 @@ describe("editing day activities", () => {
   it("checks the title before calling the server", async () => {
     const user = userEvent.setup();
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: "Add to Mon, May 11" }));
-    await user.click(screen.getByRole("button", { name: "Add activity on Mon, May 11" }));
+    await user.click(await screen.findByRole("button", { name: "Add activity to Mon, May 11" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Give the activity a title")).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveAttribute("aria-invalid", "true");

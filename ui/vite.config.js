@@ -19,12 +19,17 @@ export default defineConfig(({ mode }) => {
       // another worktree's port, while CORS_ORIGINS still names this one.
       port: Number(env.VITE_UI_PORT || 3000),
       strictPort: true,
+      // Bind every interface, not just loopback, so the dev server is
+      // reachable over the LAN (e.g. http://<host-ip>:3000).
+      host: true,
     },
     test: {
       globals: true,
       environment: "jsdom",
       setupFiles: "./src/test/setup.js",
       css: false,
+      // Playwright's specs live under e2e/ and run via `npm run test:e2e`, not vitest.
+      exclude: ["**/node_modules/**", "e2e/**"],
     },
   };
 });

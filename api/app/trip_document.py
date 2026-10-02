@@ -150,6 +150,12 @@ class LocationDoc(DocModel):
     city: ShortText | None = Field(
         default=None, description="The city or town it's in, for the timeline's day rows."
     )
+    img_ref: str | None = Field(
+        default=None,
+        pattern=r"^https?://",
+        max_length=2000,
+        description="The first photo Google Places returned when the place was picked.",
+    )
 
     @model_validator(mode="after")
     def _coordinates_together(self) -> LocationDoc:

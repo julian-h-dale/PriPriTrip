@@ -1,4 +1,4 @@
-import { getClientConfig } from "@/shared/services/clientConfig";
+import { loadGoogleMapsLibrary, GoogleMapsUnavailable } from "@/shared/services/googleMapsLoader";
 
 /**
  * The one place that knows Google's Places API (the Maps JavaScript API's
@@ -13,34 +13,7 @@ import { getClientConfig } from "@/shared/services/clientConfig";
  * Tests mock this module.
  */
 
-export class PlacesUnavailable extends Error {}
-
-let loading = null;
-
-function loadPlacesLibrary(apiKey) {
-  if (!loading) {
-    loading = new Promise((resolve, reject) => {
-      const ready = () => window.google.maps.importLibrary("places").then(resolve, reject);
-      if (window.google?.maps?.importLibrary) {
-        ready();
-        return;
-      }
-      const callback = "__pripritripMapsReady";
-      window[callback] = ready;
-      const script = document.createElement("script");
-      script.src =
-        "https://maps.googleapis.com/maps/api/js" +
-        `?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async&callback=${callback}`;
-      script.async = true;
-      script.onerror = () => {
-        loading = null;
-        reject(new PlacesUnavailable("Couldn’t load Google Maps"));
-      };
-      document.head.appendChild(script);
-    });
-  }
-  return loading;
-}
+export const PlacesUnavailable = GoogleMapsUnavailable;
 
 /** The town a place is in: its locality, or the postal town (UK addresses). */
 function cityComponent(components = []) {
@@ -54,9 +27,7 @@ function cityComponent(components = []) {
  * per keystroke; a new session starts after each pick.
  */
 export async function createPlacesSearch() {
-  const { googleMapsApiKey } = await getClientConfig();
-  if (!googleMapsApiKey) throw new PlacesUnavailable("No Google Maps key is configured");
-  const places = await loadPlacesLibrary(googleMapsApiKey);
+  const places = await loadGoogleMapsLibrary("places");
   let sessionToken = new places.AutocompleteSessionToken();
   const predictions = new Map();
 
@@ -80,11 +51,11 @@ export async function createPlacesSearch() {
         });
     },
 
-    /** The chosen suggestion's details: name, address, city and coordinates. */
+    /** The chosen suggestion's details: name, address, city, coordinates and its first photo. */
     async pick(suggestion) {
       const place = predictions.get(suggestion.placeId).toPlace();
       await place.fetchFields({
-        fields: ["id", "displayName", "formattedAddress", "addressComponents", "location"],
+        fields: ["id", "displayName", "formattedAddress", "addressComponents", "location", "photos"],
       });
       sessionToken = new places.AutocompleteSessionToken();
       return {
@@ -94,6 +65,7 @@ export async function createPlacesSearch() {
         city: cityComponent(place.addressComponents),
         lat: place.location.lat(),
         lng: place.location.lng(),
+        imgRef: place.photos?.[0]?.getURI({ maxWidth: 800 }) ?? undefined,
       };
     },
   };

@@ -17,6 +17,9 @@ node_modules/
 ui/dist/
 ui/node_modules/
 npm-debug.log*
+ui/e2e/screenshots/
+ui/test-results/
+ui/playwright-report/
 
 # Editor / OS
 .DS_Store

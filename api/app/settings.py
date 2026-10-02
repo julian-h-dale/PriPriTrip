@@ -32,6 +32,10 @@ class AppSettings(BaseSettings):
     # Browser keys are public by design: protect it in the Google console with
     # website (HTTP referrer) + API restrictions, a budget alert and a quota cap.
     google_maps_api_key: str = ""
+    # A Map ID (Google Cloud Console -> Map Management), required for Advanced
+    # Markers on the map view. Not secret; same public-by-design handling as
+    # the key above.
+    google_maps_map_id: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

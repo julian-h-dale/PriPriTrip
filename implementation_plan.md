@@ -625,6 +625,174 @@ timeline becomes the whole page.
 - The editing tests open the day before editing.
 - A live browser check at phone width.
 
+## Phase 11 — Walk: day detail pages ✅
+
+Editing controls and a day's entries cluttered the trip overview once days
+could hold a lot. A day gets its own page.
+
+**Scope**
+- `DayRow` (was `DayCard`): the trip page's row is now a plain link to
+  `/trips/:id/days/:date` — date, cities, title, summary, nothing else.
+- `DayDetailPage`: that date's entries, add/edit/delete for activities, stays
+  and travel, and the day's own title/summary. Prev/next day links (styled as
+  real buttons, not text links, so they don't read as the "back to trip" nav
+  above them); a fallback for a date outside the trip.
+- `RailDot`: the dot-and-line rail factored out of the old `DayCard`, shared
+  between the trip page's day rows and the day page's entry rows — one dot
+  per entry, by time, instead of one per date.
+- The `?day=` deep link on the trip page is dropped; a day's own URL replaces
+  it.
+
+**Tests**: `TripTimelinePage.test.jsx` trimmed to overview concerns; new
+`DayDetailPage.test.jsx` for the day page's own view/navigation; editing
+tests (`TimelineEditing.test.jsx`, `BookingEditing.test.jsx`) updated to
+render the day page directly. A live Playwright pass.
+
+## Phase 12 — Walk: stays/travel coverage views ✅
+
+"Just a visual way to see what nights we have a hotel for."
+
+**Scope**
+- `coverageView.js`: `stayCoverage(trip)` — a stay covers the *night* of date
+  D when its check-in date <= D < its check-out date, first stay claiming a
+  date wins. `travelCoverage(trip)` — a date is covered by a leg's depart
+  date, plus its arrival date too when it lands later; same-day legs (normal
+  for travel, e.g. a connection) join into one label and carry every record,
+  keeping the first leg's color.
+- A fixed 8-color categorical palette (`--series-1`..`8` in `index.css`,
+  `bg-series-1`..`8` in Tailwind) — the dataviz skill's dark-surface
+  reference palette, converted to this app's HSL token convention and
+  re-validated with its script. Color is assigned by position, never by
+  rank; the name is always shown as text too, since this app has no light
+  theme to also validate.
+- `RailDot` no longer takes a fixed `tone` enum; it takes any `bg-*` class,
+  so day rows can show a categorical color instead of primary/warning/muted.
+- Two icon buttons (House, Plane) next to the trip title switch the trip
+  overview between plan/stays/travel — exactly one at a time, the selected
+  one filled (not just a subtler `secondary` shade — needed to read clearly
+  as "pressed" at icon-button size).
+- **Adding/editing moved off the day page, into these views.** Selecting a
+  date opens a read-only `BookingDetailsDialog` quick look when a stay/leg
+  already covers it (name, dates, location with a mini-map, confirmation,
+  notes, an "Edit" button) — never straight to the edit form. An uncovered
+  date opens the add form, prefilled for that date. A date with more than
+  one travel leg falls back to the day page, the only place that lists both.
+  The day page's Add button is now just "Add activity"; existing stay/travel
+  markers on a day are still edited/deleted from there.
+- `runEdit.js` factors the thunk-dispatch-to-`{ok}`/`{errors}` helper shared
+  by `TripTimelinePage` and `DayDetailPage`.
+
+**Tests**: `coverageView.test.js`; `TripTimelinePage.test.jsx` covers the
+toggle; `CoverageEditing.test.jsx` (new) covers adding/opening from the
+coverage views, including the two-legs-same-date fallback. A live Playwright
+pass, including the stays/travel screenshots.
+
+## Walk stage 3 — location photos, bottom nav & map view
+
+Asked 2026-10-02:
+- Store the first Google Places photo with a picked location.
+- A bottom nav (Timeline / Map tabs) while viewing a trip.
+- A full-screen map: every trip location as a marker (icon by kind — house
+  for stays, travel's mode icon, a plain pin otherwise), Advanced Markers
+  specifically. Tapping one opens an info window: photo, title, day of trip,
+  a link to that day, and a directions link out to the phone's own maps app.
+  Search by name; a House button jumps to stays; a Calendar button filters to
+  one day (other dates disabled).
+
+**Decisions** (answered 2026-10-02):
+- **Photo storage:** store the resolved image URL (`Photo.getURI()`) as
+  `LocationDoc.imgRef` at pick time, not a reference re-resolved on every
+  view. Simpler, no extra Places calls to display it. Caveat, not fully
+  confirmed: if Google ever rotates these URLs, an old trip's photo could go
+  stale until the place is re-picked — accepted for now.
+- **Map search:** searches the trip's own locations (stay names, activity
+  titles, cities) and highlights/filters matching markers. Falls back to a
+  general Places text search only to re-center the map on a place for
+  orientation (e.g. typing "Interlaken" pans there even with nothing booked
+  yet) — it never adds anything to the trip from the map.
+- **Map filters:** the House (stays) and Calendar (one day) filters combine,
+  not mutually exclusive — both active shows stays happening on that day.
+  Real filter-intersection logic, not a 3-way switch like the timeline's
+  stays/travel toggle.
+- **Map ID:** required for Advanced Markers; Julian needs to create one (see
+  Key setup below) and put it in `api/.env` alongside the Maps key, served by
+  `GET /config` as `googleMapsMapId`.
+
+### Phase 13 — Walk: location photos & mini-map previews ✅
+
+- `LocationDoc.imgRef` (`img_ref`, alias `imgRef`): an optional URL, no
+  pattern beyond the existing `url` field's.
+- `googlePlaces.js`'s `pick()` requests the `photos` field and stores
+  `photos[0].getURI({ maxWidth: 800 })` as `imgRef` when present.
+- `MiniMap` (`shared/components/MiniMap.jsx`): a small, non-interactive
+  `google.maps.Map` centered on one point with a classic `Marker` (no Map ID
+  needed for this — only the full map page's Advanced Markers need one).
+  Shown in `PlaceField` once a place is picked, and in every `LocationBlock`
+  (day page entries, the new details dialog).
+- `googleMapsLoader.js` factors the Maps JS bootstrap script out of
+  `googlePlaces.js`, so `places`, `maps` and `marker` all share one script
+  tag instead of each library loading its own.
+- Fixed in passing: `"boat"` was a valid `TravelMode` missing from
+  `describeEntry.js`'s icon/label maps, silently falling back to a generic
+  icon — now mapped to `Ship`/"Boat" like `ferry`.
+
+**Tests**: `make verify` green; a live Playwright pass showing the mini-map
+rendering real tiles in an expanded entry and in the new details dialog.
+
+### Phase 14 — Walk: bottom nav & the map view ✅ (markers unverified live — no Map ID yet)
+
+- `BottomNav` + `BottomNavLayout` (`shared/components/`): Timeline (a list
+  icon) / Map (a map-pin icon) tabs, visible only on `TripTimelinePage`,
+  `DayDetailPage` and the new map page — a full-height flex shell with the
+  nav pinned below scrollable content, not a fixed overlay (no
+  scroll-padding guesswork to keep content from hiding behind it).
+- `GET /config` gained `googleMapsMapId` (`GOOGLE_MAPS_MAP_ID` in `.env`,
+  alongside the Maps key).
+- `buildMapMarkers.js` (`features/map/`): one marker per located stay, per
+  travel leg's `from` and `to`, and per activity with a place — pure, no
+  Google Maps involved, so it's tested independently of the widget.
+- `MapPage`: `AdvancedMarkerElement` (the `marker` library) for every
+  marker, a `PinElement` colored by kind with an **emoji glyph** standing in
+  for a per-kind icon (🏨 stay, the travel mode's emoji, 📍 activity) — a
+  deliberate simplification instead of hand-building SVGs for a non-React
+  marker; swappable for real icons later. Tapping a marker opens an
+  `InfoWindow`: the location's photo (`imgRef`, if any), title, day heading,
+  a link to that day's page, and a directions link
+  (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`, opens the
+  phone's own maps app). Missing key, missing Map ID, and zero located
+  places each show their own message instead of a blank or broken map.
+
+**Tests**: `buildMapMarkers.test.js` (stays/located legs/activities
+included, unlocated legs and place-less activities skipped, same-date
+correctness) — `make verify` green, 101 API + 86 UI. A live Playwright pass
+confirms the bottom nav, its active-tab state, and the map page's graceful
+"no Map ID configured" message (Julian hasn't created one yet — see Key
+setup above). **Not yet verified live**: actual marker placement, icons and
+the info window, which need a real Map ID.
+
+### Phase 15 — Walk: map search & filters (not started)
+
+- A search bar on the map: autocomplete against the trip's own locations
+  first; if nothing matches, falls back to a Places text search that just
+  re-centers the map (adds nothing to the trip).
+- Two buttons right of the search bar: House (stays only) and Calendar (pick
+  one day within the trip range; other dates disabled) — combinable filters,
+  intersected against the full marker list from Phase 14.
+
+**Tests**: filter-intersection logic as pure functions; a live Playwright
+pass.
+
+### Key setup (Julian; only needed for the map view)
+
+1. In the Google Cloud console, **Google Maps Platform → Map Management →
+   Create Map ID**.
+2. Map type: **JavaScript**. Vector rendering (the default) is fine — no
+   custom style is needed yet.
+3. Put the generated Map ID in `api/.env` as `GOOGLE_MAPS_MAP_ID=…`
+   (gitignored), alongside the existing `GOOGLE_MAPS_API_KEY`.
+4. No new API needs enabling — Advanced Markers live under the Maps
+   JavaScript API, already enabled.
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it

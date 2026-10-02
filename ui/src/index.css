@@ -40,6 +40,18 @@
   --border: 217 15% 24%;
   --input: 217 15% 24%;
   --ring: 217 91% 60%;
+
+  /* Categorical palette for coverage views (stays/travel timeline colors).
+     Validated for dark-surface CVD-safe adjacency — fixed order, never
+     reassigned by rank. See the dataviz skill's reference palette. */
+  --series-1: 213 77% 56%; /* blue */
+  --series-2: 17 70% 50%; /* orange */
+  --series-3: 159 73% 36%; /* aqua */
+  --series-4: 40 100% 39%; /* yellow */
+  --series-5: 338 61% 58%; /* magenta */
+  --series-6: 120 100% 26%; /* green */
+  --series-7: 247 69% 72%; /* violet */
+  --series-8: 0 72% 65%; /* red */
 }
 
 * {

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Clock, MapPin, Search, X } from "lucide-react";
+import { MiniMap } from "@/shared/components/MiniMap";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -107,6 +108,7 @@ export function PlaceField({ label, value, onChange, error, near, fallbackZone, 
             </Button>
           </div>
           {value.address && <p className="pl-6 text-xs text-muted-foreground">{value.address}</p>}
+          {located && <MiniMap lat={value.lat} lng={value.lng} className="h-28 w-full" />}
           <p className="flex items-center gap-1.5 pl-6 text-xs text-muted-foreground">
             <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
             {located

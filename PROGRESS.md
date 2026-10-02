@@ -6,14 +6,49 @@
 
 ## Status
 
-- **Current phase:** Phase 10 (collapsed day rows with cities) is done. Days
-  start collapsed, showing the date, the day's cities, and its title and
-  summary; the date strip is gone. Activities, days, stays and travel are all
-  editable, and timezones are inferred from places.
+- **Current phase:** Phase 14 (bottom nav & map view) is done except live
+  verification of the map's markers/info-window — Julian hasn't created a
+  Map ID yet, so this is only confirmed to degrade gracefully. Phases 11–13
+  (day detail pages, stays/travel coverage views, location photos & mini-map
+  previews) are done too. Tapping a day on the trip timeline now
+  navigates to its own page (`/trips/:id/days/:date`) instead of expanding in
+  place; the trip overview is pure read-at-a-glance (date, cities, title,
+  summary), and all editing (activities, stays, travel, the day's own
+  title/summary) lives on the day page. The day page has its own rail — one
+  dot per entry, labeled by time instead of by date — reusing the exact rail
+  visual from the trip page, plus prev/next day links. Two icon buttons
+  (House, Plane) next to the trip title switch the whole trip overview into a
+  coverage view: stays view colors each date's dot by which hotel covers
+  that night (blank/muted if none); travel view colors by which booked leg
+  touches that date, joining same-day legs into one label. Exactly one of
+  plan/stays/travel is shown at a time.
+  Selecting a covered date opens a new read-only `BookingDetailsDialog` quick
+  look (name, dates, location with a mini-map, confirmation, notes) with an
+  "Edit" button — it no longer jumps straight to the edit form. An uncovered
+  date still opens the add form directly.
+- A small, non-interactive Google map preview (`MiniMap`, centered on one
+  point, no API key visible beyond the existing browser key) now shows in
+  `PlaceField` once a place is picked, and in every `LocationBlock` (the
+  day page's expanded entries, and the details dialog). The Maps JS
+  bootstrap loader was factored out of `googlePlaces.js` into
+  `googleMapsLoader.js` so both `places` and `maps`/`marker` libraries share
+  one script tag.
+- **Location photos:** `LocationDoc.imgRef` stores the first Google Places
+  photo's resolved URL, captured whenever a place is picked anywhere in the
+  app (stays, travel, activities all share `PlaceField`/`googlePlaces.js`).
+  Not yet surfaced as a thumbnail anywhere except the map's info windows.
+- **Bottom nav & map view:** Timeline/Map tabs show only while viewing a
+  trip. `/trips/:id/map` plots every located stay, travel endpoint and
+  activity (`buildMapMarkers.js`), color- and emoji-coded by kind, using
+  `AdvancedMarkerElement`. Needs a Map ID Julian hasn't created yet
+  (`GOOGLE_MAPS_MAP_ID` in `api/.env` — see implementation_plan.md's Key
+  setup under Walk stage 3); until then the page shows that message instead
+  of a broken map.
 - **Branch:** `rebuild`, pushed to `origin/rebuild`. Not merged to `main`.
-- **Last verified:** 2026-10-02. `make verify` green (101 API + 68 UI tests).
-  Julian confirmed live Google Places works with his key. In a real browser
-  at 375px:
+- **Last verified:** 2026-10-02. `make verify` green (101 API + 86 UI tests),
+  plus a live Playwright pass against the real dev app (see below). Julian
+  confirmed live Google Places works with his key. In a real browser at
+  375px:
   - collapsed day rows, opening a day, and no horizontal scroll (Phase 10);
   - editing a flight from its marker saves, and its zones stay Chicago →
     Zurich;
@@ -22,6 +57,25 @@
 - **Note:** trips imported before Phase 10 have no stored `city`, so their
   rows guess it from addresses and show nothing for bare names. A
   `make reset-db` (then restart `make dev`) reloads the sample with cities.
+- **LAN access:** the dev servers can now be reached from another machine on
+  the network, not just `localhost`. `ui/vite.config.js` binds all
+  interfaces (`host: true`), `api/.env`'s `CORS_ORIGINS` lists the Pi's LAN
+  IPs, and `ui/src/shared/config/appConfig.js`'s API-URL fallback derives
+  from the page's own hostname instead of a hardcoded `localhost` — so it
+  works the same from `localhost`, either LAN IP, or a future hostname. The
+  Google Maps browser key is still referrer-restricted to `localhost:3000`
+  in the Google Cloud console; Julian needs to add the LAN IPs there himself
+  for live Places search to work off-host.
+- **E2E (Playwright):** `ui/e2e/`, practical screenshot-first checks only
+  (page views, basic clicking, no visual-diff baselines) — see
+  `ui/e2e/README.md`. Not part of `make verify`; run with
+  `cd ui && npm run test:e2e` against a running `make dev`.
+- **Fixed in passing:** `LoginPage` was dispatching `fetchMe()` itself on top
+  of `App.jsx`'s own token-change effect doing the same thing, racing two
+  `GET /users/me` calls right after login. Found via e2e testing — harmless
+  most of the time, but if the duplicate lost the race it could 401 and
+  bounce a freshly-logged-in user straight back to `/login`. Removed the
+  redundant call; `App.jsx`'s effect already covers it.
 
 ## What exists (by phase)
 
@@ -63,16 +117,69 @@
     the summary.
   - `LocationDoc.city` is set from Google's `locality` (or `postal_town`) on
     pick. Without it, the city is guessed from the address.
+- **11, day detail pages:**
+  - `DayRow` (was `DayCard`): the trip page's collapsed row is now a plain
+    link to `/trips/:id/days/:date`, nothing else.
+  - `DayDetailPage`: that date's entries, add/edit/delete for activities,
+    stays and travel, and the day's own title/summary — everything `DayCard`
+    used to hold inline. Prev/next day links; a fallback for a date outside
+    the trip.
+  - `RailDot`: the dot-and-line rail factored out of the old `DayCard`,
+    shared between the trip page's day rows and the day page's entry rows
+    (one dot per entry, by time, instead of one per date).
+  - `TimelineEntry` carries its own rail dot now (tone follows activity vs.
+    marker) and is only ever rendered on the day page.
+- **12, stays/travel coverage views:**
+  - `coverageView.js`: `stayCoverage(trip)` — a stay covers the *night* of
+    date D when its check-in date <= D < its check-out date, first stay
+    claiming a date wins. `travelCoverage(trip)` — a date is covered by a
+    leg's depart date, plus its arrival date too when it lands later;
+    same-day legs join into one label, keeping the first leg's color.
+  - A fixed 8-color categorical palette (`--series-1`..`8` in `index.css`,
+    `bg-series-1`..`8` in Tailwind), the dataviz skill's dark-surface
+    reference palette converted to this app's HSL token convention and
+    re-validated with its script. Color is assigned by position (never by
+    rank), with the hotel/leg name always shown as text too (not
+    color-alone), since the app has no light theme to also validate.
+  - `RailDot` no longer takes a fixed `tone` enum; it takes any `bg-*`
+    color class, so the trip page's day rows can show a categorical color
+    instead of just primary/warning/muted.
+  - `DayRow` takes a `view` ("plan" | "stays" | "travel") and that date's
+    `coverage` entry; `TripTimelinePage` holds the view as local state (not
+    persisted) and computes both coverage maps once per trip load.
+  - Selected view button uses the `default` (filled primary) variant, not
+    `secondary` — needed to read clearly as "pressed" at icon-button size.
+  - **Adding/editing a stay or leg moved off the day page, into these
+    views.** Selecting a date in stays/travel view opens that stay/leg's
+    edit form directly (or the add form, prefilled for that date, when
+    there's none) — no more navigating to the day page first. A date with
+    more than one travel leg (same-day connections are normal, unlike
+    stays) falls back to the day page instead, where both are listed. The
+    day page's Add button is now just "Add activity"; stays/travel markers
+    already on a day are still edited/deleted from there as before.
+    `runEdit.js` factors the thunk-dispatch-to-`{ok}`/`{errors}` helper
+    shared by `TripTimelinePage` and `DayDetailPage`.
 
 ## Next
 
-1. **Julian:** look at Phase 10 at phone width and confirm it. Phases 3, 4,
-   6, 8 and 9 also have manual phone-width gates; the agent checked headless
-   screenshots.
-2. **Julian provides the real itinerary.** The agent converts it to a trip
-   document, looks places up with the same Google search so they get
-   coordinates (and so timezones), and imports it.
-3. **Then, from the backlog:** editing the trip header; verification/gaps
+1. **Julian:** create a Google Maps Map ID (Cloud Console → Map Management,
+   JavaScript type) and put it in `api/.env` as `GOOGLE_MAPS_MAP_ID` — the
+   map view's markers, icons and info window are built but can't be verified
+   live without one. See implementation_plan.md's Key setup under Walk
+   stage 3.
+2. **Julian:** look at Phases 11–14 at phone width and confirm them — the
+   Playwright screenshots in `ui/e2e/screenshots/` are a stand-in, not the
+   gate. Phases 3, 4, 6, 8, 9 and 10 also have manual phone-width gates.
+3. **Then:** Phase 15 (map search + House/Calendar filters, combinable —
+   see Walk stage 3's decisions in implementation_plan.md).
+4. **Julian:** add the LAN IPs as allowed referrers on the Google Maps
+   browser key (Google Cloud console) if he wants live Places search to work
+   from a LAN address, not just `localhost:3000`.
+5. `example-trip.json` (Julian's real upcoming Okinawa/Taipei trip, WIP —
+   several date ranges are still TBD) is imported and verified against the
+   running API, coordinate-enriched via free geocoding (not Google). Not yet
+   looked at in the UI.
+6. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`.
 
 ## Moving to another machine

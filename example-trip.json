@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "name": "Okinawa & Taipei Trip — Fall 2026",
+  "startDate": "2026-10-29",
+  "endDate": "2026-11-13",
+  "timezone": "Asia/Tokyo",
+  "stays": [
+    {
+      "name": "Hotel Palm Royal Resort Kokusai Street",
+      "type": "hotel",
+      "checkIn": "2026-10-30T15:00",
+      "checkOut": "2026-11-02T11:00",
+      "location": {
+        "name": "Hotel Palm Royal Resort Kokusai Street",
+        "city": "Naha",
+        "lat": 26.2164036,
+        "lng": 127.6899187
+      },
+      "timezone": "Asia/Tokyo",
+      "roomType": "Standard Double Room",
+      "confirmationNumber": "5641.021.203",
+      "notes": "2 adults, no meals included. ¥68,720. Free cancellation ran through Oct 26, 2026."
+    },
+    {
+      "name": "Tokashiku Marine Village",
+      "type": "hotel",
+      "checkIn": "2026-11-02T15:00",
+      "checkOut": "2026-11-03T11:00",
+      "location": {
+        "name": "Tokashiku Marine Village",
+        "city": "Tokashiki Island",
+        "lat": 26.185769,
+        "lng": 127.3478751
+      },
+      "timezone": "Asia/Tokyo",
+      "roomType": "Japanese-Style Triple Room with Sea View (3 futons)",
+      "confirmationNumber": "5547.500.982",
+      "notes": "2 adults. Breakfast and dinner included. ¥36,766. Free cancellation ran through Oct 29, 2026.\n\nHotel runs a shuttle between Tokashiki Port and the hotel (~10 min). Confirm the 9:40 AM arrival pickup and the 5:00 PM return ferry with the hotel before the trip.\n\nCoordinates are approximate (Tokashiku Beach, which the hotel sits on) — OpenStreetMap doesn't have the guesthouse itself pinned."
+    },
+    {
+      "name": "Ryukyu Hotel & Resort Nashiro Beach",
+      "type": "hotel",
+      "checkIn": "2026-11-03T15:00",
+      "checkOut": "2026-11-05T11:00",
+      "location": {
+        "name": "Ryukyu Hotel & Resort Nashiro Beach",
+        "city": "Itoman",
+        "lat": 26.0998319,
+        "lng": 127.6597016
+      },
+      "timezone": "Asia/Tokyo",
+      "roomType": "Deluxe Twin Room",
+      "notes": "2 adults. Breakfast included.\n\n**Wedding day is Nov 4** — stay primarily at the resort.\n\nRyukyu Glass Village is a must-do; timing TBD, possibly the morning of Nov 5 after checkout."
+    },
+    {
+      "name": "Hotel Royal-Nikko Taipei",
+      "type": "hotel",
+      "checkIn": "2026-11-09T15:00",
+      "checkOut": "2026-11-12T11:00",
+      "location": {
+        "name": "Hotel Royal-Nikko Taipei",
+        "address": "No. 37-1, Section 2, Chung Shan North Road, Zhongshan District, Taipei City 104, Taiwan",
+        "city": "Taipei",
+        "lat": 25.0536679,
+        "lng": 121.5229126
+      },
+      "timezone": "Asia/Taipei",
+      "roomType": "Premier Double Room, 1 queen bed",
+      "confirmationNumber": "6158.360.312",
+      "notes": "Booked via Booking.com. 2 adults, no breakfast. Booking PIN 9273. TWD 22,585 total, prepaid in full at any time.\n\nFree cancellation through Nov 5, 2026, 11:59 PM Taipei time; after that, no changes and the full amount is forfeited.\n\nPool is closed for seasonal maintenance during the stay. Bring toiletries, photo ID and the card used to book for check-in. About a 3-minute walk from Zhongshan MRT Exit 3."
+    }
+  ],
+  "travels": [
+    {
+      "title": "Chicago → Taipei",
+      "mode": "flight",
+      "carrier": "EVA Air",
+      "number": "BR55",
+      "from": {
+        "name": "Chicago O'Hare International Airport (ORD), Terminal 5",
+        "city": "Chicago",
+        "lat": 41.9799743,
+        "lng": -87.909816
+      },
+      "to": {
+        "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
+        "city": "Taipei",
+        "lat": 25.0793174,
+        "lng": 121.2345977
+      },
+      "depart": "2026-10-29T00:30",
+      "departTimezone": "America/Chicago",
+      "arrive": "2026-10-30T05:25",
+      "arriveTimezone": "Asia/Taipei",
+      "confirmationNumber": "DAAL7X",
+      "notes": "Ticket 695 2464270937. 2 checked bags."
+    },
+    {
+      "title": "Taipei → Naha",
+      "mode": "flight",
+      "carrier": "EVA Air",
+      "number": "BR112",
+      "from": {
+        "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
+        "city": "Taipei",
+        "lat": 25.0793174,
+        "lng": 121.2345977
+      },
+      "to": {
+        "name": "Naha Airport (OKA), Terminal 1",
+        "city": "Naha",
+        "lat": 26.1966997,
+        "lng": 127.6489521
+      },
+      "depart": "2026-10-30T06:55",
+      "departTimezone": "Asia/Taipei",
+      "arrive": "2026-10-30T09:15",
+      "arriveTimezone": "Asia/Tokyo",
+      "confirmationNumber": "DAAL7X",
+      "notes": "Ticket 695 2464270937. 2 checked bags."
+    },
+    {
+      "title": "Tomari Port → Tokashiki Port",
+      "mode": "ferry",
+      "carrier": "Marine Liner Tokashiki",
+      "from": {
+        "name": "Tomari Port",
+        "city": "Naha",
+        "lat": 26.2253274,
+        "lng": 127.6827988
+      },
+      "to": {
+        "name": "Tokashiki Port",
+        "city": "Tokashiki Island",
+        "lat": 26.1991475,
+        "lng": 127.3695236
+      },
+      "depart": "2026-11-02T09:00",
+      "arrive": "2026-11-02T09:40",
+      "confirmationNumber": "TK11020064",
+      "notes": "2 adults. Booking codes confirmed; actual tickets are issued/purchased at the port."
+    },
+    {
+      "title": "Tokashiki Port → Tomari Port",
+      "mode": "ferry",
+      "carrier": "Marine Liner Tokashiki",
+      "from": {
+        "name": "Tokashiki Port",
+        "city": "Tokashiki Island",
+        "lat": 26.1991475,
+        "lng": 127.3695236
+      },
+      "to": {
+        "name": "Tomari Port",
+        "city": "Naha",
+        "lat": 26.2253274,
+        "lng": 127.6827988
+      },
+      "depart": "2026-11-03T17:00",
+      "arrive": "2026-11-03T17:40",
+      "confirmationNumber": "TK11020064",
+      "notes": "2 adults. Checkout from Tokashiku Marine Village by 11:00 AM; leave luggage with the hotel if needed, then hotel shuttle to the port before this ferry."
+    },
+    {
+      "title": "Naha → Taipei",
+      "mode": "flight",
+      "carrier": "Tigerair Taiwan",
+      "number": "IT231",
+      "from": {
+        "name": "Naha Airport (OKA)",
+        "city": "Naha",
+        "lat": 26.1966997,
+        "lng": 127.6489521
+      },
+      "to": {
+        "name": "Taiwan Taoyuan International Airport (TPE), Terminal 1",
+        "city": "Taipei",
+        "lat": 25.0793174,
+        "lng": 121.2345977
+      },
+      "depart": "2026-11-09T09:45",
+      "departTimezone": "Asia/Tokyo",
+      "arrive": "2026-11-09T10:20",
+      "arriveTimezone": "Asia/Taipei",
+      "notes": "Ask about luggage storage before Taipei hotel check-in (3:00 PM)."
+    },
+    {
+      "title": "Taipei → Naha",
+      "mode": "flight",
+      "carrier": "Tigerair Taiwan",
+      "number": "IT232",
+      "from": {
+        "name": "Taiwan Taoyuan International Airport (TPE), Terminal 1",
+        "city": "Taipei",
+        "lat": 25.0793174,
+        "lng": 121.2345977
+      },
+      "to": {
+        "name": "Naha Airport (OKA)",
+        "city": "Naha",
+        "lat": 26.1966997,
+        "lng": 127.6489521
+      },
+      "depart": "2026-11-12T18:20",
+      "departTimezone": "Asia/Taipei",
+      "arrive": "2026-11-12T20:40",
+      "arriveTimezone": "Asia/Tokyo",
+      "notes": "Ask about luggage storage after Taipei checkout (11:00 AM) and leave time for the airport transfer and check-in. Naha accommodation for this night is still TBD."
+    },
+    {
+      "title": "Naha → Taipei",
+      "mode": "flight",
+      "carrier": "EVA Air",
+      "number": "BR113",
+      "from": {
+        "name": "Naha Airport (OKA), Terminal 1",
+        "city": "Naha",
+        "lat": 26.1966997,
+        "lng": 127.6489521
+      },
+      "to": {
+        "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
+        "city": "Taipei",
+        "lat": 25.0793174,
+        "lng": 121.2345977
+      },
+      "depart": "2026-11-13T10:15",
+      "departTimezone": "Asia/Tokyo",
+      "arrive": "2026-11-13T10:55",
+      "arriveTimezone": "Asia/Taipei",
+      "confirmationNumber": "DAAL7X",
+      "notes": "Ticket 695 2464270937. 2 checked bags."
+    },
+    {
+      "title": "Taipei → Chicago",
+      "mode": "flight",
+      "carrier": "EVA Air",
+      "number": "BR56",
+      "from": {
+        "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
+        "city": "Taipei",
+        "lat": 25.0793174,
+        "lng": 121.2345977
+      },
+      "to": {
+        "name": "Chicago O'Hare International Airport (ORD), Terminal 5",
+        "city": "Chicago",
+        "lat": 41.9799743,
+        "lng": -87.909816
+      },
+      "depart": "2026-11-13T20:00",
+      "departTimezone": "Asia/Taipei",
+      "arrive": "2026-11-13T19:35",
+      "arriveTimezone": "America/Chicago",
+      "confirmationNumber": "DAAL7X",
+      "notes": "Ticket 695 2464270937. 2 checked bags."
+    }
+  ],
+  "days": []
+}

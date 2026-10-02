@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { login, fetchMe } from "@/features/auth/authSlice";
+import { login } from "@/features/auth/authSlice";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -33,7 +33,8 @@ export function LoginPage() {
     }
     try {
       await dispatch(login({ email, password })).unwrap();
-      await dispatch(fetchMe());
+      // App's own effect re-fetches the user once the token changes; dispatching
+      // fetchMe here too raced it and could 401 and bounce back to /login.
       navigate("/");
     } catch {
       setFormError("Invalid email or password.");

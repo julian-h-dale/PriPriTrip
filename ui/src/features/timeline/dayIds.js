@@ -1,8 +1,4 @@
-/** DOM ids for a date's card on the timeline, and its heading. */
+/** DOM id for a date's row on the trip timeline. */
 export function dayId(date) {
   return `day-${date}`;
-}
-
-export function dayHeadingId(date) {
-  return `day-heading-${date}`;
 }

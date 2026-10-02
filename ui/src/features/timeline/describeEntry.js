@@ -19,8 +19,16 @@ import { formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
  * shown when it expands. Pure — no React state — so it is easy to test.
  */
 
-const MODE_ICON = { flight: Plane, train: TrainFront, bus: Bus, ferry: Ship, car: Car, other: Route };
-const MODE_LABEL = { flight: "Flight", train: "Train", bus: "Bus", ferry: "Ferry", car: "Car", other: "Travel" };
+export const MODE_ICON = { flight: Plane, train: TrainFront, bus: Bus, ferry: Ship, boat: Ship, car: Car, other: Route };
+export const MODE_LABEL = {
+  flight: "Flight",
+  train: "Train",
+  bus: "Bus",
+  ferry: "Ferry",
+  boat: "Boat",
+  car: "Car",
+  other: "Travel",
+};
 
 function carrierLine(travel) {
   return [travel.carrier, travel.number].filter(Boolean).join(" ") || null;

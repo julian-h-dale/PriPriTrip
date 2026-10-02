@@ -9,10 +9,17 @@ const runtime = typeof window !== "undefined" ? window.__APP_CONFIG__ : undefine
 // can be repointed at a different API without a rebuild.
 const devApiBaseUrl = import.meta.env.DEV ? import.meta.env.VITE_API_BASE_URL : undefined;
 
+// Falls back to the page's own hostname (not a hardcoded "localhost") so the
+// dev server works the same whether it's opened as localhost or over the LAN.
+const defaultApiBaseUrl =
+  typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : "http://localhost:8000";
+
 export const appConfig = {
   apiBaseUrl:
     devApiBaseUrl ||
     runtime?.apiBaseUrl ||
     import.meta.env.VITE_API_BASE_URL ||
-    "http://localhost:8000",
+    defaultApiBaseUrl,
 };

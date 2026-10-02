@@ -1,45 +1,114 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Home, Plane } from "lucide-react";
+import { BookingDetailsDialog } from "@/features/timeline/BookingDetailsDialog";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
-import { DayCard } from "@/features/timeline/DayCard";
-import { dayId } from "@/features/timeline/dayIds";
-import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { stayCoverage, travelCoverage } from "@/features/timeline/coverageView";
+import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
+import { DayRow } from "@/features/timeline/DayRow";
+import { runEdit } from "@/features/timeline/runEdit";
+import { StayForm } from "@/features/timeline/StayForm";
+import {
+  createStay,
+  createTravel,
+  fetchTrip,
+  replaceStay,
+  replaceTravel,
+} from "@/features/timeline/timelineSlice";
+import { TravelForm } from "@/features/timeline/TravelForm";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { formatDateRange, zoneLabel } from "@/shared/utils/time";
 
-function toggleIn(set, key) {
-  const next = new Set(set);
-  if (next.has(key)) next.delete(key);
-  else next.add(key);
-  return next;
-}
+const VIEWS = [
+  { view: "stays", icon: Home, label: "Show which nights have a stay" },
+  { view: "travel", icon: Plane, label: "Show which days have travel" },
+];
 
-/** The timeline for one loaded trip. Keyed by trip id, so UI state resets per trip. */
+/**
+ * The timeline for one loaded trip: a date per row, linking to that day's own
+ * page. The House/Plane buttons switch the whole list into a coverage view —
+ * exactly one of plan/stays/travel at a time, never combined. In a coverage
+ * view, selecting a date opens a quick read-only look at that stay/leg (or
+ * the add form when there's none) instead of navigating to the day page —
+ * unless a date has more than one travel leg, where the day page is the only
+ * place both are listed. "Edit" in that quick look switches to the real form.
+ */
 function TripTimeline({ trip }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const rows = useMemo(() => buildTimeline(trip), [trip]);
-  const [searchParams] = useSearchParams();
+  const [view, setView] = useState("plan");
+  const stayCov = useMemo(() => stayCoverage(trip), [trip]);
+  const travelCov = useMemo(() => travelCoverage(trip), [trip]);
+  const coverageByDate = view === "stays" ? stayCov : view === "travel" ? travelCov : null;
+  // null, or { kind: "stay" | "travel", record, date }. A null record means "add".
+  const [form, setForm] = useState(null);
+  // null, or { kind: "stay" | "travel", record } — the read-only quick look.
+  const [details, setDetails] = useState(null);
 
-  // Days start collapsed. `?day=YYYY-MM-DD` opens that day and scrolls to it,
-  // so a shared link or a reload lands on it.
-  const requested = searchParams.get("day");
-  const initialDay = useRef(rows.some((r) => r.date === requested) ? requested : null);
-  const [openDays, setOpenDays] = useState(() => new Set(initialDay.current ? [initialDay.current] : []));
-  const [openEntries, setOpenEntries] = useState(() => new Set());
+  function toggle(next) {
+    setView((current) => (current === next ? "plan" : next));
+  }
 
-  useEffect(() => {
-    if (initialDay.current) {
-      document.getElementById(dayId(initialDay.current))?.scrollIntoView?.({ block: "start" });
+  function selectDate(date) {
+    if (view === "stays") {
+      const stay = stayCov.get(date)?.stay;
+      if (stay) setDetails({ kind: "stay", record: stay });
+      else setForm({ kind: "stay", record: null, date });
+      return;
     }
-  }, []);
+    const travels = travelCov.get(date)?.travels ?? [];
+    if (travels.length > 1) {
+      navigate(`/trips/${trip.id}/days/${date}`);
+    } else if (travels.length === 1) {
+      setDetails({ kind: "travel", record: travels[0] });
+    } else {
+      setForm({ kind: "travel", record: null, date });
+    }
+  }
+
+  function editFromDetails() {
+    setForm({ kind: details.kind, record: details.record, date: trip.startDate });
+    setDetails(null);
+  }
+
+  function saveBooking(payload) {
+    const { kind, record } = form;
+    const tripId = trip.id;
+    const thunk =
+      kind === "stay"
+        ? record
+          ? replaceStay({ tripId, stayId: record.id, stay: payload })
+          : createStay({ tripId, stay: payload })
+        : record
+          ? replaceTravel({ tripId, travelId: record.id, travel: payload })
+          : createTravel({ tripId, travel: payload });
+    return runEdit(dispatch, thunk);
+  }
 
   return (
     <>
       <header className="mb-4 flex flex-col gap-1">
-        <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
+          <div className="flex shrink-0 gap-1">
+            {VIEWS.map(({ view: v, icon: Icon, label }) => (
+              <Button
+                key={v}
+                variant={view === v ? "default" : "ghost"}
+                size="icon"
+                aria-pressed={view === v}
+                aria-label={label}
+                onClick={() => toggle(v)}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            ))}
+          </div>
+        </div>
         <p className="text-sm text-muted-foreground">
           {formatDateRange(trip.startDate, trip.endDate)} · Times are local
           {" "}({zoneLabel(trip.timezone)} unless noted)
@@ -48,17 +117,50 @@ function TripTimeline({ trip }) {
 
       <ol aria-label="Trip days" className="flex flex-col">
         {rows.map((row) => (
-          <DayCard
+          <DayRow
             key={row.date}
             row={row}
-            trip={trip}
-            open={openDays.has(row.date)}
-            onToggleOpen={() => setOpenDays((s) => toggleIn(s, row.date))}
-            openEntries={openEntries}
-            onToggleEntry={(key) => setOpenEntries((s) => toggleIn(s, key))}
+            tripId={trip.id}
+            view={view}
+            coverage={coverageByDate?.get(row.date)}
+            onSelect={selectDate}
           />
         ))}
       </ol>
+
+      {form?.kind === "stay" && (
+        <StayForm
+          key={form.record?.id ?? "new"}
+          open
+          onClose={() => setForm(null)}
+          trip={trip}
+          stay={form.record}
+          date={form.date}
+          onSave={saveBooking}
+        />
+      )}
+      {form?.kind === "travel" && (
+        <TravelForm
+          key={form.record?.id ?? "new"}
+          open
+          onClose={() => setForm(null)}
+          trip={trip}
+          travel={form.record}
+          date={form.date}
+          onSave={saveBooking}
+        />
+      )}
+
+      {details && (
+        <BookingDetailsDialog
+          open
+          onClose={() => setDetails(null)}
+          onEdit={editFromDetails}
+          trip={trip}
+          kind={details.kind}
+          record={details.record}
+        />
+      )}
     </>
   );
 }
@@ -86,35 +188,37 @@ export function TripTimelinePage() {
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link
-        to="/"
-        className="mb-4 inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Trips
-      </Link>
+    <BottomNavLayout tripId={tripId}>
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <Link
+          to="/"
+          className="mb-4 inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Trips
+        </Link>
 
-      {current ? (
-        <TripTimeline key={current.id} trip={current} />
-      ) : status === "notFound" ? (
-        <Card className="flex flex-col items-center gap-3 p-8 text-center">
-          <p className="font-medium">Trip not found</p>
-          <p className="text-sm text-muted-foreground">It may have been deleted.</p>
-          <Link to="/" className={buttonVariants({ variant: "outline" })}>
-            Back to trips
-          </Link>
-        </Card>
-      ) : status === "failed" ? (
-        <Card className="flex flex-col items-center gap-3 p-8 text-center">
-          <p className="font-medium">Couldn’t load this trip</p>
-          <Button variant="outline" onClick={() => dispatch(fetchTrip(tripId))}>
-            Try again
-          </Button>
-        </Card>
-      ) : (
-        <TimelineSkeleton />
-      )}
-    </div>
+        {current ? (
+          <TripTimeline key={current.id} trip={current} />
+        ) : status === "notFound" ? (
+          <Card className="flex flex-col items-center gap-3 p-8 text-center">
+            <p className="font-medium">Trip not found</p>
+            <p className="text-sm text-muted-foreground">It may have been deleted.</p>
+            <Link to="/" className={buttonVariants({ variant: "outline" })}>
+              Back to trips
+            </Link>
+          </Card>
+        ) : status === "failed" ? (
+          <Card className="flex flex-col items-center gap-3 p-8 text-center">
+            <p className="font-medium">Couldn’t load this trip</p>
+            <Button variant="outline" onClick={() => dispatch(fetchTrip(tripId))}>
+              Try again
+            </Button>
+          </Card>
+        ) : (
+          <TimelineSkeleton />
+        )}
+      </div>
+    </BottomNavLayout>
   );
 }

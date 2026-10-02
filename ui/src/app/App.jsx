@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchMe } from "@/features/auth/authSlice";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { TripsPage } from "@/features/trips/TripsPage";
+import { MapPage } from "@/features/map/MapPage";
+import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
@@ -38,6 +40,22 @@ export function App() {
           element={
             <ProtectedRoute>
               <TripTimelinePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/days/:date"
+          element={
+            <ProtectedRoute>
+              <DayDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/map"
+          element={
+            <ProtectedRoute>
+              <MapPage />
             </ProtectedRoute>
           }
         />

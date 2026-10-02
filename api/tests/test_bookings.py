@@ -19,6 +19,7 @@ ZURICH_AIRPORT = {
     "lng": 8.5555,
     "placeId": "ChIJz",
     "city": "Kloten",
+    "imgRef": "https://places.googleapis.com/v1/places/ChIJz/photos/abc/media",
 }
 SPLIT = {"name": "Split Airport", "lat": 43.5389, "lng": 16.298}
 NAHA = {"name": "Naha Airport", "lat": 26.1967, "lng": 127.649}
@@ -87,6 +88,7 @@ async def test_create_stay(client: AsyncClient, trip: Json) -> None:
     added = stay_named(resp.json(), "Airport hotel")
     assert added["location"]["placeId"] == "ChIJz"
     assert added["location"]["city"] == "Kloten"
+    assert added["location"]["imgRef"] == ZURICH_AIRPORT["imgRef"]
     assert added["roomType"] == "Twin"
     assert added["zone"] == "Europe/Zurich"
 
@@ -231,9 +233,17 @@ async def test_config_returns_the_maps_key(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(get_app_settings(), "google_maps_api_key", "browser-key")
-    assert (await client.get("/config")).json() == {"googleMapsApiKey": "browser-key"}
+    monkeypatch.setattr(get_app_settings(), "google_maps_map_id", "map-id")
+    assert (await client.get("/config")).json() == {
+        "googleMapsApiKey": "browser-key",
+        "googleMapsMapId": "map-id",
+    }
     monkeypatch.setattr(get_app_settings(), "google_maps_api_key", "")
-    assert (await client.get("/config")).json() == {"googleMapsApiKey": None}
+    monkeypatch.setattr(get_app_settings(), "google_maps_map_id", "")
+    assert (await client.get("/config")).json() == {
+        "googleMapsApiKey": None,
+        "googleMapsMapId": None,
+    }
 
 
 async def test_config_and_timezone_need_a_user(anon_client: AsyncClient) -> None:

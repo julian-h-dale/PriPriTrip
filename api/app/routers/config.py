@@ -15,6 +15,7 @@ router = APIRouter(tags=["config"])
 
 class ClientConfig(CamelModel):
     google_maps_api_key: str | None
+    google_maps_map_id: str | None
 
 
 class TimezoneAt(CamelModel):
@@ -23,9 +24,13 @@ class TimezoneAt(CamelModel):
 
 @router.get("/config", response_model=ClientConfig)
 async def get_config(_: UserRecord = Depends(current_active_user)) -> ClientConfig:
-    """What the signed-in client needs at runtime. The Maps key is a browser
-    key — public by design, protected by its restrictions in the Google console."""
-    return ClientConfig(google_maps_api_key=get_app_settings().google_maps_api_key or None)
+    """What the signed-in client needs at runtime. The Maps key and Map ID are
+    public by design, protected by restrictions in the Google console."""
+    settings = get_app_settings()
+    return ClientConfig(
+        google_maps_api_key=settings.google_maps_api_key or None,
+        google_maps_map_id=settings.google_maps_map_id or None,
+    )
 
 
 @router.get("/timezone", response_model=TimezoneAt)

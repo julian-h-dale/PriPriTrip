@@ -252,6 +252,21 @@
           "default": null,
           "description": "The city or town it's in, for the timeline's day rows.",
           "title": "City"
+        },
+        "imgRef": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "pattern": "^https?://",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first photo Google Places returned when the place was picked.",
+          "title": "Imgref"
         }
       },
       "required": [

@@ -8,7 +8,7 @@ import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
-import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
+import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { apiClient } from "@/shared/services/apiClient";
 import { createPlacesSearch } from "@/shared/services/googlePlaces";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
@@ -69,26 +69,15 @@ function renderDay(date) {
   render(
     <Provider store={store}>
       <MemoryRouter
-        initialEntries={[`/trips/trip-1?day=${date}`]}
+        initialEntries={[`/trips/trip-1/days/${date}`]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
-          <Route path="/trips/:tripId" element={<TripTimelinePage />} />
+          <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
         </Routes>
       </MemoryRouter>
     </Provider>
   );
-}
-
-async function openAdd(user, kind, dayName = "Mon, May 11") {
-  await user.click(await screen.findByRole("button", { name: `Add to ${dayName}` }));
-  await user.click(screen.getByRole("button", { name: `Add ${kind} on ${dayName}` }));
-  return screen.getByRole("dialog");
-}
-
-async function pickPlace(user, dialog, label, typed, option) {
-  await user.type(within(dialog).getByRole("combobox", { name: label }), typed);
-  await user.click(await within(dialog).findByRole("button", { name: new RegExp(option) }));
 }
 
 beforeEach(() => {
@@ -103,68 +92,6 @@ beforeEach(() => {
   });
 });
 
-describe("adding travel", () => {
-  it("needs where it leaves from and when, and warns until the arrival is set", async () => {
-    const user = userEvent.setup();
-    apiClient.post.mockResolvedValue({ data: readTrip() });
-    renderDay("2026-05-11");
-    const dialog = await openAdd(user, "travel");
-
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(within(dialog).getByText(/Pick where it leaves from/)).toBeInTheDocument();
-    expect(within(dialog).getByText("Departure date and time are required")).toBeInTheDocument();
-    expect(apiClient.post).not.toHaveBeenCalled();
-
-    await pickPlace(user, dialog, "From", "zür", "Zürich Airport");
-    expect(await within(dialog).findByText("Times here are Zurich time")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Arrival time")).toBeDisabled();
-    expect(within(dialog).getByRole("status")).toHaveTextContent("No arrival place yet");
-
-    await user.type(within(dialog).getByLabelText("Departure time"), "16:05");
-    await user.selectOptions(within(dialog).getByLabelText("Type"), "Train");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/trips/trip-1/travels",
-      {
-        title: "From Zürich Airport",
-        mode: "train",
-        from: { placeId: "zrh", name: "Zürich Airport", address: "8058 Zürich, Switzerland", lat: 47.4581, lng: 8.5555 },
-        depart: "2026-05-11T16:05",
-      },
-      { silent: true }
-    );
-  });
-
-  it("names the leg after its places and spells out a cross-zone flight", async () => {
-    const user = userEvent.setup();
-    apiClient.post.mockResolvedValue({ data: readTrip() });
-    renderDay("2026-05-11");
-    const dialog = await openAdd(user, "travel");
-
-    await pickPlace(user, dialog, "From", "hare", "O'Hare");
-    await pickPlace(user, dialog, "To", "zür", "Zürich Airport");
-    expect(within(dialog).getByLabelText("Title")).toHaveValue("O'Hare International Airport → Zürich Airport");
-    expect(within(dialog).getByLabelText("Arrival time")).toBeEnabled();
-    expect(within(dialog).getByLabelText("Arrival date")).toHaveValue("2026-05-11");
-
-    await user.type(within(dialog).getByLabelText("Departure time"), "07:40");
-    await user.type(within(dialog).getByLabelText("Arrival time"), "23:25");
-    expect(
-      await within(dialog).findByText(/Departs 7:40 AM Chicago time · lands 11:25 PM Zurich time/)
-    ).toBeInTheDocument();
-    expect(within(dialog).queryByRole("status")).not.toBeInTheDocument();
-
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    const [, body] = apiClient.post.mock.calls[0];
-    expect(body).toMatchObject({
-      title: "O'Hare International Airport → Zürich Airport",
-      depart: "2026-05-11T07:40",
-      arrive: "2026-05-11T23:25",
-    });
-  });
-});
-
 describe("editing travel", () => {
   it("edits a leg from its marker, sending the whole leg back", async () => {
     const user = userEvent.setup();
@@ -172,10 +99,9 @@ describe("editing travel", () => {
     renderDay("2026-05-10");
 
     await screen.findByRole("heading", { name: "Sun, May 10" });
-    const may10 = document.getElementById("day-2026-05-10");
-    const plans = within(may10).getByRole("list", { name: /^Plans for/ });
+    const plans = screen.getByRole("list", { name: /^Plans for/ });
     await user.click(within(plans).getByRole("button", { name: /Chicago → Zürich/ }));
-    await user.click(within(may10).getByRole("button", { name: "Edit travel Chicago → Zürich" }));
+    await user.click(screen.getByRole("button", { name: "Edit travel Chicago → Zürich" }));
     const dialog = screen.getByRole("dialog", { name: "Edit travel" });
     expect(within(dialog).getByLabelText("From")).toHaveValue("Chicago O'Hare (ORD)");
     expect(within(dialog).getByLabelText("Seat")).toHaveValue("23A");
@@ -199,51 +125,6 @@ describe("editing travel", () => {
 });
 
 describe("stays", () => {
-  it("adds a stay with prefilled times, requiring where it is", async () => {
-    const user = userEvent.setup();
-    apiClient.post.mockResolvedValue({ data: readTrip() });
-    renderDay("2026-05-11");
-    const dialog = await openAdd(user, "stay");
-
-    expect(within(dialog).getByLabelText("Check-in date")).toHaveValue("2026-05-11");
-    expect(within(dialog).getByLabelText("Check-in time")).toHaveValue("15:00");
-    expect(within(dialog).getByLabelText("Check-out date")).toHaveValue("2026-05-12");
-    expect(within(dialog).getByLabelText("Check-out time")).toHaveValue("11:00");
-
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(within(dialog).getByText(/Pick where you’re staying/)).toBeInTheDocument();
-
-    await pickPlace(user, dialog, "Where", "bell", "Hotel Bellevue Palace");
-    expect(within(dialog).getByLabelText("Name")).toHaveValue("Hotel Bellevue Palace");
-    await user.type(within(dialog).getByLabelText("Room"), "Junior suite");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/trips/trip-1/stays",
-      {
-        name: "Hotel Bellevue Palace",
-        type: "hotel",
-        checkIn: "2026-05-11T15:00",
-        checkOut: "2026-05-12T11:00",
-        location: { placeId: "bel", name: "Hotel Bellevue Palace", address: "Kochergasse 3-5, Bern", lat: 46.9466, lng: 7.4442 },
-        roomType: "Junior suite",
-      },
-      { silent: true }
-    );
-  });
-
-  it("checks check-out is after check-in", async () => {
-    const user = userEvent.setup();
-    renderDay("2026-05-11");
-    const dialog = await openAdd(user, "stay");
-    await pickPlace(user, dialog, "Where", "bell", "Hotel Bellevue Palace");
-    await user.clear(within(dialog).getByLabelText("Check-out date"));
-    await user.type(within(dialog).getByLabelText("Check-out date"), "2026-05-11");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(within(dialog).getByText("Check-out must be after check-in")).toBeInTheDocument();
-    expect(apiClient.post).not.toHaveBeenCalled();
-  });
-
   it("deletes a stay from any of its markers", async () => {
     const user = userEvent.setup();
     const updated = readTrip();
@@ -263,23 +144,11 @@ describe("stays", () => {
 });
 
 describe("place search", () => {
-  it("falls back to a typed name when search is unavailable", async () => {
-    const user = userEvent.setup();
-    createPlacesSearch.mockRejectedValue(new Error("no key"));
-    renderDay("2026-05-11");
-    const dialog = await openAdd(user, "stay");
-
-    await user.type(within(dialog).getByRole("combobox", { name: "Where" }), "Gasthaus Sonne");
-    expect(await within(dialog).findByText("Place search is unavailable.")).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Use “Gasthaus Sonne” as typed" }));
-    expect(within(dialog).getByText("Not on the map, so times use Zurich time")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Where")).toHaveValue("Gasthaus Sonne");
-  });
-
   it("biases suggestions towards the trip's stays", async () => {
     const user = userEvent.setup();
     renderDay("2026-05-11");
-    const dialog = await openAdd(user, "activity");
+    await user.click(await screen.findByRole("button", { name: "Add activity to Mon, May 11" }));
+    const dialog = screen.getByRole("dialog");
     await user.type(within(dialog).getByRole("combobox", { name: "Place" }), "bell");
     await within(dialog).findByRole("button", { name: /Hotel Bellevue Palace/ });
     expect(fakeSearch.suggest).toHaveBeenLastCalledWith("bell", {
