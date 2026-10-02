@@ -85,7 +85,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 101 API + 64 UI tests
+make verify     # should be green: 101 API + 68 UI tests
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.
@@ -94,8 +94,10 @@ Tested with Python 3.12.3, Node 24.14 and npm 11.11.
 - `reference/private/`: personal PDFs and notes from v1, plus backups of the
   old `api/.env` and `ui/.env.local`. The old OpenAI and Maps keys are in
   there; nothing in the rebuild uses them yet.
-- `GOOGLE_MAPS_API_KEY` in `api/.env` (once created): `make setup` makes a
-  fresh `api/.env` without it, so copy the key across by hand.
+- `GOOGLE_MAPS_API_KEY` in `api/.env` (the key exists and works): `make
+  setup` makes a fresh `api/.env` without it, so copy the key across by hand
+  (or from the Google Cloud console). Its referrer restriction covers
+  `http://localhost:3000/*`, so it works on any machine on that port.
 - `api/data/app.db`: the dev database. It's disposable: `make reset-db`
   recreates it, and edits made in the dev UI are lost.
 - Claude's per-machine memory notes. The decisions that matter are copied
