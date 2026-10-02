@@ -7,8 +7,9 @@
 ## Status
 
 - **Current phase:** Walk stage 1 (Phases 5–6, editing activities) done.
-  Walk stage 2 (Phases 7–9: stay/travel editing and a vertical timeline) is
-  planned and waiting on answers.
+  Walk stage 2 (Phases 7–9: stay/travel editing, location-based timezones,
+  and a vertical timeline) is planned. Round 1 is answered; the round 2
+  questions (geocoding provider, etc.) are waiting.
 - **Branch:** `rebuild`
 - **Last verified:** 2026-10-02. `make verify` green (75 API + 53 UI tests). A
   live add/edit run at 375px in a real browser, with the saved activity
@@ -74,9 +75,9 @@
 
 ## Next
 
-1. Julian answers the open questions in "Walk stage 2" of
-   `implementation_plan.md` (stay/travel editing, the vertical timeline, and
-   whether to upgrade React to 19; the trial showed no code changes needed).
+1. Julian answers the round 2 questions in "Walk stage 2" of
+   `implementation_plan.md` (timezones inferred from places: geocoding
+   provider, strictness, fallbacks).
 2. Then Phases 7–9.
 3. Still pending: a human look at phone width, and the real itinerary import.
 
@@ -115,6 +116,10 @@ Tested with Python 3.12.3, Node 24.14 and npm 11.11.
 - **Local-only, private repo.** Personal trip material in `reference/` is
   fine to keep in git.
 - **AI/chat is out of scope** until the core timeline and editing are solid.
+- **Stay on React 18** (the template's version) and build our own vertical
+  timeline, not react-chrono. Decided 2026-10-02.
+- **No timezone pickers.** A time's zone is inferred from its place; users
+  only enter wall-clock times. Decided 2026-10-02.
 - **The template workflow:** plan → answer the open questions → one phase at a
   time, `make verify` green, update this file, commit.
 

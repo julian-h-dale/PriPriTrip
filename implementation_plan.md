@@ -424,206 +424,238 @@ travels stay read-only. Their markers get no edit controls.
    - Recommendation: **PUT**.
    - **Answer:** recommended (2026-10-02).
 
-## Walk stage 2 — editing stays & travel, and a vertical timeline (draft, awaiting answers)
+## Walk stage 2 — editing stays & travel, location-based timezones, vertical timeline (round 2, awaiting confirmation)
 
 Asked 2026-10-02:
 - **Travel:** must have a type (fly, boat, train, …) and a departure date and
   location. The user sees a warning when the arrival is unset. Departure and
-  arrival times are each in their own timezone.
+  arrival are each in their own timezone.
 - **Stays:** check-in and check-out are required.
 - **Both:** confirmation number and the other booking details.
-- **Timeline:** the UI should flow like a timeline, after react-chrono's
-  vertical mode (each point is a date, its card is that day's details), which
-  should suit a phone better.
+- **Timeline:** should flow like react-chrono's vertical mode: each point a
+  date, its card that day's details.
 
-### Findings: react-chrono
+Round 1 answers (2026-10-02): **all recommendations accepted**, with these
+specifics:
+- Roll our own vertical timeline (Q1a).
+- **Don't upgrade React** (Q1b: no).
+- **No timezone picker** (replaces Q6). A place is required, its timezone is
+  inferred from where it is, and the user only ever thinks in wall-clock
+  time. Everything below is designed around that.
 
-- `react-chrono@3.3.3` (current) peer-requires **React 19.2**. Every release
-  from 2.7 on requires React 19. The last one supporting React 18 is
-  **2.6.1**, which is about 18 months behind.
-- We're on React 18.3 because that's what the template pins. Adopting chrono
-  means either:
-  - a React 19 upgrade, which moves us off the template; or
-  - pinning a stale 2.x release.
-- It's about 1.5 MB unpacked, with its own styling system (vanilla-extract)
-  and a 36-property theme. We'd map that onto our design tokens (dark only,
-  4px radius, borders over shadows) and then maintain the mapping.
-- Card content can be our own components (`children`). Day expansion, the
-  edit buttons and the markers would still be our code; chrono would only
-  draw the line, the points and the scrolling.
-- The vertical layout itself is small: a line, a dot per date, and a card per
-  day, roughly 100 lines of Tailwind.
-- **React 19 trial (2026-10-02):** in a scratch worktree, `react@^19.2`
-  (npm resolved 19.3.0) needed **zero code changes**. Lint is clean, all 53 UI
-  tests pass, and the production build succeeds. Every UI dependency already
-  accepts React 19 (react-redux 9, react-router-dom 6, Testing Library 16,
-  react-markdown, lucide-react, RTK 2). We use none of the APIs React 19
-  removed (propTypes, function `defaultProps`, string refs, legacy context,
-  `ReactDOM.render`), and `forwardRef` still works.
-- So the React upgrade is **cheap and not a blocker**. Its only real cost is
-  drifting from the template's pinned version, which future template merges
-  would need to account for. Upgrading the template too would remove that.
-- With the upgrade off the table as a cost, the choice is about the library
-  itself:
-  - **Chrono:** a ready-made vertical layout, scrolling and keyboard support,
-    but its own styling and theme to keep matched to our design tokens, 1.5 MB,
-    and its own opinions about cards.
-  - **Our own:** about 100 lines, styled exactly like the rest of the app,
-    with no new dependency.
-- **Recommendation:** still our own build, but it's a closer call now. If you
-  lean towards chrono, Phase 8 could start with a short spike that renders
-  this trip in chrono (with React 19) and in our own version, for comparison
-  at phone width.
+### Findings
+
+**react-chrono.** 3.x needs React 19.2; the last React 18 release is 2.6.1.
+A React 19 trial needed no code changes, but we're staying on 18 and building
+our own vertical layout in chrono's style.
+
+**Place → coordinates → timezone. Both halves tested 2026-10-02:**
+- **Coordinates → timezone (offline):** `tzfpy` (Rust, no dependencies,
+  21 MB installed).
+  - It resolved Zürich Airport → Europe/Zurich, O'Hare → America/Chicago,
+    Wengen → Europe/Zurich, Split → Europe/Zagreb and Naha → Asia/Tokyo.
+  - Import plus six lookups took 46 ms.
+  - `timezonefinder` (which v1 used) gives the same answers but pulls in numpy:
+    123 MB.
+- **Place → coordinates (online):** there is no offline way to turn "Hotel
+  Goldener Schlüssel" into a point. Options:
+  - **Photon** (komoot, OpenStreetMap data). Free, no key, built for
+    search-as-you-type, fair use on the public server.
+    - Tested on our places: it found Flughafen Zürich, the Goldener Schlüssel
+      hotel, Bern Bahnhof, Kornhauskeller, Beausite Park (Wengen), O'Hare and
+      Naha Airport, each within about 100 m.
+    - Results can be ambiguous ("Naha Airport" also matches one in Indonesia)
+      and come in local language (那覇空港), so the user picks from a short
+      list and can rename. Biasing results towards the trip's area fixes most
+      of the ambiguity.
+  - **Google Places.** The best results for businesses and hotels, with
+    English names, but it needs a server-side key with the Places API enabled
+    and billing (a monthly free credit). The old v1 key (in
+    `reference/private`) was a browser key and probably restricted to v1's
+    web address.
+  - Whichever we pick sits behind our own `/places/search` endpoint, so
+    switching providers later is a one-file change, and no key ever reaches
+    the browser.
 
 ### Design (assuming the recommended answers)
 
-**Timeline (vertical):**
-- One continuous vertical line down the left edge. Each date is a point on the
-  line, labelled with the weekday, date and "Day N". Its card sits to the
-  right.
-- A **day card** holds the title, summary and entries (activities plus stay
-  and travel markers, merged by time as today). Entries still expand to their
-  details and actions.
-- Day cards are **open by default**, so the page reads top to bottom like a
-  story.
-- A date with nothing on it gets a slim point with "No plans" and an "Add"
-  action, not a full card.
-- The tab strip becomes a **compact sticky date jumper** (Q3). Tapping a date
-  scrolls to its card, and the jumper highlights whichever date is in view.
-  `?day=` keeps working as a scroll target.
+**The timezone rule: one function, used by import and every edit.** The zone
+for a time comes from:
+1. its place's coordinates (`tzfpy`), when the place has them; otherwise
+2. an explicit timezone in the document (an import-only escape hatch for
+   hand-written or AI-made documents; the UI never shows it); otherwise
+3. for an activity, the zone of that night's stay; otherwise
+4. the trip's timezone.
 
-**Editing stays and travel**, following the same pattern as activities:
-- **API:**
-  - `POST /trips/{id}/stays`, `PUT|DELETE /trips/{id}/stays/{stay_id}`
-  - `POST /trips/{id}/travels`, `PUT|DELETE /trips/{id}/travels/{travel_id}`
-  - Bodies are `StayDoc` / `TravelDoc`, validated by the same rules as an
-    import (4 and 5, factored into `check_stay` / `check_travel`).
-  - Full replace; every write returns the whole trip.
-  - Ownership is checked through the trip (404 otherwise).
-  - No reordering: bookings are placed by time, and `position` is just
-    insertion order.
-- **Where the controls live:**
-  - An expanded stay or travel marker gets **Edit** and **Delete**. It edits
-    the *booking*, so the edit is the same from its check-in, staying,
-    check-out, depart or arrive marker.
-  - A day card's **Add** button becomes a small menu: Activity / Travel /
-    Stay, with that date prefilled.
-- **Travel form:**
-  - Type (required).
-  - Title, prefilled as "From → To" (Q5).
-  - Carrier and number (flight or train number).
-  - From location (required) and To location.
-  - Departure: date, time and timezone (required).
-  - Arrival: date, time and timezone (optional).
-  - Confirmation number and notes.
-  - **Warning, non-blocking:** with no arrival time or no "to" location, the
-    form shows "No arrival yet: the timeline can't show when you land" and
-    still saves. On the timeline, the depart marker carries a small warning
-    badge until the arrival is filled in.
-- **Timezones:** departure and arrival each have their own zone. The picker
-  defaults to the trip's zone and lists first the zones already used on this
-  trip, then every IANA zone (Q6). Times are entered as wall-clock values
-  exactly as written on the ticket.
-- **Stay form:**
-  - Name and type.
-  - Check-in date and time (required); check-out date and time (required).
-  - Times prefill to 15:00 and 11:00 (Q8).
-  - Timezone (defaults to the trip's).
-  - Place, confirmation number and notes.
-  - The server enforces check-out after check-in, both as instants.
-- **Schema changes:**
-  - A travel's `from` becomes **required**. The sample already has it.
-    Existing documents without it will be rejected on import.
-  - The travel types may change (Q4).
-  - The schema regenerates.
+The zones that apply:
+- **Stay:** its place.
+- **Travel departure:** its "from" place. **Travel arrival:** its "to" place.
+- **Activity:** its place (optional), else that night's stay.
 
-### Proposed phases
+The resolved zone is **stored** on the row on every write, so reads, sorting
+and the timeline never recompute it, and a document read back shows what was
+used. When a place has coordinates, they win over an explicit timezone: the
+place is the truth.
 
-- **Phase 7 — Walk: stay & travel edit API.**
-  - `check_stay` / `check_travel` extracted from `check_rules`.
-  - The schema changes (`from` required; types per Q4).
-  - Endpoints and tests mirroring `test_items.py`, including import/edit
-    parity.
-- **Phase 8 — Walk: vertical timeline.** The layout above replaces the tab
-  view, keeping every current behaviour: markers, entry expansion, activity
-  editing, the deep link, and timezone labels. Tests are updated; phone-width
-  check.
+**Place search:**
+- `GET /places/search?q=…&trip={id}` is authenticated and proxies to the
+  provider (Photon).
+- It's biased towards the trip's area: the trip's stays, or failing that its
+  other picked places.
+- Each result is `{ name, address, lat, lng, timezone, kind }`, with the
+  timezone already resolved.
+- The provider call has a 5 s timeout. A failure returns a clear 502 that the
+  UI shows as "Place search is unavailable, try again".
+- Tests use a fake provider; there is no network in CI.
+
+**The `PlaceField` component**, shared by every form:
+- You type, see results with their city and country, and pick one.
+- After picking, the **name is editable** while the coordinates are kept.
+  ("Flughafen Zürich" can become "Zürich Airport (ZRH)". If a small
+  guesthouse isn't found, you pick its street or town and rename it.)
+- Under the place, a read-only line says **which clock its times use**:
+  "Times here are Zurich time". There is never a picker.
+- An optional link field stays.
+
+**Travel form:**
+- Type (required): Fly, Train, Bus, Ferry, Boat, Car, Other.
+- Title, prefilled as "From → To" and editable.
+- Carrier, number (flight or train), seat.
+- **From** place (required), then departure date and time (required),
+  entered as the ticket shows them.
+- **To** place, then arrival date and time. The arrival time is enabled once
+  a "to" place is picked, because that's what sets its clock.
+- Confirmation number and notes.
+- **Warning, non-blocking:** with no arrival place or time, the form shows "No
+  arrival yet: the timeline can't show when you land" and still saves. The
+  timeline's depart marker carries a small warning badge until the arrival is
+  filled in.
+- When the two ends are in different zones, the form spells it out: "Departs
+  5:40 PM Chicago time · lands 9:25 AM Zurich time".
+
+**Stay form:**
+- Name and type.
+- **Place (required)**, which sets the stay's clock.
+- Check-in date and time, and check-out date and time (both required,
+  prefilled 15:00 and 11:00).
+- Room type, confirmation number and notes.
+
+**Activity form:** the existing free-text place fields become the same
+`PlaceField` (optional for activities). Without a place, an activity uses the
+night's stay's clock.
+
+**Where the edit controls live:**
+- An expanded stay or travel marker gets Edit and Delete. It edits the
+  booking, from any of its markers.
+- A day card's Add button opens a small menu: Activity / Travel / Stay, with
+  that date prefilled.
+
+**API** (same pattern as activities):
+- `POST /trips/{id}/stays`, `PUT|DELETE /trips/{id}/stays/{stay_id}`
+- `POST /trips/{id}/travels`, `PUT|DELETE /trips/{id}/travels/{travel_id}`
+- Full replace, validated by the import rules (4 and 5, factored into
+  `check_stay` / `check_travel`, which now use the resolved zones).
+- Every write returns the whole trip; ownership is checked through the trip.
+
+**Schema changes** (the schema regenerates):
+- Travel `from` is required.
+- New fields: `seat` on travel and `roomType` on stays.
+- Travel types gain `boat`.
+- The timezone fields stay, documented as "only used when the place has no
+  coordinates".
+
+**Vertical timeline:**
+- A line down the left; each date is a point (weekday, date, "Day N") with
+  its card beside it.
+- Day cards are **open by default**; entries stay collapsed until tapped.
+- An empty date is a slim point with "No plans" and an Add action.
+- The tab strip becomes a **compact sticky date jumper** that scrolls to a
+  day and highlights the one in view. `?day=` still works.
+- All current behaviour stays: markers, expansion, editing and zone labels.
+
+### Phases
+
+- **Phase 7 — Walk: timezone inference, place search, stay & travel API.**
+  - `tzfpy`; `resolve_zone` in the validation layer.
+  - Zones resolved and stored on import and on every edit.
+  - `/places/search` with the Photon provider behind an interface.
+  - Stay and travel endpoints; the schema changes.
+  - Tests:
+    - Zone inference cases, including the cross-zone flight and an activity
+      falling back to that night's stay.
+    - Import/edit parity.
+    - Place search with a fake provider, including bias and failure.
+    - Ownership.
+- **Phase 8 — Walk: vertical timeline.** The layout above replaces the tabs.
+  Tests are updated; phone-width check.
 - **Phase 9 — Walk: stay & travel forms.**
-  - `TravelForm` and `StayForm` (hand-written), with an IANA timezone picker.
+  - `PlaceField`, `TravelForm` and `StayForm`; `ActivityForm` switched to
+    `PlaceField`.
   - Edit and Delete on markers; the Add menu.
-  - The missing-arrival warning in the form and on the timeline.
+  - The arrival warning in the form and on the timeline.
   - Tests and a phone-width check.
 
-The redesign goes *before* the new forms so their controls are built into
-the new layout once, not twice.
+### Round 1 answers (recorded)
 
-### Open questions
+1. Our own vertical timeline. **Yes.**
+   1b. Upgrade React to 19? **No.**
+2. Day cards open by default. **Yes.**
+3. Sticky date jumper. **Yes.**
+4. Add `boat`. **Yes.**
+5. Title prefilled "From → To". **Yes.**
+6. Timezone picker. **Replaced:** zones are inferred from places (see above).
+7. Arrival warning on a missing time or "to" place. **Yes.**
+8. Stay times prefilled 15:00 / 11:00. **Yes.**
+9. Add `roomType` (stays) and `seat` (travel); the rest goes in notes.
+   **Yes.**
+10. Overlaps: save, no warning for now. **Yes.**
+11. Phase order: API, then timeline, then forms. **Yes.**
 
-1. **react-chrono, or our own vertical timeline in its style?**
-   - (a) Our own: Tailwind, no dependency, our design tokens.
-   - (b) react-chrono 3.x plus a React 19 upgrade. The trial showed the
-     upgrade needs no code changes; chrono itself brings its own styling to
-     maintain.
-   - (c) A spike of both, compared at phone width, before committing to one.
-   - Recommendation: **(a)**, or (c) if you want to see chrono first. Either
-     way, upgrading React to 19 is fine to do on its own.
+### Round 2 questions (about location-based timezones)
+
+1. **Geocoding provider?**
+   - (a) **Photon**: free, no key, OpenStreetMap data, local-language names,
+     fair use.
+   - (b) **Google Places**: best for hotels and businesses, English names; it
+     needs a server key with Places enabled, and billing.
+   - Either way it sits behind our own endpoint, so switching later is cheap.
+   - Recommendation: **(a) now**, revisit if results disappoint on the real
+     itinerary.
    - **Answer:**
-1b. **Upgrade React to 19 regardless?**
-   - It's cheap (no code changes, all tests pass), keeps us current, and leaves
-     chrono open as an option later.
-   - Recommendation: **yes**, as a standalone commit before Phase 8.
-     Optionally make the same upgrade in `project-template`.
+2. **Must stay and travel places be picked from search in the UI?** That's
+   what gives coordinates, and so a timezone.
+   - Recommendation: **yes, required**. The name stays editable after
+     picking; if the exact place isn't found, pick the town or airport and
+     rename it.
    - **Answer:**
-2. **Day cards open or collapsed by default?**
-   - Recommendation: **open**, so the trip reads top to bottom. Entries stay
-     collapsed until tapped.
+3. **Imports without coordinates: lenient or strict?**
+   - Lenient: fall back to the explicit timezone field, then the trip's.
+   - Strict: reject stays and travel without `lat`/`lng`.
+   - Recommendation: **lenient**. Hand-written and AI-made documents rarely
+     have coordinates, and when I convert your itinerary I'll look the places
+     up through the same search, so they will.
    - **Answer:**
-3. **What happens to the tab strip?**
-   - (a) It becomes a compact sticky date jumper that scrolls to a day.
-   - (b) Drop it and scroll only.
-   - Recommendation: **(a)**. A two-week trip is a long scroll on a phone.
+4. **An activity with no place uses that night's stay's clock** (else the
+   trip's)?
+   - Recommendation: **yes**. On a multi-country trip that's nearly always
+     right.
    - **Answer:**
-4. **Travel types.** Today: flight, train, bus, ferry, car, other.
-   - Add **boat** next to ferry? Anything else, such as taxi, cable car or
-     walk?
-   - Recommendation: add **boat** and keep the rest; "other" plus the title
-     covers the rest.
-   - Labels in the form: Fly, Train, Bus, Ferry, Boat, Car, Other.
+5. **Switch the activity form to the same place search** (place stays
+   optional)?
+   - Recommendation: **yes**, in Phase 9.
    - **Answer:**
-5. **Travel title: required, or derived?**
-   - Recommendation: the form prefills "From → To" and you can change it.
-     The schema keeps the title required.
-   - **Answer:**
-6. **Timezone picker.**
-   - A select with the trip's zone first, then zones already used on this
-     trip, then the full IANA list (about 400 entries, grouped by region).
-   - The alternative is a type-to-search box.
-   - Recommendation: **the grouped select** (native, which works well on
-     phones).
-   - **Answer:**
-7. **What triggers the arrival warning?**
-   - A missing arrival time, a missing "to" location, or either?
-   - Recommendation: **either**, shown as one warning.
-   - **Answer:**
-8. **Default stay times.**
-   - Prefill check-in 15:00 and check-out 11:00, editable?
+6. **Arrival time only enabled after a "to" place is picked?** The arrival's
+   clock comes from that place.
    - Recommendation: **yes**.
    - **Answer:**
-9. **Extra booking fields?**
-   - Today travel has carrier, number, confirmation number and notes; stays
-     have confirmation number and notes.
-   - Add structured fields like **seat**, **terminal/gate**, **room type**,
-     **booking site**, or **cost**?
-   - Recommendation: **room type for stays and seat for travel only**;
-     everything else lives in notes (markdown) for now.
+7. **Bias search results towards the trip's area?**
+   - Recommendation: **yes**: the stays' coordinates, else other picked
+     places.
    - **Answer:**
-10. **Overlapping bookings** (two stays on the same night, two legs at once).
-    - Recommendation: **save, no warning now**. Overlap checks belong to the
-      verification work in the backlog, so they get designed once.
-    - **Answer:**
-11. **Phase order.** API, then redesign, then forms (recommended), or the
-    forms first on the current tab layout?
-    - **Answer:**
+8. **Privacy.** Search text goes to the provider (komoot's public Photon
+   server, or Google). It's only the place you type, never trip details.
+   - OK?
+   - **Answer:**
 
 ## After Phase 4 — First real trip
 
