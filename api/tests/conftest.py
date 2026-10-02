@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.database import get_db
+from app.database import enable_sqlite_foreign_keys, get_db
 from app.main import create_app
 from app.models import Base, UserRecord
 from app.users import current_active_user, get_jwt_strategy
@@ -28,6 +28,7 @@ test_engine = create_async_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+enable_sqlite_foreign_keys(test_engine)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
 

@@ -29,13 +29,15 @@ through their trip).
 |---|---|---|---|
 | **Trip** | One journey. | name, startDate, endDate, timezone (IANA, required) | user |
 | **Stay** | One accommodation booking, spanning nights. Lives at trip level, not inside a day. | name, type (hotel/hostel/airbnb/rental/other), checkIn, checkOut (wall-clock), timezone?, location?, confirmationNumber?, notes? | trip |
+| **Travel** | One booked/scheduled leg: flight, train, bus, ferry, car. Lives at trip level, **not** inside a day; the timeline places it by its departure time. | title, mode, depart (wall-clock, required), arrive?, departTimezone?, arriveTimezone?, from?, to?, carrier?, number?, confirmationNumber?, notes? | trip |
 | **Day** | One calendar date of the trip. At most one per date. | date, title, summary? (markdown) | trip |
-| **Item** | One thing that happens on a day: an `activity` or a `travel` leg. | kind, title, start?, end?, startTimezone?, endTimezone?, location? (activity), from?/to? (travel), travel {mode, carrier?, number?}?, confirmationNumber?, notes? (markdown) | day |
-| **Location** | A place: a value embedded in a stay or item, not its own table. | name, address?, lat?, lng?, url? | its stay/item |
-| **Trip document** | The JSON file describing a whole trip (trip, stays, days, and items). Validated by the published JSON Schema. | `schemaVersion: 1` | — |
+| **Item** | One planned activity on a day. Incidental movement ("walk to the old town") is an activity, not a Travel. | title, start?, end?, timezone?, location?, confirmationNumber?, notes? (markdown) | day |
+| **Location** | A place: a value embedded in a stay, travel (from/to) or item, not its own table. | name, address?, lat?, lng?, url? | its stay/travel/item |
+| **Trip document** | The JSON file describing a whole trip (trip, stays, travels, days, and items). Validated by the published JSON Schema. | `schemaVersion: 1` | — |
 
-**Timeline marker.** A check-in, staying, or check-out row computed from stays
-when the timeline renders. It is never stored.
+**Timeline marker.** A row computed when the timeline renders, never stored:
+check-in / staying / check-out from stays, and depart / arrive from travels. A
+leg that lands on a later date shows an "Arrive" marker on that date too.
 
 ## 4. Core User Flows
 
@@ -50,12 +52,13 @@ when the timeline renders. It is never stored.
    soonest first. With no trips, it shows an empty state with the import action.
    I can delete a trip (soft delete, after a confirmation).
 3. **View the timeline.** As a user, I open a trip and see its days in order.
-   1. Each day shows its date and title, collapsed by default. Tapping it
-      expands the day's summary and its items in time order, along with stay
-      markers (check in, staying at, check out).
-   2. Tapping an item expands its details: notes (markdown), location (with a
+   1. Every date from start to end is shown, collapsed by default, with its
+      date and title. A date with nothing on it shows as "No plans".
+   2. Tapping a day expands its summary and its entries: activities in the
+      order written, with stay and travel markers merged in by time.
+   3. Tapping an entry expands its details: notes (markdown), location (with a
       maps link when there are coordinates or a URL), confirmation number, and
-      travel details (mode, carrier, number, from → to).
+      for travel, the mode, carrier, number and from → to.
 4. **Get the schema.** The JSON Schema for the trip document is committed in
    the repo (`schema/trip.schema.json`) and served by the API, so a trip
    document can be authored and checked outside the app.
@@ -74,8 +77,8 @@ when the timeline renders. It is never stored.
 - **Whose clock is authoritative?** The trip's. Every wall-clock value is
   interpreted in its own IANA timezone (an item or stay override, otherwise the
   trip's timezone). The viewer's browser timezone never changes what is shown.
-- **Wall-clock times:** yes, all trip times (item start/end, stay check-in and
-  check-out) are wall-clock values with an IANA zone, displayed exactly as
+- **Wall-clock times:** yes, all trip times (activity start/end, stay check-in
+  and check-out, travel depart/arrive) are wall-clock values with an IANA zone, displayed exactly as
   written. Trip and day dates are plain dates. Instants are used only for
   audit fields and for cross-timezone comparisons during validation.
 
@@ -97,7 +100,8 @@ when the timeline renders. It is never stored.
 
 - Julian will provide a real itinerary after the basic pages exist. It gets
   converted into a trip document and imported as the first real trip.
-- Decisions already made (2026-10-01): stays at trip level with their own rules;
+- Decisions already made (2026-10-01/02): stays **and travels** at trip level
+  with their own rules (no stored derived points);
   markdown in notes and summaries; keep the template's login and per-user
   ownership; reject invalid imports for now (relax later); keep v1 material in
   `reference/`.

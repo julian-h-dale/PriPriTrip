@@ -1,13 +1,14 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed reset-db dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed reset-db schema dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
 	@echo "  setup         Install backend + frontend dependencies (creates api/.env)"
 	@echo "  seed          Create seed users + sample data (idempotent)"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
+	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  dev-api       Run the API with reload (port from api/.env, default 8000)"
 	@echo "  dev-ui        Run the UI dev server (port from ui/.env, default 3000)"
 	@echo "  image         Build the unified single-container image"
@@ -37,6 +38,11 @@ seed:
 reset-db:
 	rm -f api/data/app.db
 	cd api && . .venv/bin/activate && python -m app.seed
+
+# The trip-document JSON Schema is generated, never hand-edited. A test fails
+# if the committed file drifts from the models.
+schema:
+	cd api && . .venv/bin/activate && python -m app.schema_export
 
 dev-api:
 	cd api && . .venv/bin/activate && ./dev.sh

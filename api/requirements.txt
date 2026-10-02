@@ -8,6 +8,8 @@ pydantic==2.10.*
 pydantic-settings==2.8.*
 fastapi-users[sqlalchemy]==14.*
 python-multipart==0.0.*
+# IANA zone data for zoneinfo, so slim containers resolve Europe/Zurich etc.
+tzdata==2025.*
 
 # Dev / tooling
 ruff==0.8.*
@@ -15,3 +17,4 @@ mypy==1.14.*
 pytest==8.*
 pytest-asyncio==0.25.*
 httpx==0.28.*
+jsonschema==4.*

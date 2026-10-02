@@ -21,125 +21,128 @@ backlog.
   `schema/trip.schema.json` is *generated* from it (`make schema`), and a test
   fails if the committed file is stale. `GET /schema/trip` serves the same
   schema.
-- **Import always creates.** `POST /trips/import` builds a brand-new trip. Any
-  ids inside the document are ignored, because the schema has no id fields.
-  Nothing is updated, merged or replaced.
-- **All-or-nothing, reject on any error** (answered 2026-10-01; can relax
-  later). Every error is returned in one 422 response, each with a JSON path.
+- **Bookings live at trip level; plans live in days.**
+  - `stays[]` and `travels[]` are trip-level lists with their own rules.
+  - `days[].items[]` are activities only.
+  - Nothing derived is ever stored. The timeline computes its markers from
+    stays and travels at render time, in one pure UI function
+    (`buildTimeline`). The API stores exactly what the document says.
+- **What counts as travel:** a booked or scheduled leg (flight, train, bus,
+  ferry, car). Incidental movement ("walk to the old town", "taxi to the hotel")
+  is an activity with notes.
+- **Import always creates.** `POST /trips/import` builds a brand-new trip. The
+  schema has no id fields, so a document can't carry ids. Nothing is updated,
+  merged or replaced.
+- **All-or-nothing, reject on any error.** Every error is returned in one 422
+  response, each with a JSON path (for example `days[2].items[0].start`).
+  Validation has two layers:
+  1. Structural: Pydantic and the JSON Schema.
+  2. Cross-field rules, which a JSON Schema can't express. These are listed in
+     the schema's `description` so external authors can see them.
 - **One write path.** All trip writes go through `services/trips.py`. The
   import, and later editing, call it. Routers stay thin (template convention).
-- **Read shape = document shape.** `GET /trips/{id}` returns the trip in the
-  `TripDocument` shape, plus ids and audit fields. The UI renders from it, and a
+- **Read shape = document shape.** `GET /trips/{id}` returns the
+  `TripDocument` shape plus ids and audit fields. The UI renders from it, and a
   future "export" is the same payload.
-- **Tables:** `trips`, `stays`, `days`, `items`. All have UUID PKs and soft
-  delete. `trips.user_id` holds ownership, and children are reached only
-  through an owned trip (`get_owned_trip`, 404 otherwise). There's a unique
-  constraint on `(trip_id, date)` for days. Locations are a JSON column, not a
-  table. Travel fields (`travel_mode`, `travel_carrier`, `travel_number`) are
-  nullable columns on `items`.
+- **Tables:** `trips`, `stays`, `travels`, `days`, `items`.
+  - All have UUID PKs and the soft-delete mixin.
+  - `trips.user_id` holds ownership. Children are reached only through an owned
+    trip (`get_owned_trip`, 404 otherwise).
+  - Days are unique per `(trip_id, date)` among live rows (a partial unique
+    index).
+  - `stays`, `travels` and `items` carry a `position`: the document order.
+  - Locations are a JSON column (`location`, `from_location`, `to_location`),
+    not a table.
 - **SQLite gotcha.** Foreign keys are not enforced unless
-  `PRAGMA foreign_keys=ON` is set per connection, so add it on engine connect.
-  Avoid dialect-specific SQL.
+  `PRAGMA foreign_keys=ON` is set on each connection, so it's enabled on engine
+  connect for the app and the tests.
+- **Eager loading only.** Relationships are `lazy="raise"`, and the trip is
+  assembled with `selectinload(...)` plus the soft-delete filter. A forgotten
+  load fails loudly in tests instead of raising `MissingGreenlet` at runtime
+  (lessons §11).
 - **Time model** (lessons §3):
   - Plain dates are `DATE`.
-  - Wall-clock values are a naive `DATETIME` plus a nullable IANA zone string
-    (`null` means use the trip's `timezone`).
-  - `Trip.timezone` is required, and every zone must be a valid IANA name
-    (`zoneinfo`).
-  - Validation converts to UTC only to compare across zones (for example,
-    flight end vs start). UTC is never stored for trip content in crawl.
-- **Wall-clock format on the wire:** `YYYY-MM-DDTHH:MM` (seconds allowed, no
-  offset). An offset or `Z` is rejected (template `WallClockTime` rationale).
-- **Import validation rules** (reject):
+  - Wall-clock values are a naive `DATETIME` plus a nullable IANA zone string.
+    `null` means the trip's `timezone`; every override, including a travel's
+    `arriveTimezone`, falls back to the trip's zone.
+  - `Trip.timezone` is required, and every zone is checked with `zoneinfo`.
+  - UTC instants are computed only to compare values in different zones (for
+    example, arrive vs depart on a cross-zone flight). They are never stored
+    for trip content.
+- **Wall-clock format on the wire:** `YYYY-MM-DDTHH:MM`, seconds optional, no
+  offset. A value with an offset or `Z` is rejected, and so is a non-string.
+- **Import rules** (any failure rejects the import):
   1. `endDate ≥ startDate`.
-  2. Every `day.date` falls within the trip range, with no duplicate dates.
-  3. Each item's `start` is on its day's date. An item's `end` may fall on a
-     later date (overnight travel) but must come after `start`, compared as
-     instants.
-  4. A stay has `checkOut > checkIn` (as instants). Its check-in date is within
-     the trip range, and its check-out is no later than `endDate + 1`.
-  5. `travel` is present only when `kind = "travel"`, and `from`/`to` only on
-     travel items. `location` is only on activity items.
+  2. Every `days[].date` is within the trip range, with no duplicate dates.
+  3. Activity `start`, when present, is on its day's date. `end` requires
+     `start` and must come after it (same zone, so compared directly).
+  4. A stay's `checkOut > checkIn`, compared as instants. `checkIn` falls
+     within the trip range, and `checkOut` is no later than `endDate + 1 day`.
+  5. A travel's `depart` is required and falls within the trip range. `arrive`
+     is optional, must come after `depart` (as instants), and is no later than
+     `endDate + 1 day`.
   6. Unknown fields are rejected (`extra="forbid"`), so typos fail loudly
      instead of being dropped.
-  7. File limit: 1 MB, UTF-8 JSON.
-- **Ordering:** days sort by date. Within a day, items keep their document
-  order, which is the author's intended sequence and covers untimed items.
-  Items are not re-sorted by time. Each item stores a `position` integer.
-- **Stays render as computed markers.** Check-in goes on the check-in date,
-  "staying at" on each night in between, and check-out on the check-out date.
-  This is computed in the UI from `trip.stays` and never stored.
+  7. `lat` and `lng` are given together or not at all, and must be in range.
+  8. File limit: 1 MB, UTF-8 JSON.
+- **Day view composition** (`buildTimeline`):
+  - Every date from `startDate` to `endDate` gets a row. A date with no day
+    entry and no markers shows "No plans".
+  - **Stay markers:** check-in on the check-in date, "Staying at" on each
+    night strictly between, and check-out on the check-out date.
+  - **Travel markers:** depart on the departure date. When the arrival date is
+    later, an "Arrive" marker goes on the arrival date too.
+  - **Ordering within a day:**
+    - Activities keep their document order.
+    - A timed marker goes just before the first *timed* activity that starts
+      later than it.
+    - Untimed activities stay attached to whatever precedes them.
+    - "Staying at" markers go first.
+    - Markers at the same time are ordered check-out, then depart, then
+      arrive, then check-in.
 - **Frontend:**
-  - Features `features/trips/` (home and import) and `features/timeline/`,
-    with one slice per feature (template convention).
-  - Times are shown verbatim via a single `formatWallClock` helper. Never call
+  - Features: `features/trips/` (home, import, delete) and
+    `features/timeline/` (trip view), one slice each.
+  - Times are shown verbatim via `shared/utils/time.js`. Never call
     `dayjs(isoString)` on a wall-clock value.
   - `react-markdown` + `remark-gfm` render notes and summaries.
-  - shadcn/Tailwind dark theme per `design_doc.md`.
+  - The dialog is hand-rolled in the template's shadcn *shape* (no Radix),
+    matching the existing components.
 - **The `things` example slice is removed** in Phase 2, once trips replace it as
   the reference slice.
 
 ## Open Questions / Design Decisions
 
-Answered 2026-10-01, before this plan was written (already folded into the
-body above):
+All answered 2026-10-01/02 and folded into the body above.
 
-- **Stays:** trip level, with their own rules, not derived into days. Resolved.
-- **Markdown** in notes and summaries: yes. Resolved.
-- **Template login and per-user ownership:** keep. Resolved.
-- **Invalid import:** reject for now and relax later. Resolved.
-- **v1 material** goes in `reference/`. Resolved.
-
-Still open:
-
-1. **Dates with no `days[]` entry: show or hide?**
-   - Options:
-     - (a) The timeline shows every date from start to end, and missing dates
-       render as an empty "No plans" day.
-     - (b) Show only the days in the document.
-     - (c) Reject the import unless every date has a day.
-   - Recommendation: **(a)**. The gap is visible without being an error, and it
-     matches v1's `EMPTY_DAY` intent.
-   - **Answer:** _(fill in)_
-   - **Resolved:** _(fill in)_
-
-2. **Overnight travel: show an arrival row on the arrival date?**
-   - Options:
-     - (a) A travel item whose `end` falls on a later date also shows a computed
-       "Arrive <to>" marker on that date, just like stay markers.
-     - (b) Show it only on the departure day, with the arrival time displayed as
-       "+1 day".
-   - Recommendation: **(a)**. Otherwise the day you land looks empty until you
-     scroll back.
-   - **Answer:** _(fill in)_
-   - **Resolved:** _(fill in)_
-
-3. **Item order within a day: document order or start time?**
-   - Options: (a) document order, as above; (b) sort timed items by start time
-     and keep untimed items in document position.
-   - Recommendation: **(a)**. It's simple and predictable, and the author
-     controls the sequence. Sorting can come with editing.
-   - **Answer:** _(fill in)_
-   - **Resolved:** _(fill in)_
-
-4. **Trip deletion in the UI in crawl?**
-   - Since every import creates a new trip, iterating on a document will pile
-     up duplicates.
-   - Recommendation: **yes**. Soft delete from the home screen, with a confirm
-     dialog using the destructive color.
-   - **Answer:** _(fill in)_
-   - **Resolved:** _(fill in)_
-
-5. **What should `make seed` load?**
-   - Options:
-     - (a) A small synthetic 3-day sample trip in the new format. It's also the
-       test fixture and the example in the schema docs.
-     - (b) Nothing; trips only come from imports.
-   - Recommendation: **(a)**. The app shows something real after `make
-     reset-db`, and the sample doubles as the documentation example. Your real
-     itinerary is imported by hand later.
-   - **Answer:** _(fill in)_
-   - **Resolved:** _(fill in)_
+1. **Stays at trip level?** **Answer:** yes. **Resolved:** stays are a
+   trip-level list with their own rules, never derived into days.
+2. **Markdown in notes/summaries?** **Answer:** yes. **Resolved:** rendered with
+   `react-markdown` + `remark-gfm`.
+3. **Keep template login and per-user ownership?** **Answer:** yes.
+   **Resolved:** every trip is owned by a user; foreign trips return 404.
+4. **Invalid import?** **Answer:** reject for now, relax later. **Resolved:**
+   all-or-nothing, every error returned with its path.
+5. **v1 material?** **Answer:** `reference/` folder. **Resolved:** done in
+   Phase 0.
+6. **Dates with no `days[]` entry?** **Answer:** show them (recommended).
+   **Resolved:** every date in range renders, and an empty one shows
+   "No plans".
+7. **Overnight travel?** **Answer:** show on the arrival date (recommended).
+   Then superseded by Q9: an arrival on a later date gets its own "Arrive"
+   marker.
+8. **Item order within a day?** **Answer:** document order (recommended).
+   **Resolved:** activities keep document order; markers merge in by time
+   (Q9).
+9. **Travel at trip level too?** **Answer:** yes (2026-10-02). **Resolved:**
+   `travels[]` is a trip-level list, items are activity-only, and `depart` is
+   required so every leg can be placed.
+10. **Trip deletion in the UI?** **Answer:** yes (recommended). **Resolved:**
+    soft delete from the home screen, behind a confirm dialog.
+11. **What does `make seed` load?** **Answer:** a sample trip (recommended).
+    **Resolved:** the seed user gets the synthetic sample trip
+    (`api/app/sample_data/sample_trip.json`), which is also the test fixture
+    and the schema example.
 
 ---
 
@@ -162,38 +165,43 @@ Still open:
 
 ---
 
-## Phase 1 — Crawl: Trip document, schema & models
+## Phase 1 — Crawl: Trip document, schema & models ✅
 
 **Goal:** the trip document is defined, validated, published as a JSON Schema,
 and has tables to land in.
 
 **Scope:**
 - `api/app/trip_document.py`:
-  - `TripDocument`, `StayDoc`, `DayDoc`, `ItemDoc`, `LocationDoc`, `TravelDoc`,
-    all CamelModel with `extra="forbid"`.
-  - Field validators (IANA zones, wall-clock format).
-  - A model validator implementing import rules 1–5 that collects *all* errors
-    with paths.
-- `schema/trip.schema.json`, generated by `make schema` (a script that runs
-  `TripDocument.model_json_schema()`), with titles and descriptions on every
-  field.
-- SQLAlchemy models `Trip`, `Stay`, `Day`, `Item` per the Architecture
-  Decisions, with `PRAGMA foreign_keys=ON`.
-- `api/tests/fixtures/sample_trip.json`, the synthetic 3-day trip. It includes
-  a stay spanning nights, an overnight-or-cross-zone travel leg, untimed
-  activities, and markdown notes.
+  - `TripDocument`, `StayDoc`, `TravelDoc`, `DayDoc`, `ItemDoc`, `LocationDoc`,
+    all with `extra="forbid"`.
+  - `WallClock` and `IanaTimezone` types.
+  - `validate_trip_document(data) -> TripDocument`, which raises
+    `TripDocumentError([{path, message}, ...])` and covers both the structural
+    errors and rules 1–7.
+- `schema/trip.schema.json`, generated by `make schema` (`python -m
+  app.schema_export`), with descriptions on every field and the rules in the
+  root description.
+- SQLAlchemy models `Trip`, `Stay`, `Travel`, `Day`, `Item` per the
+  Architecture Decisions, with `PRAGMA foreign_keys=ON`.
+- `api/app/sample_data/sample_trip.json`. It covers:
+  - a cross-zone overnight flight
+  - a stay spanning two nights
+  - trains
+  - timed and untimed activities
+  - a date with no day entry
+  - markdown notes
+- Dependencies: `tzdata` (runtime) and `jsonschema` (tests).
 
 **Out of scope:** endpoints, UI.
 
 **Tests / verification:**
-- [ ] `make verify` passes
-- [ ] The sample trip validates; a mutated copy fails, one per rule 1–6, with
-      the expected path
-- [ ] The committed `schema/trip.schema.json` equals the freshly generated one
-- [ ] The sample trip also validates against the JSON Schema itself (via the
-      `jsonschema` package), so the published schema is not looser than
-      expected for the happy path
-- [ ] `make reset-db` creates the new tables
+- [x] `make verify` passes
+- [x] The sample trip validates. Mutated copies each fail with the expected
+      path, at least one per rule 1–7.
+- [x] The committed `schema/trip.schema.json` equals the generated one
+- [x] The sample validates against the JSON Schema itself (`jsonschema`), and
+      the schema rejects an unknown field and an offset wall-clock value
+- [x] `make reset-db` creates the new tables
 
 ---
 
@@ -204,30 +212,32 @@ same shape.
 
 **Scope:**
 - `services/trips.py`: `import_trip(db, user_id, doc) -> Trip` (one
-  transaction), `list_trips`, `get_trip_document`, `delete_trip` (soft).
-  Assembly uses explicit eager loading.
+  transaction), `list_trips`, `get_trip`, `delete_trip` (soft).
 - `routers/trips.py`:
-  - `POST /trips/import`: multipart file, or a JSON body as a convenience for
-    curl/tests. Returns 201 with the trip summary.
-  - `GET /trips`: summaries, soonest start first.
+  - `POST /trips/import`: multipart `file`, or a raw JSON body for curl/tests.
+    Returns 201 with the trip summary.
+  - `GET /trips`: summaries with counts, soonest start first.
   - `GET /trips/{id}`: the full document plus ids.
   - `DELETE /trips/{id}`: 204, soft delete.
   - `GET /schema/trip`: unauthenticated, read-only.
-- Validation errors become a 422 `{errors: [{path, message}]}`. Malformed JSON
-  and oversize files get clear 4xx responses.
-- Remove the `things` slice on both backend and frontend. Seed loads the sample
-  trip if Q5 is answered (a).
+- Error responses:
+  - 422 `{detail, errors: [{path, message}]}` for an invalid document.
+  - 400 for malformed JSON or a missing file.
+  - 413 for a file over 1 MB.
+- Remove the `things` slice (backend and frontend). Seed replants the sample
+  trip.
 
 **Tests / verification:**
 - [ ] `make verify` passes
 - [ ] `make seed` covers this phase's new data, and the result is visible in the app (via API)
-- [ ] Round trip: import the sample, then `GET` returns a document equal to the
-      input (ignoring ids and audit fields)
+- [ ] Round trip: import the sample, then `GET` equals the input (ignoring ids
+      and audit fields)
 - [ ] Importing the same file twice creates two distinct trips
-- [ ] An invalid doc returns 422 with all errors and leaves no rows behind
+- [ ] An invalid doc returns 422 with all errors and leaves no rows behind;
+      bad JSON returns 400; an oversize file returns 413
 - [ ] Another user's trip returns 404 on GET and DELETE; an anonymous request
       returns 401
-- [ ] A deleted trip disappears from `GET /trips`
+- [ ] A deleted trip disappears from `GET /trips` and returns 404 on `GET /trips/{id}`
 
 ---
 
@@ -239,14 +249,13 @@ or delete one.
 **Scope:**
 - `features/trips/`: a trips slice (list, import, delete) and `TripsPage` at
   `/`.
-  - Trip cards show name, date range, and day/stay counts.
+  - Cards show name, date range, nights, and stay/travel counts.
   - An empty state has an "Import trip" button.
 - An import dialog: file picker → upload.
   - Success: toast, then navigate to `/trips/:id`.
-  - Failure: the error list is shown inline in the dialog, as a scrollable list
-    of path → message.
-- Delete with a confirm dialog (if Q4 = yes).
-- `formatWallClock` / `formatDateRange` helpers with tests.
+  - Failure: the dialog shows a path → message list.
+- Delete through a confirm dialog with a destructive button.
+- `shared/utils/time.js` (wall-clock and date formatting) with tests.
 
 **Tests / verification:**
 - [ ] `make verify` passes
@@ -263,28 +272,28 @@ or delete one.
 
 **Scope:**
 - `features/timeline/`: `TripTimelinePage` at `/trips/:id`.
-  - Header: name, dates, timezone.
+  - Header: name, dates, timezone, and a back link.
   - Day rows show date, weekday and title, collapsed by default. Expanding
     shows the summary (markdown) and the day's entries.
-  - Entries: items in document order, plus computed stay markers. Overnight
-    arrival markers depend on the Q2 answer, and empty days on Q1.
-  - Item rows show an icon by kind and travel mode, the time range (wall clock,
-    with a zone label when it differs from the trip's), and the title.
-    Expanding shows notes (markdown), location with a maps link, confirmation
-    number (tap to copy), and travel details.
-- `buildTimeline(trip)`: a pure function from document to rendered rows. All
-  the marker logic lives here and is unit-tested.
-- Loading skeleton, and a not-found state for a 404.
+  - Entry rows show an icon by kind and travel mode, the time (wall clock, with
+    a zone label when it differs from the trip's), and the title. Expanding
+    shows notes (markdown), location with a maps link, confirmation number, and
+    travel details.
+- `buildTimeline(trip)`: a pure function implementing the day-view
+  composition rules above.
+- Loading skeleton, and a not-found state.
 
 **Tests / verification:**
 - [ ] `make verify` passes
 - [ ] `make seed` covers this phase's new data, and the result is visible in the app
-- [ ] `buildTimeline` unit tests: a multi-night stay produces check-in, staying
-      and check-out markers on the right dates; overnight travel; empty days;
-      document order kept
-- [ ] Times render identically with the test process in two different `TZ`
-      values
-- [ ] Component tests: expand/collapse a day and an item; markdown renders
+- [ ] `buildTimeline` unit tests:
+      - a multi-night stay puts its markers on the right dates
+      - an overnight cross-zone flight shows on both dates
+      - empty dates
+      - document order kept
+      - markers merge in by time around untimed activities
+- [ ] Wall-clock formatting doesn't depend on the process `TZ`
+- [ ] Component tests: expand/collapse a day and an entry; markdown renders
 - [ ] Manual: phone width, long titles wrap cleanly, dark-theme contrast
 
 ---
@@ -298,12 +307,12 @@ express goes into the backlog rather than being forced in.
 ## Later / Backlog
 
 - **Walk:**
-  - Editing through hand-written forms (stay, item, day, trip), via
+  - Editing through hand-written forms (stay, travel, activity, day, trip), via
     `services/trips.py` with PATCH semantics using `exclude_unset`.
   - Export a trip as a document.
-  - Item sorting options.
 - **Walk:** verification/gaps, rebuilt from `docs/lessons_learned.md`. Decide up
-  front whether a screen answers "is it sound?" or "what's missing?".
+  front whether a screen answers "is it sound?" or "what's missing?". Stay and
+  travel overlap checks belong here.
 - **Run:**
   - Maps and Places lookup (the server resolves coordinates; never trust
     model-supplied coordinates).
