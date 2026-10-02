@@ -537,7 +537,7 @@ keeps only what the author wrote, so an import still round-trips exactly.
 
 ### Phases
 
-- **Phase 7 — Walk: zones, config, stay & travel API.**
+- **Phase 7 — Walk: zones, config, stay & travel API.** ✅
   - `tzfpy`, `app/zones.py`, `check_stay` / `check_travel` on resolved zones.
   - Zone fields in the read model.
   - `/config`, `/timezone`, and the booking endpoints.

@@ -10,6 +10,8 @@ fastapi-users[sqlalchemy]==14.*
 python-multipart==0.0.*
 # IANA zone data for zoneinfo, so slim containers resolve Europe/Zurich etc.
 tzdata==2025.*
+# Offline coordinates -> IANA timezone (Rust; no numpy). See app/zones.py.
+tzfpy==2.*
 
 # Dev / tooling
 ruff==0.8.*

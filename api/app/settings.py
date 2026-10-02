@@ -28,6 +28,11 @@ class AppSettings(BaseSettings):
     seed_admin_email: str = "admin@example.com"
     seed_admin_password: str = "changeme-admin"
 
+    # Google Maps/Places browser key, handed to signed-in clients by GET /config.
+    # Browser keys are public by design: protect it in the Google console with
+    # website (HTTP referrer) + API restrictions, a budget alert and a quota cap.
+    google_maps_api_key: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

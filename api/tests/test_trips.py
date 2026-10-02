@@ -18,9 +18,13 @@ from app.trip_document import trip_json_schema
 
 
 def strip_server_fields(value: Any) -> Any:
-    """Drop ids and audit fields so a read-back compares to the input document."""
+    """Drop ids, audit fields and computed zones so a read-back compares to the input."""
     if isinstance(value, dict):
-        return {k: strip_server_fields(v) for k, v in value.items() if k not in {"id", "createdAt"}}
+        return {
+            k: strip_server_fields(v)
+            for k, v in value.items()
+            if k not in {"id", "createdAt", "zone", "departZone", "arriveZone"}
+        }
     if isinstance(value, list):
         return [strip_server_fields(v) for v in value]
     return value

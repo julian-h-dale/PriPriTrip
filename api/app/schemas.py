@@ -70,6 +70,8 @@ class UserUpdate(schemas.BaseUserUpdate):
 #
 # Read models are the document models plus ids, so `GET /trips/{id}` returns
 # the trip in the same shape it was imported in (lessons: one schema source).
+# They also carry read-only `zone` fields: the clock each time is on, computed
+# by app/zones.py when the trip is read (never stored; never accepted back).
 # They are built from ORM rows (`from_attributes`) and accept field names as
 # well as aliases, because ORM attributes are snake_case.
 
@@ -80,16 +82,20 @@ _READ_CONFIG = ConfigDict(from_attributes=True, populate_by_name=True, extra="ig
 class StayRead(StayDoc):
     model_config = _READ_CONFIG
     id: uuid.UUID
+    zone: str | None = None
 
 
 class TravelRead(TravelDoc):
     model_config = _READ_CONFIG
     id: uuid.UUID
+    depart_zone: str | None = None
+    arrive_zone: str | None = None
 
 
 class ItemRead(ItemDoc):
     model_config = _READ_CONFIG
     id: uuid.UUID
+    zone: str | None = None
 
 
 class DayRead(DayDoc):

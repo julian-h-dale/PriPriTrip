@@ -45,6 +45,8 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from app.zones import arrive_zone, depart_zone, stay_zone
+
 SCHEMA_VERSION = 1
 
 # ---- Field types ----
@@ -111,8 +113,13 @@ Markdown = Annotated[
     Field(description="Markdown text."),
 ]
 
+_ZONE_FALLBACK = (
+    "Only used when the place has no coordinates. A time's zone comes from where "
+    "it happens (its place), else this field, else the trip's timezone."
+)
+
 StayType = Literal["hotel", "hostel", "airbnb", "rental", "other"]
-TravelMode = Literal["flight", "train", "bus", "ferry", "car", "other"]
+TravelMode = Literal["flight", "train", "bus", "ferry", "boat", "car", "other"]
 
 
 # ---- Document models ----
@@ -135,7 +142,10 @@ class LocationDoc(DocModel):
         default=None,
         pattern=r"^https?://",
         max_length=2000,
-        description="A link for the place, e.g. a Google Maps or website URL.",
+        description="A link for the place, e.g. a website.",
+    )
+    place_id: ShortText | None = Field(
+        default=None, description="Google place id, for exact map links."
     )
 
     @model_validator(mode="after")
@@ -152,10 +162,11 @@ class StayDoc(DocModel):
     type: StayType = "hotel"
     check_in: WallClock
     check_out: WallClock
-    timezone: IanaTimezone | None = Field(
-        default=None, description="Override; defaults to the trip's timezone."
+    timezone: IanaTimezone | None = Field(default=None, description=_ZONE_FALLBACK)
+    location: LocationDoc | None = Field(
+        default=None, description="Where you stay; its coordinates set the stay's clock."
     )
-    location: LocationDoc | None = None
+    room_type: ShortText | None = None
     confirmation_number: ShortText | None = None
     notes: Markdown | None = None
 
@@ -169,16 +180,17 @@ class TravelDoc(DocModel):
     mode: TravelMode
     carrier: ShortText | None = None
     number: ShortText | None = Field(default=None, description="Flight/train number.")
-    from_location: LocationDoc | None = Field(default=None, alias="from")
-    to_location: LocationDoc | None = Field(default=None, alias="to")
+    seat: ShortText | None = None
+    from_location: LocationDoc = Field(
+        alias="from", description="Where the leg leaves from; sets the departure's clock."
+    )
+    to_location: LocationDoc | None = Field(
+        default=None, alias="to", description="Where it lands; sets the arrival's clock."
+    )
     depart: WallClock
     arrive: WallClock | None = None
-    depart_timezone: IanaTimezone | None = Field(
-        default=None, description="Override; defaults to the trip's timezone."
-    )
-    arrive_timezone: IanaTimezone | None = Field(
-        default=None, description="Override; defaults to the trip's timezone."
-    )
+    depart_timezone: IanaTimezone | None = Field(default=None, description=_ZONE_FALLBACK)
+    arrive_timezone: IanaTimezone | None = Field(default=None, description=_ZONE_FALLBACK)
     confirmation_number: ShortText | None = None
     notes: Markdown | None = None
 
@@ -190,7 +202,11 @@ class ItemDoc(DocModel):
     start: WallClock | None = None
     end: WallClock | None = None
     timezone: IanaTimezone | None = Field(
-        default=None, description="Override; defaults to the trip's timezone."
+        default=None,
+        description=(
+            "Only used when the activity's place has no coordinates; otherwise its "
+            "zone comes from its place, else that night's stay, else the trip."
+        ),
     )
     location: LocationDoc | None = None
     confirmation_number: ShortText | None = None
@@ -219,8 +235,10 @@ RULES = (
     "is no later than the day after endDate. "
     "(5) A travel's depart is within the trip; arrive, when given, is after depart and "
     "no later than the day after endDate. "
-    "Times in different timezones are compared as real instants. "
-    "Every timezone override defaults to the trip's timezone."
+    "Users write wall-clock times; each time's zone comes from its place's "
+    "coordinates, else an explicit timezone field, else (activities) that night's "
+    "stay, else the trip's timezone. Times in different zones are compared as real "
+    "instants."
 )
 
 
@@ -300,11 +318,73 @@ def check_item(item: ItemDoc, day_date: dt.date, *, prefix: str = "") -> list[Do
     return errors
 
 
+@dataclass(frozen=True)
+class TripFrame:
+    """What a booking is checked against: the trip's dates and default clock."""
+
+    start: dt.date
+    end: dt.date
+    timezone: str
+
+    @property
+    def span(self) -> str:
+        return f"the trip runs {self.start} to {self.end}"
+
+    @property
+    def last_allowed(self) -> dt.date:
+        return self.end + timedelta(days=1)
+
+
+def check_stay(stay: StayDoc, frame: TripFrame, *, prefix: str = "") -> list[DocError]:
+    """Rule (4) for one stay, on the stay's own clock. Shared by import and editing."""
+    errors: list[DocError] = []
+    zone = stay_zone(stay, frame.timezone)
+    if not frame.start <= stay.check_in.date() <= frame.end:
+        errors.append(
+            DocError(
+                f"{prefix}checkIn", f"{stay.check_in.date()} is outside the trip; {frame.span}"
+            )
+        )
+    if stay.check_out.date() > frame.last_allowed:
+        errors.append(
+            DocError(
+                f"{prefix}checkOut",
+                f"must be no later than {frame.last_allowed} (the day after the trip)",
+            )
+        )
+    if _instant(stay.check_out, zone) <= _instant(stay.check_in, zone):
+        errors.append(DocError(f"{prefix}checkOut", "must be after checkIn"))
+    return errors
+
+
+def check_travel(travel: TravelDoc, frame: TripFrame, *, prefix: str = "") -> list[DocError]:
+    """Rule (5) for one leg: each end on its own place's clock. Shared by import and editing."""
+    errors: list[DocError] = []
+    if not frame.start <= travel.depart.date() <= frame.end:
+        errors.append(
+            DocError(f"{prefix}depart", f"{travel.depart.date()} is outside the trip; {frame.span}")
+        )
+    if travel.arrive is not None:
+        depart_at = _instant(travel.depart, depart_zone(travel, frame.timezone))
+        arrive_at = _instant(travel.arrive, arrive_zone(travel, frame.timezone))
+        if arrive_at <= depart_at:
+            errors.append(
+                DocError(f"{prefix}arrive", "must be after depart (each in its own place's time)")
+            )
+        if travel.arrive.date() > frame.last_allowed:
+            errors.append(
+                DocError(
+                    f"{prefix}arrive",
+                    f"must be no later than {frame.last_allowed} (the day after the trip)",
+                )
+            )
+    return errors
+
+
 def check_rules(doc: TripDocument) -> list[DocError]:
     """Cross-field rules (1) to (5). Returns every violation, empty when sound."""
     errors: list[DocError] = []
     start, end = doc.start_date, doc.end_date
-    last_allowed = end + timedelta(days=1)
     span = f"the trip runs {start} to {end}"
 
     def add(path: str, message: str) -> None:
@@ -327,27 +407,11 @@ def check_rules(doc: TripDocument) -> list[DocError]:
         for j, item in enumerate(day.items):
             errors.extend(check_item(item, day.date, prefix=f"{p}.items[{j}]."))
 
+    frame = TripFrame(start, end, doc.timezone)
     for i, stay in enumerate(doc.stays):
-        p = f"stays[{i}]"
-        tz = stay.timezone or doc.timezone
-        if not start <= stay.check_in.date() <= end:
-            add(f"{p}.checkIn", f"{stay.check_in.date()} is outside the trip; {span}")
-        if stay.check_out.date() > last_allowed:
-            add(f"{p}.checkOut", f"must be no later than {last_allowed} (the day after the trip)")
-        if _instant(stay.check_out, tz) <= _instant(stay.check_in, tz):
-            add(f"{p}.checkOut", "must be after checkIn")
-
+        errors.extend(check_stay(stay, frame, prefix=f"stays[{i}]."))
     for i, travel in enumerate(doc.travels):
-        p = f"travels[{i}]"
-        if not start <= travel.depart.date() <= end:
-            add(f"{p}.depart", f"{travel.depart.date()} is outside the trip; {span}")
-        if travel.arrive is not None:
-            depart_at = _instant(travel.depart, travel.depart_timezone or doc.timezone)
-            arrive_at = _instant(travel.arrive, travel.arrive_timezone or doc.timezone)
-            if arrive_at <= depart_at:
-                add(f"{p}.arrive", "must be after depart (compared across timezones)")
-            if travel.arrive.date() > last_allowed:
-                add(f"{p}.arrive", f"must be no later than {last_allowed} (the day after the trip)")
+        errors.extend(check_travel(travel, frame, prefix=f"travels[{i}]."))
 
     return errors
 
@@ -409,6 +473,24 @@ def validate_item_write(data: Any, start: dt.date, end: dt.date) -> ItemWrite:
     if errors:
         raise TripDocumentError(errors)
     return write
+
+
+def validate_stay_write(data: Any, frame: TripFrame) -> StayDoc:
+    """Parse and fully validate an edited stay, or raise TripDocumentError."""
+    stay = parse_part(StayDoc, data)
+    errors = check_stay(stay, frame)
+    if errors:
+        raise TripDocumentError(errors)
+    return stay
+
+
+def validate_travel_write(data: Any, frame: TripFrame) -> TravelDoc:
+    """Parse and fully validate an edited travel leg, or raise TripDocumentError."""
+    travel = parse_part(TravelDoc, data)
+    errors = check_travel(travel, frame)
+    if errors:
+        raise TripDocumentError(errors)
+    return travel
 
 
 def validate_day_date(day_date: dt.date, start: dt.date, end: dt.date) -> None:

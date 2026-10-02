@@ -9,9 +9,11 @@ Trip content mirrors the trip document (app/trip_document.py): bookings
 (stays, travels) at trip level, activities (items) inside days. Nothing derived
 is stored — the timeline computes its markers when it renders.
 
-Trip times are *wall-clock* values: a naive DATETIME (what the ticket says)
-plus a nullable IANA zone column, where NULL means the trip's timezone. They
-are deliberately not `UtcDateTime` — that type is for instants.
+Trip times are *wall-clock* values: a naive DATETIME (what the ticket says).
+They are deliberately not `UtcDateTime` — that type is for instants. Which
+clock a time is on is worked out when read (app/zones.py: the place's
+coordinates, else an explicit zone, else ...). The `*timezone` columns hold
+only an explicit zone the author wrote, never a computed one.
 
 Relationships are `lazy="raise"`: a trip is assembled with explicit
 `selectinload`, and a forgotten load fails loudly instead of a lazy load
@@ -92,6 +94,7 @@ class Stay(SoftDeleteMixin, Base):
     check_out: Mapped[dt.datetime] = mapped_column(WallClockColumn)
     timezone: Mapped[str | None]
     location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    room_type: Mapped[str | None]
     confirmation_number: Mapped[str | None]
     notes: Mapped[str | None]
 
@@ -108,6 +111,7 @@ class Travel(SoftDeleteMixin, Base):
     mode: Mapped[str]
     carrier: Mapped[str | None]
     number: Mapped[str | None]
+    seat: Mapped[str | None]
     from_location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     to_location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     depart: Mapped[dt.datetime] = mapped_column(WallClockColumn)

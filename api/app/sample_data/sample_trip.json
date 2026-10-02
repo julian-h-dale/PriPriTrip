@@ -30,6 +30,7 @@
         "lat": 46.60852,
         "lng": 7.9231963
       },
+      "roomType": "Double, Jungfrau view",
       "confirmationNumber": "SAMPLE-1002",
       "notes": "Ask for a **Jungfrau-view** room with a balcony."
     }
@@ -40,6 +41,7 @@
       "mode": "flight",
       "carrier": "SWISS",
       "number": "LX 9",
+      "seat": "23A",
       "from": { "name": "Chicago O'Hare (ORD)", "lat": 41.9786, "lng": -87.9048 },
       "to": { "name": "Zürich Airport (ZRH)", "lat": 47.4581, "lng": 8.5555 },
       "depart": "2026-05-10T17:40",

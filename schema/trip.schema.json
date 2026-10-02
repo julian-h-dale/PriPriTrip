@@ -111,7 +111,7 @@
             }
           ],
           "default": null,
-          "description": "Override; defaults to the trip's timezone.",
+          "description": "Only used when the activity's place has no coordinates; otherwise its zone comes from its place, else that night's stay, else the trip.",
           "title": "Timezone"
         },
         "location": {
@@ -222,8 +222,22 @@
             }
           ],
           "default": null,
-          "description": "A link for the place, e.g. a Google Maps or website URL.",
+          "description": "A link for the place, e.g. a website.",
           "title": "Url"
+        },
+        "placeId": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Google place id, for exact map links.",
+          "title": "Placeid"
         }
       },
       "required": [
@@ -286,7 +300,7 @@
             }
           ],
           "default": null,
-          "description": "Override; defaults to the trip's timezone.",
+          "description": "Only used when the place has no coordinates. A time's zone comes from where it happens (its place), else this field, else the trip's timezone.",
           "title": "Timezone"
         },
         "location": {
@@ -298,7 +312,21 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "Where you stay; its coordinates set the stay's clock."
+        },
+        "roomType": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roomtype"
         },
         "confirmationNumber": {
           "anyOf": [
@@ -352,6 +380,7 @@
             "train",
             "bus",
             "ferry",
+            "boat",
             "car",
             "other"
           ],
@@ -385,16 +414,22 @@
           "description": "Flight/train number.",
           "title": "Number"
         },
-        "from": {
+        "seat": {
           "anyOf": [
             {
-              "$ref": "#/$defs/LocationDoc"
+              "maxLength": 200,
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "title": "Seat"
+        },
+        "from": {
+          "$ref": "#/$defs/LocationDoc",
+          "description": "Where the leg leaves from; sets the departure's clock."
         },
         "to": {
           "anyOf": [
@@ -405,7 +440,8 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "Where it lands; sets the arrival's clock."
         },
         "depart": {
           "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
@@ -447,7 +483,7 @@
             }
           ],
           "default": null,
-          "description": "Override; defaults to the trip's timezone.",
+          "description": "Only used when the place has no coordinates. A time's zone comes from where it happens (its place), else this field, else the trip's timezone.",
           "title": "Departtimezone"
         },
         "arriveTimezone": {
@@ -464,7 +500,7 @@
             }
           ],
           "default": null,
-          "description": "Override; defaults to the trip's timezone.",
+          "description": "Only used when the place has no coordinates. A time's zone comes from where it happens (its place), else this field, else the trip's timezone.",
           "title": "Arrivetimezone"
         },
         "confirmationNumber": {
@@ -498,6 +534,7 @@
       "required": [
         "title",
         "mode",
+        "from",
         "depart"
       ],
       "title": "TravelDoc",
@@ -505,7 +542,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. Times in different timezones are compared as real instants. Every timezone override defaults to the trip's timezone.",
+  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. Users write wall-clock times; each time's zone comes from its place's coordinates, else an explicit timezone field, else (activities) that night's stay, else the trip's timezone. Times in different zones are compared as real instants.",
   "properties": {
     "schemaVersion": {
       "const": 1,

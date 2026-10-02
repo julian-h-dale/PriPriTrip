@@ -19,11 +19,14 @@ from sqlalchemy.orm import selectinload
 from app.dependencies import active
 from app.models import Day, Item, Stay, Travel, Trip
 from app.schemas import TripRead, TripSummary
-from app.trip_document import DayWrite, ItemWrite, LocationDoc, TripDocument
+from app.trip_document import DayWrite, ItemWrite, LocationDoc, StayDoc, TravelDoc, TripDocument
+from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
 
 
 def _location(loc: LocationDoc | None) -> dict[str, Any] | None:
-    return loc.model_dump(exclude_none=True) if loc is not None else None
+    # Stored under its wire (document) names, so it reads back through
+    # LocationDoc as-is — `placeId`, not `place_id`.
+    return loc.model_dump(by_alias=True, exclude_none=True) if loc is not None else None
 
 
 async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -> TripSummary:
@@ -51,6 +54,7 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
             check_out=s.check_out,
             timezone=s.timezone,
             location=_location(s.location),
+            room_type=s.room_type,
             confirmation_number=s.confirmation_number,
             notes=s.notes,
         )
@@ -64,6 +68,7 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
             mode=t.mode,
             carrier=t.carrier,
             number=t.number,
+            seat=t.seat,
             from_location=_location(t.from_location),
             to_location=_location(t.to_location),
             depart=t.depart,
@@ -148,7 +153,21 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID) -> TripRead:
         )
         .execution_options(populate_existing=True)
     )
-    return TripRead.model_validate(result.scalar_one())
+    return _with_zones(TripRead.model_validate(result.scalar_one()))
+
+
+def _with_zones(trip: TripRead) -> TripRead:
+    """Fill in which clock every time is on (app/zones.py), for display."""
+    tz = trip.timezone
+    for stay in trip.stays:
+        stay.zone = stay_zone(stay, tz)
+    for travel in trip.travels:
+        travel.depart_zone = depart_zone(travel, tz)
+        travel.arrive_zone = arrive_zone(travel, tz)
+    for day in trip.days:
+        for item in day.items:
+            item.zone = item_zone(item, day.date, trip.stays, tz)
+    return trip
 
 
 async def delete_trip(db: AsyncSession, trip: Trip) -> None:
@@ -247,5 +266,90 @@ async def update_day(db: AsyncSession, trip: Trip, day_date: dt.date, write: Day
     day = await _day_for(db, trip, day_date)
     day.title = write.title
     day.summary = write.summary
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+# ---- Editing stays and travel (bookings) ----
+#
+# Bookings are placed on the timeline by their times, so `position` is only
+# insertion order. Full replace, like activities; every edit returns the trip.
+
+
+def _apply_stay(stay: Stay, doc: StayDoc) -> None:
+    stay.name = doc.name
+    stay.type = doc.type
+    stay.check_in = doc.check_in
+    stay.check_out = doc.check_out
+    stay.timezone = doc.timezone
+    stay.location = _location(doc.location)
+    stay.room_type = doc.room_type
+    stay.confirmation_number = doc.confirmation_number
+    stay.notes = doc.notes
+
+
+def _apply_travel(travel: Travel, doc: TravelDoc) -> None:
+    travel.title = doc.title
+    travel.mode = doc.mode
+    travel.carrier = doc.carrier
+    travel.number = doc.number
+    travel.seat = doc.seat
+    travel.from_location = _location(doc.from_location)
+    travel.to_location = _location(doc.to_location)
+    travel.depart = doc.depart
+    travel.arrive = doc.arrive
+    travel.depart_timezone = doc.depart_timezone
+    travel.arrive_timezone = doc.arrive_timezone
+    travel.confirmation_number = doc.confirmation_number
+    travel.notes = doc.notes
+
+
+async def _next_booking_position(
+    db: AsyncSession, model: type[Stay] | type[Travel], trip: Trip
+) -> int:
+    last = await db.scalar(
+        select(func.max(model.position)).where(model.trip_id == trip.id, active(model))
+    )
+    return 0 if last is None else last + 1
+
+
+async def create_stay(db: AsyncSession, trip: Trip, doc: StayDoc) -> TripRead:
+    stay = Stay(trip_id=trip.id, position=await _next_booking_position(db, Stay, trip))
+    _apply_stay(stay, doc)
+    db.add(stay)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def replace_stay(db: AsyncSession, trip: Trip, stay: Stay, doc: StayDoc) -> TripRead:
+    _apply_stay(stay, doc)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def delete_stay(db: AsyncSession, trip: Trip, stay: Stay) -> TripRead:
+    stay.is_deleted = True
+    stay.deleted_at = datetime.now(UTC)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def create_travel(db: AsyncSession, trip: Trip, doc: TravelDoc) -> TripRead:
+    travel = Travel(trip_id=trip.id, position=await _next_booking_position(db, Travel, trip))
+    _apply_travel(travel, doc)
+    db.add(travel)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def replace_travel(db: AsyncSession, trip: Trip, travel: Travel, doc: TravelDoc) -> TripRead:
+    _apply_travel(travel, doc)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def delete_travel(db: AsyncSession, trip: Trip, travel: Travel) -> TripRead:
+    travel.is_deleted = True
+    travel.deleted_at = datetime.now(UTC)
     await db.commit()
     return await get_trip(db, trip.id)

@@ -13,17 +13,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile
 
 from app.database import get_db
-from app.dependencies import get_owned_item, get_owned_trip
-from app.models import Item, Trip, UserRecord
+from app.dependencies import get_owned_item, get_owned_stay, get_owned_travel, get_owned_trip
+from app.models import Item, Stay, Travel, Trip, UserRecord
 from app.schemas import CamelModel, TripRead, TripSummary
 from app.services import trips as trips_service
 from app.trip_document import (
     DayWrite,
     TripDocumentError,
+    TripFrame,
     parse_part,
     trip_json_schema,
     validate_day_date,
     validate_item_write,
+    validate_stay_write,
+    validate_travel_write,
     validate_trip_document,
 )
 from app.users import current_active_user
@@ -231,6 +234,101 @@ async def update_day(
     except TripDocumentError as exc:
         return _invalid(exc, "The day")
     return await trips_service.update_day(db, trip, day_date, write)
+
+
+# ---- Editing stays and travel ----
+
+
+def _frame(trip: Trip) -> TripFrame:
+    return TripFrame(trip.start_date, trip.end_date, trip.timezone)
+
+
+@router.post(
+    "/{trip_id}/stays",
+    response_model=TripRead,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_stay(
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    try:
+        doc = validate_stay_write(body, _frame(trip))
+    except TripDocumentError as exc:
+        return _invalid(exc, "The stay")
+    return await trips_service.create_stay(db, trip, doc)
+
+
+@router.put("/{trip_id}/stays/{stay_id}", response_model=TripRead, response_model_exclude_none=True)
+async def replace_stay(
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    stay: Stay = Depends(get_owned_stay),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    try:
+        doc = validate_stay_write(body, _frame(trip))
+    except TripDocumentError as exc:
+        return _invalid(exc, "The stay")
+    return await trips_service.replace_stay(db, trip, stay, doc)
+
+
+@router.delete(
+    "/{trip_id}/stays/{stay_id}", response_model=TripRead, response_model_exclude_none=True
+)
+async def delete_stay(
+    trip: Trip = Depends(get_owned_trip),
+    stay: Stay = Depends(get_owned_stay),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead:
+    return await trips_service.delete_stay(db, trip, stay)
+
+
+@router.post(
+    "/{trip_id}/travels",
+    response_model=TripRead,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_travel(
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    try:
+        doc = validate_travel_write(body, _frame(trip))
+    except TripDocumentError as exc:
+        return _invalid(exc, "The travel leg")
+    return await trips_service.create_travel(db, trip, doc)
+
+
+@router.put(
+    "/{trip_id}/travels/{travel_id}", response_model=TripRead, response_model_exclude_none=True
+)
+async def replace_travel(
+    body: JsonBody,
+    trip: Trip = Depends(get_owned_trip),
+    travel: Travel = Depends(get_owned_travel),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead | JSONResponse:
+    try:
+        doc = validate_travel_write(body, _frame(trip))
+    except TripDocumentError as exc:
+        return _invalid(exc, "The travel leg")
+    return await trips_service.replace_travel(db, trip, travel, doc)
+
+
+@router.delete(
+    "/{trip_id}/travels/{travel_id}", response_model=TripRead, response_model_exclude_none=True
+)
+async def delete_travel(
+    trip: Trip = Depends(get_owned_trip),
+    travel: Travel = Depends(get_owned_travel),
+    db: AsyncSession = Depends(get_db),
+) -> TripRead:
+    return await trips_service.delete_travel(db, trip, travel)
 
 
 @schema_router.get("/trip")
