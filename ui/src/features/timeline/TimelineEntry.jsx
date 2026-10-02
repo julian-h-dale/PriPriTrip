@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronDown, Copy, ExternalLink, MapPin } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Copy, ExternalLink, MapPin } from "lucide-react";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { Markdown } from "@/shared/components/Markdown";
 import { cn } from "@/shared/utils/cn";
@@ -7,7 +7,8 @@ import { datePart, formatTime, zoneLabel } from "@/shared/utils/time";
 
 function mapsUrl(loc) {
   if (loc.lat != null && loc.lng != null) {
-    return `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+    const placeId = loc.placeId ? `&query_place_id=${encodeURIComponent(loc.placeId)}` : "";
+    return `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}${placeId}`;
   }
   if (loc.address) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${loc.name}, ${loc.address}`)}`;
@@ -121,6 +122,12 @@ export function TimelineEntry({ entry, trip, expanded, onToggle, actions }) {
           {d.title}
         </span>
         {d.subtitle && <span className="break-words text-xs text-muted-foreground">{d.subtitle}</span>}
+        {d.warning && (
+          <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-warning">
+            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+            {d.warning}
+          </span>
+        )}
       </span>
       {hasDetails && (
         <ChevronDown

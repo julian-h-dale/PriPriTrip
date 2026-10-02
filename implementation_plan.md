@@ -424,7 +424,7 @@ travels stay read-only. Their markers get no edit controls.
    - Recommendation: **PUT**.
    - **Answer:** recommended (2026-10-02).
 
-## Walk stage 2 — editing stays & travel, location-based timezones, vertical timeline
+## Walk stage 2 — editing stays & travel, location-based timezones, vertical timeline ✅ (live Google Places check pending a key)
 
 Asked 2026-10-02:
 - **Travel:** must have a type (fly, boat, train, …) and a departure date and
@@ -550,12 +550,23 @@ keeps only what the author wrote, so an import still round-trips exactly.
     - config with and without the key.
 - **Phase 8 — Walk: vertical timeline.** ✅ It replaces the tabs and keeps every
   behaviour. Tests are rewritten; phone-width check.
-- **Phase 9 — Walk: stay & travel forms.**
+- **Phase 9 — Walk: stay & travel forms.** ✅
   - A small Google Places browser wrapper (mocked in tests), `PlaceField`,
     `StayForm`, `TravelForm`; `ActivityForm` switched to `PlaceField`.
   - Edit and Delete on markers; the Add menu; the arrival warning.
   - Tests and a phone-width check.
   - A live Places check needs Julian's key.
+
+### Built as planned, plus
+
+- The Google Places browser wrapper is `ui/src/shared/services/googlePlaces.js`
+  (the only file that knows Google's API; mocked in tests).
+- `PlaceField` falls back to a typed name when search is unavailable, so the
+  app works without a key, with times on the trip's clock.
+- Map links include the Google place id when there is one.
+- **Not yet verified live against Google**: there is no key yet. Search,
+  pick, session tokens and bias are covered by tests with a fake; the no-key
+  fallback was checked in a real browser.
 
 ### Key setup (Julian; only needed for live place search)
 

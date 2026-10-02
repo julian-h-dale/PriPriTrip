@@ -1,10 +1,36 @@
 import { addDays, datePart } from "@/shared/utils/time";
 
 /**
- * Pure helpers behind ActivityForm: activity <-> form values, client checks,
- * and server error paths -> form fields. Kept out of the component so the
- * rules are tested directly.
+ * Pure helpers behind the hand-written forms: record <-> form values, client
+ * checks, and server error paths -> form fields. Kept out of the components so
+ * the rules are tested directly.
  */
+
+/** A place as a form holds it: the location minus its link (edited separately). */
+export function placeOf(location) {
+  if (!location) return null;
+  const place = { ...location };
+  delete place.url;
+  return place;
+}
+
+/** A place plus the link field back into a document location, or null. */
+export function locationFrom(place, url) {
+  if (!place) return null;
+  const location = { ...place, name: place.name.trim() };
+  for (const key of Object.keys(location)) {
+    if (location[key] === undefined || location[key] === null || location[key] === "") {
+      delete location[key];
+    }
+  }
+  if (url.trim()) location.url = url.trim();
+  return location;
+}
+
+/** Drop null fields: the API treats absent and null alike on a full replace. */
+export function compact(payload) {
+  return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== null));
+}
 
 /** Form state for an existing activity (or a blank one on `date`). */
 export function toFormValues(item, date) {
@@ -13,8 +39,7 @@ export function toFormValues(item, date) {
     date: item?.start ? datePart(item.start) : date,
     startTime: item?.start?.slice(11, 16) ?? "",
     endTime: item?.end?.slice(11, 16) ?? "",
-    locationName: item?.location?.name ?? "",
-    locationAddress: item?.location?.address ?? "",
+    place: placeOf(item?.location),
     locationUrl: item?.location?.url ?? "",
     confirmationNumber: item?.confirmationNumber ?? "",
     notes: item?.notes ?? "",
@@ -26,31 +51,12 @@ export function endRollsOver(values) {
   return Boolean(values.startTime && values.endTime && values.endTime < values.startTime);
 }
 
-function locationFrom(values, original) {
-  const name = values.locationName.trim();
-  if (!name) return null;
-  const address = values.locationAddress.trim();
-  const url = values.locationUrl.trim();
-  const location = { name };
-  if (address) location.address = address;
-  if (url) location.url = url;
-  // Coordinates aren't editable yet (no Places lookup). Keep them only while
-  // they still describe the same place; otherwise the map link falls back to
-  // the address rather than pointing somewhere stale.
-  const prev = original?.location;
-  if (prev?.lat != null && prev.name === name && (prev.address ?? "") === address) {
-    location.lat = prev.lat;
-    location.lng = prev.lng;
-  }
-  return location;
-}
-
 /**
- * The whole activity, as the API's full replace expects it. Fields the form
- * doesn't show (a timezone override) are carried over from the original.
+ * The whole activity, as the API's full replace expects it. An explicit
+ * timezone on the original (an import-only fallback) is carried over.
  */
 export function toPayload(values, original) {
-  const payload = {
+  return compact({
     date: values.date,
     title: values.title.trim(),
     start: values.startTime ? `${values.date}T${values.startTime}` : null,
@@ -58,43 +64,43 @@ export function toPayload(values, original) {
       ? `${endRollsOver(values) ? addDays(values.date, 1) : values.date}T${values.endTime}`
       : null,
     timezone: original?.timezone ?? null,
-    location: locationFrom(values, original),
+    location: locationFrom(values.place, values.locationUrl),
     confirmationNumber: values.confirmationNumber.trim() || null,
     notes: values.notes.trim() ? values.notes : null,
-  };
-  return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== null));
+  });
 }
 
 /** Checks worth doing before a round trip. The server re-checks everything. */
 export function validate(values) {
   const errors = {};
   if (!values.title.trim()) errors.title = "Give the activity a title";
-  if (!values.locationName.trim() && (values.locationAddress.trim() || values.locationUrl.trim())) {
-    errors.locationName = "Name the place to add an address or link";
-  }
+  if (values.place && !values.place.name.trim()) errors.place = "Give the place a name";
+  if (!values.place && values.locationUrl.trim()) errors.locationUrl = "Pick a place to add a link";
   if (values.endTime && !values.startTime) errors.endTime = "Add a start time first";
   return errors;
 }
 
-const PATH_TO_FIELD = {
+const ACTIVITY_PATHS = {
   title: "title",
   date: "date",
   start: "startTime",
   end: "endTime",
-  location: "locationName",
-  "location.name": "locationName",
-  "location.address": "locationAddress",
+  location: "place",
+  "location.name": "place",
   "location.url": "locationUrl",
   confirmationNumber: "confirmationNumber",
   notes: "notes",
 };
 
-/** Server errors ({path, message}) -> { fields: {field: message}, other: [...] }. */
-export function mapServerErrors(errors) {
+/**
+ * Server errors ({path, message}) -> { fields: {field: message}, other: [...] }.
+ * Each form passes its own path -> field map.
+ */
+export function mapServerErrors(errors, paths = ACTIVITY_PATHS) {
   const fields = {};
   const other = [];
   for (const err of errors) {
-    const field = PATH_TO_FIELD[err.path];
+    const field = paths[err.path] ?? paths[err.path.split(".")[0]];
     if (field && !fields[field]) fields[field] = err.message;
     else other.push(err);
   }

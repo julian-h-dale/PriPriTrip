@@ -37,7 +37,8 @@ export function describeEntry(entry, trip) {
       subtitle: item.location?.name ?? null,
       start: item.start ?? null,
       end: item.end ?? null,
-      zone: item.timezone ?? tripZone,
+      // Zones come from the server (app/zones.py: place, else night’s stay, else trip).
+      zone: item.zone ?? item.timezone ?? tripZone,
       notes: item.notes,
       confirmation: item.confirmationNumber,
       locations: item.location ? [{ label: "Where", loc: item.location }] : [],
@@ -47,7 +48,7 @@ export function describeEntry(entry, trip) {
 
   if (entry.kind === "stay") {
     const { stay, phase } = entry;
-    const zone = stay.timezone ?? tripZone;
+    const zone = stay.zone ?? stay.timezone ?? tripZone;
     const title =
       phase === "check-in"
         ? `Check in · ${stay.name}`
@@ -73,8 +74,8 @@ export function describeEntry(entry, trip) {
   }
 
   const { travel, phase, overnight } = entry;
-  const departZone = travel.departTimezone ?? tripZone;
-  const arriveZone = travel.arriveTimezone ?? tripZone;
+  const departZone = travel.departZone ?? travel.departTimezone ?? tripZone;
+  const arriveZone = travel.arriveZone ?? travel.arriveTimezone ?? tripZone;
   const carrier = carrierLine(travel);
   const arriving = phase === "arrive";
   let subtitle = carrier;
@@ -89,6 +90,9 @@ export function describeEntry(entry, trip) {
     // A same-day leg shows its whole span; an overnight one shows each end on its own date.
     end: !arriving && !overnight ? (travel.arrive ?? null) : null,
     zone: arriving ? arriveZone : departZone,
+    // Until a leg has both an arrival place and time, the timeline can't show
+    // when you land — say so on the departure.
+    warning: !arriving && (!travel.arrive || !travel.to) ? "No arrival yet" : null,
     endZone: arriveZone,
     notes: travel.notes,
     confirmation: travel.confirmationNumber,

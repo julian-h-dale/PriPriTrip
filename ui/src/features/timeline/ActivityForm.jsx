@@ -6,40 +6,28 @@ import {
   toPayload,
   validate,
 } from "@/features/timeline/activityForm";
+import { biasPoint } from "@/features/timeline/bookingForms";
+import { Field, FormProblems } from "@/features/timeline/FormParts";
+import { PlaceField } from "@/features/timeline/PlaceField";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
 import { Select } from "@/shared/components/ui/select";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { datesInRange, formatDayHeading } from "@/shared/utils/time";
 
-function Field({ id, label, error, hint, children }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && (
-        <p id={`${id}-error`} className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /**
  * Add or edit one activity. Hand-written on purpose: the form is how trip data
- * gets checked by eye. Times are entered on the chosen day; an end before the
- * start means the next day. `onSave(payload)` resolves to `{ ok }` or
- * `{ detail, errors }` from the server.
+ * gets checked by eye. Times are entered on the chosen day as wall-clock times;
+ * an end before the start means the next day. Which clock they're on comes
+ * from the place (or, without one, that night's stay). `onSave(payload)`
+ * resolves to `{ ok }` or `{ detail, errors }` from the server.
  */
 export function ActivityForm({ open, onClose, trip, item, date, onSave }) {
   const ids = useId();
   const [values, setValues] = useState(() => toFormValues(item, date));
   const [errors, setErrors] = useState({});
-  const [other, setOther] = useState(null);
+  const [problems, setProblems] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const fieldId = (name) => `${ids}-${name}`;
@@ -60,7 +48,7 @@ export function ActivityForm({ open, onClose, trip, item, date, onSave }) {
     e.preventDefault();
     const local = validate(values);
     setErrors(local);
-    setOther(null);
+    setProblems(null);
     if (Object.keys(local).length) return;
     setBusy(true);
     const result = await onSave(toPayload(values, item));
@@ -71,7 +59,9 @@ export function ActivityForm({ open, onClose, trip, item, date, onSave }) {
     }
     const mapped = mapServerErrors(result.errors ?? []);
     setErrors(mapped.fields);
-    setOther({ detail: result.detail, errors: mapped.other });
+    if (mapped.other.length || !Object.keys(mapped.fields).length) {
+      setProblems({ detail: result.detail, errors: mapped.other });
+    }
   }
 
   return (
@@ -111,18 +101,19 @@ export function ActivityForm({ open, onClose, trip, item, date, onSave }) {
             </Field>
           </div>
 
-          <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
-            <legend className="px-1 text-sm font-medium">Place</legend>
-            <Field id={fieldId("locationName")} label="Name" error={errors.locationName}>
-              <Input {...inputProps("locationName")} autoComplete="off" />
-            </Field>
-            <Field id={fieldId("locationAddress")} label="Address" error={errors.locationAddress}>
-              <Input {...inputProps("locationAddress")} autoComplete="off" />
-            </Field>
-            <Field id={fieldId("locationUrl")} label="Link" error={errors.locationUrl} hint="https://…">
-              <Input type="url" {...inputProps("locationUrl")} />
-            </Field>
-          </fieldset>
+          <PlaceField
+            label="Place"
+            value={values.place}
+            onChange={(place) => setValues((v) => ({ ...v, place }))}
+            error={errors.place}
+            near={biasPoint(trip)}
+            fallbackZone={trip.timezone}
+            hint="Optional. Without one, times use where you’re staying that night."
+          />
+
+          <Field id={fieldId("locationUrl")} label="Link" error={errors.locationUrl} hint="https://…">
+            <Input type="url" {...inputProps("locationUrl")} />
+          </Field>
 
           <Field
             id={fieldId("confirmationNumber")}
@@ -136,16 +127,7 @@ export function ActivityForm({ open, onClose, trip, item, date, onSave }) {
             <Textarea rows={4} {...inputProps("notes")} />
           </Field>
 
-          {other && (other.errors.length > 0 || Object.keys(errors).length === 0) && (
-            <div role="alert" className="rounded-md border border-destructive/60 p-3 text-sm">
-              <p className="font-medium text-destructive">{other.detail}</p>
-              {other.errors.map((err, i) => (
-                <p key={i} className="text-xs text-muted-foreground">
-                  <code className="font-mono text-foreground">{err.path}</code> {err.message}
-                </p>
-              ))}
-            </div>
-          )}
+          <FormProblems problems={problems} />
         </div>
 
         <DialogFooter>

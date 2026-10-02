@@ -9,9 +9,8 @@ carries over v1's lessons (see `docs/lessons_learned.md`).
 
 ## 2. Non-Goals (for now)
 
-- Editing stays, travel and the trip header in the app. (Activities and day
-  titles/summaries are editable; stays and travel are planned next, as walk
-  stage 2 in `implementation_plan.md`.)
+- Editing the trip header (name, dates, default timezone) in the app.
+  Activities, days, stays and travel are all editable.
 - Updating, merging or diffing an existing trip from an upload. **Every import
   creates a brand-new trip.**
 - Any AI/LLM features: chat, document import, enhancement.
@@ -67,15 +66,36 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
       maps link), confirmation number, and for travel, the mode, carrier,
       number and from → to. Times are shown as written, labelled with their
       place's zone when it differs from the trip's.
-4. **Edit a day's activities.** As a user, I can add, edit, reorder and delete
-   the activities on a day, and edit the day's title and summary.
-   1. Each day has an "Add activity" button and an "Edit day" button. An
-      expanded activity offers Edit, Up/Down and Delete (Delete asks first).
-   2. The form (hand-written) takes the title, day, start and end times (an
-      end before the start means the next day), place, confirmation number and
+4. **Edit the trip's plans.** As a user, I can add, edit and delete
+   activities, stays and travel, reorder a day's activities, and edit a day's
+   title and summary.
+   1. Each day card has an "Add" button offering Activity, Travel or Stay, and
+      an "Edit day" button. An expanded activity offers Edit, Up/Down and
+      Delete. An expanded stay or travel row offers Edit and Delete, which act
+      on the booking itself (whichever of its rows you tap). Delete always asks
+      first.
+   2. **Places, not timezones.** Every place is picked from Google Places
+      search and can be renamed after picking. The place decides which clock
+      its times are on, shown read-only ("Times here are Zurich time"). Users
+      only ever enter wall-clock times as written on the ticket or booking;
+      there is no timezone picker. If place search is unavailable, a name can
+      be typed by hand and times use the trip's clock.
+   3. **Activity form:** title, day, start and end times (an end before the
+      start means the next day), place (optional), link, confirmation number,
       notes. Moving an activity to another day puts it at the end of that day.
-   3. An edit is checked by the same rules as an import; problems show next to
-      the field. Stay and travel rows are read-only for now.
+   4. **Travel form:** type (Fly/Train/Bus/Ferry/Boat/Car/Other); from
+      (required) with departure date and time (required); to, with arrival
+      date and time (enabled once "to" is picked); title (follows "From → To"
+      until edited); carrier, number, seat; confirmation number; notes.
+      - A missing arrival is allowed but shows a warning in the form and a "No
+        arrival yet" badge on the timeline.
+      - A leg whose ends are in different zones is spelled out: "Departs
+        5:40 PM Chicago time · lands 9:25 AM Zurich time".
+   5. **Stay form:** where (required), name, type, check-in and check-out dates
+      and times (required, prefilled 15:00 / 11:00), room, confirmation
+      number, link, notes.
+   6. Every edit is checked by the same rules as an import; problems show next
+      to the field.
 5. **Get the schema.** The JSON Schema for the trip document is committed in
    the repo (`schema/trip.schema.json`) and served by the API, so a trip
    document can be authored and checked outside the app.
@@ -91,12 +111,18 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 
 - **Does the app have a notion of "today"?** Not yet. Nothing is
   clock-dependent in this scope.
-- **Whose clock is authoritative?** The trip's. Every wall-clock value is
-  interpreted in its own IANA timezone (an item or stay override, otherwise the
-  trip's timezone). The viewer's browser timezone never changes what is shown.
+- **Whose clock is authoritative?** The place's. A time's zone comes from
+  where it happens:
+  1. its place's coordinates (offline lookup);
+  2. else an explicit timezone written in an imported document;
+  3. else, for an activity, that night's stay;
+  4. else the trip's timezone.
+
+  It is worked out when the trip is read, never stored, and never entered by
+  the user. The viewer's browser timezone never changes what is shown.
 - **Wall-clock times:** yes, all trip times (activity start/end, stay check-in
-  and check-out, travel depart/arrive) are wall-clock values with an IANA zone, displayed exactly as
-  written. Trip and day dates are plain dates. Instants are used only for
+  and check-out, travel depart/arrive) are wall-clock values, displayed exactly
+  as written. Trip and day dates are plain dates. Instants are used only for
   audit fields and for cross-timezone comparisons during validation.
 
 ## 7. Acceptance Criteria
@@ -110,8 +136,11 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 - [ ] The trip view shows every day on a vertical timeline; days and entries expand and collapse;
       notes render as markdown; stays show as computed markers.
 - [ ] Wall-clock times render identically regardless of the browser's timezone.
-- [ ] Activities can be added, edited, reordered and deleted; an invalid edit
-      is rejected with the same rules and messages as an import.
+- [ ] Activities can be added, edited, reordered and deleted; stays and travel
+      can be added, edited and deleted; an invalid edit is rejected with the
+      same rules and messages as an import.
+- [ ] Users never pick a timezone: each time's zone is inferred from its place,
+      and a cross-zone leg is checked and shown on each end's own clock.
 - [ ] A user cannot see or delete another user's trip (404).
 - [ ] Layout works at phone width (375px), dark theme, per `design_doc.md`.
 

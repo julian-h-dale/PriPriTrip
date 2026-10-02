@@ -67,7 +67,56 @@ export const updateDay = tripEdit(
   "Day saved"
 );
 
-const EDITS = [createItem, replaceItem, deleteItem, moveItem, updateDay];
+export const createStay = tripEdit(
+  "timeline/createStay",
+  ({ tripId, stay }) => apiClient.post(`/trips/${tripId}/stays`, stay, quiet),
+  "Stay added"
+);
+
+export const replaceStay = tripEdit(
+  "timeline/replaceStay",
+  ({ tripId, stayId, stay }) => apiClient.put(`/trips/${tripId}/stays/${stayId}`, stay, quiet),
+  "Stay saved"
+);
+
+export const deleteStay = tripEdit(
+  "timeline/deleteStay",
+  ({ tripId, stayId }) => apiClient.delete(`/trips/${tripId}/stays/${stayId}`, quiet),
+  "Stay deleted"
+);
+
+export const createTravel = tripEdit(
+  "timeline/createTravel",
+  ({ tripId, travel }) => apiClient.post(`/trips/${tripId}/travels`, travel, quiet),
+  "Travel added"
+);
+
+export const replaceTravel = tripEdit(
+  "timeline/replaceTravel",
+  ({ tripId, travelId, travel }) =>
+    apiClient.put(`/trips/${tripId}/travels/${travelId}`, travel, quiet),
+  "Travel saved"
+);
+
+export const deleteTravel = tripEdit(
+  "timeline/deleteTravel",
+  ({ tripId, travelId }) => apiClient.delete(`/trips/${tripId}/travels/${travelId}`, quiet),
+  "Travel deleted"
+);
+
+const EDITS = [
+  createItem,
+  replaceItem,
+  deleteItem,
+  moveItem,
+  updateDay,
+  createStay,
+  replaceStay,
+  deleteStay,
+  createTravel,
+  replaceTravel,
+  deleteTravel,
+];
 
 // `tripId` records which trip the state belongs to, so the page never shows
 // the previous trip while the next one loads (a v1 bug).

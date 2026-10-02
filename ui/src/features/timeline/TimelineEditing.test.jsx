@@ -68,7 +68,7 @@ beforeEach(() => {
 });
 
 describe("editing day activities", () => {
-  it("offers edit controls on activities but not on stays or travel", async () => {
+  it("offers move only on activities; markers edit their booking", async () => {
     const user = userEvent.setup();
     renderDay("2026-05-11");
     const checkIn = await screen.findByRole("button", { name: /Check in · Hotel Goldener/ });
@@ -77,7 +77,9 @@ describe("editing day activities", () => {
     const labels = within(row)
       .getAllByRole("button")
       .map((b) => b.getAttribute("aria-label") ?? b.textContent);
-    expect(labels.some((l) => /^(Edit|Move|Delete)/.test(l))).toBe(false);
+    expect(labels).toContain("Edit stay Hotel Goldener Schlüssel");
+    expect(labels).toContain("Delete stay Hotel Goldener Schlüssel");
+    expect(labels.some((l) => /^Move/.test(l))).toBe(false);
 
     await user.click(screen.getByRole("button", { name: /Lunch at Altes Tramdepot/ }));
     expect(screen.getByRole("button", { name: "Edit Lunch at Altes Tramdepot" })).toBeInTheDocument();
@@ -98,7 +100,8 @@ describe("editing day activities", () => {
     apiClient.post.mockResolvedValue({ data: updated });
     renderDay("2026-05-11");
 
-    await user.click(await screen.findByRole("button", { name: "Add activity on Mon, May 11" }));
+    await user.click(await screen.findByRole("button", { name: "Add to Mon, May 11" }));
+    await user.click(screen.getByRole("button", { name: "Add activity on Mon, May 11" }));
     const dialog = screen.getByRole("dialog", { name: "Add activity" });
     await user.type(within(dialog).getByLabelText("Title"), "Gelato");
     fireEvent.change(within(dialog).getByLabelText("Start"), { target: { value: "20:30" } });
@@ -116,7 +119,8 @@ describe("editing day activities", () => {
   it("checks the title before calling the server", async () => {
     const user = userEvent.setup();
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: "Add activity on Mon, May 11" }));
+    await user.click(await screen.findByRole("button", { name: "Add to Mon, May 11" }));
+    await user.click(screen.getByRole("button", { name: "Add activity on Mon, May 11" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Give the activity a title")).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveAttribute("aria-invalid", "true");

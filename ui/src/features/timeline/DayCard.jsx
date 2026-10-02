@@ -4,14 +4,22 @@ import { ArrowDown, ArrowUp, ChevronDown, Pencil, Plus, Trash2 } from "lucide-re
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { DayForm } from "@/features/timeline/DayForm";
 import { dayHeadingId, dayId } from "@/features/timeline/dayIds";
+import { StayForm } from "@/features/timeline/StayForm";
 import {
   createItem,
+  createStay,
+  createTravel,
   deleteItem,
+  deleteStay,
+  deleteTravel,
   moveItem,
   replaceItem,
+  replaceStay,
+  replaceTravel,
   updateDay,
 } from "@/features/timeline/timelineSlice";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
+import { TravelForm } from "@/features/timeline/TravelForm";
 import { Markdown } from "@/shared/components/Markdown";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
@@ -69,18 +77,49 @@ function ActivityActions({ entry, busy, onEdit, onMove, onDelete }) {
   );
 }
 
+function BookingActions({ kind, record, onEdit, onDelete }) {
+  const name = kind === "stay" ? record.name : record.title;
+  return (
+    <div className="flex flex-wrap gap-1 border-t border-border pt-3">
+      <Button variant="outline" size="sm" onClick={() => onEdit(record)} aria-label={`Edit ${kind} ${name}`}>
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+        Edit {kind}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
+        onClick={() => onDelete(record)}
+        aria-label={`Delete ${kind} ${name}`}
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+        Delete
+      </Button>
+    </div>
+  );
+}
+
+function deleteMessage({ kind, record }) {
+  if (kind === "activity") return `“${record.title}” will be removed from this day.`;
+  if (kind === "stay") return `“${record.name}” will be removed from every day it covers.`;
+  return `“${record.title}” will be removed from the timeline.`;
+}
+
 /**
  * One date on the vertical timeline: a point on the rail and that day's card —
  * heading, summary and entries (activities plus stay/travel markers), with
- * editing of the day's activities and its own title/summary. The card is
+ * editing of the day's activities, its stays and travel, and its own
+ * title/summary. The card is
  * collapsible; a date with nothing on it is a slim point with an Add action.
  */
 export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onToggleEntry }) {
   const dispatch = useDispatch();
-  // `form` is null (closed), { item: null } (add) or { item } (edit).
+  // `form` / `deleting`: null, or { kind: "activity" | "stay" | "travel", record }.
+  // A null record in `form` means "add".
   const [form, setForm] = useState(null);
   const [dayFormOpen, setDayFormOpen] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const empty = row.entries.length === 0;
@@ -89,14 +128,29 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
   const editable = !row.afterTrip;
   const day = trip.days.find((d) => d.date === row.date) ?? null;
 
-  function saveActivity(payload) {
-    const item = form?.item;
-    return run(
-      dispatch,
-      item
-        ? replaceItem({ tripId: trip.id, itemId: item.id, item: payload })
-        : createItem({ tripId: trip.id, item: payload })
-    );
+  function save(payload) {
+    const { kind, record } = form;
+    const tripId = trip.id;
+    const thunk = {
+      activity: () =>
+        record
+          ? replaceItem({ tripId, itemId: record.id, item: payload })
+          : createItem({ tripId, item: payload }),
+      stay: () =>
+        record
+          ? replaceStay({ tripId, stayId: record.id, stay: payload })
+          : createStay({ tripId, stay: payload }),
+      travel: () =>
+        record
+          ? replaceTravel({ tripId, travelId: record.id, travel: payload })
+          : createTravel({ tripId, travel: payload }),
+    }[kind];
+    return run(dispatch, thunk());
+  }
+
+  function openAdd(kind) {
+    setAddOpen(false);
+    setForm({ kind, record: null });
   }
 
   async function move(item, direction) {
@@ -106,8 +160,16 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
   }
 
   async function confirmDelete() {
+    const { kind, record } = deleting;
+    const tripId = trip.id;
     setBusy(true);
-    await dispatch(deleteItem({ tripId: trip.id, itemId: deleting.id }));
+    await dispatch(
+      kind === "activity"
+        ? deleteItem({ tripId, itemId: record.id })
+        : kind === "stay"
+          ? deleteStay({ tripId, stayId: record.id })
+          : deleteTravel({ tripId, travelId: record.id })
+    );
     setBusy(false);
     setDeleting(null);
   }
@@ -115,16 +177,34 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
   const heading = formatDayHeading(row.date);
 
   const addButton = editable && (
-    <Button
-      variant="outline"
-      size="sm"
-      className="self-start"
-      onClick={() => setForm({ item: null })}
-      aria-label={`Add activity on ${heading}`}
-    >
-      <Plus className="h-4 w-4" aria-hidden="true" />
-      Add activity
-    </Button>
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setAddOpen((o) => !o)}
+        aria-expanded={addOpen}
+        aria-label={`Add to ${heading}`}
+      >
+        <Plus className="h-4 w-4" aria-hidden="true" />
+        Add
+      </Button>
+      {addOpen &&
+        [
+          ["activity", "Activity"],
+          ["travel", "Travel"],
+          ["stay", "Stay"],
+        ].map(([kind, label]) => (
+          <Button
+            key={kind}
+            variant="ghost"
+            size="sm"
+            onClick={() => openAdd(kind)}
+            aria-label={`Add ${kind} on ${heading}`}
+          >
+            {label}
+          </Button>
+        ))}
+    </div>
   );
 
   return (
@@ -222,11 +302,19 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
                           <ActivityActions
                             entry={entry}
                             busy={busy}
-                            onEdit={() => setForm({ item: entry.item })}
+                            onEdit={() => setForm({ kind: "activity", record: entry.item })}
                             onMove={(direction) => move(entry.item, direction)}
-                            onDelete={() => setDeleting(entry.item)}
+                            onDelete={() => setDeleting({ kind: "activity", record: entry.item })}
                           />
-                        ) : undefined
+                        ) : (
+                          // Stay and travel markers edit the booking itself.
+                          <BookingActions
+                            kind={entry.kind}
+                            record={entry.kind === "stay" ? entry.stay : entry.travel}
+                            onEdit={(record) => setForm({ kind: entry.kind, record })}
+                            onDelete={(record) => setDeleting({ kind: entry.kind, record })}
+                          />
+                        )
                       }
                     />
                   ))}
@@ -238,15 +326,37 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
         </Card>
       )}
 
-      {form && (
+      {form?.kind === "activity" && (
         <ActivityForm
-          key={form.item?.id ?? "new"}
+          key={form.record?.id ?? "new"}
           open
           onClose={() => setForm(null)}
           trip={trip}
-          item={form.item}
+          item={form.record}
           date={row.date}
-          onSave={saveActivity}
+          onSave={save}
+        />
+      )}
+      {form?.kind === "stay" && (
+        <StayForm
+          key={form.record?.id ?? "new"}
+          open
+          onClose={() => setForm(null)}
+          trip={trip}
+          stay={form.record}
+          date={row.date}
+          onSave={save}
+        />
+      )}
+      {form?.kind === "travel" && (
+        <TravelForm
+          key={form.record?.id ?? "new"}
+          open
+          onClose={() => setForm(null)}
+          trip={trip}
+          travel={form.record}
+          date={row.date}
+          onSave={save}
         />
       )}
 
@@ -265,8 +375,8 @@ export function DayCard({ row, index, trip, open, onToggleOpen, openEntries, onT
       <Dialog
         open={deleting !== null}
         onClose={() => !busy && setDeleting(null)}
-        title="Delete activity?"
-        description={deleting ? `“${deleting.title}” will be removed from this day.` : ""}
+        title={deleting ? `Delete ${deleting.kind}?` : ""}
+        description={deleting ? deleteMessage(deleting) : ""}
       >
         <DialogFooter>
           <Button variant="outline" onClick={() => setDeleting(null)} disabled={busy}>
