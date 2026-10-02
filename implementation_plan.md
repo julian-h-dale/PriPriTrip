@@ -453,8 +453,27 @@ Asked 2026-10-02:
   draw the line, the points and the scrolling.
 - The vertical layout itself is small: a line, a dot per date, and a card per
   day, roughly 100 lines of Tailwind.
-- **Recommendation:** build the vertical timeline ourselves, using chrono's
-  vertical mode as the visual reference (see Q1).
+- **React 19 trial (2026-10-02):** in a scratch worktree, `react@^19.2`
+  (npm resolved 19.3.0) needed **zero code changes**. Lint is clean, all 53 UI
+  tests pass, and the production build succeeds. Every UI dependency already
+  accepts React 19 (react-redux 9, react-router-dom 6, Testing Library 16,
+  react-markdown, lucide-react, RTK 2). We use none of the APIs React 19
+  removed (propTypes, function `defaultProps`, string refs, legacy context,
+  `ReactDOM.render`), and `forwardRef` still works.
+- So the React upgrade is **cheap and not a blocker**. Its only real cost is
+  drifting from the template's pinned version, which future template merges
+  would need to account for. Upgrading the template too would remove that.
+- With the upgrade off the table as a cost, the choice is about the library
+  itself:
+  - **Chrono:** a ready-made vertical layout, scrolling and keyboard support,
+    but its own styling and theme to keep matched to our design tokens, 1.5 MB,
+    and its own opinions about cards.
+  - **Our own:** about 100 lines, styled exactly like the rest of the app,
+    with no new dependency.
+- **Recommendation:** still our own build, but it's a closer call now. If you
+  lean towards chrono, Phase 8 could start with a short spike that renders
+  this trip in chrono (with React 19) and in our own version, for comparison
+  at phone width.
 
 ### Design (assuming the recommended answers)
 
@@ -541,11 +560,19 @@ the new layout once, not twice.
 ### Open questions
 
 1. **react-chrono, or our own vertical timeline in its style?**
-   - (a) Our own: Tailwind, no dependency, no React upgrade, our design tokens.
-   - (b) react-chrono 3.x plus a React 18 → 19 upgrade, moving off the
-     template.
-   - (c) Pin react-chrono 2.6.1 on React 18.
-   - Recommendation: **(a)**.
+   - (a) Our own: Tailwind, no dependency, our design tokens.
+   - (b) react-chrono 3.x plus a React 19 upgrade. The trial showed the
+     upgrade needs no code changes; chrono itself brings its own styling to
+     maintain.
+   - (c) A spike of both, compared at phone width, before committing to one.
+   - Recommendation: **(a)**, or (c) if you want to see chrono first. Either
+     way, upgrading React to 19 is fine to do on its own.
+   - **Answer:**
+1b. **Upgrade React to 19 regardless?**
+   - It's cheap (no code changes, all tests pass), keeps us current, and leaves
+     chrono open as an option later.
+   - Recommendation: **yes**, as a standalone commit before Phase 8.
+     Optionally make the same upgrade in `project-template`.
    - **Answer:**
 2. **Day cards open or collapsed by default?**
    - Recommendation: **open**, so the trip reads top to bottom. Entries stay

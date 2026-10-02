@@ -6,8 +6,9 @@
 
 ## Status
 
-- **Current phase:** Walk stage Phases 5–6 (editing day activities) done.
-  Next: Julian reviews, then imports a real itinerary.
+- **Current phase:** Walk stage 1 (Phases 5–6, editing activities) done.
+  Walk stage 2 (Phases 7–9: stay/travel editing and a vertical timeline) is
+  planned and waiting on answers.
 - **Branch:** `rebuild`
 - **Last verified:** 2026-10-02. `make verify` green (75 API + 53 UI tests). A
   live add/edit run at 375px in a real browser, with the saved activity
@@ -74,9 +75,48 @@
 ## Next
 
 1. Julian answers the open questions in "Walk stage 2" of
-   `implementation_plan.md` (stay/travel editing plus the vertical timeline).
+   `implementation_plan.md` (stay/travel editing, the vertical timeline, and
+   whether to upgrade React to 19; the trial showed no code changes needed).
 2. Then Phases 7–9.
 3. Still pending: a human look at phone width, and the real itinerary import.
+
+## Moving to another machine
+
+Everything needed to build and run is in git on `origin/rebuild`. Setup:
+
+```bash
+git clone git@github.com:julian-h-dale/PriPriTrip.git && cd PriPriTrip
+git checkout rebuild
+make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
+make seed       # seed users + the sample trip
+make dev        # API :8000 + UI :3000
+make verify     # should be green: 75 API + 53 UI tests
+```
+
+Tested with Python 3.12.3, Node 24.14 and npm 11.11.
+
+**Not in git** (copy by hand if you want it):
+- `reference/private/`: personal PDFs and notes from v1, plus backups of the
+  old `api/.env` and `ui/.env.local`. The old OpenAI and Maps keys are in
+  there; nothing in the rebuild uses them yet.
+- `api/data/app.db`: the dev database. It's disposable: `make reset-db`
+  recreates it, and edits made in the dev UI are lost.
+- Claude's per-machine memory notes. The decisions that matter are copied
+  under "Working agreements" below.
+
+## Working agreements (carry these to any machine or agent)
+
+- **No Claude attribution in commits or PRs** (no `Co-Authored-By`,
+  `Claude-Session` or "Generated with" lines). Julian, 2026-10-02.
+- **Keep the forms hand-written.** Julian edits trip data through them as a
+  deliberate check by eye; don't generate them from a schema.
+- **No migrations yet.** Schema changes mean `make reset-db`; don't write
+  Alembic or SQL migration scripts until a release is in sight.
+- **Local-only, private repo.** Personal trip material in `reference/` is
+  fine to keep in git.
+- **AI/chat is out of scope** until the core timeline and editing are solid.
+- **The template workflow:** plan → answer the open questions → one phase at a
+  time, `make verify` green, update this file, commit.
 
 ## Notes / decisions
 
@@ -84,6 +124,5 @@
   knowledge, not code.
 - Chat/AI and verification are out of scope until the core timeline is solid.
 - Every import creates a new trip; invalid imports are rejected outright.
-- Commits carry no Claude attribution lines (Julian's request, 2026-10-02).
 - `ui/.env` doesn't exist (template `make env` only creates `api/.env`); the UI
   uses the defaults (:3000 → API :8000).

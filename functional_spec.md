@@ -9,7 +9,9 @@ carries over v1's lessons (see `docs/lessons_learned.md`).
 
 ## 2. Non-Goals (for now)
 
-- Editing a trip in the app (comes later via hand-written forms).
+- Editing stays, travel and the trip header in the app. (Activities and day
+  titles/summaries are editable; stays and travel are planned next, as walk
+  stage 2 in `implementation_plan.md`.)
 - Updating, merging or diffing an existing trip from an upload. **Every import
   creates a brand-new trip.**
 - Any AI/LLM features: chat, document import, enhancement.
@@ -62,7 +64,16 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
    3. Tapping an entry expands its details: notes (markdown), location (with a
       maps link when there are coordinates or a URL), confirmation number, and
       for travel, the mode, carrier, number and from → to.
-4. **Get the schema.** The JSON Schema for the trip document is committed in
+4. **Edit a day's activities.** As a user, I can add, edit, reorder and delete
+   the activities on a day, and edit the day's title and summary.
+   1. Each day has an "Add activity" button and an "Edit day" button. An
+      expanded activity offers Edit, Up/Down and Delete (Delete asks first).
+   2. The form (hand-written) takes the title, day, start and end times (an
+      end before the start means the next day), place, confirmation number and
+      notes. Moving an activity to another day puts it at the end of that day.
+   3. An edit is checked by the same rules as an import; problems show next to
+      the field. Stay and travel rows are read-only for now.
+5. **Get the schema.** The JSON Schema for the trip document is committed in
    the repo (`schema/trip.schema.json`) and served by the API, so a trip
    document can be authored and checked outside the app.
 
@@ -96,6 +107,8 @@ leg that lands on a later date shows an "Arrive" marker on that date too.
 - [ ] The trip view shows every day as a tab; entries expand and collapse;
       notes render as markdown; stays show as computed markers.
 - [ ] Wall-clock times render identically regardless of the browser's timezone.
+- [ ] Activities can be added, edited, reordered and deleted; an invalid edit
+      is rejected with the same rules and messages as an import.
 - [ ] A user cannot see or delete another user's trip (404).
 - [ ] Layout works at phone width (375px), dark theme, per `design_doc.md`.
 
