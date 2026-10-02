@@ -95,7 +95,7 @@ backlog.
   - **Ordering within a day:**
     - Activities keep their document order.
     - A timed marker goes just before the first *timed* activity that starts
-      later than it.
+      at or after it.
     - Untimed activities stay attached to whatever precedes them.
     - "Staying at" markers go first.
     - Markers at the same time are ordered check-out, then depart, then
@@ -269,7 +269,7 @@ or delete one.
 
 ---
 
-## Phase 4 — Crawl: Trip timeline
+## Phase 4 — Crawl: Trip timeline ✅
 
 **Goal:** the trip reads well as an expandable day-by-day timeline.
 
@@ -287,17 +287,19 @@ or delete one.
 - Loading skeleton, and a not-found state.
 
 **Tests / verification:**
-- [ ] `make verify` passes
-- [ ] `make seed` covers this phase's new data, and the result is visible in the app
-- [ ] `buildTimeline` unit tests:
+- [x] `make verify` passes
+- [x] `make seed` covers this phase's new data, and the result is visible in the app
+- [x] `buildTimeline` unit tests:
       - a multi-night stay puts its markers on the right dates
       - an overnight cross-zone flight shows on both dates
       - empty dates
       - document order kept
       - markers merge in by time around untimed activities
-- [ ] Wall-clock formatting doesn't depend on the process `TZ`
-- [ ] Component tests: expand/collapse a day and an entry; markdown renders
-- [ ] Manual: phone width, long titles wrap cleanly, dark-theme contrast
+- [x] Wall-clock formatting doesn't depend on the process `TZ`
+- [x] Component tests: expand/collapse a day and an entry; markdown renders
+- [ ] Manual: phone width, long titles wrap cleanly, dark-theme contrast. (Agent
+      checked headless 375px screenshots with the browser set to
+      Pacific/Auckland; a human look is still the gate.)
 
 ---
 

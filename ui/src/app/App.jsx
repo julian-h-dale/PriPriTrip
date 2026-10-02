@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchMe } from "@/features/auth/authSlice";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { TripsPage } from "@/features/trips/TripsPage";
+import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { AdminRoute } from "@/shared/components/AdminRoute";
@@ -29,6 +30,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <TripsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId"
+          element={
+            <ProtectedRoute>
+              <TripTimelinePage />
             </ProtectedRoute>
           }
         />

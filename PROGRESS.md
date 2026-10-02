@@ -6,11 +6,11 @@
 
 ## Status
 
-- **Current phase:** Phase 3 (home screen) done. Next: Phase 4.
+- **Current phase:** Crawl phases 1–4 done. Next: Julian reviews, then imports a real itinerary.
 - **Branch:** `rebuild`
-- **Last verified:** 2026-10-02, Phase 3. `make verify` green (55 API + 17 UI
-  tests). Headless 375px screenshots checked: home, import errors, delete
-  confirm.
+- **Last verified:** 2026-10-02, Phase 4. `make verify` green (55 API + 31 UI
+  tests). Headless 375px screenshots checked for every screen, with the
+  browser set to Pacific/Auckland; times render as written.
 
 ## Done
 
@@ -45,9 +45,19 @@
     conversion, tested under two `TZ` values.
   - UI `things` removed.
 
+- **Phase 4:**
+  - `features/timeline/`: `buildTimeline` (a pure function; markers computed,
+    never stored), `describeEntry`, `TimelineEntry`, and `TripTimelinePage`
+    at `/trips/:tripId`.
+  - The page has expand/collapse per day and per entry, expand all, markdown,
+    map links, and copy for confirmation numbers.
+  - Loading, not-found and error states.
+
 ## Next
 
-1. Phase 4: trip timeline (`/trips/:id`, `buildTimeline`).
+1. Julian: a human look at phone width (Phase 3 and 4 manual gates).
+2. Julian provides an itinerary; convert it to a trip document and import it.
+3. Then plan the walk stage (editing, verification).
 
 ## Notes / decisions
 

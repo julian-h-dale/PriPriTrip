@@ -60,8 +60,12 @@ export function formatTime(wallClock) {
 /** "2026-05-11" -> "Mon, May 11". */
 export function formatDayHeading(dateStr) {
   const { m, d } = splitDate(dateStr);
-  const weekday = WEEKDAYS[new Date(toUtcMs(dateStr)).getUTCDay()];
-  return `${weekday}, ${MONTHS[m - 1]} ${d}`;
+  return `${formatWeekday(dateStr)}, ${MONTHS[m - 1]} ${d}`;
+}
+
+/** "2026-05-11" -> "Mon". */
+export function formatWeekday(dateStr) {
+  return WEEKDAYS[new Date(toUtcMs(dateStr)).getUTCDay()];
 }
 
 /** "2026-05-11" -> "May 11". */
