@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
 from app.models import Base
-from app.routers import admin, things
+from app.routers import admin, trips
 from app.schemas import UserCreate, UserRead, UserUpdate
 from app.settings import get_app_settings
 from app.users import auth_backend, fastapi_users
@@ -51,7 +51,8 @@ def create_app() -> FastAPI:
     )
 
     # Then feature routers.
-    application.include_router(things.router)
+    application.include_router(trips.router)
+    application.include_router(trips.schema_router)
     application.include_router(admin.router)
 
     @application.get("/health", tags=["health"])

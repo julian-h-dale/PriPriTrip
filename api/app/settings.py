@@ -17,7 +17,7 @@ class AuthSettings(BaseSettings):
 
 
 class AppSettings(BaseSettings):
-    app_name: str = "App API"
+    app_name: str = "PriPriTrip API"
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
     # Comma-separated list of allowed CORS origins.
     cors_origins: str = "http://localhost:3000"

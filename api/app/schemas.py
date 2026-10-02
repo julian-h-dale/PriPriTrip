@@ -8,12 +8,14 @@ of Python style.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Annotated
 
 from fastapi_users import schemas
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+from app.trip_document import DayDoc, ItemDoc, StayDoc, TravelDoc, TripDocument
 
 
 class CamelModel(BaseModel):
@@ -64,22 +66,53 @@ class UserUpdate(schemas.BaseUserUpdate):
     timezone: str | None = None
 
 
-# ---- Things (example vertical slice) ----
+# ---- Trips ----
+#
+# Read models are the document models plus ids, so `GET /trips/{id}` returns
+# the trip in the same shape it was imported in (lessons: one schema source).
+# They are built from ORM rows (`from_attributes`) and accept field names as
+# well as aliases, because ORM attributes are snake_case.
 
 
-class ThingCreate(CamelModel):
-    title: str
-    notes: str = ""
+_READ_CONFIG = ConfigDict(from_attributes=True, populate_by_name=True, extra="ignore")
 
 
-class ThingUpdate(CamelModel):
-    title: str | None = None
-    notes: str | None = None
-
-
-class ThingRead(CamelModel):
+class StayRead(StayDoc):
+    model_config = _READ_CONFIG
     id: uuid.UUID
-    user_id: uuid.UUID
-    title: str
-    notes: str
+
+
+class TravelRead(TravelDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+
+
+class ItemRead(ItemDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+
+
+class DayRead(DayDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+    items: list[ItemRead] = Field(default_factory=list)  # type: ignore[assignment]
+
+
+class TripRead(TripDocument):
+    model_config = ConfigDict(title="TripRead", **_READ_CONFIG)
+    id: uuid.UUID
+    created_at: datetime
+    stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
+    travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
+    days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
+
+
+class TripSummary(CamelModel):
+    id: uuid.UUID
+    name: str
+    start_date: date
+    end_date: date
+    timezone: str
+    stay_count: int
+    travel_count: int
     created_at: datetime

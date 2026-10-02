@@ -205,7 +205,7 @@ and has tables to land in.
 
 ---
 
-## Phase 2 — Crawl: Import & read API
+## Phase 2 — Crawl: Import & read API ✅
 
 **Goal:** a trip document goes in through the API and comes back out in the
 same shape.
@@ -224,20 +224,21 @@ same shape.
   - 422 `{detail, errors: [{path, message}]}` for an invalid document.
   - 400 for malformed JSON or a missing file.
   - 413 for a file over 1 MB.
-- Remove the `things` slice (backend and frontend). Seed replants the sample
-  trip.
+- Remove the `things` slice on the backend. (The frontend half moved to Phase 3,
+  where its replacement page lands, so no commit has a home page without an
+  API.) Seed replants the sample trip.
 
 **Tests / verification:**
-- [ ] `make verify` passes
-- [ ] `make seed` covers this phase's new data, and the result is visible in the app (via API)
-- [ ] Round trip: import the sample, then `GET` equals the input (ignoring ids
+- [x] `make verify` passes
+- [x] `make seed` covers this phase's new data, and the result is visible in the app (via API)
+- [x] Round trip: import the sample, then `GET` equals the input (ignoring ids
       and audit fields)
-- [ ] Importing the same file twice creates two distinct trips
-- [ ] An invalid doc returns 422 with all errors and leaves no rows behind;
+- [x] Importing the same file twice creates two distinct trips
+- [x] An invalid doc returns 422 with all errors and leaves no rows behind;
       bad JSON returns 400; an oversize file returns 413
-- [ ] Another user's trip returns 404 on GET and DELETE; an anonymous request
+- [x] Another user's trip returns 404 on GET and DELETE; an anonymous request
       returns 401
-- [ ] A deleted trip disappears from `GET /trips` and returns 404 on `GET /trips/{id}`
+- [x] A deleted trip disappears from `GET /trips` and returns 404 on `GET /trips/{id}`
 
 ---
 
@@ -255,6 +256,7 @@ or delete one.
   - Success: toast, then navigate to `/trips/:id`.
   - Failure: the dialog shows a path → message list.
 - Delete through a confirm dialog with a destructive button.
+- Remove the frontend `things` slice; `TripsPage` replaces `DashboardPage`.
 - `shared/utils/time.js` (wall-clock and date formatting) with tests.
 
 **Tests / verification:**

@@ -295,7 +295,9 @@ def check_rules(doc: TripDocument) -> list[DocError]:
         errors.append(DocError(path, message))
 
     if end < start:
+        # Every range check below would fail too; report the one real problem.
         add("endDate", f"must be on or after startDate ({start})")
+        return errors
 
     seen: dict[date, int] = {}
     for i, day in enumerate(doc.days):

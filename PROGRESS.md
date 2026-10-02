@@ -6,10 +6,11 @@
 
 ## Status
 
-- **Current phase:** Phase 1 (trip document, schema, models) done. Next: Phase 2.
+- **Current phase:** Phase 2 (import & read API) done. Next: Phase 3.
 - **Branch:** `rebuild`
-- **Last verified:** 2026-10-02, Phase 1. `make verify` green (41 API + 7 UI
-  tests); `make reset-db` creates trips/stays/travels/days/items.
+- **Last verified:** 2026-10-02, Phase 2. `make verify` green (55 API + 7 UI
+  tests). Live: seed replants the sample trip; curl import (file and JSON), list,
+  get, 422 with paths, and the public schema all work.
 
 ## Done
 
@@ -31,10 +32,16 @@
   - The sample trip (`api/app/sample_data/sample_trip.json`).
   - `tzdata` and `jsonschema` added as dependencies.
 - All plan questions answered (2026-10-02), including travel at trip level.
+- **Phase 2:**
+  - `services/trips.py` (the single write path) and `routers/trips.py`:
+    `POST /trips/import`, `GET /trips`, `GET /trips/{id}`, `DELETE`, and
+    `GET /schema/trip`.
+  - Backend `things` removed; the seed replants the sample trip.
+  - Note: the UI home page still calls `/things` until Phase 3 replaces it.
 
 ## Next
 
-1. Phase 2: import and read API, remove `things`, seed the sample trip.
+1. Phase 3: home screen (trip list, import dialog, delete), remove UI `things`.
 
 ## Notes / decisions
 

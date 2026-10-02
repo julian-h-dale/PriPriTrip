@@ -163,6 +163,12 @@ def test_rule_violation_is_reported_at_its_path(
     assert path in paths_for(_set(mutate))
 
 
+def test_inverted_trip_dates_report_only_that() -> None:
+    doc = load_sample_trip()
+    doc["endDate"] = "2026-05-01"
+    assert paths_for(doc) == ["endDate"]
+
+
 def test_cross_zone_arrival_is_compared_as_an_instant() -> None:
     # Chicago 17:40 → Zürich 09:25 next day: the wall clocks alone would also
     # pass, so make the arrival *earlier on the wall* but later in reality.

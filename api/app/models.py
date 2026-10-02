@@ -160,15 +160,3 @@ class Item(SoftDeleteMixin, Base):
     location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     confirmation_number: Mapped[str | None]
     notes: Mapped[str | None]
-
-
-class Thing(SoftDeleteMixin, Base):
-    """Template example slice — removed in Phase 2 once trips replace it."""
-
-    __tablename__ = "things"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
-    title: Mapped[str]
-    notes: Mapped[str] = mapped_column(default="")
-    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, server_default=func.now())
