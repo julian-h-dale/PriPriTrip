@@ -93,6 +93,7 @@ privileged path: an `/admin/users` listing behind `current_superuser`, an
 make setup     # install deps + create api/.env (backend venv + npm)
 make seed      # create seed users + sample data (idempotent, replants)
 make reset-db  # drop the dev SQLite db and re-seed (after a schema change)
+make dev       # dev-api + dev-ui together in one terminal (Ctrl-C stops both)
 make dev-api   # API on :8000  (port from api/.env — differs per worktree)
 make dev-ui    # UI  on :3000  (port from ui/.env  — differs per worktree)
 make image     # build the unified single-container image (UI + API + nginx)

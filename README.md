@@ -22,8 +22,8 @@ phased build workflow.
 ```bash
 make setup                       # backend venv + npm install (creates api/.env with a generated JWT_SECRET)
 make seed                        # seed users + sample data
-make dev-api                     # API on :8000  (separate terminal)
-make dev-ui                      # UI  on :3000
+make dev                         # API on :8000 + UI on :3000 (Ctrl-C stops both)
+                                 # or separately: make dev-api / make dev-ui
 ```
 
 Log in with the seeded credentials from `api/.env`:
