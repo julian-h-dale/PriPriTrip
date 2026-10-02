@@ -40,4 +40,30 @@ describe("LoginPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
     expect(await screen.findByText(/required/i)).toBeInTheDocument();
   });
+
+  it("unmasks and re-masks the password with the eye toggle", async () => {
+    const user = userEvent.setup();
+    renderWithStore(<LoginPage />);
+    const field = screen.getByLabelText("Password");
+    await user.type(field, "s3cret");
+    expect(field).toHaveAttribute("type", "password");
+
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    expect(field).toHaveAttribute("type", "text");
+    expect(field).toHaveValue("s3cret");
+    expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    await user.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(field).toHaveAttribute("type", "password");
+  });
+
+  it("toggling the eye does not submit the form", async () => {
+    const user = userEvent.setup();
+    renderWithStore(<LoginPage />);
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
+  });
 });
