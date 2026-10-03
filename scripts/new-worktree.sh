@@ -169,10 +169,31 @@ echo "Writing env files..."
 seed_env "api/.env"
 seed_env "ui/.env"
 
+# Keep the main checkout's *hosts* (e.g. its LAN address, so the worktree is
+# reachable from another machine too) and swap in this worktree's ports.
+# Overwriting them with localhost broke LAN access: the browser on another
+# machine would call ITS OWN localhost, and CORS would refuse the LAN origin.
+env_value() { sed -n "s/^$2=//p" "$1" 2>/dev/null | tail -1; }
+MAIN_UI_PORT="$(env_value "${WT_DIR}/ui/.env" VITE_UI_PORT)"; MAIN_UI_PORT="${MAIN_UI_PORT:-3000}"
+MAIN_CORS="$(env_value "${WT_DIR}/api/.env" CORS_ORIGINS)"
+MAIN_API_URL="$(env_value "${WT_DIR}/ui/.env" VITE_API_BASE_URL)"
+
+CORS="http://localhost:${UI_PORT}"
+IFS=',' read -r -a origins <<<"${MAIN_CORS}"
+for origin in "${origins[@]}"; do
+  origin="$(echo "$origin" | sed -E "s#:${MAIN_UI_PORT}\$#:${UI_PORT}#")"
+  [[ -n "$origin" && ",${CORS}," != *",${origin},"* ]] && CORS="${CORS},${origin}"
+done
+if [[ -n "$MAIN_API_URL" ]]; then
+  API_URL="$(echo "$MAIN_API_URL" | sed -E "s#:[0-9]+/?\$#:${API_PORT}#")"
+else
+  API_URL="http://localhost:${API_PORT}"
+fi
+
 set_env_key "${WT_DIR}/api/.env" "API_PORT"     "${API_PORT}"
-set_env_key "${WT_DIR}/api/.env" "CORS_ORIGINS" "http://localhost:${UI_PORT}"
+set_env_key "${WT_DIR}/api/.env" "CORS_ORIGINS" "${CORS}"
 set_env_key "${WT_DIR}/api/.env" "DATABASE_URL" "sqlite+aiosqlite:///./data/app-${SLUG}.db"
-set_env_key "${WT_DIR}/ui/.env"  "VITE_API_BASE_URL" "http://localhost:${API_PORT}"
+set_env_key "${WT_DIR}/ui/.env"  "VITE_API_BASE_URL" "${API_URL}"
 set_env_key "${WT_DIR}/ui/.env"  "VITE_UI_PORT"      "${UI_PORT}"
 
 # The API refuses to boot without a JWT_SECRET, and the copied .env may not have
