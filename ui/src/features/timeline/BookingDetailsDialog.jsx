@@ -17,9 +17,12 @@ export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record
     ? { kind: "stay", phase: "check-in", stay: record }
     : { kind: "travel", phase: "depart", travel: record, overnight: false };
   const d = describeEntry(entry, trip);
-  // A stay's photo becomes the dialog's hero (so no thumbnail as well).
-  // Legs stay plain: airport and station photos aren't shown (describeEntry).
-  const hero = d.photos ? (record.location?.imgRef ?? null) : null;
+  // The booking's photo becomes the dialog's hero (so no thumbnail as well):
+  // a stay's place, or a leg's destination (else where it leaves from).
+  // Entry rows elsewhere still skip airport/station photos (describeEntry).
+  const hero = isStay
+    ? (record.location?.imgRef ?? null)
+    : (record.to?.imgRef ?? record.from?.imgRef ?? null);
 
   return (
     <Dialog
@@ -30,7 +33,7 @@ export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record
       heroImage={hero}
     >
       <div className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1">
-        <EntryDetails d={hero ? { ...d, photos: false } : d} />
+        <EntryDetails d={{ ...d, photos: d.photos && !hero }} />
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>

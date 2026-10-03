@@ -56,17 +56,26 @@ describe("booking quick look", () => {
     expect(screen.getByText("HR-1")).toBeInTheDocument();
   });
 
-  it("a flight stays plain, even when its airports have photos", () => {
+  it("a flight's hero is its destination's photo, else its departure point's", () => {
     const leg = {
       mode: "flight",
       title: "Chicago → Zürich",
       depart: "2026-05-10T17:40",
       arrive: "2026-05-11T09:25",
-      from: { name: "ORD", lat: 41.9, lng: -87.9, imgRef: PHOTO },
-      to: { name: "ZRH", lat: 47.4, lng: 8.5, imgRef: PHOTO },
+      from: { name: "ORD", lat: 41.9, lng: -87.9, imgRef: "https://example.com/ord.jpg" },
+      to: { name: "ZRH", lat: 47.4, lng: 8.5, imgRef: "https://example.com/zrh.jpg" },
     };
-    render(<BookingDetailsDialog open onClose={() => {}} onEdit={() => {}} trip={TRIP} kind="travel" record={leg} />);
-    expect(screen.queryByTestId("dialog-hero")).not.toBeInTheDocument();
-    expect(document.querySelectorAll("img")).toHaveLength(0);
+    const { unmount } = render(
+      <BookingDetailsDialog open onClose={() => {}} onEdit={() => {}} trip={TRIP} kind="travel" record={leg} />
+    );
+    expect(screen.getByTestId("dialog-hero")).toHaveAttribute("src", "https://example.com/zrh.jpg");
+    expect(document.querySelectorAll("img")).toHaveLength(1); // no airport thumbnails below
+    unmount();
+
+    const noDestinationPhoto = { ...leg, to: { ...leg.to, imgRef: undefined } };
+    render(
+      <BookingDetailsDialog open onClose={() => {}} onEdit={() => {}} trip={TRIP} kind="travel" record={noDestinationPhoto} />
+    );
+    expect(screen.getByTestId("dialog-hero")).toHaveAttribute("src", "https://example.com/ord.jpg");
   });
 });
