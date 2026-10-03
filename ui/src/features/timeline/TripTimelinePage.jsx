@@ -22,6 +22,7 @@ import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { formatDateRange } from "@/shared/utils/time";
+import { todayIn } from "@/shared/utils/tripDates";
 
 const VIEWS = [
   { view: "stays", icon: Home, label: "Show which nights have a stay" },
@@ -42,6 +43,8 @@ function TripTimeline({ trip }) {
   const navigate = useNavigate();
   const readOnly = useSelector(selectReadOnly);
   const rows = useMemo(() => buildTimeline(trip), [trip]);
+  // Past days are greyed, judged on the trip's own calendar.
+  const today = todayIn(trip.timezone);
   const [view, setView] = useState("plan");
   const stayCov = useMemo(() => stayCoverage(trip), [trip]);
   const travelCov = useMemo(() => travelCoverage(trip), [trip]);
@@ -126,6 +129,8 @@ function TripTimeline({ trip }) {
             view={view}
             coverage={coverageByDate?.get(row.date)}
             onSelect={selectDate}
+            past={row.date < today}
+            isToday={row.date === today}
           />
         ))}
       </ol>

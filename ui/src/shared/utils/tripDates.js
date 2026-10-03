@@ -76,3 +76,35 @@ export function pickLandingTrip(trips, now = new Date()) {
   const { active, upcoming } = groupTrips(trips, now);
   return active[0] ?? upcoming[0] ?? null;
 }
+
+/** How far `zone` is ahead of UTC at the instant `utcMs`, in ms. */
+function zoneOffsetMs(zone, utcMs) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(utcMs));
+  const get = (type) => Number(parts.find((p) => p.type === type).value);
+  return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"), get("second")) - utcMs;
+}
+
+/**
+ * The instant (UTC ms) a wall-clock value ("2026-10-29T10:35") happens in
+ * `zone` — only for *comparing* times written on different clocks (e.g.
+ * "what's next" across a flight's two zones). Never for display: trip times
+ * render exactly as written (time.js).
+ */
+export function wallToInstant(wall, zone) {
+  const [date, time = "00:00"] = wall.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, h, mi);
+  const first = guess - zoneOffsetMs(zone, guess);
+  // Re-check at the corrected instant, in case a DST change sits in between.
+  return guess - zoneOffsetMs(zone, first);
+}

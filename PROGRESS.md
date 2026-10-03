@@ -15,6 +15,19 @@
     Admin, Sign out. The "Times are local" line is gone, and the location
     links have 44px tap targets. The e2e `login()` helper now opens `/trips`
     itself.
+  - **Phase 21 ✅:** a **Today** tab (`/trips/:id/today`, the first tab;
+    landing opens it). It shows:
+    - **Next up:** the next check-in, check-out, departure or timed
+      activity, compared as instants across zones (`wallToInstant`), with
+      "in 1 h 15 min", the confirmation number, Directions and View day;
+    - **Tonight:** the stay, plus a morning check-out on a changeover day;
+    - **the day's plan;**
+    - **Tomorrow.**
+
+    Outside the trip's dates it previews day 1 and says so (Julian wants it
+    easy to test; hiding it outside the trip comes later). Past days are
+    greyed on the timeline and today is marked. `shared/utils/mapsLinks.js`
+    (`mapsUrl`, `directionsUrl`) is shared.
 - **Earlier (2026-10-03):** Run stage 1 in `implementation_plan.md`,
   built as two commits, as Julian asked. **Both are done**, waiting on
   Julian's 375px look.

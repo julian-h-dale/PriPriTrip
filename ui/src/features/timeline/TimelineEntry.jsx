@@ -6,18 +6,8 @@ import { Markdown } from "@/shared/components/Markdown";
 import { MiniMap } from "@/shared/components/MiniMap";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { datePart, formatTime, zoneLabel } from "@/shared/utils/time";
-
-function mapsUrl(loc) {
-  if (loc.lat != null && loc.lng != null) {
-    const placeId = loc.placeId ? `&query_place_id=${encodeURIComponent(loc.placeId)}` : "";
-    return `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}${placeId}`;
-  }
-  if (loc.address) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${loc.name}, ${loc.address}`)}`;
-  }
-  return null;
-}
 
 export function LocationBlock({ label, loc }) {
   const map = mapsUrl(loc);

@@ -24,8 +24,10 @@ test("signing in lands on the next trip; the drawer reaches all trips", async ({
   await page.getByLabel("Email").fill(process.env.SEED_USER_EMAIL || "user@example.com");
   await page.getByRole("textbox", { name: "Password" }).fill(process.env.SEED_USER_PASSWORD || "changeme-user");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/\/trips\/[^/]+/);
+  await page.waitForURL(/\/trips\/[^/]+\/today$/);
   await expect(page.getByRole("navigation", { name: "Trip" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("region", { name: "Next up" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("17-landing"), fullPage: true });
 
   await page.getByRole("button", { name: "Open menu" }).click();
@@ -33,6 +35,15 @@ test("signing in lands on the next trip; the drawer reaches all trips", async ({
   await page.screenshot({ path: screenshotPath("18-drawer"), fullPage: true });
   await page.getByRole("link", { name: "All trips" }).click();
   await expect(page.getByRole("heading", { name: "Trips" })).toBeVisible();
+});
+
+test("today tab (day 1 preview outside the trip)", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Today" }).click();
+  await expect(page.getByRole("heading", { name: "Day 1 preview" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Next up" })).toContainText("Chicago → Zürich");
+  await page.screenshot({ path: screenshotPath("19-today"), fullPage: true });
 });
 
 test("trip timeline", async ({ page }) => {

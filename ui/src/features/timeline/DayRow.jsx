@@ -5,9 +5,23 @@ import { dayId } from "@/features/timeline/dayIds";
 import { RailDot } from "@/features/timeline/RailDot";
 import { Markdown } from "@/shared/components/Markdown";
 import { Card } from "@/shared/components/ui/card";
+import { cn } from "@/shared/utils/cn";
 import { formatDayHeading } from "@/shared/utils/time";
 
 const MUTED_DOT = "bg-muted-foreground/40";
+
+function DayHeading({ heading, isToday }) {
+  return (
+    <h2 className="flex shrink-0 items-baseline gap-2 text-base font-semibold leading-snug">
+      {heading}
+      {isToday && (
+        <span className="rounded-sm bg-primary px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none text-primary-foreground">
+          Today
+        </span>
+      )}
+    </h2>
+  );
+}
 
 /**
  * One date on the trip's vertical timeline: a point on the rail, beside
@@ -16,8 +30,10 @@ const MUTED_DOT = "bg-muted-foreground/40";
  * or "travel" view, toggled on TripTimelinePage): the covering record for
  * editing, the add form when there's none, or — when a date has more than
  * one travel leg — the day page, where both are already listed.
+ *
+ * `past` greys the row (it still opens); `isToday` marks it.
  */
-export function DayRow({ row, tripId, view = "plan", coverage, onSelect }) {
+export function DayRow({ row, tripId, view = "plan", coverage, onSelect, past = false, isToday = false }) {
   const navigate = useNavigate();
   const heading = formatDayHeading(row.date);
   const to = `/trips/${tripId}/days/${row.date}`;
@@ -36,14 +52,14 @@ export function DayRow({ row, tripId, view = "plan", coverage, onSelect }) {
 
     return (
       <li id={dayId(row.date)} className="relative scroll-mt-4 pb-3 pl-7">
-        <RailDot colorClassName={empty ? MUTED_DOT : "bg-primary"} />
-        <Card className="overflow-hidden">
+        <RailDot colorClassName={empty || past ? MUTED_DOT : "bg-primary"} />
+        <Card className={cn("overflow-hidden", past && "opacity-55", isToday && "border-primary")}>
           <div onClick={handleClick} className="flex cursor-pointer flex-col gap-1 p-3 hover:bg-accent/40">
             <Link
               to={to}
               className="flex w-full items-baseline gap-3 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <h2 className="shrink-0 text-base font-semibold leading-snug">{heading}</h2>
+              <DayHeading heading={heading} isToday={isToday} />
               <span className="min-w-0 flex-1 break-words text-right text-sm text-muted-foreground">
                 {dayCities(row).join(" → ")}
               </span>
@@ -59,13 +75,13 @@ export function DayRow({ row, tripId, view = "plan", coverage, onSelect }) {
   return (
     <li id={dayId(row.date)} className="relative scroll-mt-4 pb-3 pl-7">
       <RailDot colorClassName={coverage?.colorClass ?? MUTED_DOT} />
-      <Card className="overflow-hidden">
+      <Card className={cn("overflow-hidden", past && "opacity-55", isToday && "border-primary")}>
         <button
           type="button"
           onClick={() => onSelect?.(row.date)}
           className="flex w-full items-baseline gap-3 p-3 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
-          <h2 className="shrink-0 text-base font-semibold leading-snug">{heading}</h2>
+          <DayHeading heading={heading} isToday={isToday} />
           <span className="min-w-0 flex-1 break-words text-right text-sm text-muted-foreground">
             {coverage?.label ?? ""}
           </span>

@@ -25,7 +25,4 @@ export function iconFor(marker) {
   return MapPin;
 }
 
-/** Hands off to the phone's own maps app. */
-export function directionsUrl({ lat, lng }) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
+export { directionsUrl } from "@/shared/utils/mapsLinks";

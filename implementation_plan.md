@@ -1443,7 +1443,7 @@ From `ui_review.md`, discussed with Julian on 2026-10-03.
   - the drawer's links;
   - `/` redirects.
 
-### Phase 21 — Run: the Today tab and greyed past days
+### Phase 21 — Run: the Today tab and greyed past days ✅
 
 - `/trips/:id/today` and a third tab.
 - `todayView.js` (pure):

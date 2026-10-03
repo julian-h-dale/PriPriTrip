@@ -29,7 +29,7 @@ function renderAt(path, element) {
         <Routes>
           <Route path="/" element={element} />
           <Route path="/trips" element={<div>all trips</div>} />
-          <Route path="/trips/:tripId" element={<div>trip page</div>} />
+          <Route path="/trips/:tripId/today" element={<div>trip page</div>} />
         </Routes>
       </MemoryRouter>
     </Provider>

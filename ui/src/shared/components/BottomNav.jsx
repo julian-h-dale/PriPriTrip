@@ -1,8 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { List, MapPin } from "lucide-react";
+import { CalendarCheck, List, MapPin } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
+// Today first. It's shown for every trip for now (it previews day 1 outside
+// the trip's dates); showing it only while a trip is active comes later.
 const TABS = [
+  {
+    to: (tripId) => `/trips/${tripId}/today`,
+    icon: CalendarCheck,
+    label: "Today",
+    active: (path, tripId) => path === `/trips/${tripId}/today`,
+  },
   {
     to: (tripId) => `/trips/${tripId}`,
     icon: List,
@@ -17,7 +25,7 @@ const TABS = [
   },
 ];
 
-/** The Timeline/Map tab bar shown only while viewing one trip. */
+/** The Today/Timeline/Map tab bar shown only while viewing one trip. */
 export function BottomNav({ tripId }) {
   const { pathname } = useLocation();
   return (

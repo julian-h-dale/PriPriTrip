@@ -6,6 +6,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { LandingPage } from "@/features/trips/LandingPage";
 import { TripsPage } from "@/features/trips/TripsPage";
 import { MapPage } from "@/features/map/MapPage";
+import { TodayPage } from "@/features/today/TodayPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
@@ -50,6 +51,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <TripTimelinePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/today"
+          element={
+            <ProtectedRoute>
+              <TodayPage />
             </ProtectedRoute>
           }
         />
