@@ -727,8 +727,11 @@ Asked 2026-10-02:
 - `MiniMap` (`shared/components/MiniMap.jsx`): a small, non-interactive
   `google.maps.Map` centered on one point with a classic `Marker` (no Map ID
   needed for this — only the full map page's Advanced Markers need one).
-  Shown in `PlaceField` once a place is picked, and in every `LocationBlock`
-  (day page entries, the new details dialog).
+  Shown in `PlaceField` once a place is picked. In `LocationBlock` (day page
+  entries, the details dialog) it's the fallback only — a static map wasn't
+  pulling its weight next to a real photo of the place, so `LocationBlock`
+  shows `loc.imgRef` when there is one, the mini-map otherwise (changed
+  2026-10-02).
 - `googleMapsLoader.js` factors the Maps JS bootstrap script out of
   `googlePlaces.js`, so `places`, `maps` and `marker` all share one script
   tag instead of each library loading its own.
@@ -737,9 +740,47 @@ Asked 2026-10-02:
   icon — now mapped to `Ship`/"Boat" like `ferry`.
 
 **Tests**: `make verify` green; a live Playwright pass showing the mini-map
-rendering real tiles in an expanded entry and in the new details dialog.
+rendering real tiles in `PlaceField`, and (after the photo-vs-map change
+below) a real photo rendering in the details dialog for a location that has
+one.
 
-### Phase 14 — Walk: bottom nav & the map view ✅ (markers unverified live — no Map ID yet)
+**Backfill for locations that predate this feature** (added 2026-10-02):
+`python -m app.backfill_photos` (`make backfill-photos`) finds every stay,
+travel endpoint and activity without a photo yet and fills it in —
+idempotent, best-effort, safe to re-run. Two cases:
+- Already has a `placeId` (picked from search in the UI) — look up its
+  photo directly.
+- No `placeId` (typed by hand, or imported — e.g. with coordinates from a
+  free geocoder rather than Google, as `example-trip.json`'s Okinawa trip
+  was) — resolve it first via a Places **text search** on name +
+  address/city, then fetch that place's photo. This is the half Julian
+  actually needed: almost nothing in real trip data has a `placeId`, since
+  that's only ever set by the live Places picker or a real import; the
+  placeId-only version of this script found almost nothing to do.
+  A generic/ambiguous name can match the wrong place — nothing
+  double-checks it, so the printed log is there to spot-check.
+
+`app/google_places_server.py` is the one deliberate exception to "this app
+never calls Google from the server": verified empirically that the browser
+key's "HTTP referrer" restriction only rejects a request whose Referer
+doesn't match the allowlist, not a plain server-side request with no
+Referer header at all — so no second key or header spoofing was needed.
+**Not** wired into `POST /trips/import` (asked and decided 2026-10-02) — an
+import shouldn't gain a live dependency on Google being reachable; run the
+script by hand after importing if you want photos. `httpx` moved from
+dev-only to a real runtime dependency, since this script is app code, not a
+test.
+
+Live-verified end to end against the real dev database, twice: (1) gave a
+real stay (Hotel Palm Royal, the Okinawa trip) a genuine Google place id,
+ran the script, got back a real photo of the hotel's pool; re-running
+confirmed it skips already-backfilled rows. (2) After the text-search
+extension, ran it against the freshly reseeded sample trip (all 14 of its
+locations lacked a `placeId`) — all 14 resolved and got a photo, including
+spot-checking the riskiest, most generic names ("Bern", "Zürich Flughafen")
+against the actual returned photos, which were correct.
+
+### Phase 14 — Walk: bottom nav & the map view ✅
 
 - `BottomNav` + `BottomNavLayout` (`shared/components/`): Timeline (a list
   icon) / Map (a map-pin icon) tabs, visible only on `TripTimelinePage`,
@@ -761,26 +802,80 @@ rendering real tiles in an expanded entry and in the new details dialog.
   (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`, opens the
   phone's own maps app). Missing key, missing Map ID, and zero located
   places each show their own message instead of a blank or broken map.
+- The initial view fits stays/activities only, not travel's endpoints —
+  otherwise an international flight's departure airport (a continent away)
+  drags the default zoom out to show the whole ocean instead of the trip
+  itself. Found via the live check below, not guessed up front.
 
 **Tests**: `buildMapMarkers.test.js` (stays/located legs/activities
 included, unlocated legs and place-less activities skipped, same-date
-correctness) — `make verify` green, 101 API + 86 UI. A live Playwright pass
-confirms the bottom nav, its active-tab state, and the map page's graceful
-"no Map ID configured" message (Julian hasn't created one yet — see Key
-setup above). **Not yet verified live**: actual marker placement, icons and
-the info window, which need a real Map ID.
+correctness) — `make verify` green, 101 API + 86 UI. Julian created the Map
+ID; a live Playwright pass against it confirms the bottom nav, its
+active-tab state, all 10 of the sample trip's located markers present, the
+map correctly fitted to Bern/Wengen (not the Atlantic), and clicking a
+marker opens an info window with a working "View day" and "Directions"
+link. Along the way, fixed two Advanced Marker API deprecations
+(`PinElement`'s `glyph` → `glyphText`; `content: pin.element` → `content:
+pin`) — but kept `marker.addListener("click", ...)` over the newer
+`addEventListener("gmp-click", ...)` after the library's own runtime
+message said the older form is what gives the built-in keyboard/accessible
+click handling.
 
-### Phase 15 — Walk: map search & filters (not started)
+**Fixed 2026-10-03**: the info window's title/day text had no explicit
+color, so it inherited this app's dark-theme `color` (near-white) cascading
+down from `<body>` — Google's InfoWindow content is appended outside the
+React tree but still sits in the same document, so that inheritance still
+applies. Invisible on the InfoWindow's own always-white chrome. Gave every
+text node in `infoWindowHtml` an explicit color instead of trying to
+restyle Google's chrome itself (fighting undocumented `.gm-style-iw-*`
+class names for a true "dark mode" InfoWindow — not worth it for a popup
+that opens over a full-color map anyway, white chrome reads fine once the
+text itself is legible).
 
-- A search bar on the map: autocomplete against the trip's own locations
-  first; if nothing matches, falls back to a Places text search that just
-  re-centers the map (adds nothing to the trip).
-- Two buttons right of the search bar: House (stays only) and Calendar (pick
-  one day within the trip range; other dates disabled) — combinable filters,
-  intersected against the full marker list from Phase 14.
+### Phase 15 — Walk: map search & filters ✅
 
-**Tests**: filter-intersection logic as pure functions; a live Playwright
-pass.
+- `markerSearch.js`: `matchMarkers(markers, query)` — a marker matches by
+  title or city, case-insensitive, no network call.
+- `mapFilters.js`: `markerMatchesDate(marker, date)` — a stay matches any
+  night it covers (via a new `endDay` on stay markers, exclusive, like
+  `stayCoverage`'s rule); everything else matches only its own `day`.
+  `filterMarkers(markers, { stayOnly, date })` combines House (stays only)
+  and Calendar (one day) — both together means "stays happening on that
+  day", per the Walk stage 3 decision.
+- `MapControls` (in `MapPage.jsx`): a search box styled like `PlaceField`'s
+  suggestion list (reusing that pattern, not the component — this isn't
+  picking a place to save). Typing matches the *currently filtered* marker
+  set first; submitting with no local match falls back to
+  `Place.searchByText` (client-side Places JS, one-shot — no autocomplete
+  session needed for a single lookup) to pan the map, adding nothing to the
+  trip. Picking a suggestion pans + opens its info window. The Calendar
+  filter is a plain `<input type="date" min max>` (min/max = trip range, so
+  the browser's own picker greys out everything else) toggled via a button,
+  becoming a "Tue, May 12 ×" chip once set, per the decisions made asking
+  this out.
+- Markers are shown/hidden by filters, not re-fit or re-centered — the
+  bounds set on initial load stay put.
+
+**A real bug, found by testing, not by inspection**: markers were
+originally left in place and toggled via `element.map = null`/`map`. Live
+Playwright testing of a full filter round-trip (all → stays only → all
+again) found the marker count permanently dropped from 10 to 8 after one
+cycle — not a timing issue (reproduced consistently, confirmed with longer
+waits). Tracing it by marker position pinned it down: of two markers
+sharing the *exact same coordinates* (Chicago O'Hare, appearing on both the
+outbound and return flight — routine for any round trip), detaching and
+reattaching silently dropped one of them for good. Fixed by rebuilding the
+marker elements from scratch on every filter change instead of toggling
+`.map` on existing ones; the map instance, its bounds and the InfoWindow are
+untouched, so this doesn't re-fit or jump the view. Verified with 3 full
+toggle cycles live — stable at 10 every time.
+
+**Tests**: `mapFilters.test.js`, `markerSearch.test.js` (pure, no Google
+Maps involved) — `make verify` green, 115 API + 97 UI. A live Playwright
+pass: search suggestion → pan → info window; House filter → exactly the
+trip's 2 stays; round-tripping it off → still all 10 (the regression test
+for the bug above); House + Calendar combined → exactly the 1 stay covering
+that day.
 
 ### Key setup (Julian; only needed for the map view)
 

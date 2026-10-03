@@ -6,11 +6,11 @@
 
 ## Status
 
-- **Current phase:** Phase 14 (bottom nav & map view) is done except live
-  verification of the map's markers/info-window — Julian hasn't created a
-  Map ID yet, so this is only confirmed to degrade gracefully. Phases 11–13
-  (day detail pages, stays/travel coverage views, location photos & mini-map
-  previews) are done too. Tapping a day on the trip timeline now
+- **Current phase:** Phase 15 (map search & filters) is done. Phase 14
+  (bottom nav & map view) is done and fully verified live — Julian created a
+  Map ID. Phases 11–13 (day detail pages,
+  stays/travel coverage views, location photos & mini-map previews) are done
+  too. Tapping a day on the trip timeline now
   navigates to its own page (`/trips/:id/days/:date`) instead of expanding in
   place; the trip overview is pure read-at-a-glance (date, cities, title,
   summary), and all editing (activities, stays, travel, the day's own
@@ -36,16 +36,44 @@
 - **Location photos:** `LocationDoc.imgRef` stores the first Google Places
   photo's resolved URL, captured whenever a place is picked anywhere in the
   app (stays, travel, activities all share `PlaceField`/`googlePlaces.js`).
-  Not yet surfaced as a thumbnail anywhere except the map's info windows.
+  Shown now in `LocationBlock` (day page entries, the details dialog) and the
+  map's info windows — a real photo there instead of the small static map,
+  which wasn't pulling its weight next to one. The mini-map is still the
+  fallback when a location has no photo, and still what `PlaceField` shows
+  while picking.
+  `make backfill-photos` fills imgRef in for locations that predate this
+  feature — idempotent, run by hand, not wired into import. It handles
+  locations with no `placeId` too (the common case — almost nothing in real
+  trip data has one, since that's only ever set by the live Places picker):
+  it resolves one via a Places text search on name + address/city first,
+  then fetches the photo. Ran for real against the (freshly reseeded) sample
+  trip: all 14 of its locations, none with a `placeId`, got a photo — spot-
+  checked the riskiest generic names ("Bern") against the real photo
+  returned. Earlier, live-verified against the real dev DB too (a real photo
+  of
+  the Okinawa trip's Palm Royal hotel came back).
 - **Bottom nav & map view:** Timeline/Map tabs show only while viewing a
   trip. `/trips/:id/map` plots every located stay, travel endpoint and
   activity (`buildMapMarkers.js`), color- and emoji-coded by kind, using
-  `AdvancedMarkerElement`. Needs a Map ID Julian hasn't created yet
-  (`GOOGLE_MAPS_MAP_ID` in `api/.env` — see implementation_plan.md's Key
-  setup under Walk stage 3); until then the page shows that message instead
-  of a broken map.
+  `AdvancedMarkerElement`, fitted to the trip's stays/activities (not
+  travel's endpoints, which are often a continent away). Tapping a marker
+  opens an info window with its photo, title, day, a link to that day, and a
+  directions link. Julian created the Map ID (`GOOGLE_MAPS_MAP_ID` in
+  `api/.env`); live-verified with Playwright — all 10 of the sample trip's
+  markers present, correctly fitted to Bern/Wengen, info window working.
+- **Map search & filters:** a search box on the map matches the trip's own
+  (currently filtered) locations first, falling back to a one-shot Places
+  text search only to pan the map for orientation — never adds anything.
+  House (stays only) and Calendar (one day, native date input) filters
+  combine. **Real bug found by live Playwright testing**: toggling a filter
+  by detaching/reattaching existing markers (`element.map = null`/map)
+  silently and permanently dropped one marker whenever two shared the exact
+  same coordinates — routine for round trips (e.g. Chicago appears on both
+  the outbound and return flight). Fixed by rebuilding marker elements from
+  scratch on every filter change instead; verified stable across 3 full
+  toggle cycles live.
 - **Branch:** `rebuild`, pushed to `origin/rebuild`. Not merged to `main`.
-- **Last verified:** 2026-10-02. `make verify` green (101 API + 86 UI tests),
+- **Last verified:** 2026-10-02. `make verify` green (115 API + 97 UI tests),
   plus a live Playwright pass against the real dev app (see below). Julian
   confirmed live Google Places works with his key. In a real browser at
   375px:
@@ -162,25 +190,20 @@
 
 ## Next
 
-1. **Julian:** create a Google Maps Map ID (Cloud Console → Map Management,
-   JavaScript type) and put it in `api/.env` as `GOOGLE_MAPS_MAP_ID` — the
-   map view's markers, icons and info window are built but can't be verified
-   live without one. See implementation_plan.md's Key setup under Walk
-   stage 3.
-2. **Julian:** look at Phases 11–14 at phone width and confirm them — the
+1. **Julian:** look at Phases 11–15 at phone width and confirm them — the
    Playwright screenshots in `ui/e2e/screenshots/` are a stand-in, not the
    gate. Phases 3, 4, 6, 8, 9 and 10 also have manual phone-width gates.
-3. **Then:** Phase 15 (map search + House/Calendar filters, combinable —
-   see Walk stage 3's decisions in implementation_plan.md).
-4. **Julian:** add the LAN IPs as allowed referrers on the Google Maps
+2. **Julian:** add the LAN IPs as allowed referrers on the Google Maps
    browser key (Google Cloud console) if he wants live Places search to work
    from a LAN address, not just `localhost:3000`.
-5. `example-trip.json` (Julian's real upcoming Okinawa/Taipei trip, WIP —
-   several date ranges are still TBD) is imported and verified against the
-   running API, coordinate-enriched via free geocoding (not Google). Not yet
-   looked at in the UI.
-6. **Then, from the backlog:** editing the trip header; verification/gaps
-   (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`.
+3. `example-trip.json` (Julian's real upcoming Okinawa/Taipei trip) has been
+   re-imported (after the 2026-10-02 `make reset-db` wiped it) and
+   backfilled with real photos via the name-search path — done, in the dev
+   database now.
+4. **Then, from the backlog:** editing the trip header; verification/gaps
+   (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
+   anything past Walk stage 3 (map search/filters was the last planned
+   phase there) needs a fresh look at what's next.
 
 ## Moving to another machine
 
@@ -192,7 +215,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 101 API + 68 UI tests
+make verify     # should be green: 115 API + 97 UI tests
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.
