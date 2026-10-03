@@ -1,0 +1,239 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Provider } from "react-redux";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { configureStore } from "@reduxjs/toolkit";
+import authReducer from "@/features/auth/authSlice";
+import timelineReducer from "@/features/timeline/timelineSlice";
+import networkReducer from "@/shared/networkSlice";
+import errorReducer from "@/shared/errorSlice";
+import notificationReducer from "@/shared/notificationSlice";
+import { MapPage } from "@/features/map/MapPage";
+import { apiClient } from "@/shared/services/apiClient";
+import { createPlacesSearch } from "@/shared/services/googlePlaces";
+import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
+
+vi.mock("@/shared/services/apiClient", () => ({
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}));
+vi.mock("@/shared/services/googlePlaces", () => ({
+  createPlacesSearch: vi.fn(),
+  PlacesUnavailable: class PlacesUnavailable extends Error {},
+}));
+
+// --- A fake Google Maps: just enough of maps/marker for MapPage. -----------
+const fake = vi.hoisted(() => ({ markers: [], map: null, infoWindow: null }));
+vi.mock("@/shared/services/googleMapsLoader", () => {
+  class FakeMap {
+    constructor() {
+      fake.map = this;
+      this.panTo = vi.fn();
+      this.panBy = vi.fn();
+      this.setCenter = vi.fn();
+      this.setZoom = vi.fn();
+      this.fitBounds = vi.fn();
+    }
+    getBounds() {
+      return { toJSON: () => ({ north: 47, south: 46, east: 8, west: 7 }) };
+    }
+  }
+  class FakeInfoWindow {
+    constructor() {
+      fake.infoWindow = this;
+      this.node = null;
+    }
+    addListener() {}
+    // Google attaches the content node into the page; so does the fake.
+    setContent(node) {
+      this.node = node;
+      if (!node.isConnected) document.body.appendChild(node);
+    }
+    open() {}
+    close() {}
+  }
+  class FakeAdvancedMarker {
+    constructor(opts) {
+      Object.assign(this, opts);
+      this.listeners = {};
+      fake.markers.push(this);
+    }
+    addListener(type, fn) {
+      this.listeners[type] = fn;
+    }
+  }
+  class FakePin {
+    constructor(opts) {
+      Object.assign(this, opts);
+    }
+  }
+  return {
+    loadGoogleMapsLibrary: vi.fn(async (name) =>
+      name === "maps"
+        ? { Map: FakeMap, InfoWindow: FakeInfoWindow }
+        : { AdvancedMarkerElement: FakeAdvancedMarker, PinElement: FakePin }
+    ),
+    GoogleMapsUnavailable: class extends Error {},
+  };
+});
+
+const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z" };
+// Give the sample's stays ids and place ids, as a real trip read would have.
+TRIP.stays = TRIP.stays.map((s, i) => ({ ...s, id: `stay-${i}`, location: { ...s.location, placeId: `saved-${i}` } }));
+TRIP.travels = TRIP.travels.map((t, i) => ({ ...t, id: `travel-${i}` }));
+TRIP.days = TRIP.days.map((d) => ({ ...d, items: d.items.map((it, i) => ({ ...it, id: `${d.date}-${i}` })) }));
+
+const CAFE = { placeId: "cafe-1", name: "Café Fédéral", address: "Bärenplatz 31, Bern", city: "Bern", lat: 46.947, lng: 7.443, types: ["cafe", "food", "establishment"] };
+const SAVED_HOTEL = { placeId: "saved-0", primary: TRIP.stays[0].name, secondary: "Bern" };
+const BERN = { placeId: "bern", name: "Bern", lat: 46.948, lng: 7.447, types: ["locality", "political"] };
+
+const fakeSearch = {
+  suggest: vi.fn(async (input) => {
+    const all = [SAVED_HOTEL, { placeId: CAFE.placeId, primary: CAFE.name, secondary: CAFE.address }, { placeId: "bern", primary: "Bern", secondary: "Switzerland" }];
+    return all.filter((s) => s.primary.toLowerCase().includes(input.toLowerCase()));
+  }),
+  pick: vi.fn(async (s) => ({ ...[CAFE, BERN].find((p) => p.placeId === s.placeId) })),
+};
+
+function renderMap({ online = true } = {}) {
+  const store = configureStore({
+    reducer: {
+      auth: authReducer,
+      timeline: timelineReducer,
+      network: networkReducer,
+      error: errorReducer,
+      notification: notificationReducer,
+    },
+    preloadedState: { network: { online } },
+  });
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={["/trips/trip-1/map"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/trips/:tripId/map" element={<MapPage />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>
+  );
+  return store;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  window.google = {
+    maps: {
+      LatLngBounds: class {
+        extend() {}
+      },
+    },
+  };
+  fake.markers = [];
+  document.body.innerHTML = "";
+  createPlacesSearch.mockResolvedValue(fakeSearch);
+  apiClient.get.mockImplementation(async (url) => {
+    if (url === "/config") return { data: { googleMapsApiKey: "k", googleMapsMapId: "m" } };
+    if (url === "/trips/trip-1") return { data: TRIP };
+    if (url === "/timezone") return { data: { timezone: "Europe/Zurich" } };
+    throw new Error(`unexpected GET ${url}`);
+  });
+});
+
+async function search(text) {
+  const box = await screen.findByRole("combobox", { name: "Search trip or places" });
+  await userEvent.type(box, text);
+  return screen.findByRole("listbox", { name: "Matching places" });
+}
+
+describe("map search with Google places", () => {
+  it("lists trip matches first, then new places marked New, dropping one the trip already has", async () => {
+    renderMap();
+    // "Hotel" matches the trip's own hotels; Google also suggests the saved one.
+    const list = await search(TRIP.stays[0].name.slice(0, 5));
+    await within(list).findByText("On this trip");
+    // The saved hotel shows once (trip section), never again as "New".
+    // Google is asked (biased to what the map shows) once the typing settles…
+    await waitFor(() =>
+      expect(fakeSearch.suggest).toHaveBeenCalledWith(expect.any(String), { north: 47, south: 46, east: 8, west: 7 })
+    );
+    // …but the saved hotel still shows once (trip section), never again as "New".
+    await act(() => new Promise((r) => setTimeout(r, 50)));
+    expect(within(list).getAllByText(TRIP.stays[0].name)).toHaveLength(1);
+    expect(within(list).queryByText("New")).not.toBeInTheDocument();
+  });
+
+  it("picking a new place drops a marker, zooms there and offers the relevant Add actions", async () => {
+    renderMap();
+    const list = await search("Café");
+    expect(await within(list).findByText("New places")).toBeInTheDocument();
+    const row = within(list).getByRole("option", { name: /Café Fédéral/ });
+    expect(within(row).getByText("New")).toBeInTheDocument();
+    await userEvent.click(within(row).getByRole("button"));
+
+    expect(await screen.findByText("Not in this trip")).toBeInTheDocument();
+    expect(fake.map.setZoom).toHaveBeenLastCalledWith(15);
+    expect(fake.markers.at(-1).content.glyphText).toBe("+");
+    // A café: Add activity only, the rest behind More…
+    expect(screen.getByRole("button", { name: "Add activity" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add stay" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More…" }));
+    expect(screen.getByRole("button", { name: "Add stay" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Travel to here" })).toBeInTheDocument();
+  });
+
+  it("Add activity opens the form prefilled with the place, and saving adds it to the trip", async () => {
+    const saved = structuredClone(TRIP);
+    saved.days[0].items.push({ id: "new-item", title: CAFE.name, location: { name: CAFE.name, lat: CAFE.lat, lng: CAFE.lng } });
+    apiClient.post.mockResolvedValue({ data: saved });
+    renderMap();
+    const list = await search("Café");
+    await userEvent.click(within(await within(list).findByRole("option", { name: /Café Fédéral/ })).getByRole("button"));
+    await userEvent.click(await screen.findByRole("button", { name: "Add activity" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Title")).toHaveValue("Café Fédéral");
+    // Before the trip (or with no filter): the trip's first day.
+    expect(within(dialog).getByLabelText("Day")).toHaveValue(TRIP.startDate);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/trips/trip-1/items",
+      expect.objectContaining({
+        title: "Café Fédéral",
+        date: TRIP.startDate,
+        location: expect.objectContaining({ name: "Café Fédéral", placeId: "cafe-1", lat: CAFE.lat }),
+      }),
+      expect.anything()
+    );
+    const body = apiClient.post.mock.calls[0][1];
+    expect(body.location).not.toHaveProperty("types"); // Google's types never reach the API
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument(); // the search result is gone
+  });
+
+  it("a city only pans the map: no marker, nothing to add", async () => {
+    renderMap();
+    const list = await search("Bern");
+    await userEvent.click(within(await within(list).findByRole("option", { name: /^Bern/ })).getByRole("button"));
+    await waitFor(() => expect(fake.map.setZoom).toHaveBeenLastCalledWith(12));
+    expect(fake.markers.some((m) => m.content.glyphText === "+")).toBe(false);
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
+  });
+
+  it("Enter picks the first row (a trip match before any Google place)", async () => {
+    renderMap();
+    await search(TRIP.stays[0].name.slice(0, 5));
+    await userEvent.keyboard("{Enter}");
+    expect(fake.map.setZoom).toHaveBeenLastCalledWith(15);
+    expect(await screen.findByText("View day")).toBeInTheDocument(); // a trip marker's info window
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
+  });
+
+  it("without Google (no key or it failed), only trip matches show", async () => {
+    createPlacesSearch.mockRejectedValue(new Error("no key"));
+    renderMap();
+    const list = await search(TRIP.stays[0].name.slice(0, 5));
+    await waitFor(() => expect(createPlacesSearch).toHaveBeenCalled());
+    expect(within(list).getByText("On this trip")).toBeInTheDocument();
+    expect(within(list).queryByText("New places")).not.toBeInTheDocument();
+  });
+});

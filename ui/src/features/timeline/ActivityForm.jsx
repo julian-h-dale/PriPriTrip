@@ -23,9 +23,9 @@ import { datesInRange, formatDayHeading } from "@/shared/utils/time";
  * from the place (or, without one, that night's stay). `onSave(payload)`
  * resolves to `{ ok }` or `{ detail, errors }` from the server.
  */
-export function ActivityForm({ open, onClose, trip, item, date, onSave }) {
+export function ActivityForm({ open, onClose, trip, item, date, prefill, onSave }) {
   const ids = useId();
-  const [values, setValues] = useState(() => toFormValues(item, date));
+  const [values, setValues] = useState(() => toFormValues(item, date, prefill));
   const [errors, setErrors] = useState({});
   const [problems, setProblems] = useState(null);
   const [busy, setBusy] = useState(false);

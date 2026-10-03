@@ -69,8 +69,9 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 
 - Add a **"Locate me"** blue dot: "how far am I from the hotel?" is a
   constant on-trip question.
-- The info window can open underneath the search bar. Pan the map so the
-  window clears the controls.
+- ~~The info window can open underneath the search bar.~~ **Fixed
+  2026-10-03 (Phase 16):** a focused marker sits below center, so its window
+  clears the controls.
 - In the headless screenshots, the emoji glyphs on the pins render as empty
   boxes, and one info window's photo area looks blank. That may only be a
   font issue in the test browser, but check it on the phone. Real SVG icons

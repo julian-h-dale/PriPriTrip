@@ -1,64 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { BedDouble, CalendarDays, CloudOff, Home, MapPin, Navigation, Route, Search, X } from "lucide-react";
+import { CloudOff, Navigation } from "lucide-react";
 import { buildMapMarkers } from "@/features/map/buildMapMarkers";
+import { MapControls } from "@/features/map/MapControls";
+import { MapInfoContent } from "@/features/map/MapInfoContent";
 import { filterMarkers } from "@/features/map/mapFilters";
-import { MODE_ICON } from "@/features/timeline/describeEntry";
-import { matchMarkers } from "@/features/map/markerSearch";
-import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { colorFor, directionsUrl, glyphFor, iconFor } from "@/features/map/mapStyle";
+import { isArea } from "@/features/map/placeActions";
+import { ActivityForm } from "@/features/timeline/ActivityForm";
+import { stayCoverage } from "@/features/timeline/coverageView";
+import { runEdit } from "@/features/timeline/runEdit";
+import { StayForm } from "@/features/timeline/StayForm";
+import { createItem, createStay, createTravel, fetchTrip, selectReadOnly } from "@/features/timeline/timelineSlice";
+import { TravelForm } from "@/features/timeline/TravelForm";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
-import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
 import { getClientConfig } from "@/shared/services/clientConfig";
 import { loadGoogleMapsLibrary } from "@/shared/services/googleMapsLoader";
-import { cn } from "@/shared/utils/cn";
+import { defaultFormDate } from "@/shared/utils/tripDates";
 import { formatDayHeading } from "@/shared/utils/time";
-
-// A plain emoji glyph per kind/mode — simple, legible on a small pin, no
-// per-icon SVG to hand-build for a non-React marker. Easy to swap for a real
-// icon later if that's worth it.
-const TRAVEL_GLYPH = { flight: "✈️", train: "🚆", bus: "🚌", ferry: "🚢", boat: "🚢", car: "🚗", other: "🧭" };
-
-function glyphFor(marker) {
-  if (marker.kind === "stay") return "🏨";
-  if (marker.kind === "travel") return TRAVEL_GLYPH[marker.mode] ?? "🧭";
-  return "📍";
-}
-
-function colorFor(marker) {
-  if (marker.kind === "stay") return "#3987e5"; // --series-1
-  if (marker.kind === "travel") return "#d95926"; // --series-2
-  return "#9085e9"; // --series-7, activities
-}
-
-function escapeHtml(text) {
-  return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-}
-
-function infoWindowHtml(marker, tripId) {
-  const directions = directionsUrl(marker);
-  const dayUrl = `/trips/${tripId}/days/${marker.day}`;
-  const photo = marker.imgRef
-    ? `<img src="${escapeHtml(marker.imgRef)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;" />`
-    : "";
-  // The InfoWindow's own chrome is always a plain white card, regardless of
-  // this app's dark theme — this content is rendered outside the React tree
-  // (Google appends it directly), so it doesn't inherit our theme at all,
-  // but the page's global `color` rule on <body> still cascades down to it.
-  // Every text color here is explicit so it reads on that white background
-  // instead of inheriting this app's near-white foreground color.
-  return `
-    <div style="max-width:220px; color:#202124;">
-      ${photo}
-      <div style="font-weight:600;margin-bottom:2px;color:#202124;">${escapeHtml(marker.title)}</div>
-      <div style="font-size:12px;color:#5f6368;margin-bottom:6px;">${formatDayHeading(marker.day)}</div>
-      <a href="${dayUrl}" style="display:block;font-size:13px;margin-bottom:2px;color:#1a73e8;">View day</a>
-      <a href="${directions}" target="_blank" rel="noopener noreferrer" style="display:block;font-size:13px;color:#1a73e8;">Directions</a>
-    </div>
-  `;
-}
 
 function MissingConfig({ message }) {
   return (
@@ -66,17 +28,6 @@ function MissingConfig({ message }) {
       <Card className="max-w-sm p-6 text-center text-sm text-muted-foreground">{message}</Card>
     </div>
   );
-}
-
-/** The same kinds as the pins' emoji, as real icons for React-rendered lists. */
-function iconFor(marker) {
-  if (marker.kind === "stay") return BedDouble;
-  if (marker.kind === "travel") return MODE_ICON[marker.mode] ?? Route;
-  return MapPin;
-}
-
-function directionsUrl(marker) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${marker.lat},${marker.lng}`;
 }
 
 /**
@@ -128,160 +79,48 @@ function OfflinePlaces({ trip, markers }) {
   );
 }
 
+// How far below the center a focused marker sits, so its info window opens
+// under the search bar instead of behind it.
+const FOCUS_OFFSET_PX = 140;
+
+// Which form an Add action opens, and with the picked place at which end.
+const ACTION_FORM = {
+  activity: { kind: "activity" },
+  stay: { kind: "stay" },
+  travelFrom: { kind: "travel", end: "from" },
+  travelTo: { kind: "travel", end: "to" },
+};
+
 /**
- * Search box + House/Calendar filters, overlaid on the map. Search looks at
- * the trip's own (currently filtered-in) markers first; only falls back to
- * a live Places search — to re-center the map for orientation, never adding
- * anything — when nothing local matches.
+ * The full-screen map: one marker per located stay, travel endpoint and
+ * activity, plus — after a Google search — one temporary "search result"
+ * marker for a place not on the trip, whose info window offers to add it.
  */
-function MapControls({ trip, visibleMarkers, onSelectMarker, onPanTo, placesLib, stayOnly, onToggleStayOnly, date, onDateChange }) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const dateInputRef = useRef(null);
-
-  const suggestions = query.trim() ? matchMarkers(visibleMarkers, query).slice(0, 8) : [];
-
-  function pick(marker) {
-    setQuery("");
-    setOpen(false);
-    onSelectMarker(marker);
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (suggestions.length > 0) {
-      pick(suggestions[0]);
-      return;
-    }
-    const trimmed = query.trim();
-    if (!trimmed || !placesLib) return;
-    try {
-      const { places } = await placesLib.Place.searchByText({
-        textQuery: trimmed,
-        fields: ["location"],
-      });
-      const hit = places?.[0];
-      if (hit?.location) onPanTo(hit.location);
-    } catch {
-      // Best-effort orientation search only; nothing to show on failure.
-    }
-    setQuery("");
-    setOpen(false);
-  }
-
-  return (
-    <div className="absolute inset-x-0 top-0 z-10 flex items-start gap-1.5 p-2">
-      <form onSubmit={handleSubmit} className="relative flex-1">
-        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-        <Input
-          role="combobox"
-          aria-expanded={open && suggestions.length > 0}
-          aria-label="Search this trip"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="Search this trip"
-          className="bg-card pl-8"
-          autoComplete="off"
-        />
-        {open && suggestions.length > 0 && (
-          <ul role="listbox" aria-label="Matching places" className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-card">
-            {suggestions.map((m) => (
-              <li key={m.id} role="option" aria-selected="false">
-                <button
-                  type="button"
-                  onClick={() => pick(m)}
-                  className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                >
-                  <span className="text-sm">{m.title}</span>
-                  {m.city && <span className="text-xs text-muted-foreground">{m.city}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </form>
-
-      <Button
-        type="button"
-        variant={stayOnly ? "default" : "ghost"}
-        size="icon"
-        className="shrink-0 bg-card"
-        aria-pressed={stayOnly}
-        aria-label="Show only stays"
-        onClick={onToggleStayOnly}
-      >
-        <Home className="h-4 w-4" aria-hidden="true" />
-      </Button>
-
-      {date ? (
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          className="shrink-0 gap-1"
-          aria-label={`Showing ${formatDayHeading(date)} only; clear`}
-          onClick={() => onDateChange("")}
-        >
-          {formatDayHeading(date)}
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-      ) : (
-        <div className="relative shrink-0">
-          <Button
-            type="button"
-            variant={calendarOpen ? "default" : "ghost"}
-            size="icon"
-            className="bg-card"
-            aria-pressed={calendarOpen}
-            aria-label="Show one day"
-            onClick={() => {
-              setCalendarOpen((o) => !o);
-              requestAnimationFrame(() => dateInputRef.current?.focus());
-            }}
-          >
-            <CalendarDays className="h-4 w-4" aria-hidden="true" />
-          </Button>
-          <input
-            ref={dateInputRef}
-            type="date"
-            aria-label="Pick a day"
-            min={trip.startDate}
-            max={trip.endDate}
-            className={cn(
-              "absolute right-0 top-full mt-1 rounded-md border border-border bg-card px-2 py-1 text-sm",
-              !calendarOpen && "sr-only"
-            )}
-            onChange={(e) => {
-              onDateChange(e.target.value);
-              setCalendarOpen(false);
-            }}
-            onBlur={() => setCalendarOpen(false)}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** The full-screen map: one marker per located stay, travel endpoint and activity. */
 function TripMap({ trip }) {
+  const dispatch = useDispatch();
+  const online = useSelector((s) => s.network?.online ?? true);
+  const readOnly = useSelector(selectReadOnly);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const infoWindowRef = useRef(null);
   const entriesRef = useRef([]); // [{ element, data }]
+  const resultMarkerRef = useRef(null); // the search result's AdvancedMarkerElement
   const libsRef = useRef(null); // { AdvancedMarkerElement, PinElement }, set once the map is ready
+  // The InfoWindow's content node; React renders into it through a portal.
+  const [infoNode] = useState(() => document.createElement("div"));
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
-  const [placesLib, setPlacesLib] = useState(null);
   const [stayOnly, setStayOnly] = useState(false);
   const [date, setDate] = useState("");
+  // null | { kind: "trip", marker } | { kind: "place", place, types }
+  const [info, setInfo] = useState(null);
+  // The picked Google place on the map: null | { place, types }
+  const [result, setResult] = useState(null);
+  // null | { kind: "activity" | "stay" | "travel", prefill, date }
+  const [form, setForm] = useState(null);
   const markers = useMemo(() => buildMapMarkers(trip), [trip]);
+  const stayCov = useMemo(() => stayCoverage(trip), [trip]);
 
   useEffect(() => {
     getClientConfig()
@@ -289,10 +128,11 @@ function TripMap({ trip }) {
       .catch(() => setError("Couldn’t load map configuration."));
   }, []);
 
-  function openInfoWindow(marker, advanced) {
+  function openInfoWindow(next, anchor) {
     if (!infoWindowRef.current || !mapRef.current) return;
-    infoWindowRef.current.setContent(infoWindowHtml(marker, trip.id));
-    infoWindowRef.current.open({ map: mapRef.current, anchor: advanced });
+    setInfo(next);
+    infoWindowRef.current.setContent(infoNode);
+    infoWindowRef.current.open({ map: mapRef.current, anchor });
   }
 
   useEffect(() => {
@@ -303,7 +143,6 @@ function TripMap({ trip }) {
       try {
         const { Map, InfoWindow } = await loadGoogleMapsLibrary("maps");
         const { AdvancedMarkerElement, PinElement } = await loadGoogleMapsLibrary("marker");
-        const places = await loadGoogleMapsLibrary("places");
         if (!live || !containerRef.current) return;
 
         // Fit the initial view to stays/activities — the trip's actual
@@ -319,8 +158,9 @@ function TripMap({ trip }) {
           zoom: forBounds.length ? 12 : 2,
         });
         mapRef.current = map;
-        infoWindowRef.current = new InfoWindow();
-        setPlacesLib(places);
+        const infoWindow = new InfoWindow();
+        infoWindow.addListener("closeclick", () => setInfo(null));
+        infoWindowRef.current = infoWindow;
 
         const bounds = new window.google.maps.LatLngBounds();
         forBounds.forEach((marker) => bounds.extend({ lat: marker.lat, lng: marker.lng }));
@@ -337,6 +177,7 @@ function TripMap({ trip }) {
       live = false;
       entriesRef.current.forEach(({ element }) => (element.map = null));
       entriesRef.current = [];
+      if (resultMarkerRef.current) resultMarkerRef.current.map = null;
       infoWindowRef.current?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markers derive from trip, stable per trip load
@@ -373,10 +214,10 @@ function TripMap({ trip }) {
       // AdvancedMarkerElement's own runtime recommends addListener("click")
       // specifically (not the generic "gmp-click" event) for the built-in
       // keyboard/accessible click handling.
-      advanced.addListener("click", () => openInfoWindow(marker, advanced));
+      advanced.addListener("click", () => openInfoWindow({ kind: "trip", marker }, advanced));
       return { element: advanced, data: marker };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- openInfoWindow closes over refs only, stable in effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openInfoWindow closes over refs/setters only
   }, [ready, markers, stayOnly, date]);
 
   const visibleMarkers = useMemo(
@@ -387,14 +228,90 @@ function TripMap({ trip }) {
   function selectMarker(marker) {
     const entry = entriesRef.current.find((e) => e.data.id === marker.id);
     if (!entry || !mapRef.current) return;
-    mapRef.current.panTo({ lat: marker.lat, lng: marker.lng });
-    mapRef.current.setZoom(15);
-    openInfoWindow(marker, entry.element);
+    focus({ lat: marker.lat, lng: marker.lng });
+    openInfoWindow({ kind: "trip", marker }, entry.element);
   }
 
-  function panTo(position) {
-    mapRef.current?.panTo(position);
-    mapRef.current?.setZoom(13);
+  /** Center on a point at street zoom, nudged down so its info window clears the controls. */
+  function focus(position) {
+    const map = mapRef.current;
+    map.setZoom(15);
+    map.setCenter(position);
+    map.panBy(0, -FOCUS_OFFSET_PX);
+  }
+
+  function clearResult() {
+    if (resultMarkerRef.current) resultMarkerRef.current.map = null;
+    resultMarkerRef.current = null;
+    setResult(null);
+    if (info?.kind === "place") {
+      infoWindowRef.current?.close();
+      setInfo(null);
+    }
+  }
+
+  /** A Google place picked from search: drop the search-result marker there and open its info window. */
+  function showPlace(picked) {
+    const { types = [], ...place } = picked;
+    const map = mapRef.current;
+    if (!map || !libsRef.current) return;
+    if (resultMarkerRef.current) resultMarkerRef.current.map = null;
+    resultMarkerRef.current = null;
+    const position = { lat: place.lat, lng: place.lng };
+
+    // A city or region is for orientation only: pan there, nothing to add.
+    if (isArea(types)) {
+      setResult(null);
+      infoWindowRef.current?.close();
+      setInfo(null);
+      map.panTo(position);
+      map.setZoom(12);
+      return;
+    }
+
+    const { AdvancedMarkerElement, PinElement } = libsRef.current;
+    // Looks unlike any trip marker: white, dark border, a "+" — not saved yet.
+    const pin = new PinElement({
+      background: "#ffffff",
+      borderColor: "#12151c",
+      glyphColor: "#12151c",
+      glyphText: "+",
+    });
+    const marker = new AdvancedMarkerElement({ map, position, title: place.name, content: pin, zIndex: 1000 });
+    marker.addListener("click", () => openInfoWindow({ kind: "place", place, types }, marker));
+    resultMarkerRef.current = marker;
+    setResult({ place, types });
+    focus(position);
+    openInfoWindow({ kind: "place", place, types }, marker);
+  }
+
+  function startAdd(action) {
+    if (!info || info.kind !== "place") return;
+    const { kind, end } = ACTION_FORM[action];
+    setForm({
+      kind,
+      prefill: { place: info.place, end },
+      date: defaultFormDate(trip, {
+        preferred: date || null,
+        // A new stay should start on a night that has none yet.
+        skip: kind === "stay" ? (d) => stayCov.has(d) : undefined,
+      }),
+    });
+  }
+
+  async function save(payload) {
+    const tripId = trip.id;
+    const thunk =
+      form.kind === "stay"
+        ? createStay({ tripId, stay: payload })
+        : form.kind === "travel"
+          ? createTravel({ tripId, travel: payload })
+          : createItem({ tripId, item: payload });
+    const outcome = await runEdit(dispatch, thunk);
+    // Saved: the place is a trip marker now (the trip reloads into state and
+    // the markers rebuild), so the temporary search result goes.
+    if (outcome.ok) clearResult();
+    return outcome;
   }
 
   if (error) return <MissingConfig message={error} />;
@@ -406,9 +323,15 @@ function TripMap({ trip }) {
       <MissingConfig message="No Map ID is configured yet — the map view needs one for its markers. See implementation_plan.md's Key setup." />
     );
   }
-  if (markers.length === 0 && config) {
-    return <MissingConfig message="No located places on this trip yet." />;
-  }
+
+  const formProps = {
+    open: true,
+    onClose: () => setForm(null),
+    trip,
+    date: form?.date,
+    prefill: form?.prefill,
+    onSave: save,
+  };
 
   return (
     <div className="relative h-full w-full">
@@ -416,16 +339,29 @@ function TripMap({ trip }) {
       {ready && (
         <MapControls
           trip={trip}
+          markers={markers}
           visibleMarkers={visibleMarkers}
           onSelectMarker={selectMarker}
-          onPanTo={panTo}
-          placesLib={placesLib}
+          onPickPlace={showPlace}
+          getBias={() => mapRef.current?.getBounds()?.toJSON()}
+          online={online}
+          resultName={result?.place.name ?? null}
+          onClearResult={clearResult}
           stayOnly={stayOnly}
           onToggleStayOnly={() => setStayOnly((v) => !v)}
           date={date}
           onDateChange={setDate}
         />
       )}
+      {info &&
+        createPortal(
+          <MapInfoContent info={info} tripId={trip.id} onAction={startAdd} readOnly={readOnly} />,
+          infoNode
+        )}
+
+      {form?.kind === "activity" && <ActivityForm {...formProps} item={null} />}
+      {form?.kind === "stay" && <StayForm {...formProps} stay={null} />}
+      {form?.kind === "travel" && <TravelForm {...formProps} travel={null} />}
     </div>
   );
 }

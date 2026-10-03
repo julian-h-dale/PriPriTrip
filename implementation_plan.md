@@ -1002,7 +1002,7 @@ Asked 2026-10-03:
     (design_doc).
   - The map keeps its view. Saving doesn't re-fit the bounds.
 
-### Phase 16 — Run: Places results in map search
+### Phase 16 — Run: Places results in map search ✅
 
 - Places suggestions in `MapControls`, in two sections with the `New` badge
   and de-duplicated by `placeId`. The suggestions are biased to the viewport.
@@ -1030,7 +1030,7 @@ Asked 2026-10-03:
     before.
 - Julian checks it at 375px.
 
-### Phase 17 — Run: add to the trip from the map
+### Phase 17 — Run: add to the trip from the map ✅
 
 - `placeActions(types)`, the action links in the search-result info window,
   and "More…".
@@ -1054,6 +1054,45 @@ Asked 2026-10-03:
   real hotel as a stay from the map, and check that both appear on the day
   pages and as trip markers.
 - Julian checks it at 375px.
+
+### Phases 16–17: built as planned, plus
+
+- **Files:** the map page is split into `MapControls.jsx` (the search box
+  and filters), `MapInfoContent.jsx` (the info window, rendered by React),
+  `mapStyle.js` (pin glyphs, colors and icons) and the pure `searchRows.js`
+  and `placeActions.js`. `MapPage.jsx` wires them together.
+- **"View day"** in a trip marker's window is now an in-app `Link`. The old
+  HTML string's plain `href` reloaded the whole page.
+- **A new activity's title** defaults to the place's name, as a new stay's
+  name already did. It's editable.
+- **The map shows even with no located places**, instead of the old "No
+  located places" message, so a trip's first places can be found and added
+  from the map.
+- **The info window no longer opens under the search bar.** A focused marker
+  sits 140 px below center (`FOCUS_OFFSET_PX`). Found in the live
+  screenshots; this is `ui_review.md` §6's info-window item.
+- **Google's `types`** come back on the picked place, and are dropped
+  before anything is stored, because the API rejects unknown location
+  fields. `PlaceField` drops them too, and a test checks the saved payload.
+- **Viewport bias is a bias, not a filter.** "Café Fédéral Bern" can still
+  surface a Café Fédéral elsewhere if Google ranks it higher. That's
+  expected; the address line shows which one it is.
+- **Tests:**
+  - `placeActions`, `searchRows`, `defaultFormDate` and form prefill unit
+    tests;
+  - `MapSearch.test.jsx`, the whole flow against a fake Google Maps: the
+    sections and de-duplication, viewport bias, the search-result marker,
+    actions and More…, the prefilled form saving to the API without
+    `types`, a city only panning, Enter, and no Google;
+  - `MapInfoContent.test.jsx`.
+- `make verify` green: 115 API + 159 UI.
+- **Live** (`e2e/trip.spec.js`, real Google APIs, run serially), at 375px:
+  - search "Café Fédéral Bern", then pick it: a + marker and an info window
+    with its photo, clear of the search bar;
+  - Add activity, then Save: it's a trip marker now;
+  - "Hotel Bellevue Palace Bern", then Add stay first, then Save;
+  - the test deletes both afterwards, so the dev trip is unchanged.
+- Julian still needs to check it at 375px himself.
 
 ### Design: installable offline app (Phases 18–19)
 

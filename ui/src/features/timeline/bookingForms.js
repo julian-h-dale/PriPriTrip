@@ -28,16 +28,19 @@ export const STAY_TYPES = [
   ["other", "Other"],
 ];
 
-/** Form state for an existing stay, or a new one checking in on `date`. */
-export function toStayValues(stay, date, trip) {
+/**
+ * Form state for an existing stay, or a new one checking in on `date`. A new
+ * one can start from `prefill.place` (e.g. picked on the map), named after it.
+ */
+export function toStayValues(stay, date, trip, prefill) {
   const [checkInDate, checkInTime] = split(stay?.checkIn);
   const [checkOutDate, checkOutTime] = split(stay?.checkOut);
   const lastCheckOut = addDays(trip.endDate, 1);
   const nextDay = addDays(date, 1);
   return {
-    name: stay?.name ?? "",
+    name: stay?.name ?? (prefill?.place?.name || ""),
     type: stay?.type ?? "hotel",
-    place: placeOf(stay?.location),
+    place: stay ? placeOf(stay.location) : (prefill?.place ?? null),
     locationUrl: stay?.location?.url ?? "",
     checkInDate: stay ? checkInDate : date,
     checkInTime: stay ? checkInTime : CHECK_IN_TIME,
@@ -113,8 +116,11 @@ export function autoTitle(values) {
   return from ? `From ${from}` : "";
 }
 
-/** Form state for an existing leg, or a new one departing on `date`. */
-export function toTravelValues(travel, date) {
+/**
+ * Form state for an existing leg, or a new one departing on `date`. A new one
+ * can start with `prefill.place` at one end (`prefill.end`: "from" | "to").
+ */
+export function toTravelValues(travel, date, prefill) {
   const [departDate, departTime] = split(travel?.depart);
   const [arriveDate, arriveTime] = split(travel?.arrive);
   const values = {
@@ -132,6 +138,12 @@ export function toTravelValues(travel, date) {
     confirmationNumber: travel?.confirmationNumber ?? "",
     notes: travel?.notes ?? "",
   };
+  if (!travel && prefill?.place) {
+    const end = prefill.end === "to" ? "to" : "from";
+    values[end] = prefill.place;
+    if (end === "to") values.arriveDate = date; // as picking a "to" place does
+    values.title = autoTitle(values);
+  }
   // A title that was never changed keeps following the places.
   values.titleEdited = Boolean(travel) && travel.title !== autoTitle(values);
   return values;

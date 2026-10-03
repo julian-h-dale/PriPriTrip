@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isInTrip, todayIn, tripPhase } from "@/shared/utils/tripDates";
+import { defaultFormDate, isInTrip, todayIn, tripPhase } from "@/shared/utils/tripDates";
 
 const TRIP = { startDate: "2026-10-29", endDate: "2026-11-13", timezone: "Asia/Tokyo" };
 
@@ -29,5 +29,32 @@ describe("tripPhase", () => {
     expect(tripPhase(TRIP, new Date("2026-10-28T20:00:00Z"))).toBe("active");
     expect(tripPhase(TRIP, new Date("2026-11-13T14:00:00Z"))).toBe("active"); // 23:00 Tokyo
     expect(tripPhase(TRIP, new Date("2026-11-13T15:00:00Z"))).toBe("past"); // midnight Tokyo
+  });
+});
+
+describe("defaultFormDate", () => {
+  const BEFORE = new Date("2026-10-03T12:00:00Z"); // trip hasn't started
+  const DURING = new Date("2026-11-02T03:00:00Z"); // Nov 2 in Tokyo
+
+  it("uses the preferred date when it's inside the trip", () => {
+    expect(defaultFormDate(TRIP, { preferred: "2026-11-05", now: DURING })).toBe("2026-11-05");
+  });
+
+  it("ignores a preferred date outside the trip", () => {
+    expect(defaultFormDate(TRIP, { preferred: "2026-12-01", now: BEFORE })).toBe("2026-10-29");
+  });
+
+  it("uses today, on the trip's calendar, while the trip is under way", () => {
+    expect(defaultFormDate(TRIP, { now: DURING })).toBe("2026-11-02");
+  });
+
+  it("before the trip: the first date `skip` allows (a stay's first uncovered night)", () => {
+    const covered = new Set(["2026-10-29", "2026-10-30"]);
+    expect(defaultFormDate(TRIP, { skip: (d) => covered.has(d), now: BEFORE })).toBe("2026-10-31");
+  });
+
+  it("falls back to the first day", () => {
+    expect(defaultFormDate(TRIP, { now: BEFORE })).toBe("2026-10-29");
+    expect(defaultFormDate(TRIP, { skip: () => true, now: BEFORE })).toBe("2026-10-29");
   });
 });

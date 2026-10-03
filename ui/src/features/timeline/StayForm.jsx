@@ -22,9 +22,9 @@ import { addDays } from "@/shared/utils/time";
  * sets the clock check-in and check-out are on. Dates and times are entered as
  * written on the booking.
  */
-export function StayForm({ open, onClose, trip, stay, date, onSave }) {
+export function StayForm({ open, onClose, trip, stay, date, prefill, onSave }) {
   const ids = useId();
-  const [values, setValues] = useState(() => toStayValues(stay, date, trip));
+  const [values, setValues] = useState(() => toStayValues(stay, date, trip, prefill));
   const [errors, setErrors] = useState({});
   const [problems, setProblems] = useState(null);
   const [busy, setBusy] = useState(false);

@@ -38,9 +38,9 @@ function CrossZoneNote({ values, departZone, arriveZone }) {
  * required. Each end is on its own place's clock — the user only enters what
  * the ticket says. A missing arrival is allowed, with a warning.
  */
-export function TravelForm({ open, onClose, trip, travel, date, onSave }) {
+export function TravelForm({ open, onClose, trip, travel, date, prefill, onSave }) {
   const ids = useId();
-  const [values, setValues] = useState(() => toTravelValues(travel, date));
+  const [values, setValues] = useState(() => toTravelValues(travel, date, prefill));
   const [errors, setErrors] = useState({});
   const [problems, setProblems] = useState(null);
   const [busy, setBusy] = useState(false);

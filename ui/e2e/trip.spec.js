@@ -9,6 +9,10 @@ import { login, screenshotPath } from "./helpers.js";
  */
 const SAMPLE_TRIP = "Bern & Wengen Long Weekend";
 
+// One at a time: the add-from-map test briefly adds markers to the sample
+// trip, which the other map tests count.
+test.describe.configure({ mode: "serial" });
+
 test("trips list", async ({ page }) => {
   await login(page);
   await expect(page.getByRole("link", { name: SAMPLE_TRIP })).toBeVisible();
@@ -98,7 +102,7 @@ test("map search and filters", async ({ page }) => {
   await expect(pins).toHaveCount(10);
 
   // Search matches the trip's own markers first; picking one pans + opens it.
-  await page.getByRole("combobox", { name: "Search this trip" }).fill("Kornhaus");
+  await page.getByRole("combobox", { name: "Search trip or places" }).fill("Kornhaus");
   const suggestion = page.getByRole("option", { name: /Kornhauskeller/ });
   await expect(suggestion).toBeVisible();
   await page.screenshot({ path: screenshotPath("08-map-search-suggestions"), fullPage: true });
@@ -122,4 +126,79 @@ test("map search and filters", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("09-map-date-filter"), fullPage: true });
   await page.getByRole("button", { name: "Show only stays" }).click();
   await expect(pins).toHaveCount(1); // Beausite Park Hotel covers that night
+});
+
+/** Delete what a test added through the UI, so the dev trip is left as it was. */
+async function deleteAdded(page, tripId, { itemTitle, stayName }) {
+  const token = await page.evaluate(() => localStorage.getItem("auth_token"));
+  const api = "http://localhost:8000";
+  const headers = { Authorization: `Bearer ${token}` };
+  const trip = await (await page.request.get(`${api}/trips/${tripId}`, { headers })).json();
+  for (const day of trip.days) {
+    for (const item of day.items.filter((i) => i.title === itemTitle)) {
+      await page.request.delete(`${api}/trips/${tripId}/items/${item.id}`, { headers });
+    }
+  }
+  for (const stay of trip.stays.filter((s) => s.name === stayName)) {
+    await page.request.delete(`${api}/trips/${tripId}/stays/${stay.id}`, { headers });
+  }
+}
+
+test("map: add a Google place to the trip (activity and stay)", async ({ page }) => {
+  await login(page);
+  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  const tripId = page.url().split("/trips/")[1];
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+  const pins = page.locator("gmp-advanced-marker");
+  await expect(pins).toHaveCount(10);
+  const search = page.getByRole("combobox", { name: "Search trip or places" });
+  let addedItem = null;
+  let addedStay = null;
+
+  try {
+    // A café that isn't on the trip: Google rows, marked New, under the trip's own.
+    await search.fill("Café Fédéral Bern");
+    const cafe = page.getByRole("option", { name: /Café Fédéral/ }).first();
+    await expect(cafe).toBeVisible();
+    await expect(page.getByText("New places")).toBeVisible();
+    await page.screenshot({ path: screenshotPath("14-map-search-new-places"), fullPage: true });
+    await cafe.click();
+
+    const info = page.locator(".gm-style-iw");
+    await expect(info).toContainText("Not in this trip");
+    await expect(pins).toHaveCount(11); // + the search-result marker
+    await expect(info.getByRole("button", { name: "Add activity" })).toBeVisible();
+    await expect(info.getByRole("button", { name: "Add stay" })).toHaveCount(0); // not lodging
+    // The window opens below the search bar, not behind it.
+    const bar = await search.boundingBox();
+    const windowBox = await info.boundingBox();
+    expect(windowBox.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+    await page.waitForTimeout(1000); // let tiles and the photo load for the screenshot
+    await page.screenshot({ path: screenshotPath("15-map-new-place-info"), fullPage: true });
+
+    await info.getByRole("button", { name: "Add activity" }).click();
+    const activity = page.getByRole("dialog", { name: "Add activity" });
+    await expect(activity.getByLabel("Title")).toHaveValue(/Café Fédéral/);
+    addedItem = await activity.getByLabel("Title").inputValue();
+    await page.screenshot({ path: screenshotPath("16-map-add-activity-prefilled"), fullPage: true });
+    await activity.getByRole("button", { name: "Save" }).click();
+    await expect(activity).toBeHidden();
+    // Saved: a real trip marker now, and the temporary one is gone.
+    await expect(pins).toHaveCount(11);
+    await expect(search).toHaveValue("");
+
+    // A hotel: lodging, so Add stay comes first.
+    await search.fill("Hotel Bellevue Palace Bern");
+    await page.getByRole("option", { name: /Bellevue Palace/ }).first().click();
+    await expect(info).toContainText("Not in this trip");
+    await info.getByRole("button", { name: "Add stay" }).click();
+    const stay = page.getByRole("dialog", { name: "Add stay" });
+    addedStay = await stay.getByLabel("Name").inputValue();
+    expect(addedStay).toMatch(/Bellevue Palace/);
+    await stay.getByRole("button", { name: "Save" }).click();
+    await expect(stay).toBeHidden();
+    await expect(pins).toHaveCount(12);
+  } finally {
+    await deleteAdded(page, tripId, { itemTitle: addedItem, stayName: addedStay });
+  }
 });

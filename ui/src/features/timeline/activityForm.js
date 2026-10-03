@@ -32,14 +32,17 @@ export function compact(payload) {
   return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== null));
 }
 
-/** Form state for an existing activity (or a blank one on `date`). */
-export function toFormValues(item, date) {
+/**
+ * Form state for an existing activity (or a blank one on `date`). A new one can
+ * start from `prefill.place` (e.g. picked on the map), titled after it.
+ */
+export function toFormValues(item, date, prefill) {
   return {
-    title: item?.title ?? "",
+    title: item?.title ?? (prefill?.place?.name || ""),
     date: item?.start ? datePart(item.start) : date,
     startTime: item?.start?.slice(11, 16) ?? "",
     endTime: item?.end?.slice(11, 16) ?? "",
-    place: placeOf(item?.location),
+    place: item ? placeOf(item.location) : (prefill?.place ?? null),
     locationUrl: item?.location?.url ?? "",
     confirmationNumber: item?.confirmationNumber ?? "",
     notes: item?.notes ?? "",

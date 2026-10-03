@@ -7,10 +7,23 @@
 ## Status
 
 - **Current work (2026-10-03):** Run stage 1 in `implementation_plan.md`,
-  built as two commits, as Julian asked. **Commit 1 (Phases 18–19): done.**
-  It makes the app installable as a PWA, with an offline trip cache and a new
-  logo. **Commit 2 (Phases 16–17, map place search with add-from-map) is
-  next.**
+  built as two commits, as Julian asked. **Both are done**, waiting on
+  Julian's 375px look.
+  - **Map place search (commit 2, Phases 16–17):**
+    - The map's search shows the trip's own matches ("On this trip"), then
+      Google Places autocomplete ("New places", each marked **New**),
+      biased to the map's viewport. A place already on the trip is never
+      shown twice.
+    - Picking a new place drops a white "+" marker, zooms there and opens a
+      React-rendered info window: photo, address, "Not in this trip", and
+      the Add actions that fit the place (`placeActions`: lodging → Add stay;
+      airports and stations → Travel from/to here; everything else → Add
+      activity; the rest under More…). A city only pans.
+    - An action opens the existing form prefilled with the place, on the date
+      from `defaultFormDate` (the map's day filter, else today in the trip,
+      else for a stay the first night without one, else the first day).
+      Saving turns it into a normal trip marker.
+  - **PWA and offline (commit 1, Phases 18–19):**
   - **PWA:** `vite-plugin-pwa` precaches the app shell (deep links open
     offline). It uses `registerType: "prompt"`, so an "Update available ·
     Reload" bar appears (`shared/pwa/`) and the app never reloads itself.
@@ -109,8 +122,10 @@
   scratch on every filter change instead; verified stable across 3 full
   toggle cycles live.
 - **Branch:** `rebuild`, pushed to `origin/rebuild`. Not merged to `main`.
-- **Last verified:** 2026-10-03 (commit 1): `make verify` green (115 API +
-  132 UI tests), plus `ui/e2e/offline.spec.js` live against a built app.
+- **Last verified:** 2026-10-03: `make verify` green (115 API + 159 UI
+  tests). Plus `ui/e2e/offline.spec.js` live against a built app, and
+  `ui/e2e/trip.spec.js`, including add-from-map, against the real Google
+  APIs. The test entries it adds are deleted afterwards.
   Before that, 2026-10-02: `make verify` green (115 API + 97 UI tests),
   plus a live Playwright pass against the real dev app (see below). Julian
   confirmed live Google Places works with his key. In a real browser at
@@ -238,10 +253,14 @@
    re-imported (after the 2026-10-02 `make reset-db` wiped it) and
    backfilled with real photos via the name-search path — done, in the dev
    database now.
-4. **Run stage 1:** commit 2, map place search and add-from-map (Phases
-   16–17). After that, **Julian:** deploy to Fly (HTTPS), then install it on
-   the phone and try it in airplane mode before the Okinawa trip (Oct 29).
-5. **Then, from the backlog:** editing the trip header; verification/gaps
+4. **Julian:** look at Run stage 1 at 375px: map search, adding from the
+   map, and offline (DevTools → Network → Offline). Then deploy to Fly
+   (HTTPS), install it on the phone, and try it in airplane mode before the
+   Okinawa trip (Oct 29).
+5. **Next candidate:** `ui_review.md` items 1 and 2 (a today-aware Now/Next
+   card, and key details without expanding), building on
+   `shared/utils/tripDates.js`.
+6. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
    anything past Walk stage 3 (map search/filters was the last planned
    phase there) needs a fresh look at what's next.
@@ -256,7 +275,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 115 API + 132 UI tests (after commit 1)
+make verify     # should be green: 115 API + 159 UI tests
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.

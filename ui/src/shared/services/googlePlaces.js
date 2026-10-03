@@ -5,7 +5,11 @@ import { loadGoogleMapsLibrary, GoogleMapsUnavailable } from "@/shared/services/
  * `places` library). Everything else works with plain objects:
  *
  *   suggestion: { placeId, primary, secondary }
- *   place:      { placeId, name, address, city, lat, lng }
+ *   place:      { placeId, name, address, city, lat, lng, imgRef }
+ *
+ * `pick()` also returns the place's Google `types` on the same object. A trip
+ * location has no such field (the API rejects unknown ones), so anything that
+ * stores the place drops `types` first.
  *
  * The browser key comes from GET /config. It is public by design and protected
  * by its restrictions in the Google console (our websites; Maps JavaScript +
@@ -32,10 +36,15 @@ export async function createPlacesSearch() {
   const predictions = new Map();
 
   return {
-    /** Suggestions for typed text, biased towards `near` ({ lat, lng }) if given. */
+    /**
+     * Suggestions for typed text, biased towards `near` if given: a point
+     * ({ lat, lng }, within 50 km) or an area ({ north, south, east, west },
+     * e.g. what the map is showing).
+     */
     async suggest(input, near) {
       const request = { input, sessionToken };
-      if (near) request.locationBias = { center: near, radius: 50_000 };
+      if (near?.north != null) request.locationBias = near;
+      else if (near) request.locationBias = { center: near, radius: 50_000 };
       const { suggestions } =
         await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
       return suggestions
@@ -51,11 +60,15 @@ export async function createPlacesSearch() {
         });
     },
 
-    /** The chosen suggestion's details: name, address, city, coordinates and its first photo. */
+    /**
+     * The chosen suggestion's details: name, address, city, coordinates and
+     * its first photo — plus `types` (Google's place types), which callers
+     * drop before storing the place.
+     */
     async pick(suggestion) {
       const place = predictions.get(suggestion.placeId).toPlace();
       await place.fetchFields({
-        fields: ["id", "displayName", "formattedAddress", "addressComponents", "location", "photos"],
+        fields: ["id", "displayName", "formattedAddress", "addressComponents", "location", "photos", "types"],
       });
       sessionToken = new places.AutocompleteSessionToken();
       return {
@@ -66,6 +79,7 @@ export async function createPlacesSearch() {
         lat: place.location.lat(),
         lng: place.location.lng(),
         imgRef: place.photos?.[0]?.getURI({ maxWidth: 800 }) ?? undefined,
+        types: place.types ?? [],
       };
     },
   };

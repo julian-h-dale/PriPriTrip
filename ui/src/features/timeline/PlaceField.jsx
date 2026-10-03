@@ -68,6 +68,7 @@ export function PlaceField({ label, value, onChange, error, near, fallbackZone, 
     setOpen(false);
     try {
       const place = await searchRef.current.pick(suggestion);
+      delete place.types; // Google's place types aren't part of a stored location
       onChange(place);
       setQuery("");
     } catch {
