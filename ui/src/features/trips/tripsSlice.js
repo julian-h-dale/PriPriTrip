@@ -1,11 +1,50 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
 import { notify } from "@/shared/notificationSlice";
+import { readTripList, removeTrip, saveTrip, saveTripList } from "@/shared/services/tripCache";
+import { userIdFromToken } from "@/shared/utils/authToken";
+import { tripPhase } from "@/shared/utils/tripDates";
 
-export const fetchTrips = createAsyncThunk("trips/fetch", async () => {
-  const { data } = await apiClient.get("/trips", { silent: true });
-  return data;
-});
+/**
+ * Keep the phone's copy of every trip that hasn't ended fresh, so they open
+ * offline without having been opened first. Fire-and-forget, one at a time
+ * (a handful of small requests); a failure just leaves the older copy.
+ */
+async function cacheUnfinishedTrips(userId, summaries) {
+  for (const summary of summaries) {
+    if (tripPhase(summary) === "past") continue;
+    try {
+      const { data } = await apiClient.get(`/trips/${summary.id}`, { silent: true, offlineOk: true });
+      await saveTrip(userId, data);
+    } catch {
+      return; // offline or server gone — stop, don't hammer it
+    }
+  }
+}
+
+/**
+ * Stale-while-revalidate: the cached list (if any) renders straight away,
+ * then the server's copy replaces it. With no network the cached copy stays,
+ * marked stale with when it was saved.
+ */
+export const fetchTrips = createAsyncThunk(
+  "trips/fetch",
+  async (_, { dispatch, getState, rejectWithValue }) => {
+    const userId = userIdFromToken(getState().auth.token);
+    const cached = await readTripList(userId);
+    if (cached) dispatch(tripsFromCache(cached));
+    try {
+      const { data } = await apiClient.get("/trips", { silent: true, offlineOk: true });
+      if (userId) {
+        await saveTripList(userId, data);
+        cacheUnfinishedTrips(userId, data);
+      }
+      return data;
+    } catch (err) {
+      return rejectWithValue({ offline: !err.response, cached: Boolean(cached) });
+    }
+  }
+);
 
 /**
  * Upload a trip document. Always creates a new trip. On a rejected document
@@ -31,16 +70,24 @@ export const importTrip = createAsyncThunk(
   }
 );
 
-export const deleteTrip = createAsyncThunk("trips/delete", async (id, { dispatch }) => {
+export const deleteTrip = createAsyncThunk("trips/delete", async (id, { dispatch, getState }) => {
   await apiClient.delete(`/trips/${id}`, { silent: true });
+  await removeTrip(userIdFromToken(getState().auth.token), id);
   dispatch(notify({ type: "success", message: "Trip deleted" }));
   return id;
 });
 
 const tripsSlice = createSlice({
   name: "trips",
-  initialState: { items: [], status: "idle" },
-  reducers: {},
+  // stale: showing the offline copy saved at `savedAt` because the server
+  // couldn't be reached.
+  initialState: { items: [], status: "idle", stale: false, savedAt: null },
+  reducers: {
+    tripsFromCache(state, action) {
+      state.items = action.payload.data;
+      state.savedAt = action.payload.savedAt;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchTrips.pending, (state) => {
@@ -49,9 +96,17 @@ const tripsSlice = createSlice({
       .addCase(fetchTrips.fulfilled, (state, action) => {
         state.status = "idle";
         state.items = action.payload;
+        state.stale = false;
+        state.savedAt = null;
       })
-      .addCase(fetchTrips.rejected, (state) => {
-        state.status = "failed";
+      .addCase(fetchTrips.rejected, (state, action) => {
+        const { offline, cached } = action.payload ?? {};
+        if (offline && cached) {
+          state.status = "idle";
+          state.stale = true;
+        } else {
+          state.status = "failed";
+        }
       })
       .addCase(importTrip.fulfilled, (state, action) => {
         state.items.push(action.payload);
@@ -63,4 +118,5 @@ const tripsSlice = createSlice({
   },
 });
 
+const { tripsFromCache } = tripsSlice.actions;
 export default tripsSlice.reducer;

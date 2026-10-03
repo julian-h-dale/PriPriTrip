@@ -4,6 +4,7 @@ import tripsReducer from "@/features/trips/tripsSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import adminReducer from "@/features/admin/adminSlice";
 import errorReducer from "@/shared/errorSlice";
+import networkReducer from "@/shared/networkSlice";
 import notificationReducer from "@/shared/notificationSlice";
 
 export const store = configureStore({
@@ -13,6 +14,7 @@ export const store = configureStore({
     timeline: timelineReducer,
     admin: adminReducer,
     error: errorReducer,
+    network: networkReducer,
     notification: notificationReducer,
   },
 });

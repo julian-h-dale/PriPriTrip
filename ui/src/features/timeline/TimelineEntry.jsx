@@ -21,13 +21,23 @@ function mapsUrl(loc) {
 
 export function LocationBlock({ label, loc }) {
   const map = mapsUrl(loc);
+  // Photos are Google-hosted and not cached offline: hide one that can't load
+  // rather than show a broken image.
+  const [photoFailed, setPhotoFailed] = useState(false);
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="text-sm">{loc.name}</span>
       {loc.address && <span className="text-xs text-muted-foreground">{loc.address}</span>}
       {loc.imgRef ? (
-        <img src={loc.imgRef} alt="" className="h-28 w-full rounded-md object-cover" />
+        !photoFailed && (
+          <img
+            src={loc.imgRef}
+            alt=""
+            className="h-28 w-full rounded-md object-cover"
+            onError={() => setPhotoFailed(true)}
+          />
+        )
       ) : (
         <MiniMap lat={loc.lat} lng={loc.lng} className="h-28 w-full" />
       )}

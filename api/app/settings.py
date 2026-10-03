@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class AuthSettings(BaseSettings):
     jwt_secret: str  # no default — app refuses to boot without it
-    jwt_expiry_hours: int = 24 * 7
+    jwt_expiry_hours: int = 24 * 60  # 60 days: outlasts a long trip
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

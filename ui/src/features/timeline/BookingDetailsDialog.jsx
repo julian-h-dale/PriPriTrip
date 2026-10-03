@@ -30,7 +30,7 @@ function Facts({ facts }) {
  * date on the trip page's coverage views opens this, not the edit form
  * directly. "Edit" switches to the real form.
  */
-export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record }) {
+export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record, readOnly = false }) {
   const isStay = kind === "stay";
   const tripZone = trip.timezone;
 
@@ -72,7 +72,7 @@ export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={onEdit}>
+          <Button onClick={onEdit} disabled={readOnly} title={readOnly ? "You’re offline" : undefined}>
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
             Edit
           </Button>

@@ -18,6 +18,7 @@ import {
   replaceItem,
   replaceStay,
   replaceTravel,
+  selectReadOnly,
   updateDay,
 } from "@/features/timeline/timelineSlice";
 import { TravelForm } from "@/features/timeline/TravelForm";
@@ -30,11 +31,11 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { cn } from "@/shared/utils/cn";
 import { formatDayHeading } from "@/shared/utils/time";
 
-function ActivityActions({ entry, busy, onEdit, onMove, onDelete }) {
+function ActivityActions({ entry, busy, readOnly, onEdit, onMove, onDelete }) {
   const title = entry.item.title;
   return (
     <div className="flex flex-wrap gap-1 border-t border-border pt-3">
-      <Button variant="outline" size="sm" onClick={onEdit} aria-label={`Edit ${title}`}>
+      <Button variant="outline" size="sm" onClick={onEdit} disabled={readOnly} aria-label={`Edit ${title}`}>
         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         Edit
       </Button>
@@ -42,7 +43,7 @@ function ActivityActions({ entry, busy, onEdit, onMove, onDelete }) {
         variant="ghost"
         size="sm"
         onClick={() => onMove("up")}
-        disabled={busy || entry.index === 0}
+        disabled={readOnly || busy || entry.index === 0}
         aria-label={`Move ${title} up`}
       >
         <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
@@ -52,7 +53,7 @@ function ActivityActions({ entry, busy, onEdit, onMove, onDelete }) {
         variant="ghost"
         size="sm"
         onClick={() => onMove("down")}
-        disabled={busy || entry.index === entry.count - 1}
+        disabled={readOnly || busy || entry.index === entry.count - 1}
         aria-label={`Move ${title} down`}
       >
         <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -63,6 +64,7 @@ function ActivityActions({ entry, busy, onEdit, onMove, onDelete }) {
         size="sm"
         className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
         onClick={onDelete}
+        disabled={readOnly}
         aria-label={`Delete ${title}`}
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -72,11 +74,17 @@ function ActivityActions({ entry, busy, onEdit, onMove, onDelete }) {
   );
 }
 
-function BookingActions({ kind, record, onEdit, onDelete }) {
+function BookingActions({ kind, record, readOnly, onEdit, onDelete }) {
   const name = kind === "stay" ? record.name : record.title;
   return (
     <div className="flex flex-wrap gap-1 border-t border-border pt-3">
-      <Button variant="outline" size="sm" onClick={() => onEdit(record)} aria-label={`Edit ${kind} ${name}`}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onEdit(record)}
+        disabled={readOnly}
+        aria-label={`Edit ${kind} ${name}`}
+      >
         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         Edit {kind}
       </Button>
@@ -85,6 +93,7 @@ function BookingActions({ kind, record, onEdit, onDelete }) {
         size="sm"
         className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
         onClick={() => onDelete(record)}
+        disabled={readOnly}
         aria-label={`Delete ${kind} ${name}`}
       >
         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -123,6 +132,7 @@ function DayDetail({ trip, date }) {
   // A null record in `form` means "add" — only ever true for an activity here;
   // adding a stay or travel now happens from the trip page's coverage views.
   const [form, setForm] = useState(null);
+  const readOnly = useSelector(selectReadOnly);
   const [dayFormOpen, setDayFormOpen] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -197,6 +207,7 @@ function DayDetail({ trip, date }) {
       variant="outline"
       size="sm"
       onClick={() => setForm({ kind: "activity", record: null })}
+      disabled={readOnly} title={readOnly ? "You’re offline" : undefined}
       aria-label={`Add activity to ${heading}`}
     >
       <Plus className="h-4 w-4" aria-hidden="true" />
@@ -232,6 +243,7 @@ function DayDetail({ trip, date }) {
                   <ActivityActions
                     entry={entry}
                     busy={busy}
+                    readOnly={readOnly}
                     onEdit={() => setForm({ kind: "activity", record: entry.item })}
                     onMove={(direction) => move(entry.item, direction)}
                     onDelete={() => setDeleting({ kind: "activity", record: entry.item })}
@@ -241,6 +253,7 @@ function DayDetail({ trip, date }) {
                   <BookingActions
                     kind={entry.kind}
                     record={entry.kind === "stay" ? entry.stay : entry.travel}
+                    readOnly={readOnly}
                     onEdit={(record) => setForm({ kind: entry.kind, record })}
                     onDelete={(record) => setDeleting({ kind: entry.kind, record })}
                   />
@@ -258,6 +271,7 @@ function DayDetail({ trip, date }) {
             variant="ghost"
             size="sm"
             onClick={() => setDayFormOpen(true)}
+            disabled={readOnly} title={readOnly ? "You’re offline" : undefined}
             aria-label={`Edit ${heading} title and summary`}
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -344,10 +358,12 @@ export function DayDetailPage() {
   const { tripId, date } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
+  const online = useSelector((s) => s.network?.online ?? true);
 
+  // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {
     dispatch(fetchTrip(tripId));
-  }, [dispatch, tripId]);
+  }, [dispatch, tripId, online]);
 
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 

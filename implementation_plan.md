@@ -903,8 +903,26 @@ Asked 2026-10-03:
 - **A logo:** a heart behind the outline of an airplane. Draft:
   [`docs/brand/logo.svg`](docs/brand/logo.svg).
 
-**Status: planning.** No phase work starts until the open questions at the end
-of this section are answered.
+**Decisions** (answered 2026-10-03; folded into the design below):
+- **Order:** offline first (Phases 18–19), then map search (16–17). Julian
+  asked for it in **two commits**, one per pair, rather than four separate
+  phase gates.
+- **Add travel** offers two links, "Travel from here" and "Travel to here".
+- Actions: the relevant ones first, then "More…" for the rest. A city or
+  region offers no Add action.
+- **The default date for a form** is worked out by a new shared module,
+  `shared/utils/tripDates.js` (where "today" is, whether a date is inside the
+  trip, a trip's phase, the default form date). It's reusable, so later "what's
+  next" and today-aware screens use the same lookups instead of each doing
+  their own.
+- **HTTPS:** a Fly.io deploy (the pattern is already in the repo). Until
+  then, everything is built and verified on `localhost`, which counts as
+  secure for service workers.
+- Every trip that hasn't ended is cached in the background. The app is
+  **read-only** while offline. A login lasts **60 days**. Updates come with
+  an "Update available · Reload" toast.
+- **Logo:** the heart fills most of the icon, and the plane is larger and
+  points straight up (Julian's feedback).
 
 ### Design: map place search (Phases 16–17)
 
@@ -967,10 +985,14 @@ of this section are answered.
     rules then apply as usual: a new stay is named after its place, a
     travel title follows its places, and the zone line shows the place's
     clock.
-  - Travel puts the place in **To** (Q-R2).
-  - **Which date** the form starts on (Q-R4):
+  - Travel offers **"Travel from here"** (the place goes in From) and
+    **"Travel to here"** (it goes in To).
+  - **Which date** the form starts on. `defaultFormDate(trip, { kind,
+    preferred, now })` in `shared/utils/tripDates.js` decides it:
     1. the map's Calendar filter, when it's set;
-    2. otherwise today, when today is inside the trip;
+    2. otherwise today, when today is inside the trip. "Today" is
+       `todayIn(trip.timezone)`, the trip's own calendar day, not the
+       phone's;
     3. otherwise, for a stay, the first night with no stay (`stayCoverage`);
     4. otherwise the trip's first day.
   - `MapPage` mounts the forms and saves through the same thunks and
@@ -1020,7 +1042,7 @@ of this section are answered.
 **Tests**
 - `placeActions`: lodging, transit hubs (airport and train station), a city,
   a restaurant, an empty or unknown `types`.
-- The date rule: Calendar filter set; today inside the trip; today outside
+- `defaultFormDate` (in `tripDates.test.js`): Calendar filter set; today inside the trip; today outside
   the trip; the first uncovered night for a stay.
 - Form tests: `prefill` puts the place in the right field for each form, a
   stay's name defaults from the place, and a travel title follows it.
@@ -1035,11 +1057,12 @@ of this section are answered.
 
 ### Design: installable offline app (Phases 18–19)
 
-**HTTPS comes first.** A service worker, and therefore install and offline,
-only works in a *secure context*. `localhost` counts, but the LAN address the
-phone uses today (`http://<pi-ip>:3000`) does **not**. Phase 18 can be built
-and tested on `localhost`. To install it on the phone, the app has to be
-served over HTTPS (Q-O1).
+**HTTPS.** A service worker, and therefore install and offline, only works in
+a *secure context*. `localhost` counts, but the LAN address the phone uses
+today (`http://<pi-ip>:3000`) does **not**. For now everything is built and
+verified on `localhost`. Installing it on the phone waits for the Fly.io
+deploy, which already has its pattern in the repo (`fly.toml`, `make image`),
+and gives HTTPS automatically.
 
 - **`vite-plugin-pwa`**, as in v1, with `generateSW` (Workbox).
   - **Precache** the app shell: JS, CSS, `index.html`, icons and fonts.
@@ -1050,6 +1073,9 @@ served over HTTPS (Q-O1).
     clearable on sign-out, and lets the UI say how old the copy is.
   - The service worker is off in `vite dev`. It's tested with `vite build &&
     vite preview` (localhost) and with `make image`.
+  - `/runtime-config.js` is injected when the container starts, so it's
+    left out of the precache. It's served network-first and falls back to
+    the last copy offline.
 - **Manifest:**
   - `name` "PriPriTrip", `short_name` "PriPriTrip";
   - `display: standalone`, `start_url: "/"`, `scope: "/"`;
@@ -1069,7 +1095,7 @@ served over HTTPS (Q-O1).
   - pages get top padding for the notch.
 - **Updates.** Use `registerType: "prompt"`. When a new version is ready, a
   toast says "Update available · Reload", and nothing reloads by itself in the
-  middle of a form (Q-O5).
+  middle of a form.
 - **Install button.** On Android/Chrome, the trips page shows an "Install
   app" button off `beforeinstallprompt`. On iOS, which has no prompt, a
   one-time hint: "Share → Add to Home Screen". It's hidden when the app is
@@ -1089,6 +1115,8 @@ served over HTTPS (Q-O1).
   - The user id is part of the key, so a second account on the same phone
     never sees the first account's trips.
 - **Stale-while-revalidate** in `fetchTrips` and `fetchTrip`:
+  0. The user id comes from the stored token's `sub` claim, not from
+     `GET /users/me`, so the cache can be found while offline.
   1. Read the cache. If there's a copy, render it **immediately**. That makes
      it faster online too, which suits "find it fast".
   2. Then request from the network.
@@ -1099,15 +1127,19 @@ served over HTTPS (Q-O1).
 - **Every write** (every edit already returns the whole trip) also writes
   the cache, so the copy is never older than the last edit made on this
   phone.
-- **Which trips are cached** (Q-O2). Whenever the trips list loads online,
+- **Which trips are cached.** Whenever the trips list loads online,
   each trip that hasn't ended yet is fetched and cached in the background
   (a few small requests, each under 1 MB). Past trips are cached only when
   opened. "Download a trip for offline" doesn't need to be a separate step.
+- **No error toasts for an expected offline failure.** Requests that the
+  cache backs (the trips list, a trip, `/users/me`, `/config`) are marked
+  `offlineOk`. A network error on them (no response) shows the offline bar
+  instead of an error toast.
 - **Offline indicator.**
   - `useOnlineStatus()` (as in v1) plus the slice's `stale` flag.
   - A slim bar under the page header: "Offline · saved copy from 2:14 PM".
     It goes away once a refresh succeeds.
-- **Editing offline is turned off, not queued** (Q-O3). Add, Edit, Delete
+- **Editing offline is turned off, not queued.** Add, Edit, Delete
   and Move buttons are disabled with the hint "You're offline". There's no
   write queue, so there are no conflicts to resolve and edits can't be lost.
 - **Sign-in offline.**
@@ -1117,9 +1149,8 @@ served over HTTPS (Q-O1).
   - **Sign out** clears that user's cache. A token that has simply *expired*
     keeps the cache, which is still keyed by the user, so signing back in
     shows trips at once.
-  - **The JWT lasts 7 days** (`jwt_expiry_hours`), which is shorter than the
-    15-night Okinawa trip, so being sent back to the login screen mid-trip is
-    likely (Q-O4).
+  - **The JWT lasts 60 days** (`jwt_expiry_hours`, raised from 7), so a long
+    trip doesn't hit the login screen partway through.
 - **The map and photos offline.**
   - Google Maps can't render offline. The map tab shows "The map needs a
     connection", with a plain list of the trip's places and their directions
@@ -1131,15 +1162,15 @@ served over HTTPS (Q-O1).
   - `PlaceField` already falls back to a typed name when Places is
     unavailable, but editing is off while offline anyway.
 
-### Phase 18 — Run: installable app (logo, manifest, service worker, HTTPS)
+### Phase 18 — Run: installable app (logo, manifest, service worker, HTTPS) ✅ (phone check pending the Fly deploy)
 
-- `docs/brand/logo.svg` (final, after Q-O6), `make icons`, the PNGs, and
-  `favicon.svg`.
+- `docs/brand/logo.svg`, `make icons`, the PNGs, and `favicon.svg`.
 - `vite-plugin-pwa`: the manifest, the app-shell precache, the navigation
   fallback, and the update toast.
 - iOS meta tags and safe-area padding; the install button and the iOS hint.
 - `deploy/nginx.conf` cache headers.
-- The HTTPS route from Q-O1, documented in `deploy/README.md`.
+- A note in `deploy/README.md`: install and offline need HTTPS, which Fly
+  provides. The deploy itself isn't part of this phase.
 
 **Tests**
 - Unit:
@@ -1152,15 +1183,18 @@ served over HTTPS (Q-O1).
   - the service worker is registered;
   - with the browser set offline, reloading `/trips/:id/days/:date` still
     renders the shell (no dinosaur page).
-- **Julian, on the phone over HTTPS:**
+- **Julian, on the phone once it's deployed to Fly (HTTPS):**
   - install to the home screen;
   - the icon and splash look right;
   - it launches standalone and the bottom nav clears the home indicator.
 
-### Phase 19 — Run: offline trip cache
+### Phase 19 — Run: offline trip cache ✅ (phone check pending the Fly deploy)
 
 - `tripCache.js` and stale-while-revalidate in `tripsSlice` and
   `timelineSlice`.
+- `shared/utils/tripDates.js` (`todayIn`, `tripPhase`), which decides which
+  trips "haven't ended". Phase 17 adds `defaultFormDate` to it.
+- `JWT_EXPIRY_HOURS` defaults to 60 days.
 - Background caching of trips that haven't ended, and writes refresh the
   cache.
 - `useOnlineStatus`, the offline bar, editing disabled offline, the offline
@@ -1187,7 +1221,20 @@ served over HTTPS (Q-O1).
   - the trips list, the timeline, a day page and the stays view all render
     from the cache, with the offline bar showing;
   - going back online clears the bar and refreshes.
-- **Julian, on the phone:** airplane mode, then open the app from the home
+- **Built as planned, plus:**
+  - The offline map list uses real icons (lucide), not the pins' emoji. The
+    headless browser has no emoji font, so the emoji rendered as empty
+    boxes there, as `ui_review.md` §6 suspected for the map pins.
+  - A failed trips load with nothing saved now says "Couldn’t load your
+    trips" with Try again, instead of the misleading "No trips yet".
+  - Pages refetch whenever the connection changes. Back online refreshes;
+    going offline falls back to the saved copy and marks it stale.
+  - `ui/e2e/offline.spec.js` is the live check (built app plus `vite
+    preview`; see `ui/e2e/README.md`). It passed: manifest and icons, then
+    offline reloads of the trips list, a timeline, the never-opened Okinawa
+    trip, a day page and the map tab, and back online clears the bar.
+    The `deploy/nginx.conf` change passed `nginx -t`.
+- **Julian, on the phone (after the Fly deploy):** airplane mode, then open the app from the home
   screen and find tonight's hotel and a confirmation number.
 
 ### Open questions (Run stage 1)
@@ -1199,7 +1246,7 @@ Map search:
   phone before then, and Q-O1 (HTTPS) may take some setup on Julian's side.
   - Recommendation: **build Phases 18–19 (PWA/offline) first**, then 16–17
     (map search).
-  - **Answer:**
+  - **Answer:** yes, offline first (2026-10-03). Built as two commits: 18–19, then 16–17.
 - **Q-R2. Where does "Add travel" put the place: From or To?**
   - (a) Always **To**: you search where you're going.
   - (b) Two links, "Travel from here" and "Travel to here".
@@ -1207,22 +1254,22 @@ Map search:
     which case From.
   - Recommendation: **(b)**. It's explicit, and both are common (an airport
     is often both).
-  - **Answer:**
+  - **Answer:** recommended, (b) two links (2026-10-03).
 - **Q-R3. Strictly relevant actions, or relevant first?**
   - (a) Show only what `placeActions` decides.
   - (b) Show those first, plus a "More…" link to the rest, in case Google's
     types are wrong (a ryokan typed as a restaurant, say).
   - Recommendation: **(b)**.
-  - **Answer:**
+  - **Answer:** recommended, (b) relevant first, then "More…" (2026-10-03).
 - **Q-R4. Which date does a form open on?**
   - Recommendation: the order in the design above: the Calendar filter, then
     today if it's inside the trip, then the first night with no stay (stays
     only), then the trip's first day. The date is editable in the form
     anyway.
-  - **Answer:**
+  - **Answer:** yes, as a reusable shared module (2026-10-03): `shared/utils/tripDates.js`. It adds about 40 lines of logic, and later today-aware features build on it.
 - **Q-R5. Should a city or region result offer any Add action?** The
   recommendation is none: it just pans there, as today.
-  - **Answer:**
+  - **Answer:** recommended, none (2026-10-03).
 
 Offline / PWA:
 
@@ -1242,20 +1289,20 @@ Offline / PWA:
   - Recommendation: **(b) for now**. It's the least work and fully private,
     and an installed PWA is offline-first anyway, so the Pi only needs to be
     reachable to refresh. (a) when you're ready to really deploy.
-  - **Answer:**
+  - **Answer:** Fly.io, the pattern already in the repo (2026-10-03). Rely on `localhost` until it's deployed.
 - **Q-O2. Which trips get cached in the background?**
   - (a) Every trip that hasn't ended.
   - (b) Every trip.
   - (c) Only trips you've opened.
   - Recommendation: **(a)**.
-  - **Answer:**
+  - **Answer:** (a), every trip that hasn't ended (2026-10-03).
 - **Q-O3. Editing while offline?**
   - (a) Read-only offline: edit buttons disabled.
   - (b) Queue edits and send them when back online. This needs conflict
     handling, and the server's whole-trip responses make merging
     non-trivial.
   - Recommendation: **(a)** now, and (b) only if you miss it on the trip.
-  - **Answer:**
+  - **Answer:** (a), read-only (2026-10-03).
 - **Q-O4. The 7-day login versus a 15-night trip.**
   - (a) Raise `JWT_EXPIRY_HOURS` to 30 days. One setting, no new code.
   - (b) A sliding refresh, where each successful request renews the token.
@@ -1264,19 +1311,19 @@ Offline / PWA:
     in again once you're online.
   - Recommendation: **(a)**, together with (c)'s behavior, which the design
     already gives.
-  - **Answer:**
+  - **Answer:** raise it to **60 days** (2026-10-03).
 - **Q-O5. How should updates apply?**
   - (a) The "Update available · Reload" toast.
   - (b) Auto-reload as soon as an update is ready, which can wipe an open
     form.
   - Recommendation: **(a)**.
-  - **Answer:**
+  - **Answer:** (a), the toast (2026-10-03).
 - **Q-O6. The logo.** The draft is `docs/brand/logo.svg`: a rose heart
   (`#ec4f6b`) behind a white airplane outline, nose up and to the right, on
   the app's dark background. Keep it, or change the color, the plane's
   angle, or the stroke weight? At 16px only the heart reads, which is
   normal for a favicon.
-  - **Answer:**
+  - **Answer:** the heart fills more of the icon, and the plane is larger and points straight up (2026-10-03). Done.
 
 ## After Phase 4 — First real trip
 

@@ -64,3 +64,12 @@ body {
   color: hsl(var(--foreground));
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/*
+ * Installed-app (PWA) safe areas: with viewport-fit=cover and a translucent
+ * status bar, content would otherwise sit under the notch. The bottom nav
+ * pads itself for the home indicator (BottomNav.jsx). All zero in a browser.
+ */
+#root {
+  padding-top: env(safe-area-inset-top);
+}

@@ -6,9 +6,45 @@
 
 ## Status
 
-- **Current phase:** Phase 15 (map search & filters) is done. Phase 14
-  (bottom nav & map view) is done and fully verified live — Julian created a
-  Map ID. Phases 11–13 (day detail pages,
+- **Current work (2026-10-03):** Run stage 1 in `implementation_plan.md`,
+  built as two commits, as Julian asked. **Commit 1 (Phases 18–19): done.**
+  It makes the app installable as a PWA, with an offline trip cache and a new
+  logo. **Commit 2 (Phases 16–17, map place search with add-from-map) is
+  next.**
+  - **PWA:** `vite-plugin-pwa` precaches the app shell (deep links open
+    offline). It uses `registerType: "prompt"`, so an "Update available ·
+    Reload" bar appears (`shared/pwa/`) and the app never reloads itself.
+    Other pieces:
+    - an "Install app" button on the trips page, with a Share → Add to Home
+      Screen hint on iOS;
+    - iOS meta tags and safe-area padding;
+    - no-cache headers for `sw.js`, `index.html` and the manifest in
+      `deploy/nginx.conf`.
+    Install and offline need HTTPS, which comes with the Fly deploy (not done
+    yet). Until then they're verified on `localhost`.
+  - **Logo:** `docs/brand/logo.svg`. `make icons` regenerates
+    `ui/public/{favicon.svg,pwa-*.png,maskable-512x512.png,apple-touch-icon.png}`
+    with the preinstalled Chromium.
+  - **Offline cache:** `shared/services/tripCache.js` (IndexedDB through
+    `idb-keyval`), keyed by the user id in the JWT's `sub`, so it can be read
+    offline.
+    - The trips list and each trip are stale-while-revalidate: the saved copy
+      renders first, then the server's copy replaces it.
+    - Trips that haven't ended are cached in the background, and every edit
+      updates the cache.
+    - Offline, or with the server down, pages are **read-only** (edit
+      controls disabled) and the `OfflineBar` shows "Offline · read-only ·
+      saved copy from …". The map tab becomes a list of places with
+      directions links.
+    - Sign out clears that user's cache; an expired token (401) doesn't.
+  - **Shared date lookups:** `shared/utils/tripDates.js` (`todayIn`,
+    `isInTrip`, `tripPhase`). "Today" is the trip's own calendar day.
+    Commit 2 adds `defaultFormDate`.
+  - **The login now lasts 60 days** (`jwt_expiry_hours`).
+  - **UI/UX review:** `ui_review.md` (not scheduled yet).
+- **Phase 15** (map search & filters) and Phase 14
+  (bottom nav & map view) are done and fully verified live — Julian
+  created a Map ID. Phases 11–13 (day detail pages,
   stays/travel coverage views, location photos & mini-map previews) are done
   too. Tapping a day on the trip timeline now
   navigates to its own page (`/trips/:id/days/:date`) instead of expanding in
@@ -73,7 +109,9 @@
   scratch on every filter change instead; verified stable across 3 full
   toggle cycles live.
 - **Branch:** `rebuild`, pushed to `origin/rebuild`. Not merged to `main`.
-- **Last verified:** 2026-10-02. `make verify` green (115 API + 97 UI tests),
+- **Last verified:** 2026-10-03 (commit 1): `make verify` green (115 API +
+  132 UI tests), plus `ui/e2e/offline.spec.js` live against a built app.
+  Before that, 2026-10-02: `make verify` green (115 API + 97 UI tests),
   plus a live Playwright pass against the real dev app (see below). Julian
   confirmed live Google Places works with his key. In a real browser at
   375px:
@@ -200,11 +238,9 @@
    re-imported (after the 2026-10-02 `make reset-db` wiped it) and
    backfilled with real photos via the name-search path — done, in the dev
    database now.
-4. **Planned, awaiting answers (2026-10-03):** Run stage 1 in
-   `implementation_plan.md` — map place search with add-from-map (Phases
-   16–17) and an installable offline PWA (Phases 18–19), plus a draft logo
-   at `docs/brand/logo.svg`. **Julian:** answer its open questions (Q-R1–R5,
-   Q-O1–O6) inline before any phase work starts.
+4. **Run stage 1:** commit 2, map place search and add-from-map (Phases
+   16–17). After that, **Julian:** deploy to Fly (HTTPS), then install it on
+   the phone and try it in airplane mode before the Okinawa trip (Oct 29).
 5. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
    anything past Walk stage 3 (map search/filters was the last planned
@@ -220,7 +256,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 115 API + 97 UI tests
+make verify     # should be green: 115 API + 132 UI tests (after commit 1)
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.

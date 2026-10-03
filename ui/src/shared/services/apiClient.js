@@ -39,6 +39,9 @@ apiClient.interceptors.response.use(
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         window.location.assign("/login");
       }
+    } else if (!error.response && error.config?.offlineOk) {
+      // A request the offline cache backs, failing for want of a network:
+      // the offline bar says so — an error toast on every load would be noise.
     } else {
       const message =
         error.response?.data?.detail || error.message || "Something went wrong";

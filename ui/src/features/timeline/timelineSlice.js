@@ -1,15 +1,34 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
 import { notify } from "@/shared/notificationSlice";
+import { readTrip, removeTrip, saveTrip } from "@/shared/services/tripCache";
+import { userIdFromToken } from "@/shared/utils/authToken";
 
-export const fetchTrip = createAsyncThunk("timeline/fetchTrip", async (tripId, { rejectWithValue }) => {
-  try {
-    const { data } = await apiClient.get(`/trips/${tripId}`, { silent: true });
-    return data;
-  } catch (err) {
-    return rejectWithValue(err.response?.status === 404 ? "notFound" : "failed");
+/**
+ * Stale-while-revalidate, like the trips list: the phone's saved copy (if
+ * any) renders at once, then the server's replaces it. With no network the
+ * saved copy stays, marked stale. A real 404 still means gone, and drops the
+ * saved copy too.
+ */
+export const fetchTrip = createAsyncThunk(
+  "timeline/fetchTrip",
+  async (tripId, { dispatch, getState, rejectWithValue }) => {
+    const userId = userIdFromToken(getState().auth?.token);
+    const cached = await readTrip(userId, tripId);
+    if (cached) dispatch(tripFromCache({ tripId, ...cached }));
+    try {
+      const { data } = await apiClient.get(`/trips/${tripId}`, { silent: true, offlineOk: true });
+      await saveTrip(userId, data);
+      return data;
+    } catch (err) {
+      if (err.response?.status === 404) {
+        await removeTrip(userId, tripId);
+        return rejectWithValue("notFound");
+      }
+      return rejectWithValue(!err.response && cached ? "offline" : "failed");
+    }
   }
-});
+);
 
 /**
  * Edits all return the whole updated trip, which replaces the one in state —
@@ -18,9 +37,11 @@ export const fetchTrip = createAsyncThunk("timeline/fetchTrip", async (tripId, {
  * the form to show inline.
  */
 function tripEdit(type, request, successMessage) {
-  return createAsyncThunk(type, async (args, { dispatch, rejectWithValue }) => {
+  return createAsyncThunk(type, async (args, { dispatch, getState, rejectWithValue }) => {
     try {
       const { data } = await request(args);
+      // Every edit returns the whole trip — keep the offline copy in step.
+      await saveTrip(userIdFromToken(getState().auth?.token), data);
       if (successMessage) dispatch(notify({ type: "success", message: successMessage }));
       return data;
     } catch (err) {
@@ -122,12 +143,24 @@ const EDITS = [
 // the previous trip while the next one loads (a v1 bug).
 const timelineSlice = createSlice({
   name: "timeline",
-  initialState: { tripId: null, trip: null, status: "idle" },
-  reducers: {},
+  // stale: showing the offline copy saved at `savedAt` because the server
+  // couldn't be reached. Editing is off while it is (see selectReadOnly).
+  initialState: { tripId: null, trip: null, status: "idle", stale: false, savedAt: null },
+  reducers: {
+    tripFromCache(state, action) {
+      if (state.tripId !== action.payload.tripId) return;
+      state.trip = action.payload.data;
+      state.savedAt = action.payload.savedAt;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchTrip.pending, (state, action) => {
-        if (state.tripId !== action.meta.arg) state.trip = null;
+        if (state.tripId !== action.meta.arg) {
+          state.trip = null;
+          state.stale = false;
+          state.savedAt = null;
+        }
         state.tripId = action.meta.arg;
         state.status = "loading";
       })
@@ -135,10 +168,19 @@ const timelineSlice = createSlice({
         if (state.tripId !== action.meta.arg) return;
         state.trip = action.payload;
         state.status = "idle";
+        state.stale = false;
+        state.savedAt = null;
       })
       .addCase(fetchTrip.rejected, (state, action) => {
         if (state.tripId !== action.meta.arg) return;
+        if (action.payload === "offline") {
+          state.status = "idle";
+          state.stale = true;
+          return;
+        }
         state.status = action.payload ?? "failed";
+        // A trip that's really gone (404) mustn't linger from the cache.
+        if (action.payload === "notFound") state.trip = null;
       });
     EDITS.forEach((edit) =>
       builder.addCase(edit.fulfilled, (state, action) => {
@@ -148,4 +190,10 @@ const timelineSlice = createSlice({
   },
 });
 
+const { tripFromCache } = timelineSlice.actions;
 export default timelineSlice.reducer;
+
+/** Editing is off while offline or showing a saved copy: no write queue, so nothing to lose or merge. */
+export function selectReadOnly(state) {
+  return state.network?.online === false || Boolean(state.timeline?.stale);
+}

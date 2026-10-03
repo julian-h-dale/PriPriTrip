@@ -71,7 +71,7 @@ describe("TripTimelinePage", () => {
       "day-2026-05-14",
     ]);
     expect(dayLink("2026-05-10")).toHaveAttribute("href", "/trips/trip-1/days/2026-05-10");
-    expect(apiClient.get).toHaveBeenCalledWith("/trips/trip-1", { silent: true });
+    expect(apiClient.get).toHaveBeenCalledWith("/trips/trip-1", { silent: true, offlineOk: true });
   });
 
   it("rows a day as its date and cities, then its title and summary", async () => {

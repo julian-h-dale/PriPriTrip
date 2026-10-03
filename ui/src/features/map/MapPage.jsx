@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Home, Search, X } from "lucide-react";
+import { BedDouble, CalendarDays, CloudOff, Home, MapPin, Navigation, Route, Search, X } from "lucide-react";
 import { buildMapMarkers } from "@/features/map/buildMapMarkers";
 import { filterMarkers } from "@/features/map/mapFilters";
+import { MODE_ICON } from "@/features/timeline/describeEntry";
 import { matchMarkers } from "@/features/map/markerSearch";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
@@ -37,7 +38,7 @@ function escapeHtml(text) {
 }
 
 function infoWindowHtml(marker, tripId) {
-  const directions = `https://www.google.com/maps/dir/?api=1&destination=${marker.lat},${marker.lng}`;
+  const directions = directionsUrl(marker);
   const dayUrl = `/trips/${tripId}/days/${marker.day}`;
   const photo = marker.imgRef
     ? `<img src="${escapeHtml(marker.imgRef)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:6px;margin-bottom:6px;display:block;" />`
@@ -63,6 +64,66 @@ function MissingConfig({ message }) {
   return (
     <div className="flex h-full items-center justify-center p-6">
       <Card className="max-w-sm p-6 text-center text-sm text-muted-foreground">{message}</Card>
+    </div>
+  );
+}
+
+/** The same kinds as the pins' emoji, as real icons for React-rendered lists. */
+function iconFor(marker) {
+  if (marker.kind === "stay") return BedDouble;
+  if (marker.kind === "travel") return MODE_ICON[marker.mode] ?? Route;
+  return MapPin;
+}
+
+function directionsUrl(marker) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${marker.lat},${marker.lng}`;
+}
+
+/**
+ * Google Maps can't draw offline, so the map tab becomes a plain list of the
+ * trip's places, each with a directions link — those hand off to the phone's
+ * Google Maps app, which has its own downloadable offline areas.
+ */
+function OfflinePlaces({ trip, markers }) {
+  const days = [...markers].sort((a, b) => a.day.localeCompare(b.day));
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6">
+      <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+        The map needs a connection. Directions open in your maps app.
+      </p>
+      <ul aria-label="Places on this trip" className="flex flex-col gap-2">
+        {days.map((m, i) => {
+          const Icon = iconFor(m);
+          return (
+            <li key={`${m.id}:${i}`}>
+              <Card className="flex items-center gap-3 p-3">
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm">{m.title}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDayHeading(m.day)}
+                    {m.city ? ` · ${m.city}` : ""}
+                  </span>
+                </div>
+                <a
+                  href={directionsUrl(m)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-sm p-2 text-xs text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Directions to ${m.title}`}
+                >
+                  <Navigation className="h-4 w-4" aria-hidden="true" />
+                  Directions
+                </a>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+      {days.length === 0 && (
+        <p className="text-sm text-muted-foreground">No located places on {trip.name} yet.</p>
+      )}
     </div>
   );
 }
@@ -373,16 +434,21 @@ export function MapPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
+  const online = useSelector((s) => s.network?.online ?? true);
 
+  // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {
     dispatch(fetchTrip(tripId));
-  }, [dispatch, tripId]);
+  }, [dispatch, tripId, online]);
 
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
+  const markers = useMemo(() => (current ? buildMapMarkers(current) : []), [current]);
 
   return (
     <BottomNavLayout tripId={tripId}>
-      {current ? (
+      {current && !online ? (
+        <OfflinePlaces trip={current} markers={markers} />
+      ) : current ? (
         <TripMap key={current.id} trip={current} />
       ) : status === "notFound" || status === "failed" ? (
         <MissingConfig message="Couldn’t load this trip." />

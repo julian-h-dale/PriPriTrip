@@ -93,3 +93,13 @@ export function formatDateRange(start, end) {
 export function zoneLabel(timezone) {
   return timezone.split("/").pop().replaceAll("_", " ");
 }
+
+const SAVED_AT = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
+
+/**
+ * An instant (ISO with offset/Z) in the phone's own zone, e.g. "Oct 3, 2:14 PM"
+ * — for when this device saved something, never for trip wall-clock times.
+ */
+export function formatSavedAt(iso) {
+  return new Intl.DateTimeFormat(undefined, SAVED_AT).format(new Date(iso));
+}

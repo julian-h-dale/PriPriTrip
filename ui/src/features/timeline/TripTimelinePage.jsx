@@ -15,6 +15,7 @@ import {
   fetchTrip,
   replaceStay,
   replaceTravel,
+  selectReadOnly,
 } from "@/features/timeline/timelineSlice";
 import { TravelForm } from "@/features/timeline/TravelForm";
 import { Button } from "@/shared/components/ui/button";
@@ -39,6 +40,7 @@ const VIEWS = [
 function TripTimeline({ trip }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const readOnly = useSelector(selectReadOnly);
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const [view, setView] = useState("plan");
   const stayCov = useMemo(() => stayCoverage(trip), [trip]);
@@ -57,6 +59,7 @@ function TripTimeline({ trip }) {
     if (view === "stays") {
       const stay = stayCov.get(date)?.stay;
       if (stay) setDetails({ kind: "stay", record: stay });
+      else if (readOnly) navigate(`/trips/${trip.id}/days/${date}`);
       else setForm({ kind: "stay", record: null, date });
       return;
     }
@@ -65,6 +68,8 @@ function TripTimeline({ trip }) {
       navigate(`/trips/${trip.id}/days/${date}`);
     } else if (travels.length === 1) {
       setDetails({ kind: "travel", record: travels[0] });
+    } else if (readOnly) {
+      navigate(`/trips/${trip.id}/days/${date}`);
     } else {
       setForm({ kind: "travel", record: null, date });
     }
@@ -156,6 +161,7 @@ function TripTimeline({ trip }) {
           open
           onClose={() => setDetails(null)}
           onEdit={editFromDetails}
+          readOnly={readOnly}
           trip={trip}
           kind={details.kind}
           record={details.record}
@@ -180,10 +186,13 @@ export function TripTimelinePage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
+  const online = useSelector((s) => s.network?.online ?? true);
 
+  // Also re-runs when the connection changes: back online refreshes; going
+  // offline falls back to the saved copy and marks it stale.
   useEffect(() => {
     dispatch(fetchTrip(tripId));
-  }, [dispatch, tripId]);
+  }, [dispatch, tripId, online]);
 
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 

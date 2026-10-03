@@ -11,6 +11,7 @@ import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { AdminRoute } from "@/shared/components/AdminRoute";
 import { Toaster } from "@/shared/components/Toaster";
+import { PwaUpdate } from "@/shared/pwa/PwaUpdate";
 
 export function App() {
   const dispatch = useDispatch();
@@ -70,6 +71,7 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
+      <PwaUpdate />
     </>
   );
 }

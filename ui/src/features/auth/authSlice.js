@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
+import { clearUser } from "@/shared/services/tripCache";
+import { userIdFromToken } from "@/shared/utils/authToken";
 
 const TOKEN_KEY = "auth_token";
 
@@ -19,8 +21,18 @@ export const login = createAsyncThunk(
   }
 );
 
+/**
+ * An explicit sign-out also forgets this user's offline trips. (An expired
+ * token — a 401 — only clears auth: the copy stays, keyed by user, so signing
+ * back in shows the trips at once.)
+ */
+export const signOut = createAsyncThunk("auth/signOut", async (_, { dispatch, getState }) => {
+  await clearUser(userIdFromToken(getState().auth.token));
+  dispatch(authSlice.actions.clearAuth());
+});
+
 export const fetchMe = createAsyncThunk("auth/fetchMe", async () => {
-  const { data } = await apiClient.get("/users/me", { silent: true });
+  const { data } = await apiClient.get("/users/me", { silent: true, offlineOk: true });
   return data;
 });
 

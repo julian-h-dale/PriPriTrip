@@ -21,7 +21,7 @@ const TABS = [
 export function BottomNav({ tripId }) {
   const { pathname } = useLocation();
   return (
-    <nav aria-label="Trip" className="flex shrink-0 border-t border-border bg-card">
+    <nav aria-label="Trip" className="flex shrink-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
       {TABS.map(({ to, icon: Icon, label, active }) => {
         const isActive = active(pathname, tripId);
         return (

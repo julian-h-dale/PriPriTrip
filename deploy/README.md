@@ -43,6 +43,23 @@ fly secrets set JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_url
 fly deploy
 ```
 
+## Installable app (PWA) and offline
+
+The UI is a PWA: it can be installed on a phone, and trips work offline (the
+app shell is cached by the service worker, and trip data by the app in
+IndexedDB). Browsers only allow a service worker in a **secure context**:
+`https://…`, or `http://localhost`. A plain-HTTP LAN address
+(`http://192.168.x.x:3000`) gets no install and no offline. Fly serves HTTPS
+automatically, so the deployed app is installable as-is.
+
+After the first deploy:
+- Add the Fly hostname (`https://<app>.fly.dev/*`) to the Google Maps
+  browser key's allowed referrers in the Google Cloud console, and set
+  `GOOGLE_MAPS_API_KEY` / `GOOGLE_MAPS_MAP_ID` as Fly secrets.
+- `deploy/nginx.conf` serves `sw.js`, `index.html`, the manifest and
+  `runtime-config.js` with `Cache-Control: no-cache`, so an installed app
+  picks up a new release (the app then offers "Update available · Reload").
+
 ## CI: build, test & publish to GHCR
 
 `.github/workflows/ci.yml` runs the full pipeline on every push to `main`, every
