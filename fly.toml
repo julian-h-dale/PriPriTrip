@@ -13,6 +13,9 @@ primary_region = "iad"
 [env]
   # Persist SQLite on the mounted volume (absolute path -> four slashes).
   DATABASE_URL = "sqlite+aiosqlite:////data/app.db"
+  # Journal photos live on the same volume (grow it to ~10 GB first:
+  # fly volumes extend <volume id> --size 10).
+  PHOTO_DIR = "/data/photos"
 
 [http_service]
   internal_port = 8080

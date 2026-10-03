@@ -15,6 +15,9 @@ tzfpy==2.*
 # Server-side Google Places lookups (app/google_places_server.py — photo
 # backfill only; the app otherwise never calls Google from the server).
 httpx==0.28.*
+# Journal photos: display copies and thumbnails, and iPhone HEIC files.
+pillow==11.*
+pillow-heif==1.*
 
 # Dev / tooling
 ruff==0.8.*

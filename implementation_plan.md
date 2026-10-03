@@ -2041,7 +2041,22 @@ later.
     unit test for the nearest place.
   - **Live:** Playwright can fake a location (`geolocation` plus
     permissions).
-- **Phase 32 — the photo store (API).**
+- **Phase 32 — the photo store (API).** ✅
+  - **Built as planned, plus:**
+    - **`pillow` and `pillow-heif`** (iPhone HEIC), migration 0004, and
+      `PHOTO_DIR` (`/data/photos` on Fly, in `fly.toml`).
+    - **The display copy and thumbnail keep the colour profile** (Display
+      P3), with EXIF stripped. Small photos are never upscaled.
+      Transparent PNGs are put on white.
+    - **"Decompression bombs" are refused** (over 120 megapixels).
+    - **Processing is serialized,** one photo at a time.
+    - **An upload can carry its own `id`,** for the Phase 33 outbox: a retry
+      gives 200 with the same photo.
+    - **Deleting a photo** removes its files and stops its URLs.
+      **Deleting a memory** stops its photos' URLs but keeps the files
+      (soft delete); purging them is a possible later job.
+    - **Live:** a 9 MB, 12-megapixel JPEG processed in under a second on
+      the Pi. The nginx `client_max_body_size` change passed `nginx -t`.
   - The `photos` table, `PhotoStore` on disk, and upload with its checks.
   - Server-made display copies and thumbnails (Pillow; rotation; EXIF
     stripped from the copies).

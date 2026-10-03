@@ -55,7 +55,22 @@
     - Fixed: invisible pressed map toggles (`bg-card`), and the journal e2e
       test's cleanup (leftover test memories removed from both dev
       databases).
-  - **Next:** Phase 32 (the photo store), then 33 (photos in the journal).
+  - **Phase 32 ✅ (the photo store):**
+    - A `photos` table (migration 0004) and `LocalPhotoStore` under
+      `PHOTO_DIR` (`<trip>/<photo>/{original.<ext>, display.jpg,
+      thumb.jpg}`), behind a `PhotoStore` protocol so object storage can
+      replace it later.
+    - `app/photos.py` (Pillow plus pillow-heif) makes the 2560 px and 480 px
+      JPEGs: upright, EXIF-free, keeping the colour profile.
+    - `POST/DELETE /trips/{id}/memories/{mid}/photos` for the author only;
+      at most 10 per memory, 25 MB each; an optional `id` makes retries
+      safe.
+    - `GET /photos/{id}/{thumb|display|original}` needs no login (an
+      unguessable UUID) and is cached immutably. Memories list their
+      photos.
+    - nginx `client_max_body_size 26m` on `/api/`.
+    - **Before deploying photos:** `fly volumes extend` to about 10 GB.
+  - **Next:** Phase 33 (photos in the journal).
 - **Run stage 3 (2026-10-03, on `rebuild`): sharing and the trip journal.**
   These notes were missed at the time and added on `journal-memories`.
   - **Phase 25:**

@@ -19,12 +19,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import active
 from app.models import Memory, UserRecord
-from app.schemas import MemoryLocation, MemoryRead
+from app.schemas import MemoryLocation, MemoryRead, PhotoRead
+from app.services.photos import photos_by_memory
 
 FUTURE_TOLERANCE = dt.timedelta(minutes=10)
 
 
-def _read(memory: Memory, author: UserRecord, viewer_id: uuid.UUID) -> MemoryRead:
+def _read(
+    memory: Memory,
+    author: UserRecord,
+    viewer_id: uuid.UUID,
+    photos: list[PhotoRead] | None = None,
+) -> MemoryRead:
     return MemoryRead(
         id=memory.id,
         text=memory.text,
@@ -37,6 +43,7 @@ def _read(memory: Memory, author: UserRecord, viewer_id: uuid.UUID) -> MemoryRea
             if memory.lat is not None and memory.lng is not None
             else None
         ),
+        photos=photos or [],
         author_email=author.email,
         mine=memory.user_id == viewer_id,
     )
@@ -52,7 +59,9 @@ async def list_memories(
         .where(Memory.trip_id == trip_id, active(Memory))
         .order_by(Memory.created_at, Memory.id)
     )
-    return [_read(memory, author, viewer_id) for memory, author in result.tuples().all()]
+    rows = result.tuples().all()
+    photos = await photos_by_memory(db, [memory.id for memory, _ in rows])
+    return [_read(memory, author, viewer_id, photos.get(memory.id)) for memory, author in rows]
 
 
 class MemoryIdTaken(Exception):
@@ -95,7 +104,10 @@ async def create_memory(
                 and existing.trip_id == trip_id
                 and not existing.is_deleted
             ):
-                return Created(_read(existing, author, author.id), new=False)
+                photos = await photos_by_memory(db, [existing.id])
+                return Created(
+                    _read(existing, author, author.id, photos.get(existing.id)), new=False
+                )
             raise MemoryIdTaken()
     received = dt.datetime.now(dt.UTC)
     memory = Memory(
@@ -133,7 +145,8 @@ async def update_memory(
     memory.updated_at = dt.datetime.now(dt.UTC)
     await db.commit()
     await db.refresh(memory)
-    return _read(memory, author, author.id)
+    photos = await photos_by_memory(db, [memory.id])
+    return _read(memory, author, author.id, photos.get(memory.id))
 
 
 async def delete_memory(db: AsyncSession, memory: Memory) -> None:

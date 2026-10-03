@@ -19,6 +19,8 @@ class AuthSettings(BaseSettings):
 class AppSettings(BaseSettings):
     app_name: str = "PriPriTrip API"
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
+    # Where journal photos are stored (a Fly volume in production).
+    photo_dir: str = "./data/photos"
     # Comma-separated list of allowed CORS origins.
     cors_origins: str = "http://localhost:3000"
 

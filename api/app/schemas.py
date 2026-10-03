@@ -188,6 +188,16 @@ class MemoryUpdate(CamelModel):
     location: MemoryLocation | None = None
 
 
+class PhotoRead(CamelModel):
+    id: uuid.UUID
+    width: int
+    height: int
+    # Paths under the API (no login needed: the random id is the secret).
+    thumb_url: str
+    display_url: str
+    original_url: str
+
+
 class MemoryRead(CamelModel):
     id: uuid.UUID
     text: str
@@ -196,6 +206,7 @@ class MemoryRead(CamelModel):
     updated_at: datetime | None = None
     received_at: datetime
     location: MemoryLocation | None = None
+    photos: list[PhotoRead] = Field(default_factory=list)
     author_email: str
     # True when the caller wrote it — only then may they edit or delete it.
     mine: bool

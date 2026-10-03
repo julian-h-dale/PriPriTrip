@@ -225,3 +225,23 @@ class Memory(SoftDeleteMixin, Base):
     accuracy: Mapped[float | None] = mapped_column(default=None)
 
     __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)
+
+
+class Photo(SoftDeleteMixin, Base):
+    """A photo on a journal memory. The files (original, display copy,
+    thumbnail) live in the PhotoStore, not the database; this row is what
+    they are and whose. Its random UUID is also what makes its URL
+    unguessable — photos are served without a login check."""
+
+    __tablename__ = "photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    memory_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("memories.id"), index=True)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # The original's file type as stored ("jpeg", "png", "webp", "heic").
+    original_format: Mapped[str]
+    original_bytes: Mapped[int]
+    width: Mapped[int]
+    height: Mapped[int]
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
