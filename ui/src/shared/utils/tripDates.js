@@ -55,3 +55,24 @@ export function defaultFormDate(trip, { preferred, skip, now = new Date() } = {}
   }
   return trip.startDate;
 }
+
+/**
+ * Trips (anything with startDate/endDate/timezone) by phase, each in the
+ * order it's listed: active and upcoming soonest first, past most recent
+ * first.
+ */
+export function groupTrips(trips, now = new Date()) {
+  const groups = { active: [], upcoming: [], past: [] };
+  for (const trip of trips) groups[tripPhase(trip, now)].push(trip);
+  const byStart = (a, b) => a.startDate.localeCompare(b.startDate);
+  groups.active.sort(byStart);
+  groups.upcoming.sort(byStart);
+  groups.past.sort((a, b) => b.endDate.localeCompare(a.endDate));
+  return groups;
+}
+
+/** The trip the app opens on: the active one, else the next upcoming one, else null. */
+export function pickLandingTrip(trips, now = new Date()) {
+  const { active, upcoming } = groupTrips(trips, now);
+  return active[0] ?? upcoming[0] ?? null;
+}

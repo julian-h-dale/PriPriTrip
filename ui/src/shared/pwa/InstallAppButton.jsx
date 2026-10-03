@@ -8,15 +8,20 @@ import { useInstallPrompt } from "@/shared/pwa/useInstallPrompt";
  * "Install app": the browser's own prompt where there is one (Android/Chrome),
  * or a short how-to on iOS, which has none. Hidden once installed.
  */
-export function InstallAppButton() {
+export function InstallAppButton({ variant = "outline", className }) {
   const { mode, install } = useInstallPrompt();
   const [hintOpen, setHintOpen] = useState(false);
   if (!mode) return null;
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={mode === "prompt" ? install : () => setHintOpen(true)}>
-        <Download className="h-4 w-4" aria-hidden="true" />
+      <Button
+        variant={variant}
+        size="sm"
+        className={className}
+        onClick={mode === "prompt" ? install : () => setHintOpen(true)}
+      >
+        <Download className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         Install app
       </Button>
       <Dialog open={hintOpen} onClose={() => setHintOpen(false)} title="Install PriPriTrip">

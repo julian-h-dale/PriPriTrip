@@ -113,6 +113,6 @@ describe("DayDetailPage", () => {
     apiClient.get.mockRejectedValue({ response: { status: 404 } });
     renderDay("2026-05-11");
     expect(await screen.findByText("Trip not found")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute("href", "/trips");
   });
 });

@@ -13,11 +13,26 @@ export function screenshotPath(name) {
 const SEED_EMAIL = process.env.SEED_USER_EMAIL || "user@example.com";
 const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || "changeme-user";
 
-/** Logs in as the seed dev user and waits for the trips list. */
+/**
+ * Logs in as the seed dev user, then opens the full trips list (signing in
+ * itself lands on the next trip, not the list).
+ */
 export async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(SEED_EMAIL);
   await page.getByRole("textbox", { name: "Password" }).fill(SEED_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((url) => url.pathname !== "/login" && url.pathname !== "/");
+  await page.goto("/trips");
   await page.getByRole("heading", { name: "Trips" }).waitFor();
+}
+
+/** The trips list's link to a trip, opening the collapsed "Past" group if that's where it is. */
+export async function tripLink(page, name) {
+  const link = page.getByRole("link", { name });
+  if (!(await link.isVisible())) {
+    const past = page.getByRole("button", { name: /^Past \(/ });
+    if (await past.isVisible()) await past.click();
+  }
+  return link;
 }

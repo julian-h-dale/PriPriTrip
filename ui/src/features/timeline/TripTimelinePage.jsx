@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Home, Plane } from "lucide-react";
+import { Home, Plane } from "lucide-react";
 import { BookingDetailsDialog } from "@/features/timeline/BookingDetailsDialog";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { stayCoverage, travelCoverage } from "@/features/timeline/coverageView";
@@ -21,7 +21,7 @@ import { TravelForm } from "@/features/timeline/TravelForm";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
-import { formatDateRange, zoneLabel } from "@/shared/utils/time";
+import { formatDateRange } from "@/shared/utils/time";
 
 const VIEWS = [
   { view: "stays", icon: Home, label: "Show which nights have a stay" },
@@ -114,10 +114,7 @@ function TripTimeline({ trip }) {
             ))}
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {formatDateRange(trip.startDate, trip.endDate)} · Times are local
-          {" "}({zoneLabel(trip.timezone)} unless noted)
-        </p>
+        <p className="text-sm text-muted-foreground">{formatDateRange(trip.startDate, trip.endDate)}</p>
       </header>
 
       <ol aria-label="Trip days" className="flex flex-col">
@@ -199,21 +196,13 @@ export function TripTimelinePage() {
   return (
     <BottomNavLayout tripId={tripId}>
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <Link
-          to="/"
-          className="mb-4 inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Trips
-        </Link>
-
         {current ? (
           <TripTimeline key={current.id} trip={current} />
         ) : status === "notFound" ? (
           <Card className="flex flex-col items-center gap-3 p-8 text-center">
             <p className="font-medium">Trip not found</p>
             <p className="text-sm text-muted-foreground">It may have been deleted.</p>
-            <Link to="/" className={buttonVariants({ variant: "outline" })}>
+            <Link to="/trips" className={buttonVariants({ variant: "outline" })}>
               Back to trips
             </Link>
           </Card>

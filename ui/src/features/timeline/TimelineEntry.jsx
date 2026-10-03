@@ -42,16 +42,16 @@ export function LocationBlock({ label, loc }) {
         <MiniMap lat={loc.lat} lng={loc.lng} className="h-28 w-full" />
       )}
       {(map || loc.url) && (
-        <span className="flex gap-3 text-xs">
+        <span className="flex flex-wrap gap-x-4 text-sm">
           {map && (
-            <a href={map} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline">
-              <MapPin className="h-3 w-3" aria-hidden="true" />
+            <a href={map} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-primary underline-offset-2 hover:underline">
+              <MapPin className="h-4 w-4" aria-hidden="true" />
               Open map
             </a>
           )}
           {loc.url && (
-            <a href={loc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline">
-              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            <a href={loc.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-primary underline-offset-2 hover:underline">
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
               Website
             </a>
           )}

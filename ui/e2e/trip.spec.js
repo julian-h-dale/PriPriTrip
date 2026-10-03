@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { login, screenshotPath } from "./helpers.js";
+import { login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Practical smoke checks: page views and basic clicking against the seeded
@@ -15,13 +15,29 @@ test.describe.configure({ mode: "serial" });
 
 test("trips list", async ({ page }) => {
   await login(page);
-  await expect(page.getByRole("link", { name: SAMPLE_TRIP })).toBeVisible();
+  await expect(await tripLink(page, SAMPLE_TRIP)).toBeVisible();
   await page.screenshot({ path: screenshotPath("01-trips-list"), fullPage: true });
+});
+
+test("signing in lands on the next trip; the drawer reaches all trips", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(process.env.SEED_USER_EMAIL || "user@example.com");
+  await page.getByRole("textbox", { name: "Password" }).fill(process.env.SEED_USER_PASSWORD || "changeme-user");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(/\/trips\/[^/]+/);
+  await expect(page.getByRole("navigation", { name: "Trip" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("17-landing"), fullPage: true });
+
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("navigation", { name: "Menu" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("18-drawer"), fullPage: true });
+  await page.getByRole("link", { name: "All trips" }).click();
+  await expect(page.getByRole("heading", { name: "Trips" })).toBeVisible();
 });
 
 test("trip timeline", async ({ page }) => {
   await login(page);
-  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await (await tripLink(page, SAMPLE_TRIP)).click();
   await expect(page.getByRole("heading", { name: SAMPLE_TRIP, level: 1 })).toBeVisible();
   await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("02-trip-timeline"), fullPage: true });
@@ -29,7 +45,7 @@ test("trip timeline", async ({ page }) => {
 
 test("day detail page", async ({ page }) => {
   await login(page);
-  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await (await tripLink(page, SAMPLE_TRIP)).click();
   await page.getByRole("list", { name: "Trip days" }).getByRole("listitem").first().getByRole("link").click();
   await expect(page.getByRole("list", { name: /^Plans for/ })).toBeVisible();
   await page.screenshot({ path: screenshotPath("03-day-detail"), fullPage: true });
@@ -42,7 +58,7 @@ test("day detail page", async ({ page }) => {
 
 test("stays and travel coverage views", async ({ page }) => {
   await login(page);
-  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await (await tripLink(page, SAMPLE_TRIP)).click();
   await expect(page.getByRole("heading", { name: SAMPLE_TRIP, level: 1 })).toBeVisible();
 
   await page.getByRole("button", { name: "Show which nights have a stay" }).click();
@@ -72,7 +88,7 @@ test("stays and travel coverage views", async ({ page }) => {
 
 test("bottom nav and map page", async ({ page }) => {
   await login(page);
-  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await (await tripLink(page, SAMPLE_TRIP)).click();
   const nav = page.getByRole("navigation", { name: "Trip" });
   await expect(nav).toBeVisible();
   await expect(nav.getByRole("link", { name: "Timeline" })).toHaveAttribute("aria-current", "page");
@@ -96,7 +112,7 @@ test("bottom nav and map page", async ({ page }) => {
 
 test("map search and filters", async ({ page }) => {
   await login(page);
-  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await (await tripLink(page, SAMPLE_TRIP)).click();
   await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
   const pins = page.locator("gmp-advanced-marker");
   await expect(pins).toHaveCount(10);
@@ -146,7 +162,7 @@ async function deleteAdded(page, tripId, { itemTitle, stayName }) {
 
 test("map: add a Google place to the trip (activity and stay)", async ({ page }) => {
   await login(page);
-  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await (await tripLink(page, SAMPLE_TRIP)).click();
   const tripId = page.url().split("/trips/")[1];
   await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
   const pins = page.locator("gmp-advanced-marker");

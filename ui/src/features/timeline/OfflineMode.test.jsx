@@ -56,7 +56,7 @@ function renderAt(path, online = false) {
     <Provider store={store}>
       <MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          <Route path="/" element={<TripsPage />} />
+          <Route path="/trips" element={<TripsPage />} />
           <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
           <Route path="/trips/:tripId/map" element={<MapPage />} />
         </Routes>
@@ -76,11 +76,14 @@ beforeEach(async () => {
 
 describe("offline, from the phone's saved copy", () => {
   it("the trips list renders, with the offline bar, and import/delete are off", async () => {
-    renderAt("/");
+    renderAt("/trips");
+    // The sample trip is in the past: open the collapsed group.
+    await userEvent.click(await screen.findByRole("button", { name: "Past (1)" }));
     expect(await screen.findByText(TRIP.name)).toBeInTheDocument();
     expect(await screen.findByText(/^Offline · read-only/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Import trip/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: `Delete ${TRIP.name}` })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: `More for ${TRIP.name}` }));
+    expect(screen.getByRole("menuitem", { name: "Delete trip" })).toBeDisabled();
   });
 
   it("a day page renders and every edit control is disabled", async () => {

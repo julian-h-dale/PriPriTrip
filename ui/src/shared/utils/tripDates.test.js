@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultFormDate, isInTrip, todayIn, tripPhase } from "@/shared/utils/tripDates";
+import { defaultFormDate, groupTrips, isInTrip, pickLandingTrip, todayIn, tripPhase } from "@/shared/utils/tripDates";
 
 const TRIP = { startDate: "2026-10-29", endDate: "2026-11-13", timezone: "Asia/Tokyo" };
 
@@ -56,5 +56,28 @@ describe("defaultFormDate", () => {
   it("falls back to the first day", () => {
     expect(defaultFormDate(TRIP, { now: BEFORE })).toBe("2026-10-29");
     expect(defaultFormDate(TRIP, { skip: () => true, now: BEFORE })).toBe("2026-10-29");
+  });
+});
+
+describe("groupTrips and pickLandingTrip", () => {
+  const NOW = new Date("2026-10-03T12:00:00Z");
+  const past1 = { id: "p1", startDate: "2026-05-10", endDate: "2026-05-14", timezone: "Europe/Zurich" };
+  const past2 = { id: "p2", startDate: "2026-07-01", endDate: "2026-07-04", timezone: "UTC" };
+  const active = { id: "a", startDate: "2026-10-01", endDate: "2026-10-05", timezone: "UTC" };
+  const soon = { id: "u1", startDate: "2026-10-29", endDate: "2026-11-13", timezone: "Asia/Tokyo" };
+  const later = { id: "u2", startDate: "2027-03-01", endDate: "2027-03-05", timezone: "UTC" };
+
+  it("groups by phase: upcoming soonest first, past most recent first", () => {
+    const groups = groupTrips([later, past1, soon, active, past2], NOW);
+    expect(groups.active.map((t) => t.id)).toEqual(["a"]);
+    expect(groups.upcoming.map((t) => t.id)).toEqual(["u1", "u2"]);
+    expect(groups.past.map((t) => t.id)).toEqual(["p2", "p1"]);
+  });
+
+  it("lands on the active trip, else the next upcoming, else nothing", () => {
+    expect(pickLandingTrip([later, soon, active, past1], NOW).id).toBe("a");
+    expect(pickLandingTrip([later, soon, past1], NOW).id).toBe("u1");
+    expect(pickLandingTrip([past1, past2], NOW)).toBeNull();
+    expect(pickLandingTrip([], NOW)).toBeNull();
   });
 });

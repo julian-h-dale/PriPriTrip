@@ -4,8 +4,9 @@ Reviewed 2026-10-03, after Phase 15, from the 375px Playwright screenshots
 in `ui/e2e/screenshots/` and the code. The lens is the app's main use case:
 **one place for everything you need on a trip, and you can find it fast.**
 
-None of this is scheduled yet. Pull items into `implementation_plan.md` as
-phases when they're picked up, and mark them here when they're done.
+**Decided 2026-10-03 with Julian; scheduled as Run stage 2 (Phases 20–24)**
+in `implementation_plan.md`. Each item below has its decision; mark them
+done here as they land.
 
 ## What's working
 
@@ -22,6 +23,8 @@ phases when they're picked up, and mark them here when they're done.
 
 ### 1. Nothing knows "today" (highest impact)
 
+**Decision:** a **Today** tab: Today | Timeline | Map, Today first. For now it's always shown, and previews the first day when the trip isn't under way (easy to test); hiding it outside an active trip comes later. Next up includes timed activities. Past days are greyed on the timeline, but entries within a day are not, because many have no time. (Phase 21)
+
 During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 → trip → find the date → day → expand the entry → scroll.
 
@@ -37,6 +40,8 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 
 ### 2. Key details are hidden behind expanding
 
+**Decision:** keep drilling into the details; the list rows don't change (they got busy before). One shared `EntryDetails` component, ordered: facts and confirmation number, then notes, then places, then small photos last. No photos for airports and stations. The Today tab gives fast access without drilling. (Phase 22)
+
 - Show confirmation numbers, the address and the check-in/departure time on
   the collapsed entry row, with tap-to-copy (the copy control already exists
   inside the expanded view).
@@ -46,6 +51,8 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 
 ### 3. Search exists only on the map
 
+**Decision:** a search icon in the trip's top bar opens a full-screen search. Results are grouped by day, and tapping one opens that day with the entry expanded. (Phase 23)
+
 - Add a trip-wide search on the timeline that covers titles, notes,
   confirmation numbers, carriers and addresses (for example "SBB", "LX 9", a
   hotel name). It's a pure, local, offline-friendly function, like
@@ -53,11 +60,15 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 
 ### 4. The stays/travel toggles have no labels
 
+**Decision:** try "Plan | Stays | Travel". Julian gets before/after screenshots and may revert it. (Phase 24)
+
 - The House and Plane icon buttons beside the title are hard to discover.
   A text segmented control, "Plan | Stays | Travel", is clearer and fits at
   375px.
 
 ### 5. Day page navigation
+
+**Decision:** all three. Show "Day N of M", put prev/next at the bottom too and add swipe, and drop the "← Trip" link. (Phase 24)
 
 - There's no "Day 2 of 5" context on the day page.
 - You can only change days with the single prev/next button at the top.
@@ -66,6 +77,8 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   or make the tab return to the trip overview when you're already on it.
 
 ### 6. Map
+
+**Decision:** no "Locate me" for now. Directions hand off to the phone's maps app, which is more trustworthy (and works offline). The map stays a tab. The odd screenshots are a quirk of the headless browser; the info windows look fine on a real device.
 
 - Add a **"Locate me"** blue dot: "how far am I from the hotel?" is a
   constant on-trip question.
@@ -79,6 +92,8 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 
 ### 7. Trips list
 
+**Decision:** groups in this order: Active (hidden when empty), Upcoming, then Past at the bottom (collapsed). Delete goes in a "⋯" menu. The app lands on the next trip, and the trips list moves behind a nav drawer. (Phase 20)
+
 - There's no upcoming / active / past grouping. Put the active trip first,
   then upcoming, with past trips collapsed.
 - The trash icon sits right next to the main tap target. There's a confirm
@@ -86,6 +101,8 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   overflow menu.
 
 ### 8. Small tap targets and noise
+
+**Decision:** both. Drop the header line and enlarge the links. (Phase 20)
 
 - "Open map", and other `text-xs` links, are below a comfortable 44px tap
   height.
@@ -97,7 +114,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 - Safe-area padding for the notch and home indicator, once it's installed as
   a PWA.
 
-## Suggested next step
+## Next follow-up
 
-Items 1 and 2 together make one phase. It's the biggest step towards "find
-it fast", and it builds directly on the offline work.
+- A **text-size preference**: the text is small. It should also scale the
+  timeline rails and dots.

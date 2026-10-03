@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMe } from "@/features/auth/authSlice";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { LandingPage } from "@/features/trips/LandingPage";
 import { TripsPage } from "@/features/trips/TripsPage";
 import { MapPage } from "@/features/map/MapPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
@@ -30,6 +31,14 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/"
+          element={
+            <ProtectedRoute>
+              <LandingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips"
           element={
             <ProtectedRoute>
               <TripsPage />

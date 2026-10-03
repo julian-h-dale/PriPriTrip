@@ -6,7 +6,16 @@
 
 ## Status
 
-- **Current work (2026-10-03):** Run stage 1 in `implementation_plan.md`,
+- **Current work (2026-10-03):** **Run stage 2** ("find it fast",
+  `implementation_plan.md`, Phases 20–24), built one commit per phase.
+  - **Phase 20 ✅:** `/` lands on the active or next upcoming trip
+    (`pickLandingTrip`), else `/trips`. The trips list moved to `/trips`,
+    grouped Active / Upcoming / Past (collapsed), with delete behind a "⋯"
+    `RowMenu`. A `TopBar` (☰) opens the `NavDrawer`: All trips, Install,
+    Admin, Sign out. The "Times are local" line is gone, and the location
+    links have 44px tap targets. The e2e `login()` helper now opens `/trips`
+    itself.
+- **Earlier (2026-10-03):** Run stage 1 in `implementation_plan.md`,
   built as two commits, as Julian asked. **Both are done**, waiting on
   Julian's 375px look.
   - **Map place search (commit 2, Phases 16–17):**

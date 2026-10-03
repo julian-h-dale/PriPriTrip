@@ -384,7 +384,7 @@ export function DayDetailPage() {
           <Card className="flex flex-col items-center gap-3 p-8 text-center">
             <p className="font-medium">Trip not found</p>
             <p className="text-sm text-muted-foreground">It may have been deleted.</p>
-            <Link to="/" className={buttonVariants({ variant: "outline" })}>
+            <Link to="/trips" className={buttonVariants({ variant: "outline" })}>
               Back to trips
             </Link>
           </Card>

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -41,25 +42,26 @@ function renderWith(ui, store, initialEntries = ["/"]) {
   );
 }
 
-describe("Admin navigation button", () => {
+describe("Admin link in the nav drawer", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("shows the Admin button for superusers", async () => {
+  it("shows the Admin link for superusers", async () => {
     const store = makeStore({
       auth: { token: "t", user: { email: "a@x.com", is_superuser: true }, status: "idle" },
     });
     renderWith(<TripsPage />, store);
-    expect(await screen.findByRole("button", { name: /admin/i })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("link", { name: /admin/i })).toHaveAttribute("href", "/admin");
   });
 
-  it("hides the Admin button for non-superusers", async () => {
+  it("hides the Admin link for non-superusers", async () => {
     const store = makeStore({
       auth: { token: "t", user: { email: "u@x.com", is_superuser: false }, status: "idle" },
     });
     renderWith(<TripsPage />, store);
-    // Flush the trips page's on-mount fetch before asserting.
-    await screen.findByRole("button", { name: /sign out/i });
-    expect(screen.queryByRole("button", { name: /admin/i })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /admin/i })).not.toBeInTheDocument();
   });
 });
 

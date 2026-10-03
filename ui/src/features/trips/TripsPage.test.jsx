@@ -15,11 +15,12 @@ vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }));
 
+// Far enough ahead to always be "upcoming" (past trips start collapsed).
 const TRIP = {
   id: "t1",
   name: "Bern & Wengen Long Weekend",
-  startDate: "2026-05-10",
-  endDate: "2026-05-14",
+  startDate: "2099-05-10",
+  endDate: "2099-05-14",
   timezone: "Europe/Zurich",
   stayCount: 2,
   travelCount: 4,
@@ -63,7 +64,7 @@ describe("TripsPage", () => {
     renderPage();
     const link = await screen.findByRole("link", { name: /Bern & Wengen/ });
     expect(link).toHaveAttribute("href", "/trips/t1");
-    expect(link).toHaveTextContent("May 10 – 14, 2026 · 4 nights");
+    expect(link).toHaveTextContent("May 10 – 14, 2099 · 4 nights");
     expect(link).toHaveTextContent("2 stays");
     expect(link).toHaveTextContent("4 legs");
   });
@@ -130,16 +131,51 @@ describe("TripsPage", () => {
     apiClient.delete.mockResolvedValue({});
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /delete bern/i }));
+    await user.click(await screen.findByRole("button", { name: /more for bern/i }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete trip" }));
     let dialog = screen.getByRole("dialog", { name: "Delete trip?" });
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(apiClient.delete).not.toHaveBeenCalled();
     expect(screen.getByRole("link", { name: /Bern & Wengen/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /delete bern/i }));
+    await user.click(screen.getByRole("button", { name: /more for bern/i }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete trip" }));
     dialog = screen.getByRole("dialog", { name: "Delete trip?" });
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(apiClient.delete).toHaveBeenCalledWith("/trips/t1", { silent: true });
     expect(await screen.findByText("No trips yet")).toBeInTheDocument();
+  });
+
+  it("groups trips: active, then upcoming, then past (collapsed) at the bottom", async () => {
+    const user = userEvent.setup();
+    const today = new Date().toISOString().slice(0, 10);
+    const trips = [
+      { ...TRIP, id: "past", name: "Old trip", startDate: "2001-01-01", endDate: "2001-01-05", timezone: "UTC" },
+      { ...TRIP, id: "later", name: "Later trip", startDate: "2099-01-01", endDate: "2099-01-05", timezone: "UTC" },
+      // Spans today in every zone.
+      { ...TRIP, id: "now", name: "Current trip", startDate: "2000-01-01", endDate: "2199-01-01", timezone: "UTC" },
+    ];
+    expect(today > "2001-01-05").toBe(true);
+    apiClient.get.mockResolvedValue({ data: trips });
+    renderPage();
+
+    const active = await screen.findByRole("region", { name: "Active" });
+    expect(within(active).getByText("Current trip")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Upcoming" })).getByText("Later trip")).toBeInTheDocument();
+    // Past is collapsed until asked for.
+    expect(screen.queryByText("Old trip")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Past (1)" }));
+    expect(screen.getByText("Old trip")).toBeInTheDocument();
+    // Document order: Active before Upcoming before Past.
+    const names = screen.getAllByRole("link", { name: /trip/i }).map((a) => a.textContent);
+    expect(names.findIndex((n) => n.includes("Current"))).toBeLessThan(names.findIndex((n) => n.includes("Later")));
+    expect(names.findIndex((n) => n.includes("Later"))).toBeLessThan(names.findIndex((n) => n.includes("Old")));
+  });
+
+  it("hides the Active group when nothing is under way", async () => {
+    apiClient.get.mockResolvedValue({ data: [TRIP] });
+    renderPage();
+    await screen.findByRole("region", { name: "Upcoming" });
+    expect(screen.queryByRole("region", { name: "Active" })).not.toBeInTheDocument();
   });
 });

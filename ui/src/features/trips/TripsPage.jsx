@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
-import { BedDouble, Plane, Trash2, Upload } from "lucide-react";
-import { signOut } from "@/features/auth/authSlice";
+import { Link } from "react-router-dom";
+import { BedDouble, ChevronDown, Plane, Trash2, Upload } from "lucide-react";
 import { deleteTrip, fetchTrips } from "@/features/trips/tripsSlice";
 import { ImportTripDialog } from "@/features/trips/ImportTripDialog";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { OfflineBar } from "@/shared/components/OfflineBar";
-import { InstallAppButton } from "@/shared/pwa/InstallAppButton";
+import { RowMenu } from "@/shared/components/RowMenu";
+import { TopBar } from "@/shared/components/TopBar";
+import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDateRange } from "@/shared/utils/time";
+import { groupTrips } from "@/shared/utils/tripDates";
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -39,19 +41,40 @@ function TripCard({ trip, onDelete, readOnly }) {
           </span>
         </span>
       </Link>
-      <div className="flex items-start p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`Delete ${trip.name}`}
-          onClick={() => onDelete(trip)}
-          disabled={readOnly}
-          title={readOnly ? "You’re offline" : undefined}
-        >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </Button>
+      {/* Delete lives behind ⋯, away from the card's main tap target. */}
+      <div className="flex items-start p-1.5">
+        <RowMenu
+          label={`More for ${trip.name}`}
+          items={[
+            {
+              label: "Delete trip",
+              icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+              destructive: true,
+              disabled: readOnly,
+              title: readOnly ? "You’re offline" : undefined,
+              onSelect: () => onDelete(trip),
+            },
+          ]}
+        />
       </div>
     </Card>
+  );
+}
+
+/** One group of the trips list: a heading, then its cards. */
+function TripGroup({ title, trips, onDelete, readOnly }) {
+  if (!trips.length) return null;
+  return (
+    <section aria-label={title} className="flex flex-col gap-2">
+      <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <ul className="flex flex-col gap-2">
+        {trips.map((trip) => (
+          <li key={trip.id}>
+            <TripCard trip={trip} onDelete={onDelete} readOnly={readOnly} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -67,14 +90,13 @@ function TripListSkeleton() {
 
 export function TripsPage() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { items, status, stale, savedAt } = useSelector((s) => s.trips);
   const online = useSelector((s) => s.network?.online ?? true);
   const readOnly = !online || stale;
-  const user = useSelector((s) => s.auth.user);
   const [importOpen, setImportOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [showPast, setShowPast] = useState(false);
 
   // Re-runs when the connection comes back (or drops — which falls back to
   // the saved copy and marks it stale).
@@ -90,34 +112,16 @@ export function TripsPage() {
   }
 
   const firstLoad = status === "loading" && items.length === 0;
+  const groups = groupTrips(items);
 
   return (
     <>
+      <TopBar title="PriPriTrip" />
       <OfflineBar online={online} stale={stale} savedAt={savedAt} />
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <header className="mb-6 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold">Trips</h1>
-            {user?.email && (
-              <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <InstallAppButton />
-            {/* Only rendered for admins; the server still enforces access. */}
-            {user?.is_superuser && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
-                Admin
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => dispatch(signOut())}>
-              Sign out
-            </Button>
-          </div>
-        </header>
-
-        {items.length > 0 && (
-          <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <h1 className="text-xl font-semibold">Trips</h1>
+          {items.length > 0 && (
             <Button
               size="sm"
               onClick={() => setImportOpen(true)}
@@ -127,8 +131,8 @@ export function TripsPage() {
               <Upload className="h-4 w-4" aria-hidden="true" />
               Import trip
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {firstLoad ? (
           <TripListSkeleton />
@@ -154,13 +158,32 @@ export function TripsPage() {
             </Button>
           </Card>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {items.map((trip) => (
-              <li key={trip.id}>
-                <TripCard trip={trip} onDelete={setPendingDelete} readOnly={readOnly} />
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-6">
+            <TripGroup title="Active" trips={groups.active} onDelete={setPendingDelete} readOnly={readOnly} />
+            <TripGroup title="Upcoming" trips={groups.upcoming} onDelete={setPendingDelete} readOnly={readOnly} />
+            {groups.past.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPast((v) => !v)}
+                  aria-expanded={showPast}
+                  className="flex items-center gap-1 self-start rounded-sm py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Past ({groups.past.length})
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showPast && "rotate-180")} aria-hidden="true" />
+                </button>
+                {showPast && (
+                  <ul aria-label="Past" className="flex flex-col gap-2">
+                    {groups.past.map((trip) => (
+                      <li key={trip.id}>
+                        <TripCard trip={trip} onDelete={setPendingDelete} readOnly={readOnly} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         <ImportTripDialog open={importOpen} onClose={() => setImportOpen(false)} />

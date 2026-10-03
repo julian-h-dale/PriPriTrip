@@ -99,7 +99,7 @@ describe("TripTimelinePage", () => {
     apiClient.get.mockRejectedValue({ response: { status: 404 } });
     renderPage();
     expect(await screen.findByText("Trip not found")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute("href", "/trips");
   });
 
   it("switches to the stays view and back, and never shows both at once", async () => {
