@@ -4,8 +4,9 @@ import { clear, createStore, del, get, keys, set } from "idb-keyval";
  * The offline copy of a user's trips, in IndexedDB. Keyed by user id so a
  * second account on the same phone never reads the first one's trips:
  *
- *   trips:<userId>          { data: TripSummary[], savedAt }
- *   trip:<userId>:<tripId>  { data: TripRead, savedAt }
+ *   trips:<userId>              { data: TripSummary[], savedAt }
+ *   trip:<userId>:<tripId>      { data: TripRead, savedAt }
+ *   memories:<userId>:<tripId>  { data: MemoryRead[], savedAt }
  *
  * `savedAt` is an ISO instant (when this phone last got it from the server).
  * Best-effort throughout: a browser without IndexedDB (private mode, tests)
@@ -55,12 +56,27 @@ export function removeTrip(userId, tripId) {
   return safely(() => del(tripKey(userId, tripId), db()));
 }
 
+const memoriesKey = (userId, tripId) => `memories:${userId}:${tripId}`;
+
+export function readMemories(userId, tripId) {
+  if (!userId) return Promise.resolve(null);
+  return safely(() => get(memoriesKey(userId, tripId), db()));
+}
+
+export function saveMemories(userId, tripId, data) {
+  if (!userId) return Promise.resolve();
+  return safely(() => set(memoriesKey(userId, tripId), { data, savedAt: new Date().toISOString() }, db()));
+}
+
 /** Forget everything cached for one user (on sign-out). */
 export function clearUser(userId) {
   if (!userId) return Promise.resolve();
   return safely(async () => {
     const mine = (await keys(db())).filter(
-      (k) => k === listKey(userId) || String(k).startsWith(`trip:${userId}:`)
+      (k) =>
+        k === listKey(userId) ||
+        String(k).startsWith(`trip:${userId}:`) ||
+        String(k).startsWith(`memories:${userId}:`)
     );
     await Promise.all(mine.map((k) => del(k, db())));
   });

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { CalendarCheck, List, MapPin } from "lucide-react";
+import { BookOpen, CalendarCheck, List, MapPin } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
 // Today first. It's shown for every trip for now (it previews day 1 outside
@@ -18,6 +18,12 @@ const TABS = [
     active: (path, tripId) => path === `/trips/${tripId}` || path.startsWith(`/trips/${tripId}/days`),
   },
   {
+    to: (tripId) => `/trips/${tripId}/journal`,
+    icon: BookOpen,
+    label: "Journal",
+    active: (path, tripId) => path === `/trips/${tripId}/journal`,
+  },
+  {
     to: (tripId) => `/trips/${tripId}/map`,
     icon: MapPin,
     label: "Map",
@@ -25,7 +31,7 @@ const TABS = [
   },
 ];
 
-/** The Today/Timeline/Map tab bar shown only while viewing one trip. */
+/** The Today/Timeline/Journal/Map tab bar shown only while viewing one trip. */
 export function BottomNav({ tripId }) {
   const { pathname } = useLocation();
   return (

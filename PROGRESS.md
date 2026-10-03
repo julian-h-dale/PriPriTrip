@@ -306,10 +306,9 @@
    map, and offline (DevTools → Network → Offline). Then deploy to Fly
    (HTTPS), install it on the phone, and try it in airplane mode before the
    Okinawa trip (Oct 29).
-5. **Planned, awaiting answers (2026-10-03):** Run stage 3 in
-   `implementation_plan.md` — sharing (owner/viewer, join codes, Phases
-   25–26) and the trip journal (memories, Phases 27–28). **Julian:** answer
-   Q-S1–S5 and Q-J1–J6 inline before any phase work.
+5. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
+   `changeme-viewer` for the viewer's side (`make seed` created it, already
+   joined to the sample trip).
 6. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
    the Plan | Stays | Travel control.
    Then the text-size preference (the next follow-up), and later showing
@@ -329,7 +328,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 115 API + 196 UI tests
+make verify     # should be green: 133 API + 221 UI tests
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.

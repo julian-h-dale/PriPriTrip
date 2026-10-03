@@ -270,3 +270,43 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
     await viewerContext.close();
   }
 });
+
+test("journal: a viewer writes a memory on Today, the owner reads it", async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const text = `E2E memory ${Date.now()}`;
+  const viewer = await viewerContext.newPage();
+  try {
+    await login(viewer, SEED_VIEWER);
+    await (await tripLink(viewer, SAMPLE_TRIP)).click();
+    const nav = viewer.getByRole("navigation", { name: "Trip" });
+    await nav.getByRole("link", { name: "Today" }).click();
+    await viewer.getByRole("button", { name: "New memory" }).click();
+    await viewer.getByLabel("What happened?").fill(text);
+    await viewer.getByRole("button", { name: "Save" }).click();
+    await expect(viewer.getByRole("dialog")).toHaveCount(0);
+
+    const owner = await ownerContext.newPage();
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    await owner.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Journal" }).click();
+    const card = owner.getByRole("listitem").filter({ hasText: text });
+    await expect(card).toContainText(SEED_VIEWER.email);
+    // Someone else's memory: the owner can't edit or delete it.
+    await expect(card.getByRole("button", { name: "Memory options" })).toHaveCount(0);
+    await owner.screenshot({ path: screenshotPath("24-journal"), fullPage: true });
+  } finally {
+    // Clean up through the UI as its author.
+    await viewer.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Journal" }).click();
+    const mine = viewer.getByRole("listitem").filter({ hasText: text });
+    if (await mine.count()) {
+      await mine.getByRole("button", { name: "Memory options" }).click();
+      await viewer.getByRole("menuitem", { name: "Delete" }).click();
+      await viewer.getByRole("dialog", { name: "Delete memory?" }).getByRole("button", { name: "Delete" }).click();
+      await expect(viewer.getByRole("listitem").filter({ hasText: text })).toHaveCount(0);
+    }
+    await ownerContext.close();
+    await viewerContext.close();
+  }
+});
+

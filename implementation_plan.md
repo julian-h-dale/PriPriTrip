@@ -1684,7 +1684,7 @@ survives.
   - a viewer can create;
   - deleted memories are hidden.
 
-### Phase 28 — Run: memories UI
+### Phase 28 — Run: memories UI ✅
 
 - New memory on Today, the Journal view grouped by day, edit and delete
   your own, and caching the journal for offline reading.
@@ -1696,6 +1696,15 @@ survives.
   - an edit keeps its place;
   - only your own memories show Edit and Delete;
   - New memory is disabled offline.
+
+**Built (2026-10-03):** Phases 25–28, one commit each (plus a mypy fix
+after 25).
+- `make verify`: 133 API + 221 UI tests. `ui/e2e/trip.spec.js` (12 tests,
+  owner and viewer in two browser contexts) passes live.
+- The new tables are created at startup, so no `make reset-db` was needed;
+  `make seed` adds the viewer.
+- **Waiting on:** Julian's look at 375px, and a real two-phone test after
+  the Fly deploy.
 
 ### Open questions (Run stage 3)
 

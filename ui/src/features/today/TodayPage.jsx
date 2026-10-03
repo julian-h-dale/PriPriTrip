@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { BedDouble, ChevronRight, DoorOpen, Info, Navigation } from "lucide-react";
 import { nextUp, referenceDay, tonight, untilLabel } from "@/features/today/todayView";
+import { MemoryDialog } from "@/features/journal/MemoryDialog";
+import { NewMemoryButton } from "@/features/journal/JournalPage";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { dayCities } from "@/features/timeline/dayCities";
 import { describeEntry } from "@/features/timeline/describeEntry";
@@ -134,6 +136,7 @@ function TodayView({ trip }) {
   const row = rows[index];
   const tomorrow = rows[index + 1] ?? null;
   const [openEntries, setOpenEntries] = useState(() => new Set());
+  const [writing, setWriting] = useState(false);
   const dayNumber = daysBetween(trip.startDate, ref.date) + 1;
   const dayCount = daysBetween(trip.startDate, trip.endDate) + 1;
 
@@ -149,7 +152,11 @@ function TodayView({ trip }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">{ref.active ? "Today" : "Day 1 preview"}</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-xl font-semibold">{ref.active ? "Today" : "Day 1 preview"}</h1>
+          {/* Spur of the moment: one tap to write it down. */}
+          <NewMemoryButton onClick={() => setWriting(true)} />
+        </div>
         <p className="text-sm text-muted-foreground">
           {formatDayHeading(ref.date)} · Day {dayNumber} of {dayCount}
         </p>
@@ -189,6 +196,8 @@ function TodayView({ trip }) {
           <p className="text-sm text-muted-foreground">Nothing planned.</p>
         )}
       </section>
+
+      {writing && <MemoryDialog open onClose={() => setWriting(false)} tripId={trip.id} />}
 
       {tomorrow && (
         <section aria-label="Tomorrow">
