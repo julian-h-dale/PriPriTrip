@@ -33,8 +33,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends nginx \
 COPY api/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# API source.
+# API source, and its Alembic migrations (deploy/start.sh runs them).
 COPY api/app ./app
+COPY api/alembic.ini ./alembic.ini
+COPY api/migrations ./migrations
 
 # Compiled UI assets from stage 1.
 COPY --from=frontend-builder /app/ui/dist /var/www/html

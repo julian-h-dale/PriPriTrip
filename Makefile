@@ -1,12 +1,13 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed reset-db schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed migrate reset-db schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
 	@echo "  setup         Install backend + frontend dependencies (creates api/.env)"
 	@echo "  seed          Create seed users + sample data (idempotent)"
+	@echo "  migrate       Upgrade the database to the latest schema (Alembic)"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
@@ -35,12 +36,15 @@ setup: env
 seed:
 	cd api && . .venv/bin/activate && python -m app.seed
 
-# create_all will not add a column to a table that already exists; while
-# Alembic is deferred, a schema change means dropping the dev database and
-# re-seeding. This target does exactly that.
+# The schema is Alembic's (api/migrations). After changing a model:
+#   cd api && alembic revision --autogenerate -m "what changed"   (then review it)
+migrate:
+	cd api && . .venv/bin/activate && python -m app.migrate
+
+# Deletes the database DATABASE_URL names (a worktree's own, too — this used
+# to hardcode api/data/app.db), migrates a fresh one, and re-seeds.
 reset-db:
-	rm -f api/data/app.db
-	cd api && . .venv/bin/activate && python -m app.seed
+	cd api && . .venv/bin/activate && python -m app.migrate --reset && python -m app.seed
 
 # The trip-document JSON Schema is generated, never hand-edited. A test fails
 # if the committed file drifts from the models.

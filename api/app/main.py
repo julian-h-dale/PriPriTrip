@@ -1,8 +1,8 @@
 """FastAPI application factory.
 
-Early-development pattern: Base.metadata.create_all in lifespan creates
-tables on startup. Once the schema stabilises, remove create_all and
-switch to Alembic migrations (see quickstart_technical.md).
+The schema is managed by Alembic (api/migrations). The app never creates or
+alters tables itself: `python -m app.migrate` runs first — from
+deploy/start.sh, api/dev.sh and the seed script.
 """
 
 from __future__ import annotations
@@ -12,8 +12,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import engine
-from app.models import Base
 from app.routers import admin, config, memories, sharing, trips
 from app.schemas import UserCreate, UserRead, UserUpdate
 from app.settings import get_app_settings
@@ -22,8 +20,6 @@ from app.users import auth_backend, fastapi_users
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
 
 

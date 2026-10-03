@@ -7,4 +7,7 @@ mkdir -p data
 # whole file — .env also holds seed credentials.
 API_PORT="${API_PORT:-$(sed -n 's/^API_PORT=//p' .env 2>/dev/null | tail -1)}"
 
+# Bring the database up to the latest schema first (Alembic).
+python -m app.migrate
+
 exec uvicorn app.main:app --host 0.0.0.0 --port "${API_PORT:-8000}" --reload

@@ -6,10 +6,12 @@ set -euo pipefail
 # Persist SQLite on the mounted volume (Fly volume is mounted at /data).
 mkdir -p /data
 
-# Once Alembic is introduced, run migrations before serving:
-#   alembic upgrade head
+# Bring the schema up to date before serving (Alembic). A database created by
+# the pre-Alembic build is recognised and stamped at the baseline, keeping
+# its data — see api/app/migrate.py.
+python -m app.migrate
 
-# Create tables and seed the initial users + sample data. Idempotent: existing
+# Seed the initial users + sample data. Idempotent: existing
 # users are left untouched, so this is safe on every boot. Without this a fresh
 # container (or a fresh volume) has an empty database and nobody can log in.
 python -m app.seed

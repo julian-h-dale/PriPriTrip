@@ -154,24 +154,35 @@ Important: the default stack here is asynchronous. Do not assume a sync `Session
 - **Switching databases**: any SQL-compliant, SQLAlchemy-supported database works (PostgreSQL, MySQL, etc.). Swap the URL and the async driver (e.g. `postgresql+asyncpg://...`); the model and session code stays the same.
 - **Production**: use whichever SQL database fits; the important part is keeping the async engine/session setup, not reverting to the sync ORM pattern.
 
-### Schema Migrations — Alembic (deferred pattern)
+### Schema Migrations — Alembic
 
-**Alembic is in the stack but intentionally deferred during early development.**
+The schema is managed by **Alembic** (`api/alembic.ini`, `api/migrations/`).
+It was introduced in PriPriTrip's Phase 29a, with the schema as first deployed
+as the baseline (`0001`). The app never creates or alters tables itself.
+`python -m app.migrate` (`make migrate`) upgrades to head, and runs first from:
+- `deploy/start.sh`, on every container start;
+- `api/dev.sh`;
+- the seed script.
 
-Early on, use `Base.metadata.create_all` inside the FastAPI `lifespan` to create tables automatically on startup. This avoids migration overhead while the schema is still evolving.
+It also recognises a database made before Alembic (it has the tables but
+no `alembic_version`), stamps it at the baseline and upgrades it, keeping
+its data.
 
-**You will hit this:** `create_all` creates *missing* tables but never alters *existing* ones. Adding a column to a table that already exists produces `OperationalError: no such column` (which surfaces from `make seed`, reading like a broken seed script rather than a moved schema). While Alembic is deferred, a schema change means dropping the dev database and re-seeding — `make reset-db` does exactly that.
-
-Once the schema stabilises, remove `create_all`, introduce Alembic, and generate a baseline migration:
+After changing a model:
 
 ```bash
-alembic revision --autogenerate -m "initial schema"
-alembic upgrade head
+cd api && alembic revision --autogenerate -m "what changed"
 ```
 
-`migrations/env.py` must import all models so `Base.metadata` is populated for autogenerate.
+Then **read the generated file**:
+- autogenerate misses data backfills;
+- it needs batch mode for SQLite `ALTER`s (already on in `env.py`);
+- it can render types it doesn't import, as the fastapi-users `GUID` did.
 
-In production, `deploy/start.sh` runs `alembic upgrade head` on every container start so migrations apply automatically on deploy.
+`make verify` includes a test that a fresh database migrated to head matches
+the models exactly, so a model change without a migration fails CI. `make
+reset-db` deletes whichever SQLite file `DATABASE_URL` names (a worktree's
+own too), migrates a fresh one, and re-seeds.
 
 ### Settings
 

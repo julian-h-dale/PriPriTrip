@@ -92,7 +92,8 @@ privileged path: an `/admin/users` listing behind `current_superuser`, an
 ```
 make setup     # install deps + create api/.env (backend venv + npm)
 make seed      # create seed users + sample data (idempotent, replants)
-make reset-db  # drop the dev SQLite db and re-seed (after a schema change)
+make migrate   # upgrade the db to the latest schema (Alembic; dev.sh/start.sh run it too)
+make reset-db  # delete the dev SQLite db (the one DATABASE_URL names), migrate, re-seed
 make dev       # dev-api + dev-ui together in one terminal (Ctrl-C stops both)
 make dev-api   # API on :8000  (port from api/.env — differs per worktree)
 make dev-ui    # UI  on :3000  (port from ui/.env  — differs per worktree)
@@ -129,7 +130,7 @@ port — if you hit a CORS error, the ports drifted; fix the `.env`, never
 confirm behaviour, not that anything is *visible* — a broken layout, an
 off-screen element at 375px, or a dark-on-dark contrast failure all pass. A
 full-browser e2e runner (Playwright) is deliberately **not** in the baseline
-(the same way Alembic is deferred until the schema stabilises); until one is
+(the same way Alembic was deferred until the schema stabilised); until one is
 added, **"a human looks at the UI at phone width"** is a required part of the
 phase gate, not an optional one.
 

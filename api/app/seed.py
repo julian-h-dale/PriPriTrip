@@ -17,8 +17,9 @@ import contextlib
 from fastapi_users.exceptions import UserAlreadyExists
 from sqlalchemy import delete, select
 
-from app.database import AsyncSessionLocal, engine
-from app.models import Base, Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
+from app.database import AsyncSessionLocal
+from app.migrate import migrate
+from app.models import Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
 from app.sample_data import load_sample_trip
 from app.schemas import UserCreate
 from app.services.trips import import_trip
@@ -81,9 +82,6 @@ async def _seed_sample_data() -> None:
 
 async def main() -> None:
     settings = get_app_settings()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     print("Seeding users...")
     await _create_user(
         settings.seed_user_email, settings.seed_user_password, is_superuser=False, name="Test User"
@@ -105,4 +103,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    # Tables come from Alembic, never create_all (a fresh clone gets them here).
+    migrate()
     asyncio.run(main())
