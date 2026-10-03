@@ -12,12 +12,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import active
-from app.models import Day, Item, Stay, Travel, Trip
+from app.models import Day, Item, Stay, Travel, Trip, TripMember
 from app.schemas import TripRead, TripSummary
 from app.trip_document import DayWrite, ItemWrite, LocationDoc, StayDoc, TravelDoc, TripDocument
 from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
@@ -102,7 +102,7 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
     return _summary(trip, stay_count=len(doc.stays), travel_count=len(doc.travels))
 
 
-def _summary(trip: Trip, *, stay_count: int, travel_count: int) -> TripSummary:
+def _summary(trip: Trip, *, stay_count: int, travel_count: int, role: str = "owner") -> TripSummary:
     return TripSummary(
         id=trip.id,
         name=trip.name,
@@ -112,11 +112,13 @@ def _summary(trip: Trip, *, stay_count: int, travel_count: int) -> TripSummary:
         stay_count=stay_count,
         travel_count=travel_count,
         created_at=trip.created_at,
+        role=role,
     )
 
 
 async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
-    """The user's live trips, soonest start first, with booking counts."""
+    """The user's live trips — owned and joined — soonest start first, with
+    booking counts and the user's role on each."""
     stay_count = (
         select(func.count(Stay.id))
         .where(Stay.trip_id == Trip.id, active(Stay))
@@ -129,15 +131,35 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
         .correlate(Trip)
         .scalar_subquery()
     )
+    joined = select(TripMember.trip_id).where(TripMember.user_id == user_id, active(TripMember))
     result = await db.execute(
         select(Trip, stay_count, travel_count)
-        .where(Trip.user_id == user_id, active(Trip))
+        .where(or_(Trip.user_id == user_id, Trip.id.in_(joined)), active(Trip))
         .order_by(Trip.start_date, Trip.created_at)
     )
-    return [_summary(trip, stay_count=sc, travel_count=tc) for trip, sc, tc in result.all()]
+    return [
+        _summary(
+            trip,
+            stay_count=sc,
+            travel_count=tc,
+            role="owner" if trip.user_id == user_id else "viewer",
+        )
+        for trip, sc, tc in result.all()
+    ]
 
 
-async def get_trip(db: AsyncSession, trip_id: uuid.UUID) -> TripRead:
+async def trip_summary(db: AsyncSession, trip: Trip, role: str) -> TripSummary:
+    """One trip's summary (as in the list), for the given role."""
+    stays = await db.scalar(
+        select(func.count(Stay.id)).where(Stay.trip_id == trip.id, active(Stay))
+    )
+    travels = await db.scalar(
+        select(func.count(Travel.id)).where(Travel.trip_id == trip.id, active(Travel))
+    )
+    return _summary(trip, stay_count=stays or 0, travel_count=travels or 0, role=role)
+
+
+async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: str = "owner") -> TripRead:
     """The whole trip, assembled in a fixed number of queries.
 
     Relationships are lazy="raise", so everything the read model touches is
@@ -153,7 +175,11 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID) -> TripRead:
         )
         .execution_options(populate_existing=True)
     )
-    return _with_zones(TripRead.model_validate(result.scalar_one()))
+    trip = _with_zones(TripRead.model_validate(result.scalar_one()))
+    # Edits only ever come from the owner, so "owner" is the default; reads
+    # pass the caller's own role so the UI knows whether it may edit.
+    trip.role = role
+    return trip
 
 
 def _with_zones(trip: TripRead) -> TripRead:

@@ -1,5 +1,6 @@
-"""Trips router. Thin handlers: ownership via get_owned_trip, logic in
-services/trips.py, document validation in app/trip_document.py."""
+"""Trips router. Thin handlers: reads via get_viewable_trip (owner or viewer),
+edits via get_owned_trip (owner only), logic in services/trips.py, document
+validation in app/trip_document.py."""
 
 from __future__ import annotations
 
@@ -13,7 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile
 
 from app.database import get_db
-from app.dependencies import get_owned_item, get_owned_stay, get_owned_travel, get_owned_trip
+from app.dependencies import (
+    ViewableTrip,
+    get_owned_item,
+    get_owned_stay,
+    get_owned_travel,
+    get_owned_trip,
+    get_viewable_trip,
+)
 from app.models import Item, Stay, Travel, Trip, UserRecord
 from app.schemas import CamelModel, TripRead, TripSummary
 from app.services import trips as trips_service
@@ -133,10 +141,11 @@ async def list_trips(
 # exclude_none: the read shape is the document shape, which omits absent fields.
 @router.get("/{trip_id}", response_model=TripRead, response_model_exclude_none=True)
 async def get_trip(
-    trip: Trip = Depends(get_owned_trip),
+    viewable: ViewableTrip = Depends(get_viewable_trip),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead:
-    return await trips_service.get_trip(db, trip.id)
+    """The whole trip, for its owner or anyone who joined it (with their role)."""
+    return await trips_service.get_trip(db, viewable.trip.id, viewable.role)
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)

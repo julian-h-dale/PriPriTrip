@@ -1,8 +1,9 @@
 """Idempotent seed script.
 
-Creates two users from env-driven credentials (a general test user and a
-test admin) plus the sample trip for the test user, so a fresh clone has
-something to log in with and the UI isn't empty on first run.
+Creates three users from env-driven credentials (a general test user, a
+test admin, and a viewer) plus the sample trip for the test user — shared
+with the viewer — so a fresh clone has something to log in with, the UI
+isn't empty on first run, and both sides of sharing can be tried.
 
 Run:  python -m app.seed   (or: make seed)
 Safe to run repeatedly.
@@ -17,7 +18,7 @@ from fastapi_users.exceptions import UserAlreadyExists
 from sqlalchemy import delete, select
 
 from app.database import AsyncSessionLocal, engine
-from app.models import Base, Day, Item, Stay, Travel, Trip, UserRecord
+from app.models import Base, Day, Item, Stay, Travel, Trip, TripMember, UserRecord
 from app.sample_data import load_sample_trip
 from app.schemas import UserCreate
 from app.services.trips import import_trip
@@ -61,13 +62,21 @@ async def _seed_sample_data() -> None:
         old = select(Trip.id).where(Trip.user_id == user.id, Trip.name == doc.name)
         old_days = select(Day.id).where(Day.trip_id.in_(old))
         await session.execute(delete(Item).where(Item.day_id.in_(old_days)))
-        for child in (Day, Stay, Travel):
+        for child in (Day, Stay, Travel, TripMember):
             await session.execute(delete(child).where(child.trip_id.in_(old)))
         await session.execute(delete(Trip).where(Trip.id.in_(old)))
         await session.commit()
 
-        await import_trip(session, user.id, doc)
+        summary = await import_trip(session, user.id, doc)
         print(f"  replanted sample trip: {doc.name}")
+
+        viewer = await session.scalar(
+            select(UserRecord).filter_by(email=settings.seed_viewer_email)
+        )
+        if viewer is not None:
+            session.add(TripMember(trip_id=summary.id, user_id=viewer.id, role="viewer"))
+            await session.commit()
+            print(f"  shared it with viewer: {viewer.email}")
 
 
 async def main() -> None:
@@ -84,6 +93,12 @@ async def main() -> None:
         settings.seed_admin_password,
         is_superuser=True,
         name="Test Admin",
+    )
+    await _create_user(
+        settings.seed_viewer_email,
+        settings.seed_viewer_password,
+        is_superuser=False,
+        name="Test Viewer",
     )
     await _seed_sample_data()
     print("Done.")

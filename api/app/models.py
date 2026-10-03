@@ -164,3 +164,34 @@ class Item(SoftDeleteMixin, Base):
     location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     confirmation_number: Mapped[str | None]
     notes: Mapped[str | None]
+
+
+def _utc_now() -> dt.datetime:
+    """Server time, UTC, to the microsecond. SQLite's CURRENT_TIMESTAMP only
+    has whole seconds, which would leave same-second rows unordered."""
+    return dt.datetime.now(dt.UTC)
+
+
+class TripMember(SoftDeleteMixin, Base):
+    """Someone a trip is shared with. The owner is `trips.user_id` and has no
+    member row, so every owner-only rule is unchanged; members can read the
+    trip (and keep a journal on it) but never edit it."""
+
+    __tablename__ = "trip_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(default="viewer")
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+
+    __table_args__ = (
+        Index(
+            "uq_trip_members_trip_user_live",
+            "trip_id",
+            "user_id",
+            unique=True,
+            sqlite_where=text("is_deleted = 0"),
+            postgresql_where=text("NOT is_deleted"),
+        ),
+    )

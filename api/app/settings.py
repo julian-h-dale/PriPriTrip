@@ -27,6 +27,10 @@ class AppSettings(BaseSettings):
     seed_user_password: str = "changeme-user"
     seed_admin_email: str = "admin@example.com"
     seed_admin_password: str = "changeme-admin"
+    # A second traveler who has joined the sample trip as a viewer, so both
+    # sides of sharing can be tried locally.
+    seed_viewer_email: str = "pripri@example.com"
+    seed_viewer_password: str = "changeme-viewer"
 
     # Google Maps/Places browser key, handed to signed-in clients by GET /config.
     # Browser keys are public by design: protect it in the Google console with

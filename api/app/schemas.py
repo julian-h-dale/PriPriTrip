@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, time
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi_users import schemas
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
@@ -108,6 +108,8 @@ class TripRead(TripDocument):
     model_config = ConfigDict(title="TripRead", **_READ_CONFIG)
     id: uuid.UUID
     created_at: datetime
+    # The caller's footing on this trip: "owner" may edit, "viewer" may not.
+    role: Literal["owner", "viewer"] | None = None
     stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
     travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
     days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
@@ -122,3 +124,15 @@ class TripSummary(CamelModel):
     stay_count: int
     travel_count: int
     created_at: datetime
+    role: Literal["owner", "viewer"] = "owner"
+
+
+class JoinTrip(CamelModel):
+    trip_id: uuid.UUID
+
+
+class MemberRead(CamelModel):
+    user_id: uuid.UUID
+    email: str
+    role: Literal["viewer"]
+    joined_at: datetime
