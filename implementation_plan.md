@@ -1699,7 +1699,7 @@ survives.
 
 **Built (2026-10-03):** Phases 25–28, one commit each (plus a mypy fix
 after 25).
-- `make verify`: 133 API + 221 UI tests. `ui/e2e/trip.spec.js` (12 tests,
+- `make verify`: 133 API + 217 UI tests. `ui/e2e/trip.spec.js` (12 tests,
   owner and viewer in two browser contexts) passes live.
 - The new tables are created at startup, so no `make reset-db` was needed;
   `make seed` adds the viewer.

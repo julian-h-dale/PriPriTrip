@@ -328,7 +328,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 133 API + 221 UI tests
+make verify     # should be green: 133 API + 217 UI tests
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.
