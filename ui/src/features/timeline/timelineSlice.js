@@ -193,7 +193,16 @@ const timelineSlice = createSlice({
 const { tripFromCache } = timelineSlice.actions;
 export default timelineSlice.reducer;
 
-/** Editing is off while offline or showing a saved copy: no write queue, so nothing to lose or merge. */
+/** The current trip was shared with you: you can read it, never edit it. */
+export function selectIsViewer(state) {
+  return state.timeline?.trip?.role === "viewer";
+}
+
+/**
+ * Editing is off while offline or showing a saved copy (no write queue, so
+ * nothing to lose or merge), and always for a viewer. Offline greys the
+ * edit controls; a viewer doesn't get them at all (selectIsViewer).
+ */
 export function selectReadOnly(state) {
-  return state.network?.online === false || Boolean(state.timeline?.stale);
+  return state.network?.online === false || Boolean(state.timeline?.stale) || selectIsViewer(state);
 }

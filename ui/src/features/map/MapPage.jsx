@@ -13,7 +13,14 @@ import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { stayCoverage } from "@/features/timeline/coverageView";
 import { runEdit } from "@/features/timeline/runEdit";
 import { StayForm } from "@/features/timeline/StayForm";
-import { createItem, createStay, createTravel, fetchTrip, selectReadOnly } from "@/features/timeline/timelineSlice";
+import {
+  createItem,
+  createStay,
+  createTravel,
+  fetchTrip,
+  selectIsViewer,
+  selectReadOnly,
+} from "@/features/timeline/timelineSlice";
 import { TravelForm } from "@/features/timeline/TravelForm";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Card } from "@/shared/components/ui/card";
@@ -100,6 +107,7 @@ function TripMap({ trip }) {
   const dispatch = useDispatch();
   const online = useSelector((s) => s.network?.online ?? true);
   const readOnly = useSelector(selectReadOnly);
+  const isViewer = useSelector(selectIsViewer);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const infoWindowRef = useRef(null);
@@ -355,7 +363,7 @@ function TripMap({ trip }) {
       )}
       {info &&
         createPortal(
-          <MapInfoContent info={info} tripId={trip.id} onAction={startAdd} readOnly={readOnly} />,
+          <MapInfoContent info={info} tripId={trip.id} onAction={startAdd} readOnly={readOnly} canAdd={!isViewer} />,
           infoNode
         )}
 

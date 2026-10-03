@@ -70,6 +70,35 @@ export const importTrip = createAsyncThunk(
   }
 );
 
+/**
+ * Join someone's trip as a viewer by its id. Resolves to the trip summary;
+ * rejects with a human message (unknown trip, or it's already yours).
+ */
+export const joinTrip = createAsyncThunk("trips/join", async (tripId, { dispatch, rejectWithValue }) => {
+  try {
+    const { data } = await apiClient.post("/trips/join", { tripId }, { silent: true });
+    dispatch(notify({ type: "success", message: `Joined “${data.name}”` }));
+    return data;
+  } catch (err) {
+    const status = err.response?.status;
+    return rejectWithValue(
+      status === 404 || status === 422
+        ? "No trip has that id. Check it was copied whole."
+        : status === 409
+          ? "That’s already your trip."
+          : "Couldn’t join right now. Try again."
+    );
+  }
+});
+
+/** Stop viewing a trip someone shared with you. */
+export const leaveTrip = createAsyncThunk("trips/leave", async (id, { dispatch, getState }) => {
+  await apiClient.delete(`/trips/${id}/membership`, { silent: true });
+  await removeTrip(userIdFromToken(getState().auth.token), id);
+  dispatch(notify({ type: "success", message: "Left the trip" }));
+  return id;
+});
+
 export const deleteTrip = createAsyncThunk("trips/delete", async (id, { dispatch, getState }) => {
   await apiClient.delete(`/trips/${id}`, { silent: true });
   await removeTrip(userIdFromToken(getState().auth.token), id);
@@ -111,6 +140,13 @@ const tripsSlice = createSlice({
       .addCase(importTrip.fulfilled, (state, action) => {
         state.items.push(action.payload);
         state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+      })
+      .addCase(joinTrip.fulfilled, (state, action) => {
+        if (!state.items.some((t) => t.id === action.payload.id)) state.items.push(action.payload);
+        state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+      })
+      .addCase(leaveTrip.fulfilled, (state, action) => {
+        state.items = state.items.filter((t) => t.id !== action.payload);
       })
       .addCase(deleteTrip.fulfilled, (state, action) => {
         state.items = state.items.filter((t) => t.id !== action.payload);

@@ -15,6 +15,7 @@ import {
   fetchTrip,
   replaceStay,
   replaceTravel,
+  selectIsViewer,
   selectReadOnly,
 } from "@/features/timeline/timelineSlice";
 import { TravelForm } from "@/features/timeline/TravelForm";
@@ -46,6 +47,7 @@ function TripTimeline({ trip }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const readOnly = useSelector(selectReadOnly);
+  const isViewer = useSelector(selectIsViewer);
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   // Past days are greyed, judged on the trip's own calendar.
   const today = todayIn(trip.timezone);
@@ -168,6 +170,7 @@ function TripTimeline({ trip }) {
           onClose={() => setDetails(null)}
           onEdit={editFromDetails}
           readOnly={readOnly}
+          canEdit={!isViewer}
           trip={trip}
           kind={details.kind}
           record={details.record}

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { login, screenshotPath, tripLink } from "./helpers.js";
+import { SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Practical smoke checks: page views and basic clicking against the seeded
@@ -239,5 +239,34 @@ test("map: add a Google place to the trip (activity and stay)", async ({ page })
     await expect(pins).toHaveCount(12);
   } finally {
     await deleteAdded(page, tripId, { itemTitle: addedItem, stayName: addedStay });
+  }
+});
+
+test("sharing: the owner shares, the viewer reads without edit controls", async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  try {
+    const owner = await ownerContext.newPage();
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    await owner.getByRole("button", { name: "Share trip" }).click();
+    const share = owner.getByRole("dialog", { name: "Share trip" });
+    await expect(share.getByText(SEED_VIEWER.email)).toBeVisible();
+    await owner.screenshot({ path: screenshotPath("21-share-dialog"), fullPage: true });
+
+    const viewer = await viewerContext.newPage();
+    await login(viewer, SEED_VIEWER);
+    const link = await tripLink(viewer, SAMPLE_TRIP);
+    await expect(viewer.getByText("Shared with you")).toBeVisible();
+    await viewer.screenshot({ path: screenshotPath("22-viewer-trips"), fullPage: true });
+    await link.click();
+    await expect(viewer.getByRole("button", { name: "Share trip" })).toHaveCount(0);
+    await viewer.goto(`${new URL(viewer.url()).pathname}/days/2026-05-11`);
+    await expect(viewer.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
+    await expect(viewer.getByRole("button", { name: /Add activity/ })).toHaveCount(0);
+    await viewer.screenshot({ path: screenshotPath("23-viewer-day"), fullPage: true });
+  } finally {
+    await ownerContext.close();
+    await viewerContext.close();
   }
 });

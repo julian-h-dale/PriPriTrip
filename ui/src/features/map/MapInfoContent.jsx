@@ -55,7 +55,7 @@ function ActionButton({ action, onAction, disabled }) {
  * address, a "Not in this trip" label, then the Add actions that fit the
  * place (`placeActions`), with the rest behind "More…".
  */
-function NewPlaceInfo({ place, types, onAction, readOnly }) {
+function NewPlaceInfo({ place, types, onAction, readOnly, canAdd }) {
   const [showMore, setShowMore] = useState(false);
   const { primary, more } = placeActions(types);
   const actions = showMore ? [...primary, ...more] : primary;
@@ -67,7 +67,7 @@ function NewPlaceInfo({ place, types, onAction, readOnly }) {
       <div className="mb-2 mt-1 inline-block rounded-[4px] bg-[#fef7e0] px-1.5 py-0.5 text-[11px] font-medium text-[#8a5a00]">
         Not in this trip
       </div>
-      {actions.length > 0 && (
+      {canAdd && actions.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {actions.map((action) => (
             <ActionButton key={action} action={action} onAction={onAction} disabled={readOnly} />
@@ -92,14 +92,21 @@ function NewPlaceInfo({ place, types, onAction, readOnly }) {
  *
  * `info`: { kind: "trip", marker } | { kind: "place", place, types }
  */
-export function MapInfoContent({ info, tripId, onAction, readOnly }) {
+export function MapInfoContent({ info, tripId, onAction, readOnly, canAdd = true }) {
   return (
     <div className="max-w-[220px] text-sm">
       {info.kind === "trip" ? (
         <TripMarkerInfo marker={info.marker} tripId={tripId} />
       ) : (
         // key: a different place starts with "More…" collapsed again.
-        <NewPlaceInfo key={info.place.placeId} place={info.place} types={info.types} onAction={onAction} readOnly={readOnly} />
+        <NewPlaceInfo
+          key={info.place.placeId}
+          place={info.place}
+          types={info.types}
+          onAction={onAction}
+          readOnly={readOnly}
+          canAdd={canAdd}
+        />
       )}
     </div>
   );

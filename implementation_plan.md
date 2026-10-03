@@ -1660,7 +1660,7 @@ survives.
   - the list shows joined trips with their role;
   - a soft-deleted trip disappears for viewers too.
 
-### Phase 26 — Run: sharing UI
+### Phase 26 — Run: sharing UI ✅
 
 - The Join dialog, the owner's Share dialog (the trip id with copy, and the
   members with Remove), and Leave trip.

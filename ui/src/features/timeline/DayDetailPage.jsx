@@ -18,6 +18,7 @@ import {
   replaceItem,
   replaceStay,
   replaceTravel,
+  selectIsViewer,
   selectReadOnly,
   updateDay,
 } from "@/features/timeline/timelineSlice";
@@ -165,6 +166,8 @@ function DayDetail({ trip, date }) {
   // adding a stay or travel now happens from the trip page's coverage views.
   const [form, setForm] = useState(null);
   const readOnly = useSelector(selectReadOnly);
+  // A viewer never edits, so they get no edit controls at all (offline only greys them).
+  const isViewer = useSelector(selectIsViewer);
   const [dayFormOpen, setDayFormOpen] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -196,7 +199,7 @@ function DayDetail({ trip, date }) {
   }
 
   const day = trip.days.find((d) => d.date === row.date) ?? null;
-  const editable = !row.afterTrip;
+  const editable = !row.afterTrip && !isViewer;
   const heading = formatDayHeading(row.date);
   const blurb = [row.title && `**${row.title}**`, row.summary].filter(Boolean).join(" — ");
 
@@ -293,7 +296,7 @@ function DayDetail({ trip, date }) {
               expanded={openEntries.has(entry.key)}
               onToggle={() => toggleEntry(entry.key)}
               actions={
-                entry.kind === "activity" ? (
+                isViewer ? null : entry.kind === "activity" ? (
                   <ActivityActions
                     entry={entry}
                     busy={busy}

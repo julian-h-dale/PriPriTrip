@@ -13,14 +13,20 @@ export function screenshotPath(name) {
 const SEED_EMAIL = process.env.SEED_USER_EMAIL || "user@example.com";
 const SEED_PASSWORD = process.env.SEED_USER_PASSWORD || "changeme-user";
 
+/** The seed viewer: joined to the sample trip by `make seed` (sharing). */
+export const SEED_VIEWER = {
+  email: process.env.SEED_VIEWER_EMAIL || "pripri@example.com",
+  password: process.env.SEED_VIEWER_PASSWORD || "changeme-viewer",
+};
+
 /**
  * Logs in as the seed dev user, then opens the full trips list (signing in
  * itself lands on the next trip, not the list).
  */
-export async function login(page) {
+export async function login(page, { email = SEED_EMAIL, password = SEED_PASSWORD } = {}) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByRole("textbox", { name: "Password" }).fill(SEED_PASSWORD);
+  await page.getByLabel("Email").fill(email);
+  await page.getByRole("textbox", { name: "Password" }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((url) => url.pathname !== "/login" && url.pathname !== "/");
   await page.goto("/trips");

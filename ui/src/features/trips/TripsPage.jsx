@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { BedDouble, ChevronDown, Plane, Trash2, Upload } from "lucide-react";
-import { deleteTrip, fetchTrips } from "@/features/trips/tripsSlice";
+import { BedDouble, ChevronDown, LogOut, Plane, Trash2, Upload, UserPlus, Users } from "lucide-react";
+import { JoinTripDialog } from "@/features/sharing/JoinTripDialog";
+import { deleteTrip, fetchTrips, leaveTrip } from "@/features/trips/tripsSlice";
 import { ImportTripDialog } from "@/features/trips/ImportTripDialog";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
@@ -18,7 +19,8 @@ function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-function TripCard({ trip, onDelete, readOnly }) {
+function TripCard({ trip, onDelete, onLeave, readOnly }) {
+  const shared = trip.role === "viewer";
   const nights = daysBetween(trip.startDate, trip.endDate);
   return (
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
@@ -27,6 +29,12 @@ function TripCard({ trip, onDelete, readOnly }) {
         className="flex min-w-0 flex-1 flex-col gap-1 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="break-words font-semibold leading-snug">{trip.name}</span>
+        {shared && (
+          <span className="inline-flex items-center gap-1 text-xs text-primary">
+            <Users className="h-3.5 w-3.5" aria-hidden="true" />
+            Shared with you
+          </span>
+        )}
         <span className="text-sm text-muted-foreground">
           {formatDateRange(trip.startDate, trip.endDate)} · {plural(nights, "night")}
         </span>
@@ -41,19 +49,29 @@ function TripCard({ trip, onDelete, readOnly }) {
           </span>
         </span>
       </Link>
-      {/* Delete lives behind ⋯, away from the card's main tap target. */}
+      {/* Delete (or Leave, for a shared trip) lives behind ⋯, away from the
+          card's main tap target. */}
       <div className="flex items-start p-1.5">
         <RowMenu
           label={`More for ${trip.name}`}
           items={[
-            {
-              label: "Delete trip",
-              icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
-              destructive: true,
-              disabled: readOnly,
-              title: readOnly ? "You’re offline" : undefined,
-              onSelect: () => onDelete(trip),
-            },
+            shared
+              ? {
+                  label: "Leave trip",
+                  icon: <LogOut className="h-4 w-4" aria-hidden="true" />,
+                  destructive: true,
+                  disabled: readOnly,
+                  title: readOnly ? "You’re offline" : undefined,
+                  onSelect: () => onLeave(trip),
+                }
+              : {
+                  label: "Delete trip",
+                  icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+                  destructive: true,
+                  disabled: readOnly,
+                  title: readOnly ? "You’re offline" : undefined,
+                  onSelect: () => onDelete(trip),
+                },
           ]}
         />
       </div>
@@ -62,7 +80,7 @@ function TripCard({ trip, onDelete, readOnly }) {
 }
 
 /** One group of the trips list: a heading, then its cards. */
-function TripGroup({ title, trips, onDelete, readOnly }) {
+function TripGroup({ title, trips, onDelete, onLeave, readOnly }) {
   if (!trips.length) return null;
   return (
     <section aria-label={title} className="flex flex-col gap-2">
@@ -70,7 +88,7 @@ function TripGroup({ title, trips, onDelete, readOnly }) {
       <ul className="flex flex-col gap-2">
         {trips.map((trip) => (
           <li key={trip.id}>
-            <TripCard trip={trip} onDelete={onDelete} readOnly={readOnly} />
+            <TripCard trip={trip} onDelete={onDelete} onLeave={onLeave} readOnly={readOnly} />
           </li>
         ))}
       </ul>
@@ -97,12 +115,22 @@ export function TripsPage() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [showPast, setShowPast] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [pendingLeave, setPendingLeave] = useState(null);
+  const [leaving, setLeaving] = useState(false);
 
   // Re-runs when the connection comes back (or drops — which falls back to
   // the saved copy and marks it stale).
   useEffect(() => {
     dispatch(fetchTrips());
   }, [dispatch, online]);
+
+  async function confirmLeave() {
+    setLeaving(true);
+    await dispatch(leaveTrip(pendingLeave.id));
+    setLeaving(false);
+    setPendingLeave(null);
+  }
 
   async function confirmDelete() {
     setDeleting(true);
@@ -121,17 +149,29 @@ export function TripsPage() {
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">Trips</h1>
-          {items.length > 0 && (
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               size="sm"
-              onClick={() => setImportOpen(true)}
+              variant="outline"
+              onClick={() => setJoinOpen(true)}
               disabled={readOnly}
               title={readOnly ? "You’re offline" : undefined}
             >
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              Import trip
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              Join trip
             </Button>
-          )}
+            {items.length > 0 && (
+              <Button
+                size="sm"
+                onClick={() => setImportOpen(true)}
+                disabled={readOnly}
+                title={readOnly ? "You’re offline" : undefined}
+              >
+                <Upload className="h-4 w-4" aria-hidden="true" />
+                Import trip
+              </Button>
+            )}
+          </div>
         </div>
 
         {firstLoad ? (
@@ -159,8 +199,8 @@ export function TripsPage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-6">
-            <TripGroup title="Active" trips={groups.active} onDelete={setPendingDelete} readOnly={readOnly} />
-            <TripGroup title="Upcoming" trips={groups.upcoming} onDelete={setPendingDelete} readOnly={readOnly} />
+            <TripGroup title="Active" trips={groups.active} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} />
+            <TripGroup title="Upcoming" trips={groups.upcoming} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} />
             {groups.past.length > 0 && (
               <div className="flex flex-col gap-2">
                 <button
@@ -176,7 +216,7 @@ export function TripsPage() {
                   <ul aria-label="Past" className="flex flex-col gap-2">
                     {groups.past.map((trip) => (
                       <li key={trip.id}>
-                        <TripCard trip={trip} onDelete={setPendingDelete} readOnly={readOnly} />
+                        <TripCard trip={trip} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} />
                       </li>
                     ))}
                   </ul>
@@ -187,6 +227,27 @@ export function TripsPage() {
         )}
 
         <ImportTripDialog open={importOpen} onClose={() => setImportOpen(false)} />
+        <JoinTripDialog open={joinOpen} onClose={() => setJoinOpen(false)} />
+
+        <Dialog
+          open={pendingLeave !== null}
+          onClose={() => !leaving && setPendingLeave(null)}
+          title="Leave trip?"
+          description={
+            pendingLeave
+              ? `“${pendingLeave.name}” will leave your trips. You can join again with its id.`
+              : ""
+          }
+        >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingLeave(null)} disabled={leaving}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmLeave} disabled={leaving}>
+              {leaving ? "Leaving…" : "Leave"}
+            </Button>
+          </DialogFooter>
+        </Dialog>
 
         <Dialog
           open={pendingDelete !== null}

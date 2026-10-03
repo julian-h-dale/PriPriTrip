@@ -10,7 +10,16 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
  * directly. "Edit" switches to the real form. The details are the same
  * `EntryDetails` the day page shows, so they read the same everywhere.
  */
-export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record, readOnly = false }) {
+export function BookingDetailsDialog({
+  open,
+  onClose,
+  onEdit,
+  trip,
+  kind,
+  record,
+  readOnly = false,
+  canEdit = true,
+}) {
   const isStay = kind === "stay";
   // Described as its check-in / departure: the whole booking's facts.
   const entry = isStay
@@ -39,10 +48,12 @@ export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button onClick={onEdit} disabled={readOnly} title={readOnly ? "You’re offline" : undefined}>
-          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-          Edit
-        </Button>
+        {canEdit && (
+          <Button onClick={onEdit} disabled={readOnly} title={readOnly ? "You’re offline" : undefined}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            Edit
+          </Button>
+        )}
       </DialogFooter>
     </Dialog>
   );
