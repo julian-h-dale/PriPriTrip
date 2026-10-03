@@ -12,7 +12,7 @@ from datetime import date, datetime, time
 from typing import Annotated, Literal
 
 from fastapi_users import schemas
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.trip_document import DayDoc, IanaTimezone, ItemDoc, StayDoc, TravelDoc, TripDocument
@@ -154,9 +154,15 @@ MemoryText = Annotated[str, AfterValidator(_memory_text)]
 
 
 class MemoryCreate(CamelModel):
-    """A new memory. Its time is stamped by the server, never sent."""
+    """A new memory, possibly written offline: the phone makes its `id` (so a
+    retry can't duplicate it) and its `createdAt` (UTC, when Save was
+    tapped). Both are optional for callers that don't care; the server fills
+    them in."""
 
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    id: uuid.UUID | None = None
+    # Must carry an offset or Z — an instant, not a wall clock.
+    created_at: AwareDatetime | None = None
     text: MemoryText
     # The author's phone's zone right now (for display; ordering uses UTC).
     zone: IanaTimezone
@@ -175,6 +181,7 @@ class MemoryRead(CamelModel):
     zone: str
     created_at: datetime
     updated_at: datetime | None = None
+    received_at: datetime
     author_email: str
     # True when the caller wrote it — only then may they edit or delete it.
     mine: bool

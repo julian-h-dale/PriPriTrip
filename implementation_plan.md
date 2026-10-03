@@ -1962,7 +1962,7 @@ later.
 
 ### Phases
 
-- **Phase 29 — memories made on the phone (API).**
+- **Phase 29 — memories made on the phone (API).** ✅
   - The client sends `id` and `createdAt`. `POST` with an existing id
     returns the same memory, so there are no duplicates.
   - `received_at` is added. A future time is clamped.

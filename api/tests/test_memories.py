@@ -84,15 +84,103 @@ async def test_order_is_the_utc_instant_not_the_local_clock(
     assert texts == ["tie, smallest id", "earlier", "later"]
 
 
-async def test_the_server_stamps_the_time_and_a_client_cannot_backdate(client: AsyncClient) -> None:
+def _parse(value: str) -> dt.datetime:
+    return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+async def test_without_a_phone_time_the_server_stamps_it(client: AsyncClient) -> None:
     tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
     before = dt.datetime.now(dt.UTC)
     memory = await _write(client, tid, "now")
-    stamped = dt.datetime.fromisoformat(memory["createdAt"].replace("Z", "+00:00"))
+    stamped = _parse(memory["createdAt"])
     assert before - dt.timedelta(seconds=1) <= stamped <= dt.datetime.now(dt.UTC)
+    assert memory["createdAt"] == memory["receivedAt"]
+
+
+async def test_the_phones_time_orders_the_journal(client: AsyncClient) -> None:
+    """Written offline in this order, uploaded in the other: the journal
+    follows when they were written."""
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    url = f"/trips/{tid}/memories"
+    late = {
+        "id": str(uuid.uuid4()),
+        "createdAt": "2026-05-11T20:15:00Z",
+        "text": "dessert",
+        "zone": "Europe/Zurich",
+    }
+    early = {
+        "id": str(uuid.uuid4()),
+        "createdAt": "2026-05-11T20:00:00+02:00",
+        "text": "dinner",
+        "zone": "Europe/Zurich",
+    }
+    assert (await client.post(url, json=late)).status_code == 201
+    saved = (await client.post(url, json=early)).json()
+    # Stored as UTC; the server's own arrival stamp is kept separately.
+    assert _parse(saved["createdAt"]) == dt.datetime(2026, 5, 11, 18, 0, tzinfo=dt.UTC)
+    assert _parse(saved["receivedAt"]) > _parse(saved["createdAt"])
+    assert saved["id"] == early["id"]
+    assert [m["text"] for m in (await client.get(url)).json()] == ["dinner", "dessert"]
+
+
+async def test_a_retry_with_the_same_id_never_duplicates(client: AsyncClient) -> None:
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    url = f"/trips/{tid}/memories"
+    body = {
+        "id": str(uuid.uuid4()),
+        "createdAt": "2026-05-11T18:00:00Z",
+        "text": "once",
+        "zone": "UTC",
+    }
+    first = await client.post(url, json=body)
+    again = await client.post(url, json=body)
+    assert (first.status_code, again.status_code) == (201, 200)
+    assert again.json() == first.json()
+    assert len((await client.get(url)).json()) == 1
+
+
+async def test_an_id_that_isnt_yours_to_reuse_is_a_409(
+    client: AsyncClient, viewer: AsyncClient
+) -> None:
+    tid = (await shared_trip(client, viewer))["id"]
+    url = f"/trips/{tid}/memories"
+    mid = str(uuid.uuid4())
+    await client.post(url, json={"id": mid, "text": "the owner's", "zone": "UTC"})
+    # Someone else sending the same id.
+    assert (await viewer.post(url, json={"id": mid, "text": "x", "zone": "UTC"})).status_code == 409
+    # The same id on another trip.
+    other = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    assert (
+        await client.post(f"/trips/{other}/memories", json={"id": mid, "text": "x", "zone": "UTC"})
+    ).status_code == 409
+    # A deleted memory's id can't come back.
+    await client.delete(f"{url}/{mid}")
+    assert (
+        await client.post(url, json={"id": mid, "text": "again", "zone": "UTC"})
+    ).status_code == 409
+
+
+async def test_a_phone_time_far_in_the_future_is_clamped(client: AsyncClient) -> None:
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    url = f"/trips/{tid}/memories"
+    now = dt.datetime.now(dt.UTC)
+    slightly = (now + dt.timedelta(minutes=5)).isoformat()
+    far = (now + dt.timedelta(hours=3)).isoformat()
+    ok = (
+        await client.post(url, json={"createdAt": slightly, "text": "a bit fast", "zone": "UTC"})
+    ).json()
+    assert _parse(ok["createdAt"]) == dt.datetime.fromisoformat(slightly)
+    clamped = (
+        await client.post(url, json={"createdAt": far, "text": "way off", "zone": "UTC"})
+    ).json()
+    assert clamped["createdAt"] == clamped["receivedAt"]
+
+
+async def test_a_phone_time_must_be_an_instant(client: AsyncClient) -> None:
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
     resp = await client.post(
         f"/trips/{tid}/memories",
-        json={"text": "backdated", "zone": "UTC", "createdAt": "2020-01-01T00:00:00Z"},
+        json={"createdAt": "2026-05-11T20:00:00", "text": "no offset", "zone": "UTC"},
     )
     assert resp.status_code == 422
 

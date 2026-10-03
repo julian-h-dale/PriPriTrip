@@ -1,14 +1,18 @@
 """The trip journal: memories written by the people on a trip.
 
-Ordering is by the server's UTC `created_at` (then id), never by anything a
-phone sends — so the journal reads in the order things were written, even
-across time zones and phones with wrong clocks.
+Memories can be written offline, so the phone makes each one's id and
+`created_at` (UTC, when Save was tapped) and the journal orders by that,
+then id. Phone clocks are NTP-synced and trusted, with one guard: a time
+more than `FUTURE_TOLERANCE` ahead of the server is clamped to when the
+memory arrived (rejecting it would strand it in the phone's outbox).
+Creating is idempotent on the id, so a retried upload can't duplicate.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import active
 from app.models import Memory, UserRecord
 from app.schemas import MemoryRead
+
+FUTURE_TOLERANCE = dt.timedelta(minutes=10)
 
 
 def _read(memory: Memory, author: UserRecord, viewer_id: uuid.UUID) -> MemoryRead:
@@ -25,6 +31,7 @@ def _read(memory: Memory, author: UserRecord, viewer_id: uuid.UUID) -> MemoryRea
         zone=memory.zone,
         created_at=memory.created_at,
         updated_at=memory.updated_at,
+        received_at=memory.received_at,
         author_email=author.email,
         mine=memory.user_id == viewer_id,
     )
@@ -43,14 +50,61 @@ async def list_memories(
     return [_read(memory, author, viewer_id) for memory, author in result.tuples().all()]
 
 
+class MemoryIdTaken(Exception):
+    """The id is already another memory's (someone else's, another trip's,
+    or one that was deleted)."""
+
+
+@dataclass
+class Created:
+    memory: MemoryRead
+    new: bool  # False when this id was already saved (a retry)
+
+
+def ordering_time(sent: dt.datetime | None, received: dt.datetime) -> dt.datetime:
+    """When the memory happened, for ordering: the phone's time, unless it's
+    missing or implausibly far in the future."""
+    if sent is None:
+        return received
+    sent = sent.astimezone(dt.UTC)
+    return received if sent > received + FUTURE_TOLERANCE else sent
+
+
 async def create_memory(
-    db: AsyncSession, trip_id: uuid.UUID, author: UserRecord, text: str, zone: str
-) -> MemoryRead:
-    memory = Memory(trip_id=trip_id, user_id=author.id, text=text, zone=zone)
+    db: AsyncSession,
+    trip_id: uuid.UUID,
+    author: UserRecord,
+    text: str,
+    zone: str,
+    *,
+    memory_id: uuid.UUID | None = None,
+    created_at: dt.datetime | None = None,
+) -> Created:
+    if memory_id is not None:
+        existing = await db.get(Memory, memory_id)
+        if existing is not None:
+            # A retry of the same upload: hand back what was saved.
+            if (
+                existing.user_id == author.id
+                and existing.trip_id == trip_id
+                and not existing.is_deleted
+            ):
+                return Created(_read(existing, author, author.id), new=False)
+            raise MemoryIdTaken()
+    received = dt.datetime.now(dt.UTC)
+    memory = Memory(
+        id=memory_id or uuid.uuid4(),
+        trip_id=trip_id,
+        user_id=author.id,
+        text=text,
+        zone=zone,
+        created_at=ordering_time(created_at, received),
+        received_at=received,
+    )
     db.add(memory)
     await db.commit()
     await db.refresh(memory)
-    return _read(memory, author, author.id)
+    return Created(_read(memory, author, author.id), new=True)
 
 
 async def update_memory(

@@ -4,7 +4,7 @@ in services/memories.py, access in app/dependencies.py."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -30,11 +30,28 @@ async def list_memories(
 @router.post("", response_model=MemoryRead, status_code=status.HTTP_201_CREATED)
 async def create_memory(
     body: MemoryCreate,
+    response: Response,
     viewable: ViewableTrip = Depends(get_viewable_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> MemoryRead:
-    return await memories_service.create_memory(db, viewable.trip.id, user, body.text, body.zone)
+    """Save a memory (201). Sending the same `id` again — a retry from the
+    phone's outbox — returns the saved one (200) instead of a duplicate."""
+    try:
+        created = await memories_service.create_memory(
+            db,
+            viewable.trip.id,
+            user,
+            body.text,
+            body.zone,
+            memory_id=body.id,
+            created_at=body.created_at,
+        )
+    except memories_service.MemoryIdTaken:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That memory id is already taken") from None
+    if not created.new:
+        response.status_code = status.HTTP_200_OK
+    return created.memory
 
 
 @router.put("/{memory_id}", response_model=MemoryRead)

@@ -200,11 +200,12 @@ class TripMember(SoftDeleteMixin, Base):
 class Memory(SoftDeleteMixin, Base):
     """One entry in a trip's journal: a point-in-time note by one traveler.
 
-    `created_at` is an instant stamped by the server (UTC, to the
-    microsecond) and is the journal's only ordering key — an edit never
-    moves a memory. `zone` is the IANA zone the author's phone was in when
-    they wrote it: display only, so a dinner written in Tokyo still reads in
-    Tokyo time when reread anywhere else.
+    Memories can be written offline, so the phone makes their `id` and
+    `created_at` (UTC, the moment Save was tapped). `created_at` is the
+    journal's only ordering key — an edit never moves a memory. The server's
+    own stamp of when it arrived is `received_at` (kept for reference). `zone`
+    is the IANA zone the author's phone was in: display only, so a dinner
+    written in Tokyo still reads in Tokyo time when reread anywhere else.
     """
 
     __tablename__ = "memories"
@@ -216,5 +217,6 @@ class Memory(SoftDeleteMixin, Base):
     zone: Mapped[str]
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
     updated_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
+    received_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
 
     __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)
