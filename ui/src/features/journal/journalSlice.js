@@ -2,86 +2,196 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { deviceZone } from "@/features/journal/journalDays";
 import { apiClient } from "@/shared/services/apiClient";
 import { notify } from "@/shared/notificationSlice";
+import { applyPending, done, enqueue, pending, sortMemories } from "@/shared/services/outbox";
 import { readMemories, saveMemories } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
 
 /**
- * One trip's journal. Reads are stale-while-revalidate like the trip itself
- * (the phone's saved copy first, then the server's). Writes need a
- * connection — offline capture comes later — and keep the saved copy in step.
- * The server's order (UTC creation time) is the order everywhere.
+ * One trip's journal, written offline-first.
+ *
+ * Every write — online or not — lands on screen at once, goes into the
+ * phone's outbox (shared/services/outbox.js), and is then sent by
+ * `syncOutbox`. The phone makes each memory's id and `createdAt` (UTC, when
+ * Save was tapped), so a retry can't duplicate it and the journal's order is
+ * when things were written. Reads are stale-while-revalidate: the saved copy,
+ * then the server's list, with anything still in the outbox laid over it.
  */
 
 const userOf = (getState) => userIdFromToken(getState().auth?.token);
+
+/** Save the offline copy: what the server has confirmed (pending writes live in the outbox). */
+async function persist(getState) {
+  const { tripId, items } = getState().journal;
+  if (tripId) await saveMemories(userOf(getState), tripId, items.filter((m) => !m.pending));
+}
+
+async function refreshPendingCount(dispatch, getState) {
+  dispatch(pendingCountChanged((await pending(userOf(getState))).length));
+}
 
 export const fetchMemories = createAsyncThunk(
   "journal/fetch",
   async (tripId, { dispatch, getState, rejectWithValue }) => {
     const userId = userOf(getState);
     const cached = await readMemories(userId, tripId);
-    if (cached) dispatch(memoriesFromCache({ tripId, ...cached }));
+    if (cached) {
+      dispatch(memoriesLoaded({ tripId, items: applyPending(cached.data, await pending(userId), tripId) }));
+    }
     try {
       const { data } = await apiClient.get(`/trips/${tripId}/memories`, { silent: true, offlineOk: true });
       await saveMemories(userId, tripId, data);
-      return data;
+      return applyPending(data, await pending(userId), tripId);
     } catch (err) {
       return rejectWithValue(!err.response && cached ? "offline" : "failed");
     }
   }
 );
 
-function write(type, request, message) {
-  const thunk = createAsyncThunk(type, async (args, { dispatch, rejectWithValue }) => {
+const quiet = { silent: true, offlineOk: true };
+const SEND = {
+  create: (op) =>
+    apiClient.post(
+      `/trips/${op.tripId}/memories`,
+      { id: op.memoryId, createdAt: op.body.createdAt, text: op.body.text, zone: op.body.zone },
+      quiet
+    ),
+  update: (op) => apiClient.put(`/trips/${op.tripId}/memories/${op.memoryId}`, { text: op.body.text }, quiet),
+  delete: (op) => apiClient.delete(`/trips/${op.tripId}/memories/${op.memoryId}`, quiet),
+};
+
+let syncing = null;
+
+/**
+ * Send everything in the outbox, oldest first. Stops at the first network
+ * failure or server error (try again later) or a 401 (signed out; the outbox
+ * is kept for after signing in). A write the server rejects for good — 404
+ * (no longer on the trip), 409, 422 — is dropped with a toast, since
+ * retrying can't help. One sync runs at a time; a request during one runs
+ * again after it.
+ */
+export const syncOutbox = () => (dispatch, getState) => {
+  // Asked again mid-sync (e.g. the connection just came back while an
+  // offline pass was finishing): run once more right after, never drop it.
+  if (syncing) return syncing.then(() => dispatch(syncOutbox()));
+  syncing = (async () => {
     try {
-      const { data } = await request(args);
-      if (message) dispatch(notify({ type: "success", message }));
-      return data ?? null;
-    } catch (err) {
-      const detail = err.response?.data?.detail;
-      return rejectWithValue(typeof detail === "string" ? detail : "Couldn’t save the memory");
+      const userId = userOf(getState);
+      for (const op of await pending(userId)) {
+        if (getState().network?.online === false) break;
+        try {
+          const { data } = await SEND[op.op](op);
+          await done(userId, op.memoryId);
+          dispatch(synced({ op, memory: data ?? null }));
+        } catch (err) {
+          const status = err.response?.status;
+          if (!status || status === 401 || status >= 500) break; // try again later
+          await done(userId, op.memoryId);
+          dispatch(syncFailed({ op }));
+          dispatch(notify({ type: "error", message: "A memory couldn’t be saved and was dropped." }));
+        }
+      }
+      await persist(getState);
+      await refreshPendingCount(dispatch, getState);
+    } finally {
+      syncing = null;
     }
-  });
-  // Dispatching resolves after the reducers have run, so the offline copy is
-  // saved from the list as it now is (not as it was before the write).
-  const run = (args) => async (dispatch, getState) => {
-    const result = await dispatch(thunk(args));
-    const { tripId, items } = getState().journal;
-    if (result.meta.requestStatus === "fulfilled" && tripId === args.tripId) {
-      await saveMemories(userOf(getState), tripId, items);
-    }
-    return result;
-  };
-  run.fulfilled = thunk.fulfilled;
-  return run;
-}
+  })();
+  return syncing;
+};
 
-/** A new memory, stamped by the server in UTC; the phone sends its zone. */
-export const createMemory = write(
-  "journal/create",
+const isOnline = (getState) => getState().network?.online !== false;
+
+/** Write a new memory: on screen now, sent when there's a connection. */
+export const createMemory =
   ({ tripId, text }) =>
-    apiClient.post(`/trips/${tripId}/memories`, { text, zone: deviceZone() }, { silent: true }),
-  "Memory saved"
-);
+  async (dispatch, getState) => {
+    const memory = {
+      id: crypto.randomUUID(),
+      text,
+      zone: deviceZone(),
+      createdAt: new Date().toISOString(), // the moment Save was tapped
+      updatedAt: null,
+      receivedAt: null,
+      authorEmail: getState().auth?.user?.email ?? "",
+      mine: true,
+      pending: true,
+    };
+    dispatch(localWrite({ tripId, op: "create", memory }));
+    await enqueue({
+      userId: userOf(getState),
+      tripId,
+      memoryId: memory.id,
+      op: "create",
+      body: { text, zone: memory.zone, createdAt: memory.createdAt },
+    });
+    await refreshPendingCount(dispatch, getState);
+    dispatch(
+      notify({
+        type: "success",
+        message: isOnline(getState) ? "Memory saved" : "Saved on this phone — it’ll sync when you’re online",
+      })
+    );
+    dispatch(syncOutbox());
+    return memory;
+  };
 
-export const updateMemory = write(
-  "journal/update",
-  ({ tripId, id, text }) => apiClient.put(`/trips/${tripId}/memories/${id}`, { text }, { silent: true }),
-  "Memory updated"
-);
+/** Change your memory's words; its time and place in the journal stay. */
+export const updateMemory =
+  ({ tripId, id, text }) =>
+  async (dispatch, getState) => {
+    dispatch(localWrite({ tripId, op: "update", memory: { id, text, updatedAt: new Date().toISOString() } }));
+    await enqueue({ userId: userOf(getState), tripId, memoryId: id, op: "update", body: { text } });
+    await refreshPendingCount(dispatch, getState);
+    dispatch(notify({ type: "success", message: "Memory updated" }));
+    dispatch(syncOutbox());
+  };
 
-export const deleteMemory = write(
-  "journal/delete",
-  ({ tripId, id }) => apiClient.delete(`/trips/${tripId}/memories/${id}`, { silent: true }),
-  "Memory deleted"
-);
+export const deleteMemory =
+  ({ tripId, id }) =>
+  async (dispatch, getState) => {
+    dispatch(localWrite({ tripId, op: "delete", memory: { id } }));
+    await enqueue({ userId: userOf(getState), tripId, memoryId: id, op: "delete", body: {} });
+    await refreshPendingCount(dispatch, getState);
+    dispatch(notify({ type: "success", message: "Memory deleted" }));
+    dispatch(syncOutbox());
+  };
 
 const journalSlice = createSlice({
   name: "journal",
-  initialState: { tripId: null, items: [], status: "idle", stale: false },
+  initialState: { tripId: null, items: [], status: "idle", stale: false, pendingCount: 0 },
   reducers: {
-    memoriesFromCache(state, action) {
+    memoriesLoaded(state, action) {
       if (state.tripId !== action.payload.tripId) return;
-      state.items = action.payload.data;
+      state.items = action.payload.items;
+    },
+    localWrite(state, action) {
+      const { tripId, op, memory } = action.payload;
+      if (state.tripId !== tripId) return;
+      if (op === "create") {
+        state.items = sortMemories([...state.items, memory]);
+      } else if (op === "update") {
+        const i = state.items.findIndex((m) => m.id === memory.id);
+        if (i !== -1) state.items[i] = { ...state.items[i], ...memory, pending: true };
+      } else {
+        state.items = state.items.filter((m) => m.id !== memory.id);
+      }
+    },
+    synced(state, action) {
+      const { op, memory } = action.payload;
+      if (state.tripId !== op.tripId || !memory) return;
+      // The server's copy (it may have clamped the time), back in order.
+      if (state.items.some((m) => m.id === op.memoryId)) {
+        state.items = sortMemories(state.items.map((m) => (m.id === op.memoryId ? memory : m)));
+      }
+    },
+    syncFailed(state, action) {
+      const { op } = action.payload;
+      if (state.tripId === op.tripId && op.op === "create") {
+        state.items = state.items.filter((m) => m.id !== op.memoryId);
+      }
+    },
+    pendingCountChanged(state, action) {
+      state.pendingCount = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -104,25 +214,14 @@ const journalSlice = createSlice({
         if (state.tripId !== action.meta.arg) return;
         state.status = action.payload === "offline" ? "idle" : "failed";
         state.stale = action.payload === "offline";
-      })
-      .addCase(createMemory.fulfilled, (state, action) => {
-        // Newest last: the server stamped it after everything already here.
-        if (state.tripId === action.meta.arg.tripId) state.items.push(action.payload);
-      })
-      .addCase(updateMemory.fulfilled, (state, action) => {
-        const i = state.items.findIndex((m) => m.id === action.payload.id);
-        if (i !== -1) state.items[i] = action.payload; // same place: edits never reorder
-      })
-      .addCase(deleteMemory.fulfilled, (state, action) => {
-        state.items = state.items.filter((m) => m.id !== action.meta.arg.id);
       });
   },
 });
 
-const { memoriesFromCache } = journalSlice.actions;
+const { memoriesLoaded, localWrite, synced, syncFailed, pendingCountChanged } = journalSlice.actions;
 export default journalSlice.reducer;
 
-/** Writing memories needs a connection (offline capture is deferred); viewers may write. */
-export function selectCanWriteMemory(state) {
-  return state.network?.online !== false;
+/** How many of your memories haven't reached the server yet. */
+export function selectPendingMemories(state) {
+  return state.journal?.pendingCount ?? 0;
 }

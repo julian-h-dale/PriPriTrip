@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { API_URL } from "../playwright.config.js";
 import { SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
@@ -170,7 +171,7 @@ test("map search and filters", async ({ page }) => {
 /** Delete what a test added through the UI, so the dev trip is left as it was. */
 async function deleteAdded(page, tripId, { itemTitle, stayName }) {
   const token = await page.evaluate(() => localStorage.getItem("auth_token"));
-  const api = "http://localhost:8000";
+  const api = API_URL;
   const headers = { Authorization: `Bearer ${token}` };
   const trip = await (await page.request.get(`${api}/trips/${tripId}`, { headers })).json();
   for (const day of trip.days) {

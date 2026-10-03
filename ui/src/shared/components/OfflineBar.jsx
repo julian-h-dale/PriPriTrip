@@ -3,7 +3,9 @@ import { formatSavedAt } from "@/shared/utils/time";
 
 /**
  * A slim bar saying the page is the phone's saved copy, not live: offline, or
- * online but the server couldn't be reached. Renders nothing when live.
+ * online but the server couldn't be reached. Renders nothing when live. It
+ * doesn't say "read-only": trip edits are visibly off, but memories can
+ * still be written (they wait in the outbox).
  */
 export function OfflineBar({ online, stale, savedAt }) {
   if (online && !stale) return null;
@@ -15,7 +17,7 @@ export function OfflineBar({ online, stale, savedAt }) {
     >
       <CloudOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
-        {why} · read-only
+        {why}
         {savedAt && <> · saved copy from {formatSavedAt(savedAt)}</>}
       </span>
     </div>

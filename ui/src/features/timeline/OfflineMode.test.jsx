@@ -80,7 +80,7 @@ describe("offline, from the phone's saved copy", () => {
     // The sample trip is in the past: open the collapsed group.
     await userEvent.click(await screen.findByRole("button", { name: "Past (1)" }));
     expect(await screen.findByText(TRIP.name)).toBeInTheDocument();
-    expect(await screen.findByText(/^Offline · read-only/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Offline/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Import trip/ })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: `More for ${TRIP.name}` }));
     expect(screen.getByRole("menuitem", { name: "Delete trip" })).toBeDisabled();
@@ -89,7 +89,7 @@ describe("offline, from the phone's saved copy", () => {
   it("a day page renders and every edit control is disabled", async () => {
     renderAt("/trips/trip-1/days/2026-05-11");
     await screen.findByRole("heading", { name: "Mon, May 11" });
-    expect(await screen.findByText(/^Offline · read-only · saved copy from/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Offline · saved copy from/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add activity/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /title and summary/ })).toBeDisabled();
 
@@ -109,7 +109,7 @@ describe("offline, from the phone's saved copy", () => {
   it("online but the server is down: the saved copy shows, read-only, with no error toast", async () => {
     const store = renderAt("/trips/trip-1/days/2026-05-11", true);
     await screen.findByRole("heading", { name: "Mon, May 11" });
-    expect(await screen.findByText(/^Can’t reach the server · read-only/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Can’t reach the server/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add activity/ })).toBeDisabled();
     expect(store.getState().error.message).toBeFalsy();
   });

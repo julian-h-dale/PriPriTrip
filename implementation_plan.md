@@ -1993,7 +1993,20 @@ later.
   - **Also checked by hand:** a database made by the real `rebuild` checkout
     (seeded, with a shared trip) migrated cleanly to 0002, with no schema
     differences.
-- **Phase 30 — the outbox (UI).**
+- **Phase 30 — the outbox (UI).** ✅
+  - **Built as planned, plus:**
+    - **Every write goes through the outbox, online or not:** one path, and
+      the screen updates instantly.
+    - **A sync requested while another is finishing runs again right
+      after.** A real bug, found by the tests: "back online" could otherwise
+      be ignored until the 30-second retry.
+    - **The offline bar no longer says "read-only":** memories can be
+      written offline. Trip edits stay visibly greyed.
+    - **Playwright reads this checkout's own ports from `.env`,** so
+      worktrees can be tested live.
+    - **Live:** `e2e/journal-offline.spec.js` writes two memories offline,
+      goes back online, and checks they're sent once each, in order. The
+      full `trip.spec.js` also passes on the worktree (13 tests).
   - The IndexedDB outbox, "Waiting to sync", sending on reconnect, on
     foreground, after saving and on back-off.
   - Offline edits and deletes, a 401 keeping the outbox, and the sign-out

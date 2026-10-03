@@ -9,8 +9,10 @@ import { Textarea } from "@/shared/components/ui/textarea";
 const MAX = 2000;
 
 /**
- * Write a memory, or change the words of one of yours. Its time is stamped
- * by the server when it's first saved, and editing never changes it.
+ * Write a memory, or change the words of one of yours. Saving is instant and
+ * works offline: the memory goes into the phone's outbox and syncs when
+ * there's a connection. Its time is the moment Save is first tapped, and
+ * editing never changes it.
  */
 export function MemoryDialog({ open, onClose, tripId, memory = null }) {
   const dispatch = useDispatch();
@@ -28,12 +30,11 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
     }
     setBusy(true);
     setError(null);
-    const result = await dispatch(
+    await dispatch(
       memory ? updateMemory({ tripId, id: memory.id, text: trimmed }) : createMemory({ tripId, text: trimmed })
     );
     setBusy(false);
-    if (result.meta.requestStatus === "fulfilled") onClose();
-    else setError(result.payload);
+    onClose();
   }
 
   return (

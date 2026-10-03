@@ -15,10 +15,13 @@ import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { AdminRoute } from "@/shared/components/AdminRoute";
 import { Toaster } from "@/shared/components/Toaster";
 import { PwaUpdate } from "@/shared/pwa/PwaUpdate";
+import { useOutboxSync } from "@/shared/pwa/useOutboxSync";
 
 export function App() {
   const dispatch = useDispatch();
   const token = useSelector((s) => s.auth.token);
+  // Memories written offline go out whenever there's a chance.
+  useOutboxSync();
 
   // Hydrate the user on load if a token survived a refresh.
   useEffect(() => {

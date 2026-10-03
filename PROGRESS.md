@@ -26,8 +26,22 @@
       `create_all`. The Dockerfile copies the migrations.
     - `make reset-db` now deletes the database `DATABASE_URL` names (it used
       to hardcode `app.db`, missing worktree databases).
-  - **Next:** Phase 30 (the outbox), then 31 (location and the blue dot),
-    32 (the photo store) and 33 (photos in the journal).
+  - **Phase 30 ✅ (the outbox):**
+    - `shared/services/outbox.js` (IndexedDB): one merged entry per memory
+      (create+edit is a create; create+delete is nothing).
+    - `journalSlice` writes locally first (the phone's id and `createdAt`),
+      then `syncOutbox`. Server rejections (404/409/422) are dropped with a
+      toast; network errors, 5xx and 401 retry later.
+    - `useOutboxSync` (in App) syncs on start, on reconnect, on returning to
+      the foreground, and every 30 s while anything waits.
+    - Memories show "Waiting to sync". Signing out with unsynced memories
+      warns first, and a confirmed sign-out clears the outbox.
+    - The offline bar no longer says "read-only". Playwright reads this
+      checkout's ports.
+    - The worktree's database also has the Okinawa trip (imported from
+      `example-trip.json`) so the landing e2e has an upcoming trip.
+  - **Next:** Phase 31 (location and the blue dot), then 32 (the photo
+    store) and 33 (photos in the journal).
 - **Run stage 3 (2026-10-03, on `rebuild`): sharing and the trip journal.**
   These notes were missed at the time and added on `journal-memories`.
   - **Phase 25:**

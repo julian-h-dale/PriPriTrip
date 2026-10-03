@@ -49,13 +49,13 @@ test("trips open offline from the saved copy, read-only, and refresh when back o
   // Every page reloads from the service worker (shell) + IndexedDB (data).
   await page.goto("/");
   await expect(page.getByText(tripName)).toBeVisible();
-  await expect(page.getByText(/^Offline · read-only/)).toBeVisible();
+  await expect(page.getByText(/^Offline/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Import trip/ })).toBeDisabled();
   await page.screenshot({ path: screenshotPath("10-offline-trips"), fullPage: true });
 
   await page.goto(tripUrl);
   await expect(page.getByRole("heading", { level: 1, name: tripName })).toBeVisible();
-  await expect(page.getByText(/^Offline · read-only · saved copy from/)).toBeVisible();
+  await expect(page.getByText(/^Offline · saved copy from/)).toBeVisible();
   await page.screenshot({ path: screenshotPath("11-offline-timeline"), fullPage: true });
 
   await page.goto(unopenedUrl);
@@ -72,5 +72,5 @@ test("trips open offline from the saved copy, read-only, and refresh when back o
   await context.setOffline(false);
   await page.goto(tripUrl);
   await expect(page.getByRole("heading", { level: 1, name: tripName })).toBeVisible();
-  await expect(page.getByText(/read-only/)).toHaveCount(0);
+  await expect(page.getByText(/^Offline · saved copy from/)).toHaveCount(0);
 });

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { NotebookPen, Pencil, Trash2 } from "lucide-react";
+import { CloudUpload, NotebookPen, Pencil, Trash2 } from "lucide-react";
 import { journalDays, memoryTime } from "@/features/journal/journalDays";
-import { deleteMemory, fetchMemories, selectCanWriteMemory } from "@/features/journal/journalSlice";
+import { deleteMemory, fetchMemories } from "@/features/journal/journalSlice";
 import { MemoryDialog } from "@/features/journal/MemoryDialog";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
@@ -20,24 +20,17 @@ function groupHeading(group) {
   return formatDayHeading(group.date);
 }
 
-/** A "Write a memory" button, disabled offline (writing needs a connection for now). */
+/** "New memory". Always available: offline, memories wait in the outbox. */
 export function NewMemoryButton({ onClick, className, size = "sm" }) {
-  const canWrite = useSelector(selectCanWriteMemory);
   return (
-    <Button
-      size={size}
-      className={className}
-      onClick={onClick}
-      disabled={!canWrite}
-      title={canWrite ? undefined : "You’re offline — memories need a connection for now"}
-    >
+    <Button size={size} className={className} onClick={onClick}>
       <NotebookPen className="h-4 w-4" aria-hidden="true" />
       New memory
     </Button>
   );
 }
 
-function MemoryCard({ memory, trip, canWrite, onEdit, onDelete }) {
+function MemoryCard({ memory, trip, onEdit, onDelete }) {
   const zoneNote = memory.zone !== trip.timezone ? ` · ${zoneLabel(memory.zone)} time` : "";
   return (
     <Card className="flex gap-2 p-3">
@@ -48,6 +41,12 @@ function MemoryCard({ memory, trip, canWrite, onEdit, onDelete }) {
           {zoneNote} · {memory.mine ? "You" : memory.authorEmail}
           {memory.updatedAt && " · edited"}
         </p>
+        {memory.pending && (
+          <p className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
+            <CloudUpload className="h-3.5 w-3.5" aria-hidden="true" />
+            Waiting to sync
+          </p>
+        )}
       </div>
       {memory.mine && (
         <RowMenu
@@ -56,14 +55,12 @@ function MemoryCard({ memory, trip, canWrite, onEdit, onDelete }) {
             {
               label: "Edit",
               icon: <Pencil className="h-4 w-4" aria-hidden="true" />,
-              disabled: !canWrite,
               onSelect: () => onEdit(memory),
             },
             {
               label: "Delete",
               icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
               destructive: true,
-              disabled: !canWrite,
               onSelect: () => onDelete(memory),
             },
           ]}
@@ -76,7 +73,6 @@ function MemoryCard({ memory, trip, canWrite, onEdit, onDelete }) {
 function Journal({ trip }) {
   const dispatch = useDispatch();
   const { items, tripId, status } = useSelector((s) => s.journal);
-  const canWrite = useSelector(selectCanWriteMemory);
   const groups = useMemo(
     () => journalDays(tripId === trip.id ? items : [], trip),
     [items, tripId, trip]
@@ -130,7 +126,6 @@ function Journal({ trip }) {
                   <MemoryCard
                     memory={memory}
                     trip={trip}
-                    canWrite={canWrite}
                     onEdit={(m) => setEditing({ memory: m })}
                     onDelete={setDeleting}
                   />
