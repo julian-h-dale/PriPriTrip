@@ -1792,9 +1792,32 @@ Asked 2026-10-03 (Julian):
 - **Photos:** from the gallery or the camera, stored on a Fly volume as an
   attached file store, not as base64 in the database.
 
-**Status: planning.** Phase work waits on the open questions below.
+**Decisions** (answered 2026-10-03: "go with your recommendations", plus
+Julian's notes on storage and photo quality). Built on the
+`journal-memories` worktree and branch, stacked on `rebuild`, which is
+being deployed to Fly separately.
+- The phone's time orders the journal. The server's `received_at` is kept
+  as "created on". A device time more than 10 minutes in the future is
+  clamped, not rejected.
+- Offline: new memories, edits and deletes all queue.
+- Location is on by default once allowed, with a per-memory chip to remove
+  it. It's asked for when the first memory is saved, and shown as the
+  nearest trip place within about 250 m, else a map link. Memories become
+  their own pins on the map, with a toggle.
+- **Photos are stored on a Fly volume, grown to about 10 GB.**
+  - **Full quality is kept:** the original as uploaded, plus a 2560 px
+    display copy and a 480 px thumbnail made by the **server**.
+  - At most 10 per memory and about 25 MB each. Memories only.
+- **Photo URLs are unguessable rather than signed.** Each URL contains the
+  photo's random UUID and is served without a login check. That's the same
+  risk Julian accepted for joining by trip id, and it makes caching trivial.
+  Signed URLs can be added later without changing storage.
+- **Offline:** thumbnails are always cached, and display copies once
+  viewed, up to a cap. Originals only online.
+- **Backups:** Fly's daily snapshots for now. An off-site copy (for example
+  a nightly pull to the Pi) comes before relying on it for a real trip.
 
-### Design (assuming the recommended answers)
+### Design
 
 **1. Offline memories: an outbox.** The complexity isn't the timestamp,
 which is easy. It's making a write that happens with no server reliable
@@ -1872,19 +1895,26 @@ later.
   - The in-page camera (`getUserMedia`, a live viewfinder inside the app)
     is a different, harder thing. It needs a camera permission and our own
     shutter UI, and we don't need it.
-- **On the phone, before upload:**
-  - shrink to **2048 px on the long edge, JPEG quality ~0.8** (about
-    300–600 KB, against 3–12 MB originals), plus a **480 px thumbnail**,
-    using `createImageBitmap` and a canvas;
-  - this also **strips the photo's EXIF data**, including the GPS
-    coordinates hidden in it (privacy), and fixes rotation;
-  - iPhone HEIC photos arrive as JPEG through the picker, and decoding
-    handles them either way.
+- **Quality: the original is kept** (Julian, 2026-10-03: quality over
+  storage, and 5–10 GB is fine).
+  - The phone uploads the photo as picked. iPhone HEIC photos arrive as
+    high-quality JPEG through the picker.
+  - The **server** (Pillow, one photo at a time so the 512 MB machine copes)
+    makes:
+    - a **2560 px display copy**, JPEG quality ~85 (about 0.6–1 MB): what
+      the journal shows full screen;
+    - a **480 px thumbnail**.
+  - Both copies are rotated correctly and have **their EXIF stripped**,
+    including GPS.
+  - The original keeps its EXIF. It's only ever downloaded deliberately
+    ("Download original"), or loaded when zooming in.
+  - About 3–6 MB per photo: 10 GB holds about 2,000 photos with their
+    copies, roughly $1.50/month.
 - **Storage: a Fly volume, agreed**, with a small `PhotoStore` interface (a
   local-disk version now) so moving to object storage later (Tigris on Fly,
   S3-compatible) is a swap, not a rewrite.
-  - Files live under `/data/photos/<trip>/<photo id>.jpg` and
-    `…-thumb.jpg`.
+  - Files live under `/data/photos/<trip>/<photo id>/original.<ext>`,
+    `display.jpg` and `thumb.jpg`.
   - A `photos` table holds the metadata: id, memory id, trip id, author,
     width, height, size, and when it was created and received. Soft delete.
 - **Why not base64 in the database:**
@@ -1900,26 +1930,33 @@ later.
     single machine, so that's fine. Scaling to two machines would mean
     moving to object storage (hence the interface).
   - Fly takes **daily snapshots, kept 5 days**, which cover the photos too.
-  - **1 GB** today is about 1,500–2,000 resized photos with their
-    thumbnails. Extending it is one command (`fly volumes extend`), and
-    storage is cheap (about $0.15 per GB per month).
+  - Grow it from 1 GB to **~10 GB** with `fly volumes extend` before photos
+    go live. That's about $0.15 per GB per month; Fly's snapshots may cost
+    a little extra.
 - **Serving:** an `<img>` tag can't send our login token (it's a header).
-  The API includes short-lived **signed URLs** in each memory's photos (an
-  HMAC over the photo id and an expiry). `GET /photos/{id}?sig=…` checks
-  the signature, so anyone else's request fails and leaked URLs expire.
-  Browser caching works normally.
+  So photos are served at **unguessable URLs**:
+  - `GET /photos/{photo uuid}/{display|thumb|original}`, with no login
+    check;
+  - the random UUID is the secret, as with joining by trip id;
+  - `Cache-Control: private, max-age=31536000, immutable`.
+
+  Deleting the photo kills its URL. Signed short-lived URLs can be added
+  later without touching storage.
 - **Upload:** `POST /trips/{id}/memories/{memoryId}/photos` (multipart), by
   the memory's author.
-  - Content type and size are checked (JPEG or PNG or WebP, at most 5 MB
-    after resizing), and the image is re-decoded on the server with
-    Pillow, so only real images get stored.
-  - nginx's `client_max_body_size` (1 MB by default) goes up to 6 MB.
+  - Content type and size are checked (JPEG, PNG, WebP or HEIC, at most
+    25 MB), and the image is re-decoded on the server with Pillow, so only
+    real images get stored.
+  - nginx's `client_max_body_size` (1 MB by default) goes up to 26 MB.
 - **Offline:**
   - The **outbox holds the photo files too**, in IndexedDB. Uploads happen
     after the memory itself has synced. An installed app's storage isn't
     evicted.
-  - **Thumbnails** of the journal are cached for offline viewing.
-    Full-size photos load when online.
+  - **Thumbnails** of the journal are always cached for offline viewing,
+    and display copies once viewed, up to a size cap (a service-worker
+    runtime cache). Originals load only when online.
+  - The outbox holds the original until it uploads, so an offline-queued
+    photo takes its full size on the phone until then.
 - **Viewing:** a strip of thumbnails on each memory. Tapping one opens it
   full screen, with swipe between photos.
 
@@ -1951,17 +1988,25 @@ later.
   - **Live:** Playwright can fake a location (`geolocation` plus
     permissions).
 - **Phase 32 — the photo store (API).**
-  - The `photos` table, `PhotoStore` on disk, upload with its checks,
-    signed URLs, delete, and the nginx body size.
-  - **Tests:** a real JPEG upload and fetch, a forged or expired signature
-    rejected, a non-image rejected, author-only upload, and access for
-    members only.
+  - The `photos` table, `PhotoStore` on disk, and upload with its checks.
+  - Server-made display copies and thumbnails (Pillow; rotation; EXIF
+    stripped from the copies).
+  - Unguessable URLs, delete, and the nginx body size.
+  - **Tests:**
+    - a real JPEG upload, then each size fetched;
+    - the display copy is 2560 px on its long edge with no EXIF, and the
+      original keeps its EXIF;
+    - a non-image or an oversized file is rejected;
+    - only the author can upload or delete, and only members can list
+      photos;
+    - a deleted photo's URLs give 404.
 - **Phase 33 — photos in the journal (UI).**
-  - "Add photos" (the gallery or camera menu), shrinking and thumbnails on
-    the phone, the thumbnail strip, full-screen viewing, the offline outbox
-    for photos, and cached thumbnails.
-  - **Tests:** resize with a mocked canvas, the picker flow, and outbox
-    photos.
+  - "Add photos" (the gallery or camera menu), the thumbnail strip,
+    full-screen viewing on the display copy (zooming in loads the
+    original), "Download original", the offline outbox for photos, and
+    cached thumbnails and viewed display copies.
+  - **Tests:** the picker flow, outbox photos, and which size each view
+    asks for.
   - **Live:** upload a fixture photo in Playwright.
   - **Julian:** on a real phone over HTTPS, take a photo with the camera and
     pick one from the gallery.
@@ -1969,46 +2014,46 @@ later.
 ### Open questions (Run stage 4)
 
 - **Q-4.1. Your message was cut off** ("I don't have a…"). Was there more?
-  - **Answer:**
+  - **Answer:** no, a typo (2026-10-03).
 - **Q-4.2. The device's time orders the journal, and the server's
   `received_at` is kept as "created on"?** A device time more than 10
   minutes in the future is clamped rather than rejected.
   - Recommendation: yes.
-  - **Answer:**
+  - **Answer:** yes (2026-10-03).
 - **Q-4.3. Offline edits and deletes too, or only new memories?**
   - Recommendation: all three. With only the author editing, there's
     nothing to conflict with.
-  - **Answer:**
+  - **Answer:** yes, all three (2026-10-03).
 - **Q-4.4. Location on by default once allowed, with a chip to remove it
   per memory?**
   - Recommendation: yes. Ask the first time a memory is saved.
-  - **Answer:**
+  - **Answer:** yes (2026-10-03).
 - **Q-4.5. How is a memory's location shown?**
   - Recommendation: the nearest trip place within about 250 m, else a "Show
     on map" link. Google reverse geocoding later if wanted.
-  - **Answer:**
+  - **Answer:** recommended: the nearest trip place within about 250 m, else a map link (2026-10-03).
 - **Q-4.6. Show memories on the map too, as their own pins?** It's cheap
   once they have a location.
   - Recommendation: yes, in Phase 31, with a filter toggle beside
     House/Calendar.
-  - **Answer:**
+  - **Answer:** yes, with a toggle (2026-10-03).
 - **Q-4.7. Photo limits.**
   - Recommendation: up to 10 per memory; shrunk to 2048 px with a 480 px
     thumbnail; **originals not kept** (storage, and their EXIF location
     data).
-  - **Answer:**
+  - **Answer:** **revised:** keep originals for quality, plus a server-made 2560 px display copy and a 480 px thumbnail; at most 10 per memory, about 25 MB each; a ~10 GB volume (2026-10-03).
 - **Q-4.8. Photos offline.**
   - Recommendation: cache thumbnails only. Full-size photos when online.
-  - **Answer:**
+  - **Answer:** thumbnails always, display copies once viewed (capped), originals online only (2026-10-03).
 - **Q-4.9. Photos only on memories, or also on a stay or activity?**
   - Recommendation: memories only for now.
-  - **Answer:**
+  - **Answer:** memories only (2026-10-03).
 - **Q-4.10. Backups.** Are Fly's daily volume snapshots (kept 5 days)
   enough for now, or should there be an off-site copy, given that photos
   can't be recreated?
   - Recommendation: snapshots for now. An off-site copy (Tigris, or a
     nightly copy) before relying on it for a real trip.
-  - **Answer:**
+  - **Answer:** snapshots for now; an off-site copy before a real trip (2026-10-03).
 
 ## After Phase 4 — First real trip
 

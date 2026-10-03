@@ -306,10 +306,12 @@
    map, and offline (DevTools → Network → Offline). Then deploy to Fly
    (HTTPS), install it on the phone, and try it in airplane mode before the
    Okinawa trip (Oct 29).
-5. **Planned, awaiting answers (2026-10-03):** Run stage 4 in
-   `implementation_plan.md`: offline memories (an outbox), location and the
-   map's blue dot, and photos on a Fly volume (Phases 29–33). **Julian:**
-   answer Q-4.1 to Q-4.10 inline.
+5. **Run stage 4 (answered 2026-10-03), on the `journal-memories`
+   worktree** (`../PriPriTrip-worktrees/journal-memories`, stacked on
+   `rebuild`; API :8001, UI :3001). Offline memories, location and the blue
+   dot, and photos (originals kept, unguessable URLs, a ~10 GB Fly volume),
+   Phases 29–33. **Waiting on Julian's go-ahead to implement.** `rebuild`
+   is being deployed to Fly separately.
 6. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
    `changeme-viewer` for the viewer's side (`make seed` created it, already
    joined to the sample trip).
