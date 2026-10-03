@@ -70,7 +70,22 @@
       photos.
     - nginx `client_max_body_size 26m` on `/api/`.
     - **Before deploying photos:** `fly volumes extend` to about 10 GB.
-  - **Next:** Phase 33 (photos in the journal).
+  - **Phase 33 ✅ (photos in the journal):**
+    - "Add photos" in the memory dialog: the phone's own picker (camera,
+      library, files), previews, removal, at most 10 and 25 MB each.
+    - A thumbnail strip on cards. A full-screen viewer: the display copy,
+      swipe or arrows, "Full quality" (the original, pinch-zoomable) and
+      Download.
+    - Photos go through the outbox (uploads with the phone's own id, after
+      their memory). The service worker caches thumbnails and viewed
+      display copies.
+    - Fixed: the refresh/sync race that could hide a just-synced memory,
+      and an edit's reply resurrecting a removed photo.
+  - **Run stage 4 is done.** Before deploying it:
+    - merge into the deployed line (the migrations take an existing
+      database from 0001 onward);
+    - `fly volumes extend` to about 10 GB;
+    - test the camera on a real phone.
 - **Run stage 3 (2026-10-03, on `rebuild`): sharing and the trip journal.**
   These notes were missed at the time and added on `journal-memories`.
   - **Phase 25:**

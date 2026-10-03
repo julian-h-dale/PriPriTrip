@@ -75,3 +75,35 @@ describe("applyPending", () => {
     expect(sortMemories([{ id: "b", createdAt: same }, { id: "a", createdAt: same }]).map((m) => m.id)).toEqual(["a", "b"]);
   });
 });
+
+describe("photos in the outbox", () => {
+  beforeEach(() => clearOutbox("u1"));
+  const addPhoto = (photoId) => ({
+    userId: "u1",
+    tripId: "t1",
+    memoryId: "m1",
+    entryId: `photo-${photoId}`,
+    op: "addPhoto",
+    body: { photoId, file: { bytes: new ArrayBuffer(3), type: "image/jpeg", name: "a.jpg" } },
+  });
+
+  it("are their own entries, sent after the memory they belong to", async () => {
+    await enqueue(create());
+    await enqueue(addPhoto("p1"));
+    await enqueue(addPhoto("p2"));
+    expect((await pending("u1")).map((o) => o.op)).toEqual(["create", "addPhoto", "addPhoto"]);
+  });
+
+  it("removing a photo that never uploaded leaves nothing to send", async () => {
+    await enqueue(addPhoto("p1"));
+    await enqueue({ ...addPhoto("p1"), op: "removePhoto", body: { photoId: "p1" } });
+    expect(await pending("u1")).toEqual([]);
+  });
+
+  it("deleting a memory drops its photos still waiting to upload", async () => {
+    await enqueue({ ...create(), op: "update", body: { text: "x" } }); // already on the server
+    await enqueue(addPhoto("p1"));
+    await enqueue(remove());
+    expect((await pending("u1")).map((o) => o.op)).toEqual(["delete"]);
+  });
+});

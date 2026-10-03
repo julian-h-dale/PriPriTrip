@@ -2069,7 +2069,27 @@ later.
     - only the author can upload or delete, and only members can list
       photos;
     - a deleted photo's URLs give 404.
-- **Phase 33 — photos in the journal (UI).**
+- **Phase 33 — photos in the journal (UI).** ✅
+  - **Built as planned, plus:**
+    - **Outbox entries for photos** ("addPhoto" and "removePhoto"), keyed by
+      their own id and queued after their memory. Photo bytes are stored as
+      an ArrayBuffer; a `FileReader` fallback covers older Safari.
+    - **Deleting a memory drops its unsent photos.** Removing a photo that
+      hasn't uploaded yet sends nothing.
+    - **Photos are cached by the service worker:** thumbnails kept
+      (cache-first), display copies capped at 200, originals never cached.
+    - **Fixed, found by the parallel e2e run:** a race between the journal's
+      refresh and the outbox could make a just-synced memory vanish until
+      the next refresh. A regression test is confirmed to fail without the
+      fix.
+    - **Fixed:** an edit's server reply could briefly bring back a photo
+      whose removal was still queued.
+    - **Live:** `e2e/journal-photos.spec.js` picks two photos offline, they
+      upload on reconnect (201 each), and the viewer shows the display copy
+      and then the original. The whole live suite (15 tests) passed twice
+      in a row.
+  - **Julian, on a real phone over HTTPS:** take a photo with the camera and
+    pick one from the library. Neither can be faked in a headless browser.
   - "Add photos" (the gallery or camera menu), the thumbnail strip,
     full-screen viewing on the display copy (zooming in loads the
     original), "Download original", the offline outbox for photos, and

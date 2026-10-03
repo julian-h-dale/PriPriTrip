@@ -12,7 +12,7 @@ import networkReducer, { setOnline } from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { JournalPage } from "@/features/journal/JournalPage";
-import { syncOutbox } from "@/features/journal/journalSlice";
+import { fetchMemories, syncOutbox } from "@/features/journal/journalSlice";
 import { deviceZone } from "@/features/journal/journalDays";
 import { TodayPage } from "@/features/today/TodayPage";
 import { apiClient } from "@/shared/services/apiClient";
@@ -248,5 +248,38 @@ describe("signing out with memories still waiting", () => {
     await user.click(screen.getByRole("button", { name: "Sign out" }));
     await user.click(within(screen.getByRole("dialog", { name: "Sign out anyway?" })).getByRole("button", { name: "Sign out" }));
     await vi.waitFor(() => expect(store.getState().auth.token).toBeNull());
+  });
+});
+
+describe("coming back online", () => {
+  it("a memory that syncs while the journal is refreshing doesn't vanish", async () => {
+    const user = userEvent.setup();
+    const store = renderAt("/trips/trip-1/journal", { online: false });
+    await screen.findByRole("region", { name: "Mon, May 11" });
+    await user.click(screen.getByRole("button", { name: "New memory" }));
+    await user.type(screen.getByLabelText("What happened?"), "Written offline");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Written offline");
+
+    // The refresh asks the server *before* the upload lands, and its answer
+    // (without the new memory) arrives *after* the outbox has sent it.
+    const answers = []; // every request held until we say so (the page refreshes too)
+    apiClient.get.mockImplementation(
+      (url) =>
+        new Promise((resolve) => {
+          answers.push(() => resolve({ data: url.endsWith("/memories") ? structuredClone(MEMORIES) : TRIP }));
+        })
+    );
+    apiClient.post.mockImplementation(async (url, body) => ({ data: { ...body, mine: true, photos: [] } }));
+    const refresh = store.dispatch(fetchMemories("trip-1"));
+    await vi.waitFor(() => expect(answers.length).toBeGreaterThan(0));
+    store.dispatch(setOnline(true));
+    await store.dispatch(syncOutbox());
+    answers.forEach((resolve) => resolve());
+    await refresh;
+    await vi.waitFor(() => expect(answers.every(Boolean)).toBe(true));
+
+    expect(screen.getByText("Written offline")).toBeInTheDocument();
+    expect(within(screen.getByText("Written offline").closest("li")).queryByText("Waiting to sync")).not.toBeInTheDocument();
   });
 });

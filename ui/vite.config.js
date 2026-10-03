@@ -46,6 +46,30 @@ export default defineConfig(({ mode }) => {
               handler: "NetworkFirst",
               options: { cacheName: "runtime-config", networkTimeoutSeconds: 3 },
             },
+            // Journal photos: a photo's files never change under its id, so
+            // cache-first is safe. Thumbnails are kept (a journal opened
+            // once shows its photos offline); display copies are cached as
+            // they're viewed, capped; originals are never cached (online only).
+            // Status 0 = an opaque cross-origin <img> response (dev: the API
+            // is another port; production is same-origin).
+            {
+              urlPattern: ({ url }) => /\/photos\/[0-9a-f-]{36}\/thumb$/.test(url.pathname),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "photo-thumbs",
+                expiration: { maxEntries: 3000 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              urlPattern: ({ url }) => /\/photos\/[0-9a-f-]{36}\/display$/.test(url.pathname),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "photo-display",
+                expiration: { maxEntries: 200, purgeOnQuotaError: true },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
           ],
         },
       }),

@@ -6,6 +6,7 @@ import { journalDays, memoryTime } from "@/features/journal/journalDays";
 import { deleteMemory, fetchMemories } from "@/features/journal/journalSlice";
 import { MemoryDialog } from "@/features/journal/MemoryDialog";
 import { locationLabel } from "@/features/journal/nearestPlace";
+import { PhotoStrip } from "@/features/journal/PhotoStrip";
 import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
@@ -38,6 +39,7 @@ function MemoryCard({ memory, trip, onEdit, onDelete }) {
     <Card className="flex gap-2 p-3">
       <div className="min-w-0 flex-1">
         <p className="whitespace-pre-wrap break-words text-sm">{memory.text}</p>
+        <PhotoStrip photos={memory.photos} />
         <p className="mt-1.5 text-xs text-muted-foreground">
           {memoryTime(memory)}
           {zoneNote} · {memory.mine ? "You" : memory.authorEmail}
