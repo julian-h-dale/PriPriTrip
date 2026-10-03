@@ -1780,6 +1780,236 @@ Journal:
   - Recommendation: as stated.
   - **Answer:** yes (2026-10-03).
 
+## Run stage 4 — the journal, offline and in place: offline memories, location, photos
+
+Asked 2026-10-03 (Julian):
+- **Offline first:** write memories with no signal. The phone's clock is
+  trusted (NTP, re-synced when you land), so the device stamps the time
+  when you tap Save. Add a server-side "created on" field anyway, in case
+  it's needed later.
+- **Location:** ask for the user's location and attach it to a memory.
+  Also the blue "you are here" dot on the map.
+- **Photos:** from the gallery or the camera, stored on a Fly volume as an
+  attached file store, not as base64 in the database.
+
+**Status: planning.** Phase work waits on the open questions below.
+
+### Design (assuming the recommended answers)
+
+**1. Offline memories: an outbox.** The complexity isn't the timestamp,
+which is easy. It's making a write that happens with no server reliable
+later.
+- **The phone makes the ids.** A memory's `id` (a UUID) and `createdAt` (UTC
+  ISO, from `Date.now()` at Save) are made on the phone and sent with it.
+  The server treats `POST` with an existing id as "already have it": same
+  response, no duplicate. So a retry after a dropped connection (did it
+  save or not?) can never create two.
+- **The outbox:** an IndexedDB store of pending operations (`create`,
+  `update`, `delete`), per user.
+  - A new memory shows in the journal **at once**, marked "Waiting to sync".
+  - Editing or deleting a not-yet-synced memory rewrites its outbox entry
+    instead of queueing a second operation.
+  - Only the author edits, so there are no conflicts to merge. The last
+    write per memory wins.
+- **When it sends:**
+  - when the phone comes back online;
+  - when the app opens or comes to the foreground;
+  - after each new save;
+  - on a back-off retry.
+
+  It doesn't use Background Sync, which iOS doesn't support, so sending
+  happens while the app is open. That's fine for "the second they land".
+- **Expired login:** a 401 while sending keeps the outbox. After signing
+  in, it sends. **Sign out** with pending memories warns first ("2
+  memories haven't synced. Sign out anyway?").
+- **Server:**
+  - `created_at` becomes **the device's** time and stays the ordering key.
+  - A new `received_at` is the server's own UTC stamp (your "created on",
+    kept just in case).
+  - A device time more than 10 minutes in the future is **clamped to
+    `received_at`** rather than rejected. A rejection would leave a memory
+    stuck in the outbox forever.
+  - Ties are broken by `id`, as now.
+- **Ordering caveat (accepted):** two phones with clocks a few seconds apart
+  can interleave slightly. That's fine for a journal.
+
+**2. Location.**
+- **The API:** `navigator.geolocation` (the browser's built-in location).
+  - It needs **HTTPS**; `localhost` is fine for development.
+  - The browser asks permission once, and an installed iOS app may ask
+    again occasionally.
+  - **GPS works with no signal.** It's slower to get a first fix without
+    data, but it works.
+- **When to ask:** the first time someone saves a memory, not when the app
+  opens. Asked in context, people say yes.
+  - Saving **never waits** on location: it waits up to about 8 seconds,
+    accepts a reading up to a minute old, and saves without one if location
+    is denied or too slow.
+  - The memory dialog shows a removable 📍 chip ("Near Kornhauskeller" or
+    "Location attached"), so a single memory can go without.
+- **Stored** on the memory: `lat`, `lng` and `accuracy` (in metres).
+- **Shown as the nearest place on the trip** within about 250 m ("near
+  Hotel Goldener Schlüssel"). That works offline and is free. Otherwise
+  it's a "Show on map" link. Google reverse geocoding (turning coordinates
+  into a street or place name) could come later.
+- **The blue dot:** `watchPosition` while the map is open, an Advanced
+  Marker dot, and an **accuracy circle**, which is honest about uncertainty
+  (your earlier concern about misleading information). A "center on me"
+  button. It stops watching when you leave the map. No distances and no
+  routing; Directions still hands off to the maps app.
+
+**3. Photos.**
+- **Getting photos from the phone is easier on the web than you'd think.**
+  - **No camera code.** A plain `<input type="file" accept="image/*"
+    multiple>` makes the phone show its own menu:
+    - on iOS, "Photo Library / Take Photo / Choose File";
+    - on Android, the camera and gallery apps.
+  - The operating system runs the camera and the gallery; we only receive
+    the file(s).
+  - **No permission prompt:** the user picking files *is* the permission.
+  - `capture="environment"` would skip the menu and open the back camera
+    directly. Useful as a second "Take photo" button, but optional.
+  - The in-page camera (`getUserMedia`, a live viewfinder inside the app)
+    is a different, harder thing. It needs a camera permission and our own
+    shutter UI, and we don't need it.
+- **On the phone, before upload:**
+  - shrink to **2048 px on the long edge, JPEG quality ~0.8** (about
+    300–600 KB, against 3–12 MB originals), plus a **480 px thumbnail**,
+    using `createImageBitmap` and a canvas;
+  - this also **strips the photo's EXIF data**, including the GPS
+    coordinates hidden in it (privacy), and fixes rotation;
+  - iPhone HEIC photos arrive as JPEG through the picker, and decoding
+    handles them either way.
+- **Storage: a Fly volume, agreed**, with a small `PhotoStore` interface (a
+  local-disk version now) so moving to object storage later (Tigris on Fly,
+  S3-compatible) is a swap, not a rewrite.
+  - Files live under `/data/photos/<trip>/<photo id>.jpg` and
+    `…-thumb.jpg`.
+  - A `photos` table holds the metadata: id, memory id, trip id, author,
+    width, height, size, and when it was created and received. Soft delete.
+- **Why not base64 in the database:**
+  - it's about 33% bigger;
+  - the SQLite file grows, and so does every backup and every copy;
+  - photos would ride along in trip and journal JSON (memory, and the
+    offline cache);
+  - and there's no streaming or browser caching.
+
+  Files on disk, metadata in the database, is the standard split.
+- **Volume facts to plan around:**
+  - The volume is attached to **one machine**. The app already runs a
+    single machine, so that's fine. Scaling to two machines would mean
+    moving to object storage (hence the interface).
+  - Fly takes **daily snapshots, kept 5 days**, which cover the photos too.
+  - **1 GB** today is about 1,500–2,000 resized photos with their
+    thumbnails. Extending it is one command (`fly volumes extend`), and
+    storage is cheap (about $0.15 per GB per month).
+- **Serving:** an `<img>` tag can't send our login token (it's a header).
+  The API includes short-lived **signed URLs** in each memory's photos (an
+  HMAC over the photo id and an expiry). `GET /photos/{id}?sig=…` checks
+  the signature, so anyone else's request fails and leaked URLs expire.
+  Browser caching works normally.
+- **Upload:** `POST /trips/{id}/memories/{memoryId}/photos` (multipart), by
+  the memory's author.
+  - Content type and size are checked (JPEG or PNG or WebP, at most 5 MB
+    after resizing), and the image is re-decoded on the server with
+    Pillow, so only real images get stored.
+  - nginx's `client_max_body_size` (1 MB by default) goes up to 6 MB.
+- **Offline:**
+  - The **outbox holds the photo files too**, in IndexedDB. Uploads happen
+    after the memory itself has synced. An installed app's storage isn't
+    evicted.
+  - **Thumbnails** of the journal are cached for offline viewing.
+    Full-size photos load when online.
+- **Viewing:** a strip of thumbnails on each memory. Tapping one opens it
+  full screen, with swipe between photos.
+
+### Phases
+
+- **Phase 29 — memories made on the phone (API).**
+  - The client sends `id` and `createdAt`. `POST` with an existing id
+    returns the same memory, so there are no duplicates.
+  - `received_at` is added. A future time is clamped.
+  - Edit and delete are unchanged.
+  - **Tests:** a retry is idempotent, ordering follows the device time, the
+    clamp, and another user's id gives 409.
+- **Phase 30 — the outbox (UI).**
+  - The IndexedDB outbox, "Waiting to sync", sending on reconnect, on
+    foreground, after saving and on back-off.
+  - Offline edits and deletes, a 401 keeping the outbox, and the sign-out
+    warning.
+  - **Tests:** an outbox unit test with fake IndexedDB, plus component
+    tests.
+  - **Live:** Playwright offline, write two memories, go online, and check
+    they sync once, in order.
+- **Phase 31 — location and the blue dot.**
+  - The permission flow, a location chip in the dialog, and
+    `lat`/`lng`/`accuracy` on memories (API and UI).
+  - The nearest-trip-place label, and the map's blue dot with its accuracy
+    circle and "center on me".
+  - **Tests:** a mocked geolocation for granted, denied and slow, and a
+    unit test for the nearest place.
+  - **Live:** Playwright can fake a location (`geolocation` plus
+    permissions).
+- **Phase 32 — the photo store (API).**
+  - The `photos` table, `PhotoStore` on disk, upload with its checks,
+    signed URLs, delete, and the nginx body size.
+  - **Tests:** a real JPEG upload and fetch, a forged or expired signature
+    rejected, a non-image rejected, author-only upload, and access for
+    members only.
+- **Phase 33 — photos in the journal (UI).**
+  - "Add photos" (the gallery or camera menu), shrinking and thumbnails on
+    the phone, the thumbnail strip, full-screen viewing, the offline outbox
+    for photos, and cached thumbnails.
+  - **Tests:** resize with a mocked canvas, the picker flow, and outbox
+    photos.
+  - **Live:** upload a fixture photo in Playwright.
+  - **Julian:** on a real phone over HTTPS, take a photo with the camera and
+    pick one from the gallery.
+
+### Open questions (Run stage 4)
+
+- **Q-4.1. Your message was cut off** ("I don't have a…"). Was there more?
+  - **Answer:**
+- **Q-4.2. The device's time orders the journal, and the server's
+  `received_at` is kept as "created on"?** A device time more than 10
+  minutes in the future is clamped rather than rejected.
+  - Recommendation: yes.
+  - **Answer:**
+- **Q-4.3. Offline edits and deletes too, or only new memories?**
+  - Recommendation: all three. With only the author editing, there's
+    nothing to conflict with.
+  - **Answer:**
+- **Q-4.4. Location on by default once allowed, with a chip to remove it
+  per memory?**
+  - Recommendation: yes. Ask the first time a memory is saved.
+  - **Answer:**
+- **Q-4.5. How is a memory's location shown?**
+  - Recommendation: the nearest trip place within about 250 m, else a "Show
+    on map" link. Google reverse geocoding later if wanted.
+  - **Answer:**
+- **Q-4.6. Show memories on the map too, as their own pins?** It's cheap
+  once they have a location.
+  - Recommendation: yes, in Phase 31, with a filter toggle beside
+    House/Calendar.
+  - **Answer:**
+- **Q-4.7. Photo limits.**
+  - Recommendation: up to 10 per memory; shrunk to 2048 px with a 480 px
+    thumbnail; **originals not kept** (storage, and their EXIF location
+    data).
+  - **Answer:**
+- **Q-4.8. Photos offline.**
+  - Recommendation: cache thumbnails only. Full-size photos when online.
+  - **Answer:**
+- **Q-4.9. Photos only on memories, or also on a stay or activity?**
+  - Recommendation: memories only for now.
+  - **Answer:**
+- **Q-4.10. Backups.** Are Fly's daily volume snapshots (kept 5 days)
+  enough for now, or should there be an off-site copy, given that photos
+  can't be recreated?
+  - Recommendation: snapshots for now. An off-site copy (Tigris, or a
+    nightly copy) before relying on it for a real trip.
+  - **Answer:**
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it

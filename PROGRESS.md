@@ -306,7 +306,11 @@
    map, and offline (DevTools → Network → Offline). Then deploy to Fly
    (HTTPS), install it on the phone, and try it in airplane mode before the
    Okinawa trip (Oct 29).
-5. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
+5. **Planned, awaiting answers (2026-10-03):** Run stage 4 in
+   `implementation_plan.md`: offline memories (an outbox), location and the
+   map's blue dot, and photos on a Fly volume (Phases 29–33). **Julian:**
+   answer Q-4.1 to Q-4.10 inline.
+6. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
    `changeme-viewer` for the viewer's side (`make seed` created it, already
    joined to the sample trip).
 6. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
