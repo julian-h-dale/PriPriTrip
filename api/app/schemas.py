@@ -15,7 +15,7 @@ from fastapi_users import schemas
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from app.trip_document import DayDoc, ItemDoc, StayDoc, TravelDoc, TripDocument
+from app.trip_document import DayDoc, IanaTimezone, ItemDoc, StayDoc, TravelDoc, TripDocument
 
 
 class CamelModel(BaseModel):
@@ -136,3 +136,45 @@ class MemberRead(CamelModel):
     email: str
     role: Literal["viewer"]
     joined_at: datetime
+
+
+MEMORY_MAX_CHARS = 2000
+
+
+def _memory_text(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("A memory needs some text")
+    if len(value) > MEMORY_MAX_CHARS:
+        raise ValueError(f"A memory is at most {MEMORY_MAX_CHARS} characters")
+    return value
+
+
+MemoryText = Annotated[str, AfterValidator(_memory_text)]
+
+
+class MemoryCreate(CamelModel):
+    """A new memory. Its time is stamped by the server, never sent."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    text: MemoryText
+    # The author's phone's zone right now (for display; ordering uses UTC).
+    zone: IanaTimezone
+
+
+class MemoryUpdate(CamelModel):
+    """Changing a memory's words. Its time and zone stay as written."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    text: MemoryText
+
+
+class MemoryRead(CamelModel):
+    id: uuid.UUID
+    text: str
+    zone: str
+    created_at: datetime
+    updated_at: datetime | None = None
+    author_email: str
+    # True when the caller wrote it — only then may they edit or delete it.
+    mine: bool

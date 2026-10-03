@@ -1673,7 +1673,7 @@ survives.
   - leaving removes the trip from the list.
 - **Live:** two browser contexts, owner and viewer, in Playwright.
 
-### Phase 27 — Run: memories API
+### Phase 27 — Run: memories API ✅
 
 - The `memories` table, the endpoints, `get_own_memory`, and the zone check.
 - **Tests:**

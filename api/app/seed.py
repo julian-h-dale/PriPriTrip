@@ -18,7 +18,7 @@ from fastapi_users.exceptions import UserAlreadyExists
 from sqlalchemy import delete, select
 
 from app.database import AsyncSessionLocal, engine
-from app.models import Base, Day, Item, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import Base, Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
 from app.sample_data import load_sample_trip
 from app.schemas import UserCreate
 from app.services.trips import import_trip
@@ -62,7 +62,7 @@ async def _seed_sample_data() -> None:
         old = select(Trip.id).where(Trip.user_id == user.id, Trip.name == doc.name)
         old_days = select(Day.id).where(Day.trip_id.in_(old))
         await session.execute(delete(Item).where(Item.day_id.in_(old_days)))
-        for child in (Day, Stay, Travel, TripMember):
+        for child in (Day, Stay, Travel, TripMember, Memory):
             await session.execute(delete(child).where(child.trip_id.in_(old)))
         await session.execute(delete(Trip).where(Trip.id.in_(old)))
         await session.commit()

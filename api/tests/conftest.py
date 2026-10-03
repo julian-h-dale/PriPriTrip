@@ -138,3 +138,42 @@ async def anon_client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     ac = await _token_client(db, None)
     async with ac:
         yield ac
+
+
+# ---- a second and third person, for sharing and the journal ----
+
+
+async def _user(db: AsyncSession, email: str) -> UserRecord:
+    user = UserRecord(id=uuid.uuid4(), email=email, hashed_password="x", is_active=True)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def _client_for(db: AsyncSession, user: UserRecord) -> AsyncClient:
+    app = create_app()
+
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[current_active_user] = lambda: user
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+@pytest_asyncio.fixture
+async def viewer_user(db: AsyncSession) -> UserRecord:
+    return await _user(db, "pripri@example.com")
+
+
+@pytest_asyncio.fixture
+async def viewer(db: AsyncSession, viewer_user: UserRecord) -> AsyncGenerator[AsyncClient, None]:
+    async with await _client_for(db, viewer_user) as ac:
+        yield ac
+
+
+@pytest_asyncio.fixture
+async def stranger(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    async with await _client_for(db, await _user(db, "stranger@example.com")) as ac:
+        yield ac

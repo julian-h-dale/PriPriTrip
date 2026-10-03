@@ -27,7 +27,7 @@ import uuid
 from typing import Any, ClassVar
 
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, func, text
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Text, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.db_types import UtcDateTime
@@ -195,3 +195,26 @@ class TripMember(SoftDeleteMixin, Base):
             postgresql_where=text("NOT is_deleted"),
         ),
     )
+
+
+class Memory(SoftDeleteMixin, Base):
+    """One entry in a trip's journal: a point-in-time note by one traveler.
+
+    `created_at` is an instant stamped by the server (UTC, to the
+    microsecond) and is the journal's only ordering key — an edit never
+    moves a memory. `zone` is the IANA zone the author's phone was in when
+    they wrote it: display only, so a dinner written in Tokyo still reads in
+    Tokyo time when reread anywhere else.
+    """
+
+    __tablename__ = "memories"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    zone: Mapped[str]
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+    updated_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
+
+    __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)

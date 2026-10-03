@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Day, Item, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
 from app.users import current_active_user
 
 
@@ -132,3 +132,26 @@ async def get_owned_travel(
     if travel is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return travel
+
+
+async def get_own_memory(
+    memory_id: uuid.UUID,
+    viewable: ViewableTrip = Depends(get_viewable_trip),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+) -> Memory:
+    """A live memory on a trip the user can see, written by them. Someone
+    else's memory on the same trip is 403 (they can see it exists); anything
+    else is 404."""
+    memory = await db.scalar(
+        select(Memory).where(
+            Memory.id == memory_id, Memory.trip_id == viewable.trip.id, active(Memory)
+        )
+    )
+    if memory is None:
+        raise _not_found()
+    if memory.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only its author can change a memory"
+        )
+    return memory
