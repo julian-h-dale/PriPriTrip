@@ -28,6 +28,11 @@
     easy to test; hiding it outside the trip comes later). Past days are
     greyed on the timeline and today is marked. `shared/utils/mapsLinks.js`
     (`mapsUrl`, `directionsUrl`) is shared.
+  - **Phase 22 ✅:** `EntryDetails` (in `features/timeline/EntryDetails.jsx`,
+    with `ConfirmationNumber` and `PlaceRow`) is the one details layout for
+    the day page's expanded entries, the stays/travel quick look and Today's
+    plan. Order: facts (now with Room and Seat), confirmation number, notes,
+    places. Photos are 64px thumbnails, with none for airports and stations.
 - **Earlier (2026-10-03):** Run stage 1 in `implementation_plan.md`,
   built as two commits, as Julian asked. **Both are done**, waiting on
   Julian's 375px look.

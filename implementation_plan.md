@@ -1462,11 +1462,14 @@ From `ui_review.md`, discussed with Julian on 2026-10-03.
   - `TodayPage` component tests;
   - greyed rows.
 
-### Phase 22 — Run: shared EntryDetails, reordered
+### Phase 22 — Run: shared EntryDetails, reordered ✅
 
 - `EntryDetails` (facts, then confirmation, then notes, then places, then
   thumbnails) used in `TimelineEntry`, `BookingDetailsDialog` and Today.
-  `LocationBlock` becomes a compact place row with a small thumbnail.
+  `LocationBlock` becomes `PlaceRow`, a compact place row with a 64px
+  thumbnail. The mini-map fallback is gone from the details; it's still in
+  `PlaceField` while picking. The facts gain Room (stays) and Seat (travel),
+  and a leg without an arrival says "Not set yet".
 - **Tests:** the order of the sections, no photo for travel endpoints, and
   the existing editing and coverage tests still pass.
 

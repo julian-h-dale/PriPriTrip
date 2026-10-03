@@ -50,6 +50,7 @@ export function describeEntry(entry, trip) {
       notes: item.notes,
       confirmation: item.confirmationNumber,
       locations: item.location ? [{ label: "Where", loc: item.location }] : [],
+      photos: true,
       facts: [],
     };
   }
@@ -74,10 +75,12 @@ export function describeEntry(entry, trip) {
       notes: stay.notes,
       confirmation: stay.confirmationNumber,
       locations: stay.location ? [{ label: "Where", loc: stay.location }] : [],
+      photos: true,
       facts: [
         ["Check-in", fullTime(stay.checkIn, zone, tripZone)],
         ["Check-out", fullTime(stay.checkOut, zone, tripZone)],
-      ],
+        ["Room", stay.roomType],
+      ].filter(([, value]) => value),
     };
   }
 
@@ -108,10 +111,13 @@ export function describeEntry(entry, trip) {
       travel.from && { label: "From", loc: travel.from },
       travel.to && { label: "To", loc: travel.to },
     ].filter(Boolean),
+    // Airports and stations: a photo doesn't help you find anything.
+    photos: false,
     facts: [
       [MODE_LABEL[travel.mode] ?? "Travel", carrier],
       ["Departs", fullTime(travel.depart, departZone, tripZone)],
-      ["Arrives", travel.arrive ? fullTime(travel.arrive, arriveZone, tripZone) : null],
+      ["Arrives", travel.arrive ? fullTime(travel.arrive, arriveZone, tripZone) : "Not set yet"],
+      ["Seat", travel.seat],
     ].filter(([, value]) => value),
   };
 }

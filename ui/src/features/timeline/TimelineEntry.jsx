@@ -1,84 +1,10 @@
-import { useState } from "react";
-import { AlertTriangle, Check, ChevronDown, Copy, ExternalLink, MapPin } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { describeEntry } from "@/features/timeline/describeEntry";
+import { EntryDetails } from "@/features/timeline/EntryDetails";
 import { RailDot } from "@/features/timeline/RailDot";
-import { Markdown } from "@/shared/components/Markdown";
-import { MiniMap } from "@/shared/components/MiniMap";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
-import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { datePart, formatTime, zoneLabel } from "@/shared/utils/time";
-
-export function LocationBlock({ label, loc }) {
-  const map = mapsUrl(loc);
-  // Photos are Google-hosted and not cached offline: hide one that can't load
-  // rather than show a broken image.
-  const [photoFailed, setPhotoFailed] = useState(false);
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="text-sm">{loc.name}</span>
-      {loc.address && <span className="text-xs text-muted-foreground">{loc.address}</span>}
-      {loc.imgRef ? (
-        !photoFailed && (
-          <img
-            src={loc.imgRef}
-            alt=""
-            className="h-28 w-full rounded-md object-cover"
-            onError={() => setPhotoFailed(true)}
-          />
-        )
-      ) : (
-        <MiniMap lat={loc.lat} lng={loc.lng} className="h-28 w-full" />
-      )}
-      {(map || loc.url) && (
-        <span className="flex flex-wrap gap-x-4 text-sm">
-          {map && (
-            <a href={map} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-primary underline-offset-2 hover:underline">
-              <MapPin className="h-4 w-4" aria-hidden="true" />
-              Open map
-            </a>
-          )}
-          {loc.url && (
-            <a href={loc.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-primary underline-offset-2 hover:underline">
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-              Website
-            </a>
-          )}
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function ConfirmationNumber({ value }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    try {
-      await navigator.clipboard?.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard can be blocked; the number is still on screen to copy by hand.
-    }
-  }
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">Confirmation</span>
-      <span className="flex items-center gap-2">
-        <span className="break-all font-mono text-sm">{value}</span>
-        <button
-          type="button"
-          onClick={copy}
-          aria-label="Copy confirmation number"
-          className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-        </button>
-      </span>
-    </div>
-  );
-}
 
 function TimeColumn({ d, tripZone }) {
   if (!d.start) return <span className="text-xs text-muted-foreground">—</span>;
@@ -165,21 +91,7 @@ export function TimelineEntry({ entry, trip, expanded, onToggle, actions }) {
 
         {hasDetails && expanded && (
           <div className="flex flex-col gap-3 border-t border-border px-3 pb-3 pt-3 sm:pl-[8.25rem]">
-            {d.notes && <Markdown className="text-muted-foreground">{d.notes}</Markdown>}
-            {d.facts.length > 0 && (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                {d.facts.map(([label, value]) => (
-                  <div key={label} className="contents">
-                    <dt className="text-muted-foreground">{label}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-            {d.locations.map(({ label, loc }) => (
-              <LocationBlock key={label} label={label} loc={loc} />
-            ))}
-            {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
+            <EntryDetails d={d} />
             {actions}
           </div>
         )}
