@@ -306,11 +306,15 @@
    map, and offline (DevTools → Network → Offline). Then deploy to Fly
    (HTTPS), install it on the phone, and try it in airplane mode before the
    Okinawa trip (Oct 29).
-5. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
+5. **Planned, awaiting answers (2026-10-03):** Run stage 3 in
+   `implementation_plan.md` — sharing (owner/viewer, join codes, Phases
+   25–26) and the trip journal (memories, Phases 27–28). **Julian:** answer
+   Q-S1–S5 and Q-J1–J6 inline before any phase work.
+6. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
    the Plan | Stays | Travel control.
    Then the text-size preference (the next follow-up), and later showing
    the Today tab only while a trip is active.
-6. **Then, from the backlog:** editing the trip header; verification/gaps
+7. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
    anything past Walk stage 3 (map search/filters was the last planned
    phase there) needs a fresh look at what's next.
