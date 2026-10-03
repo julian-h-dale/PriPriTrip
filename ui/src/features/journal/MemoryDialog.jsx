@@ -53,13 +53,9 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
             autoFocus
           />
           <p id={`${ids}-hint`} className="flex justify-between gap-2 text-xs text-muted-foreground">
-            {error ? (
-              <span role="alert" className="text-destructive">
-                {error}
-              </span>
-            ) : (
-              <span>{memory ? "Its time stays as first written." : "Saved with the time right now."}</span>
-            )}
+            <span role={error ? "alert" : undefined} className="text-destructive">
+              {error}
+            </span>
             <span>
               {text.length}/{MAX}
             </span>
