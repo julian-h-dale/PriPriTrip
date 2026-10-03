@@ -26,7 +26,11 @@ export function LocationBlock({ label, loc }) {
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="text-sm">{loc.name}</span>
       {loc.address && <span className="text-xs text-muted-foreground">{loc.address}</span>}
-      <MiniMap lat={loc.lat} lng={loc.lng} className="h-28 w-full" />
+      {loc.imgRef ? (
+        <img src={loc.imgRef} alt="" className="h-28 w-full rounded-md object-cover" />
+      ) : (
+        <MiniMap lat={loc.lat} lng={loc.lng} className="h-28 w-full" />
+      )}
       {(map || loc.url) && (
         <span className="flex gap-3 text-xs">
           {map && (
