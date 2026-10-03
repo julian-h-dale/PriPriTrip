@@ -1,7 +1,7 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed reset-db schema dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed reset-db schema backfill-photos dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
@@ -9,6 +9,7 @@ help:
 	@echo "  seed          Create seed users + sample data (idempotent)"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
+	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
 	@echo "  dev           Run the API and UI together (Ctrl-C stops both)"
 	@echo "  dev-api       Run the API with reload (port from api/.env, default 8000)"
 	@echo "  dev-ui        Run the UI dev server (port from ui/.env, default 3000)"
@@ -44,6 +45,9 @@ reset-db:
 # if the committed file drifts from the models.
 schema:
 	cd api && . .venv/bin/activate && python -m app.schema_export
+
+backfill-photos:
+	cd api && . .venv/bin/activate && python -m app.backfill_photos
 
 # Both dev servers in one terminal. -j2 runs them in parallel; Ctrl-C reaches
 # both because they share the terminal's process group. Output is interleaved.

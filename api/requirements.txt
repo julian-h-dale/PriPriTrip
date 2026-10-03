@@ -12,11 +12,13 @@ python-multipart==0.0.*
 tzdata==2025.*
 # Offline coordinates -> IANA timezone (Rust; no numpy). See app/zones.py.
 tzfpy==2.*
+# Server-side Google Places lookups (app/google_places_server.py — photo
+# backfill only; the app otherwise never calls Google from the server).
+httpx==0.28.*
 
 # Dev / tooling
 ruff==0.8.*
 mypy==1.14.*
 pytest==8.*
 pytest-asyncio==0.25.*
-httpx==0.28.*
 jsonschema==4.*
