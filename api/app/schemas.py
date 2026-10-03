@@ -153,6 +153,16 @@ def _memory_text(value: str) -> str:
 MemoryText = Annotated[str, AfterValidator(_memory_text)]
 
 
+class MemoryLocation(CamelModel):
+    """Where the phone was when a memory was written."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    # The phone's uncertainty radius in metres, as the browser reports it.
+    accuracy: float | None = Field(default=None, ge=0)
+
+
 class MemoryCreate(CamelModel):
     """A new memory, possibly written offline: the phone makes its `id` (so a
     retry can't duplicate it) and its `createdAt` (UTC, when Save was
@@ -166,13 +176,16 @@ class MemoryCreate(CamelModel):
     text: MemoryText
     # The author's phone's zone right now (for display; ordering uses UTC).
     zone: IanaTimezone
+    location: MemoryLocation | None = None
 
 
 class MemoryUpdate(CamelModel):
-    """Changing a memory's words. Its time and zone stay as written."""
+    """Changing a memory's words — and optionally dropping its location (send
+    `location: null`; leave it out to keep it). Its time and zone stay."""
 
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
     text: MemoryText
+    location: MemoryLocation | None = None
 
 
 class MemoryRead(CamelModel):
@@ -182,6 +195,7 @@ class MemoryRead(CamelModel):
     created_at: datetime
     updated_at: datetime | None = None
     received_at: datetime
+    location: MemoryLocation | None = None
     author_email: str
     # True when the caller wrote it — only then may they edit or delete it.
     mine: bool

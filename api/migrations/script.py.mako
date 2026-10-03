@@ -12,7 +12,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-import app.db_types
+import app.db_types  # noqa: F401 — custom column types (UtcDateTime)
 import fastapi_users_db_sqlalchemy.generics  # noqa: F401 — the users table's GUID type
 ${imports if imports else ""}
 revision: str = ${repr(up_revision)}

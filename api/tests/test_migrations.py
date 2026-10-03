@@ -57,7 +57,7 @@ def test_migrations_build_exactly_the_models_schema(tmp_path: Path) -> None:
     url = _url(tmp_path)
     migrate(url, quiet=True)
     assert _diffs(url) == []
-    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [("0002",)]
+    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [("0003",)]
 
 
 def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: Path) -> None:
@@ -83,7 +83,7 @@ def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: 
 
     migrate(url, quiet=True)
 
-    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [("0002",)]
+    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [("0003",)]
     assert _run(url, ["SELECT name FROM trips"]) == [("Okinawa",)]
     # Before Phase 29, created_at was the server's stamp: it becomes received_at.
     assert _run(url, ["SELECT text, received_at FROM memories"]) == [

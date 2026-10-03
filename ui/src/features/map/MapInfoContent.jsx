@@ -86,6 +86,24 @@ function NewPlaceInfo({ place, types, onAction, readOnly, canAdd }) {
   );
 }
 
+/** A journal memory: its words, when and by whom, and a way to the journal. */
+function MemoryInfo({ marker, tripId }) {
+  return (
+    <>
+      <p className={`mb-1 line-clamp-6 whitespace-pre-wrap break-words ${TEXT}`}>{marker.text}</p>
+      <div className={`mb-1.5 text-xs ${MUTED}`}>
+        {formatDayHeading(marker.day)} · {marker.time} · {marker.author}
+      </div>
+      <Link to={`/trips/${tripId}/journal`} className={`mb-0.5 block ${LINK}`}>
+        Open journal
+      </Link>
+      <a href={directionsUrl(marker)} target="_blank" rel="noopener noreferrer" className={`block ${LINK}`}>
+        Directions
+      </a>
+    </>
+  );
+}
+
 /**
  * What the map's InfoWindow shows, rendered by React (portaled into the
  * popup) so its buttons and links are ordinary React handlers.
@@ -95,7 +113,9 @@ function NewPlaceInfo({ place, types, onAction, readOnly, canAdd }) {
 export function MapInfoContent({ info, tripId, onAction, readOnly, canAdd = true }) {
   return (
     <div className="max-w-[220px] text-sm">
-      {info.kind === "trip" ? (
+      {info.kind === "trip" && info.marker.kind === "memory" ? (
+        <MemoryInfo marker={info.marker} tripId={tripId} />
+      ) : info.kind === "trip" ? (
         <TripMarkerInfo marker={info.marker} tripId={tripId} />
       ) : (
         // key: a different place starts with "More…" collapsed again.

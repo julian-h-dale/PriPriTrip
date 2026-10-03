@@ -299,12 +299,21 @@ test("journal: a viewer writes a memory on Today, the owner reads it", async ({ 
   } finally {
     // Clean up through the UI as its author.
     await viewer.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Journal" }).click();
+    await viewer.getByRole("heading", { name: "Journal" }).waitFor();
     const mine = viewer.getByRole("listitem").filter({ hasText: text });
+    // Wait for the list to load before deciding there's nothing to clean up.
+    await mine.first().waitFor({ timeout: 5000 }).catch(() => {});
     if (await mine.count()) {
       await mine.getByRole("button", { name: "Memory options" }).click();
       await viewer.getByRole("menuitem", { name: "Delete" }).click();
+      // Deleting goes through the outbox: wait for the server to confirm before
+      // the browser closes (a real phone would just send it next time).
+      const deleted = viewer.waitForResponse(
+        (r) => r.request().method() === "DELETE" && r.url().includes("/memories/")
+      );
       await viewer.getByRole("dialog", { name: "Delete memory?" }).getByRole("button", { name: "Delete" }).click();
       await expect(viewer.getByRole("listitem").filter({ hasText: text })).toHaveCount(0);
+      expect((await deleted).status()).toBe(204);
     }
     await ownerContext.close();
     await viewerContext.close();

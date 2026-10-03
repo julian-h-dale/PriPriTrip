@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { CloudOff, Navigation } from "lucide-react";
+import { fetchMemories } from "@/features/journal/journalSlice";
 import { buildMapMarkers } from "@/features/map/buildMapMarkers";
+import { memoryMarkers } from "@/features/map/memoryMarkers";
 import { MapControls } from "@/features/map/MapControls";
 import { MapInfoContent } from "@/features/map/MapInfoContent";
 import { filterMarkers } from "@/features/map/mapFilters";
@@ -26,6 +28,8 @@ import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Card } from "@/shared/components/ui/card";
 import { getClientConfig } from "@/shared/services/clientConfig";
 import { loadGoogleMapsLibrary } from "@/shared/services/googleMapsLoader";
+import { permissionState, watchPosition } from "@/shared/services/geolocation";
+import { notify } from "@/shared/notificationSlice";
 import { defaultFormDate } from "@/shared/utils/tripDates";
 import { formatDayHeading } from "@/shared/utils/time";
 
@@ -127,7 +131,16 @@ function TripMap({ trip }) {
   const [result, setResult] = useState(null);
   // null | { kind: "activity" | "stay" | "travel", prefill, date }
   const [form, setForm] = useState(null);
-  const markers = useMemo(() => buildMapMarkers(trip), [trip]);
+  // The trip's places, plus journal memories that carry a location.
+  const journal = useSelector((s) => (s.journal?.tripId === trip.id ? s.journal.items : null));
+  const markers = useMemo(
+    () => [...buildMapMarkers(trip), ...memoryMarkers(journal ?? [])],
+    [trip, journal]
+  );
+  const [showMemories, setShowMemories] = useState(true);
+  // The blue "you are here" dot: { marker, circle, stop, last } once watching.
+  const meRef = useRef(null);
+  const [locating, setLocating] = useState(false);
   const stayCov = useMemo(() => stayCoverage(trip), [trip]);
 
   useEffect(() => {
@@ -151,6 +164,7 @@ function TripMap({ trip }) {
       try {
         const { Map, InfoWindow } = await loadGoogleMapsLibrary("maps");
         const { AdvancedMarkerElement, PinElement } = await loadGoogleMapsLibrary("marker");
+        const { Circle } = await loadGoogleMapsLibrary("maps");
         if (!live || !containerRef.current) return;
 
         // Fit the initial view to stays/activities — the trip's actual
@@ -174,8 +188,11 @@ function TripMap({ trip }) {
         forBounds.forEach((marker) => bounds.extend({ lat: marker.lat, lng: marker.lng }));
         if (forBounds.length > 1) map.fitBounds(bounds);
 
-        libsRef.current = { AdvancedMarkerElement, PinElement };
+        libsRef.current = { AdvancedMarkerElement, PinElement, Circle };
         if (live) setReady(true);
+        // Already allowed? Show where you are straight away. Otherwise the
+        // "locate me" button asks, so opening the map never pops a prompt.
+        if (live && (await permissionState()) === "granted") startWatching({ center: false });
       } catch {
         if (live) setError("Couldn’t load Google Maps.");
       }
@@ -185,6 +202,7 @@ function TripMap({ trip }) {
       live = false;
       entriesRef.current.forEach(({ element }) => (element.map = null));
       entriesRef.current = [];
+      stopWatching();
       if (resultMarkerRef.current) resultMarkerRef.current.map = null;
       infoWindowRef.current?.close();
     };
@@ -205,7 +223,7 @@ function TripMap({ trip }) {
     const map = mapRef.current;
 
     entriesRef.current.forEach(({ element }) => (element.map = null));
-    entriesRef.current = filterMarkers(markers, { stayOnly, date: date || null }).map((marker) => {
+    entriesRef.current = filterMarkers(markers, { stayOnly, date: date || null, memories: showMemories }).map((marker) => {
       const color = colorFor(marker);
       const pin = new PinElement({
         background: color,
@@ -226,11 +244,11 @@ function TripMap({ trip }) {
       return { element: advanced, data: marker };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openInfoWindow closes over refs/setters only
-  }, [ready, markers, stayOnly, date]);
+  }, [ready, markers, stayOnly, date, showMemories]);
 
   const visibleMarkers = useMemo(
-    () => filterMarkers(markers, { stayOnly, date: date || null }),
-    [markers, stayOnly, date]
+    () => filterMarkers(markers, { stayOnly, date: date || null, memories: showMemories }),
+    [markers, stayOnly, date, showMemories]
   );
 
   function selectMarker(marker) {
@@ -246,6 +264,74 @@ function TripMap({ trip }) {
     map.setZoom(15);
     map.setCenter(position);
     map.panBy(0, -FOCUS_OFFSET_PX);
+  }
+
+  /** Show the phone's position as a blue dot with its accuracy circle. */
+  function showMe(position) {
+    const map = mapRef.current;
+    const libs = libsRef.current;
+    if (!map || !libs || !meRef.current) return;
+    const center = { lat: position.lat, lng: position.lng };
+    const me = meRef.current;
+    if (!me.marker) {
+      const dot = document.createElement("div");
+      dot.className = "pripri-me-dot";
+      dot.style.cssText =
+        "width:16px;height:16px;border-radius:50%;background:#1a73e8;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)";
+      me.marker = new libs.AdvancedMarkerElement({ map, position: center, content: dot, title: "You are here", zIndex: 2000 });
+      // Honest about uncertainty: the circle is the phone's own accuracy radius.
+      me.circle = new libs.Circle({
+        map,
+        center,
+        radius: position.accuracy ?? 0,
+        fillColor: "#1a73e8",
+        fillOpacity: 0.12,
+        strokeColor: "#1a73e8",
+        strokeOpacity: 0.35,
+        strokeWeight: 1,
+        clickable: false,
+      });
+    } else {
+      me.marker.position = center;
+      me.circle.setCenter(center);
+      me.circle.setRadius(position.accuracy ?? 0);
+    }
+    const firstFix = !me.last;
+    me.last = center;
+    if (firstFix && me.centerOnFirst) focus(center);
+  }
+
+  function startWatching({ center }) {
+    if (meRef.current) return;
+    meRef.current = { centerOnFirst: center };
+    setLocating(true);
+    meRef.current.stop = watchPosition(
+      (position) => {
+        setLocating(false);
+        showMe(position);
+      },
+      () => {
+        setLocating(false);
+        stopWatching();
+        dispatch(notify({ type: "error", message: "Your location isn’t available. Check it’s allowed for this site." }));
+      }
+    );
+  }
+
+  function stopWatching() {
+    const me = meRef.current;
+    if (!me) return;
+    me.stop?.();
+    if (me.marker) me.marker.map = null;
+    me.circle?.setMap(null);
+    meRef.current = null;
+  }
+
+  /** "Locate me": start following the phone (asks the first time), or re-center on it. */
+  function locateMe() {
+    if (meRef.current?.last) focus(meRef.current.last);
+    else if (meRef.current) meRef.current.centerOnFirst = true;
+    else startWatching({ center: true });
   }
 
   function clearResult() {
@@ -357,6 +443,10 @@ function TripMap({ trip }) {
           onClearResult={clearResult}
           stayOnly={stayOnly}
           onToggleStayOnly={() => setStayOnly((v) => !v)}
+          showMemories={showMemories}
+          onToggleMemories={() => setShowMemories((v) => !v)}
+          onLocate={locateMe}
+          locating={locating}
           date={date}
           onDateChange={setDate}
         />
@@ -383,6 +473,7 @@ export function MapPage() {
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {
     dispatch(fetchTrip(tripId));
+    dispatch(fetchMemories(tripId)); // memories with a location become pins
   }, [dispatch, tripId, online]);
 
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;

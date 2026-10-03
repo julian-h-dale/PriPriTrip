@@ -15,7 +15,12 @@ export function markerMatchesDate(marker, date) {
   return marker.day === date;
 }
 
-/** Markers left after the active filters. */
-export function filterMarkers(markers, { stayOnly = false, date = null } = {}) {
-  return markers.filter((m) => (!stayOnly || m.kind === "stay") && markerMatchesDate(m, date));
+/** Markers left after the active filters (memories can also be hidden). */
+export function filterMarkers(markers, { stayOnly = false, date = null, memories = true } = {}) {
+  return markers.filter(
+    (m) =>
+      (!stayOnly || m.kind === "stay") &&
+      (memories || m.kind !== "memory") &&
+      markerMatchesDate(m, date)
+  );
 }

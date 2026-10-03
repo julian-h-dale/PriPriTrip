@@ -2015,7 +2015,24 @@ later.
     tests.
   - **Live:** Playwright offline, write two memories, go online, and check
     they sync once, in order.
-- **Phase 31 — location and the blue dot.**
+- **Phase 31 — location and the blue dot.** ✅
+  - **Built as planned, plus:**
+    - **Migration 0003** adds `memories.lat`, `lng` and `accuracy`.
+    - **An edit can drop a memory's location** (`location: null`) **but
+      never add one**, since it records where the phone was at writing.
+    - **The blue dot starts on its own only if location is already
+      allowed;** otherwise "Show where I am" asks. Opening the map never
+      pops a prompt.
+    - **Fixed: pressed map toggles were invisible.** House, Calendar and the
+      new Memories toggle all had `bg-card` overriding the pressed fill.
+      House had this since Phase 15.
+    - **Fixed: the journal e2e test's cleanup.** It counted before the
+      journal loaded, then closed before the outbox sent the delete. That
+      left test memories in the worktree's and the main dev databases;
+      those were removed.
+    - **Live:** `e2e/journal-location.spec.js`, with a faked location next
+      to the Bern hotel: "Near Hotel Goldener Schlüssel", the memory's pin,
+      and the blue dot.
   - The permission flow, a location chip in the dialog, and
     `lat`/`lng`/`accuracy` on memories (API and UI).
   - The nearest-trip-place label, and the map's blue dot with its accuracy

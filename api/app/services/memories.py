@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import active
 from app.models import Memory, UserRecord
-from app.schemas import MemoryRead
+from app.schemas import MemoryLocation, MemoryRead
 
 FUTURE_TOLERANCE = dt.timedelta(minutes=10)
 
@@ -32,6 +32,11 @@ def _read(memory: Memory, author: UserRecord, viewer_id: uuid.UUID) -> MemoryRea
         created_at=memory.created_at,
         updated_at=memory.updated_at,
         received_at=memory.received_at,
+        location=(
+            MemoryLocation(lat=memory.lat, lng=memory.lng, accuracy=memory.accuracy)
+            if memory.lat is not None and memory.lng is not None
+            else None
+        ),
         author_email=author.email,
         mine=memory.user_id == viewer_id,
     )
@@ -79,6 +84,7 @@ async def create_memory(
     *,
     memory_id: uuid.UUID | None = None,
     created_at: dt.datetime | None = None,
+    location: MemoryLocation | None = None,
 ) -> Created:
     if memory_id is not None:
         existing = await db.get(Memory, memory_id)
@@ -100,6 +106,9 @@ async def create_memory(
         zone=zone,
         created_at=ordering_time(created_at, received),
         received_at=received,
+        lat=location.lat if location else None,
+        lng=location.lng if location else None,
+        accuracy=location.accuracy if location else None,
     )
     db.add(memory)
     await db.commit()
@@ -108,10 +117,19 @@ async def create_memory(
 
 
 async def update_memory(
-    db: AsyncSession, memory: Memory, author: UserRecord, text: str
+    db: AsyncSession,
+    memory: Memory,
+    author: UserRecord,
+    text: str,
+    *,
+    clear_location: bool = False,
 ) -> MemoryRead:
-    """New words; `created_at` (and so its place in the journal) is unchanged."""
+    """New words (and optionally no location); `created_at` (and so its place
+    in the journal) is unchanged. A location can be removed, never added
+    later — it records where the phone was when the memory was written."""
     memory.text = text
+    if clear_location:
+        memory.lat = memory.lng = memory.accuracy = None
     memory.updated_at = dt.datetime.now(dt.UTC)
     await db.commit()
     await db.refresh(memory)

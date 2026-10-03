@@ -52,10 +52,22 @@ const SEND = {
   create: (op) =>
     apiClient.post(
       `/trips/${op.tripId}/memories`,
-      { id: op.memoryId, createdAt: op.body.createdAt, text: op.body.text, zone: op.body.zone },
+      {
+        id: op.memoryId,
+        createdAt: op.body.createdAt,
+        text: op.body.text,
+        zone: op.body.zone,
+        location: op.body.location ?? null,
+      },
       quiet
     ),
-  update: (op) => apiClient.put(`/trips/${op.tripId}/memories/${op.memoryId}`, { text: op.body.text }, quiet),
+  // `location: null` only when the edit removed it; otherwise it's left out (kept).
+  update: (op) =>
+    apiClient.put(
+      `/trips/${op.tripId}/memories/${op.memoryId}`,
+      "location" in op.body ? { text: op.body.text, location: null } : { text: op.body.text },
+      quiet
+    ),
   delete: (op) => apiClient.delete(`/trips/${op.tripId}/memories/${op.memoryId}`, quiet),
 };
 
@@ -101,9 +113,12 @@ export const syncOutbox = () => (dispatch, getState) => {
 
 const isOnline = (getState) => getState().network?.online !== false;
 
-/** Write a new memory: on screen now, sent when there's a connection. */
+/**
+ * Write a new memory: on screen now, sent when there's a connection.
+ * `location` ({ lat, lng, accuracy } or null) is where the phone was.
+ */
 export const createMemory =
-  ({ tripId, text }) =>
+  ({ tripId, text, location = null }) =>
   async (dispatch, getState) => {
     const memory = {
       id: crypto.randomUUID(),
@@ -112,6 +127,7 @@ export const createMemory =
       createdAt: new Date().toISOString(), // the moment Save was tapped
       updatedAt: null,
       receivedAt: null,
+      location,
       authorEmail: getState().auth?.user?.email ?? "",
       mine: true,
       pending: true,
@@ -122,7 +138,7 @@ export const createMemory =
       tripId,
       memoryId: memory.id,
       op: "create",
-      body: { text, zone: memory.zone, createdAt: memory.createdAt },
+      body: { text, zone: memory.zone, createdAt: memory.createdAt, location },
     });
     await refreshPendingCount(dispatch, getState);
     dispatch(
@@ -135,12 +151,22 @@ export const createMemory =
     return memory;
   };
 
-/** Change your memory's words; its time and place in the journal stay. */
+/**
+ * Change your memory's words (and optionally drop its location); its time
+ * and place in the journal stay. A location is never added on an edit.
+ */
 export const updateMemory =
-  ({ tripId, id, text }) =>
+  ({ tripId, id, text, clearLocation = false }) =>
   async (dispatch, getState) => {
-    dispatch(localWrite({ tripId, op: "update", memory: { id, text, updatedAt: new Date().toISOString() } }));
-    await enqueue({ userId: userOf(getState), tripId, memoryId: id, op: "update", body: { text } });
+    const changes = { id, text, updatedAt: new Date().toISOString(), ...(clearLocation ? { location: null } : {}) };
+    dispatch(localWrite({ tripId, op: "update", memory: changes }));
+    await enqueue({
+      userId: userOf(getState),
+      tripId,
+      memoryId: id,
+      op: "update",
+      body: clearLocation ? { text, location: null } : { text },
+    });
     await refreshPendingCount(dispatch, getState);
     dispatch(notify({ type: "success", message: "Memory updated" }));
     dispatch(syncOutbox());

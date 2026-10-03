@@ -169,6 +169,7 @@ describe("Journal tab", () => {
       createdAt: queued.body.createdAt,
       text: "Written in the mountains",
       zone: queued.body.zone,
+      location: null, // no location here (no GPS in this test)
     });
     expect(await pending(USER)).toEqual([]);
     await vi.waitFor(() => expect(within(card).queryByText("Waiting to sync")).not.toBeInTheDocument());

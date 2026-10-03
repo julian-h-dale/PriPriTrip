@@ -218,5 +218,10 @@ class Memory(SoftDeleteMixin, Base):
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
     updated_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
     received_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+    # Where the phone was when it was written (optional; the author can leave
+    # it off). `accuracy` is the phone's own uncertainty radius, in metres.
+    lat: Mapped[float | None] = mapped_column(default=None)
+    lng: Mapped[float | None] = mapped_column(default=None)
+    accuracy: Mapped[float | None] = mapped_column(default=None)
 
     __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)

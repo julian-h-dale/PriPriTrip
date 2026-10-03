@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
+import journalReducer from "@/features/journal/journalSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
@@ -17,13 +18,19 @@ import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/services/geolocation", () => ({
+  geolocationAvailable: () => true,
+  permissionState: vi.fn(async () => "prompt"),
+  currentPosition: vi.fn(async () => null),
+  watchPosition: vi.fn(),
+}));
 vi.mock("@/shared/services/googlePlaces", () => ({
   createPlacesSearch: vi.fn(),
   PlacesUnavailable: class PlacesUnavailable extends Error {},
 }));
 
 // --- A fake Google Maps: just enough of maps/marker for MapPage. -----------
-const fake = vi.hoisted(() => ({ markers: [], map: null, infoWindow: null }));
+const fake = vi.hoisted(() => ({ markers: [], circles: [], map: null, infoWindow: null }));
 vi.mock("@/shared/services/googleMapsLoader", () => {
   class FakeMap {
     constructor() {
@@ -62,6 +69,21 @@ vi.mock("@/shared/services/googleMapsLoader", () => {
       this.listeners[type] = fn;
     }
   }
+  class FakeCircle {
+    constructor(opts) {
+      Object.assign(this, opts);
+      fake.circles.push(this);
+    }
+    setCenter(c) {
+      this.center = c;
+    }
+    setRadius(r) {
+      this.radius = r;
+    }
+    setMap(m) {
+      this.map = m;
+    }
+  }
   class FakePin {
     constructor(opts) {
       Object.assign(this, opts);
@@ -70,7 +92,7 @@ vi.mock("@/shared/services/googleMapsLoader", () => {
   return {
     loadGoogleMapsLibrary: vi.fn(async (name) =>
       name === "maps"
-        ? { Map: FakeMap, InfoWindow: FakeInfoWindow }
+        ? { Map: FakeMap, InfoWindow: FakeInfoWindow, Circle: FakeCircle }
         : { AdvancedMarkerElement: FakeAdvancedMarker, PinElement: FakePin }
     ),
     GoogleMapsUnavailable: class extends Error {},
@@ -87,6 +109,12 @@ const CAFE = { placeId: "cafe-1", name: "Café Fédéral", address: "Bärenplatz
 const SAVED_HOTEL = { placeId: "saved-0", primary: TRIP.stays[0].name, secondary: "Bern" };
 const BERN = { placeId: "bern", name: "Bern", lat: 46.948, lng: 7.447, types: ["locality", "political"] };
 
+// One journal memory with a location (a pin), one without (no pin).
+const MEMORIES = [
+  { id: "mem-1", text: "Fondue was huge", zone: "Europe/Zurich", createdAt: "2026-05-11T18:00:00Z", location: { lat: 46.948, lng: 7.447, accuracy: 10 }, authorEmail: "pripri@example.com", mine: false },
+  { id: "mem-2", text: "No place", zone: "Europe/Zurich", createdAt: "2026-05-11T19:00:00Z", location: null, authorEmail: "u@x.com", mine: true },
+];
+
 const fakeSearch = {
   suggest: vi.fn(async (input) => {
     const all = [SAVED_HOTEL, { placeId: CAFE.placeId, primary: CAFE.name, secondary: CAFE.address }, { placeId: "bern", primary: "Bern", secondary: "Switzerland" }];
@@ -99,6 +127,7 @@ function renderMap({ online = true } = {}) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
+      journal: journalReducer,
       timeline: timelineReducer,
       network: networkReducer,
       error: errorReducer,
@@ -128,12 +157,14 @@ beforeEach(() => {
     },
   };
   fake.markers = [];
+  fake.circles = [];
   document.body.innerHTML = "";
   createPlacesSearch.mockResolvedValue(fakeSearch);
   apiClient.get.mockImplementation(async (url) => {
     if (url === "/config") return { data: { googleMapsApiKey: "k", googleMapsMapId: "m" } };
     if (url === "/trips/trip-1") return { data: TRIP };
     if (url === "/timezone") return { data: { timezone: "Europe/Zurich" } };
+    if (url === "/trips/trip-1/memories") return { data: MEMORIES };
     throw new Error(`unexpected GET ${url}`);
   });
 });
@@ -237,3 +268,53 @@ describe("map search with Google places", () => {
     expect(within(list).queryByText("New places")).not.toBeInTheDocument();
   });
 });
+
+describe("memories and the blue dot on the map", () => {
+  const glyphs = () => fake.markers.filter((m) => m.map !== null).map((m) => m.content?.glyphText);
+
+  it("shows memories with a location as their own pins, and the toggle hides them", async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await waitFor(() => expect(glyphs()).toContain("✎"));
+    expect(glyphs().filter((g) => g === "✎")).toHaveLength(1); // only the one with a location
+    const pin = fake.markers.find((m) => m.content?.glyphText === "✎" && m.map !== null);
+    act(() => pin.listeners.click());
+    expect(await screen.findByText("Fondue was huge")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open journal" })).toHaveAttribute("href", "/trips/trip-1/journal");
+
+    await user.click(screen.getByRole("button", { name: "Show memories" }));
+    await waitFor(() => expect(glyphs()).not.toContain("✎"));
+  });
+
+  it("locate me: asks, then shows a blue dot with an honest accuracy circle and follows it", async () => {
+    const user = userEvent.setup();
+    const { watchPosition } = await import("@/shared/services/geolocation");
+    let emit;
+    watchPosition.mockImplementation((onPosition) => {
+      emit = onPosition;
+      return () => {};
+    });
+    renderMap();
+    await user.click(await screen.findByRole("button", { name: "Show where I am" }));
+    expect(watchPosition).toHaveBeenCalledTimes(1);
+    act(() => emit({ lat: 46.95, lng: 7.44, accuracy: 35 }));
+    const me = fake.markers.find((m) => m.title === "You are here");
+    expect(me.position).toEqual({ lat: 46.95, lng: 7.44 });
+    expect(fake.circles[0]).toMatchObject({ radius: 35, center: { lat: 46.95, lng: 7.44 } });
+    expect(fake.map.setZoom).toHaveBeenLastCalledWith(15); // centred on the first fix
+
+    act(() => emit({ lat: 46.96, lng: 7.45, accuracy: 8 }));
+    expect(me.position).toEqual({ lat: 46.96, lng: 7.45 });
+    expect(fake.circles[0].radius).toBe(8);
+    expect(fake.circles).toHaveLength(1);
+  });
+
+  it("starts on its own only when location is already allowed", async () => {
+    const { permissionState, watchPosition } = await import("@/shared/services/geolocation");
+    permissionState.mockResolvedValueOnce("granted");
+    watchPosition.mockImplementation(() => () => {});
+    renderMap();
+    await waitFor(() => expect(watchPosition).toHaveBeenCalledTimes(1));
+  });
+});
+

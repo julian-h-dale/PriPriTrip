@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Home, MapPinPlus, Search, X } from "lucide-react";
+import { CalendarDays, Home, LocateFixed, MapPinPlus, NotebookPen, Search, X } from "lucide-react";
 import { iconFor } from "@/features/map/mapStyle";
 import { matchMarkers } from "@/features/map/markerSearch";
 import { searchRows } from "@/features/map/searchRows";
@@ -76,6 +76,10 @@ export function MapControls({
   onClearResult,
   stayOnly,
   onToggleStayOnly,
+  showMemories = true,
+  onToggleMemories,
+  onLocate,
+  locating = false,
   date,
   onDateChange,
 }) {
@@ -196,11 +200,26 @@ export function MapControls({
         )}
       </form>
 
+      {onToggleMemories && (
+        <Button
+          type="button"
+          variant={showMemories ? "default" : "ghost"}
+          size="icon"
+          // bg-card only when off: it would otherwise hide the pressed fill.
+          className={cn("shrink-0", !showMemories && "bg-card")}
+          aria-pressed={showMemories}
+          aria-label="Show memories"
+          onClick={onToggleMemories}
+        >
+          <NotebookPen className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      )}
+
       <Button
         type="button"
         variant={stayOnly ? "default" : "ghost"}
         size="icon"
-        className="shrink-0 bg-card"
+        className={cn("shrink-0", !stayOnly && "bg-card")}
         aria-pressed={stayOnly}
         aria-label="Show only stays"
         onClick={onToggleStayOnly}
@@ -226,7 +245,7 @@ export function MapControls({
             type="button"
             variant={calendarOpen ? "default" : "ghost"}
             size="icon"
-            className="bg-card"
+            className={cn(!calendarOpen && "bg-card")}
             aria-pressed={calendarOpen}
             aria-label="Show one day"
             onClick={() => {
@@ -253,6 +272,20 @@ export function MapControls({
             onBlur={() => setCalendarOpen(false)}
           />
         </div>
+      )}
+
+      {onLocate && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0 bg-card"
+          aria-label="Show where I am"
+          aria-busy={locating}
+          onClick={onLocate}
+        >
+          <LocateFixed className={locating ? "h-4 w-4 animate-pulse text-primary" : "h-4 w-4"} aria-hidden="true" />
+        </Button>
       )}
     </div>
   );

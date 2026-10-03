@@ -46,6 +46,7 @@ async def create_memory(
             body.zone,
             memory_id=body.id,
             created_at=body.created_at,
+            location=body.location,
         )
     except memories_service.MemoryIdTaken:
         raise HTTPException(status.HTTP_409_CONFLICT, "That memory id is already taken") from None
@@ -61,7 +62,10 @@ async def update_memory(
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> MemoryRead:
-    return await memories_service.update_memory(db, memory, user, body.text)
+    # `location: null` removes it; leaving the field out keeps it. A new
+    # location can't be set on an edit (it's where the memory was written).
+    clear = "location" in body.model_fields_set and body.location is None
+    return await memories_service.update_memory(db, memory, user, body.text, clear_location=clear)
 
 
 @router.delete("/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)

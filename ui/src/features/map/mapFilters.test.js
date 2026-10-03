@@ -45,3 +45,17 @@ describe("filterMarkers", () => {
     expect(filterMarkers(markers, { stayOnly: true, date: "2026-05-10" })).toEqual([]);
   });
 });
+
+describe("the memories toggle", () => {
+  const memory = { id: "memory-1", kind: "memory", day: "2026-05-11" };
+  const stay = { id: "stay-1", kind: "stay", day: "2026-05-11", endDay: "2026-05-12" };
+  it("hides memory pins when off, and House (stays only) hides them too", () => {
+    expect(filterMarkers([memory, stay], { memories: false })).toEqual([stay]);
+    expect(filterMarkers([memory, stay], { stayOnly: true })).toEqual([stay]);
+    expect(filterMarkers([memory, stay], {})).toEqual([memory, stay]);
+  });
+  it("Calendar matches a memory by the day it was written", () => {
+    expect(filterMarkers([memory], { date: "2026-05-11" })).toEqual([memory]);
+    expect(filterMarkers([memory], { date: "2026-05-12" })).toEqual([]);
+  });
+});

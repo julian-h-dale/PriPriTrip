@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { CloudUpload, NotebookPen, Pencil, Trash2 } from "lucide-react";
+import { CloudUpload, MapPin, NotebookPen, Pencil, Trash2 } from "lucide-react";
 import { journalDays, memoryTime } from "@/features/journal/journalDays";
 import { deleteMemory, fetchMemories } from "@/features/journal/journalSlice";
 import { MemoryDialog } from "@/features/journal/MemoryDialog";
+import { locationLabel } from "@/features/journal/nearestPlace";
+import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { RowMenu } from "@/shared/components/RowMenu";
@@ -41,6 +43,17 @@ function MemoryCard({ memory, trip, onEdit, onDelete }) {
           {zoneNote} · {memory.mine ? "You" : memory.authorEmail}
           {memory.updatedAt && " · edited"}
         </p>
+        {memory.location && (
+          <a
+            href={mapsUrl(memory.location)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
+          >
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+            {locationLabel(trip, memory.location)}
+          </a>
+        )}
         {memory.pending && (
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
             <CloudUpload className="h-3.5 w-3.5" aria-hidden="true" />

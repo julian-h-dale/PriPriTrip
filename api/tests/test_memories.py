@@ -251,3 +251,47 @@ async def test_losing_access_to_the_trip_loses_its_journal(
     assert [m["text"] for m in (await client.get(f"/trips/{tid}/memories")).json()] == ["mine"]
     await client.delete(f"/trips/{tid}")
     assert (await client.get(f"/trips/{tid}/memories")).status_code == 404
+
+
+async def test_a_memory_can_carry_where_it_was_written(client: AsyncClient) -> None:
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    url = f"/trips/{tid}/memories"
+    here = {"lat": 46.9479, "lng": 7.4474, "accuracy": 12.5}
+    saved = (
+        await client.post(
+            url, json={"text": "Zytglogge chimes", "zone": "Europe/Zurich", "location": here}
+        )
+    ).json()
+    assert saved["location"] == here
+    plain = (await client.post(url, json={"text": "no place", "zone": "UTC"})).json()
+    assert plain["location"] is None
+    listed = {m["text"]: m["location"] for m in (await client.get(url)).json()}
+    assert listed == {"Zytglogge chimes": here, "no place": None}
+
+
+async def test_a_location_must_be_a_real_place(client: AsyncClient) -> None:
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    url = f"/trips/{tid}/memories"
+    for bad in (
+        {"lat": 91, "lng": 0},
+        {"lat": 0, "lng": 181},
+        {"lat": 10},  # a latitude needs its longitude
+        {"lat": 0, "lng": 0, "accuracy": -1},
+        {"lat": 0, "lng": 0, "altitude": 3},
+    ):
+        resp = await client.post(url, json={"text": "x", "zone": "UTC", "location": bad})
+        assert resp.status_code == 422, bad
+
+
+async def test_an_edit_keeps_or_drops_the_location_but_never_adds_one(client: AsyncClient) -> None:
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    url = f"/trips/{tid}/memories"
+    here = {"lat": 46.9479, "lng": 7.4474, "accuracy": None}
+    m = (await client.post(url, json={"text": "a", "zone": "UTC", "location": here})).json()
+    kept = (await client.put(f"{url}/{m['id']}", json={"text": "b"})).json()
+    assert kept["location"] == here
+    dropped = (await client.put(f"{url}/{m['id']}", json={"text": "c", "location": None})).json()
+    assert dropped["location"] is None
+    # Setting one on an edit is ignored: it's where the memory was written.
+    again = (await client.put(f"{url}/{m['id']}", json={"text": "d", "location": here})).json()
+    assert again["location"] is None

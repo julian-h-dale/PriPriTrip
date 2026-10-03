@@ -40,8 +40,22 @@
       checkout's ports.
     - The worktree's database also has the Okinawa trip (imported from
       `example-trip.json`) so the landing e2e has an upcoming trip.
-  - **Next:** Phase 31 (location and the blue dot), then 32 (the photo
-    store) and 33 (photos in the journal).
+  - **Phase 31 ✅ (location and the blue dot):**
+    - Memories carry `location {lat, lng, accuracy}` (migration 0003).
+    - The dialog's chip is on by default: it locates on open if already
+      allowed, else the browser asks on Save. Saving waits about 8 s at most
+      and never fails for want of a fix. × leaves the location off one
+      memory, and an edit can only remove a location.
+    - Cards show "Near <trip place>" (within 250 m, offline) or "Location
+      attached", linking to the maps app.
+    - The map has memory pins with a Memories toggle, and the blue dot with
+      its accuracy circle and "Show where I am".
+    - `shared/services/geolocation.js` is the only file that touches
+      `navigator.geolocation`.
+    - Fixed: invisible pressed map toggles (`bg-card`), and the journal e2e
+      test's cleanup (leftover test memories removed from both dev
+      databases).
+  - **Next:** Phase 32 (the photo store), then 33 (photos in the journal).
 - **Run stage 3 (2026-10-03, on `rebuild`): sharing and the trip journal.**
   These notes were missed at the time and added on `journal-memories`.
   - **Phase 25:**
