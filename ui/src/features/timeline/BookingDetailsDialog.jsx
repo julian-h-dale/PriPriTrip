@@ -17,11 +17,20 @@ export function BookingDetailsDialog({ open, onClose, onEdit, trip, kind, record
     ? { kind: "stay", phase: "check-in", stay: record }
     : { kind: "travel", phase: "depart", travel: record, overnight: false };
   const d = describeEntry(entry, trip);
+  // A stay's photo becomes the dialog's hero (so no thumbnail as well).
+  // Legs stay plain: airport and station photos aren't shown (describeEntry).
+  const hero = d.photos ? (record.location?.imgRef ?? null) : null;
 
   return (
-    <Dialog open={open} onClose={onClose} title={isStay ? record.name : record.title} className="max-w-lg">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={isStay ? record.name : record.title}
+      className="max-w-lg"
+      heroImage={hero}
+    >
       <div className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1">
-        <EntryDetails d={d} />
+        <EntryDetails d={hero ? { ...d, photos: false } : d} />
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>

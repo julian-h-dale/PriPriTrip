@@ -114,6 +114,16 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 - Safe-area padding for the notch and home indicator, once it's installed as
   a PWA.
 
+## Experiments
+
+- **Hero fade in the stays/travel quick look** (2026-10-03, Julian's idea:
+  thumbnails were hard to see). A stay's photo fills the top of the dialog
+  and fades into the card behind the title; the details sit on solid card.
+  Legs stay plain (no airport or station photos). It's opt-in through
+  `Dialog`'s `heroImage`, and a deliberate departure from design_doc.md's "no
+  gradients", so it's easy to revert. Still to decide: whether to drop the
+  thumbnails on the day page's expanded entries too.
+
 ## Next follow-up
 
 - A **text-size preference**: the text is small. It should also scale the

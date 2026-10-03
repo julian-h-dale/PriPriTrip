@@ -50,6 +50,11 @@
     segmented control. The before/after is in
     `ui/e2e/screenshots/compare-segmented-control.png`, and Julian may
     revert it.
+  - **Experiment ✅ (after Phase 24):** a hero fade in the stays/travel
+    quick look. The stay's photo is behind the dialog's title, through
+    `Dialog`'s optional `heroImage` prop, falling back to the plain dialog
+    when there's no photo or it fails to load. No thumbnail is repeated
+    below. Legs stay plain. See `ui_review.md` → Experiments.
 - **Earlier (2026-10-03):** Run stage 1 in `implementation_plan.md`,
   built as two commits, as Julian asked. **Both are done**, waiting on
   Julian's 375px look.
