@@ -41,7 +41,7 @@ async def list_members(db: AsyncSession, trip_id: uuid.UUID) -> list[tuple[TripM
     """The trip's live viewers with their accounts, in the order they joined."""
     result = await db.execute(
         select(TripMember, UserRecord)
-        .join(UserRecord, UserRecord.id == TripMember.user_id)
+        .join(UserRecord, TripMember.user_id == UserRecord.id)
         .where(TripMember.trip_id == trip_id, active(TripMember))
         .order_by(TripMember.created_at)
     )

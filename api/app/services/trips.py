@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,9 @@ from app.models import Day, Item, Stay, Travel, Trip, TripMember
 from app.schemas import TripRead, TripSummary
 from app.trip_document import DayWrite, ItemWrite, LocationDoc, StayDoc, TravelDoc, TripDocument
 from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
+
+# A user's footing on a trip: the owner edits, a viewer reads.
+Role = Literal["owner", "viewer"]
 
 
 def _location(loc: LocationDoc | None) -> dict[str, Any] | None:
@@ -148,7 +151,7 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
     ]
 
 
-async def trip_summary(db: AsyncSession, trip: Trip, role: str) -> TripSummary:
+async def trip_summary(db: AsyncSession, trip: Trip, role: Role) -> TripSummary:
     """One trip's summary (as in the list), for the given role."""
     stays = await db.scalar(
         select(func.count(Stay.id)).where(Stay.trip_id == trip.id, active(Stay))
@@ -159,7 +162,7 @@ async def trip_summary(db: AsyncSession, trip: Trip, role: str) -> TripSummary:
     return _summary(trip, stay_count=stays or 0, travel_count=travels or 0, role=role)
 
 
-async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: str = "owner") -> TripRead:
+async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -> TripRead:
     """The whole trip, assembled in a fixed number of queries.
 
     Relationships are lazy="raise", so everything the read model touches is
