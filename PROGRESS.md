@@ -200,7 +200,12 @@
    re-imported (after the 2026-10-02 `make reset-db` wiped it) and
    backfilled with real photos via the name-search path — done, in the dev
    database now.
-4. **Then, from the backlog:** editing the trip header; verification/gaps
+4. **Planned, awaiting answers (2026-10-03):** Run stage 1 in
+   `implementation_plan.md` — map place search with add-from-map (Phases
+   16–17) and an installable offline PWA (Phases 18–19), plus a draft logo
+   at `docs/brand/logo.svg`. **Julian:** answer its open questions (Q-R1–R5,
+   Q-O1–O6) inline before any phase work starts.
+5. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
    anything past Walk stage 3 (map search/filters was the last planned
    phase there) needs a fresh look at what's next.

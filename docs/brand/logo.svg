@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>PriPriTrip</title>
+  <rect width="512" height="512" rx="96" fill="#12151c"/>
+  <!-- Heart, behind -->
+  <g transform="translate(256 262) scale(3.4) translate(-50 -48)">
+    <path d="M50 88 C20 68 6 50 6 32 C6 18 17 8 30 8 C39 8 46 13 50 21 C54 13 61 8 70 8 C83 8 94 18 94 32 C94 50 80 68 50 88 Z"
+          fill="#ec4f6b"/>
+  </g>
+  <!-- Airplane outline, in front; nose up-right -->
+  <g transform="translate(262 254) rotate(45) scale(2.8) translate(-50 -48)">
+    <path d="M50 8 C54 8 55 14 55 20 L55 40 L90 58 L90 65 L55 55 L55 76 L66 84 L66 89 L50 85 L34 89 L34 84 L45 76 L45 55 L10 65 L10 58 L45 40 L45 20 C45 14 46 8 50 8 Z"
+          fill="none" stroke="#f5f7fa" stroke-width="4.2" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</svg>
