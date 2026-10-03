@@ -6,8 +6,61 @@
 
 ## Status
 
-- **Current work (2026-10-03):** **Run stage 2** ("find it fast",
-  `implementation_plan.md`, Phases 20–24), built one commit per phase.
+- **Current work (2026-10-03): Run stage 4** on the **`journal-memories`
+  worktree** (`../PriPriTrip-worktrees/journal-memories`, a branch stacked
+  on `rebuild`; API :8001, UI :3001). Local commits, not pushed. Julian is
+  deploying `rebuild` to Fly separately.
+  - **Phase 29 ✅:**
+    - `POST /trips/{id}/memories` takes the phone's `id` and `createdAt`
+      (with an offset or Z). A retry with the same id gives 200 with the
+      saved memory; another user's, another trip's or a deleted memory's
+      id gives 409.
+    - The phone's time orders the journal, and `received_at` keeps the
+      server's arrival stamp. A time more than 10 minutes ahead is clamped.
+  - **Phase 29a ✅ (Alembic):**
+    - Baseline 0001 is the schema as deployed from `rebuild`; 0002 adds
+      `received_at`, backfilled from `created_at`.
+    - `app/migrate.py` stamps a pre-Alembic database at 0001, then upgrades
+      it (checked against a database made by the real `rebuild` checkout).
+    - start.sh, dev.sh and the seed migrate. The app no longer calls
+      `create_all`. The Dockerfile copies the migrations.
+    - `make reset-db` now deletes the database `DATABASE_URL` names (it used
+      to hardcode `app.db`, missing worktree databases).
+  - **Next:** Phase 30 (the outbox), then 31 (location and the blue dot),
+    32 (the photo store) and 33 (photos in the journal).
+- **Run stage 3 (2026-10-03, on `rebuild`): sharing and the trip journal.**
+  These notes were missed at the time and added on `journal-memories`.
+  - **Phase 25:**
+    - A `trip_members` table.
+    - `get_viewable_trip` lets in the owner or a member, and gives 404 to
+      anyone else. `get_owned_trip` stays owner-only: a member gets 403, a
+      stranger 404.
+    - `POST /trips/join {tripId}` and member list, remove and leave
+      endpoints. `role` on the trip list and `TripRead`.
+    - The seed adds `pripri@example.com` / `changeme-viewer`, joined to the
+      sample trip.
+  - **Phase 26:**
+    - Join trip (paste the id), "Shared with you" and Leave trip on the
+      trips list.
+    - The owner's Share trip dialog: the id with copy, and the viewers with
+      Remove.
+    - Viewers get no edit controls at all (`selectIsViewer`).
+  - **Phase 27:**
+    - A `memories` table, a server UTC `created_at` as the ordering key,
+      and the author's `zone`.
+    - `GET`/`POST /trips/{id}/memories` for anyone on the trip;
+      `PUT`/`DELETE` for the author only (403 for others on the trip).
+  - **Phase 28:**
+    - A Journal tab and New memory on Today.
+    - `journalDays` groups memories by local date in their own zone.
+    - Your own memories have Edit and Delete.
+    - `journalSlice` is stale-while-revalidate with an offline copy;
+      writing is off offline.
+  - Also on `rebuild`: hero images in the stays/travel quick look (a stay's
+    photo, or a leg's destination), and the dropped "Saved with the time
+    right now" hint.
+- **Run stage 2 (2026-10-03):** "find it fast" (`implementation_plan.md`,
+  Phases 20–24), built one commit per phase.
   **All five are done**, waiting on Julian's look at 375px. **Next
   follow-up:** a text-size preference that also scales the timeline rails
   and dots.
@@ -170,7 +223,9 @@
   the outbound and return flight). Fixed by rebuilding marker elements from
   scratch on every filter change instead; verified stable across 3 full
   toggle cycles live.
-- **Branch:** `rebuild`, pushed to `origin/rebuild`. Not merged to `main`.
+- **Branches:** `rebuild` (pushed to `origin/rebuild`; Run stages 1–3,
+  being deployed to Fly), and `journal-memories` (stacked on it; Run stage
+  4; local only). Neither is merged to `main`.
 - **Last verified:** 2026-10-03: `make verify` green (115 API + 159 UI
   tests). Plus `ui/e2e/offline.spec.js` live against a built app, and
   `ui/e2e/trip.spec.js`, including add-from-map, against the real Google
@@ -306,20 +361,21 @@
    map, and offline (DevTools → Network → Offline). Then deploy to Fly
    (HTTPS), install it on the phone, and try it in airplane mode before the
    Okinawa trip (Oct 29).
-5. **Run stage 4 (answered 2026-10-03), on the `journal-memories`
-   worktree** (`../PriPriTrip-worktrees/journal-memories`, stacked on
-   `rebuild`; API :8001, UI :3001). Offline memories, location and the blue
-   dot, and photos (originals kept, unguessable URLs, a ~10 GB Fly volume),
-   Phases 29–33. **Waiting on Julian's go-ahead to implement.** `rebuild`
-   is being deployed to Fly separately.
-6. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
+5. **Run stage 4, on `journal-memories`** (in progress; see Status).
+   Offline memories, location and the blue dot, and photos (originals kept,
+   unguessable URLs, a ~10 GB Fly volume). **Before deploying photos:**
+   `fly volumes extend` to about 10 GB.
+6. **Julian (deploy):** set `SEED_*` secrets on Fly. `deploy/start.sh` seeds
+   on every boot, which creates the seed accounts (default passwords unless
+   overridden) and replants the Bern sample trip.
+7. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
    `changeme-viewer` for the viewer's side (`make seed` created it, already
    joined to the sample trip).
-6. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
+8. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
    the Plan | Stays | Travel control.
    Then the text-size preference (the next follow-up), and later showing
    the Today tab only while a trip is active.
-7. **Then, from the backlog:** editing the trip header; verification/gaps
+9. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
    anything past Walk stage 3 (map search/filters was the last planned
    phase there) needs a fresh look at what's next.
@@ -358,8 +414,12 @@ Tested with Python 3.12.3, Node 24.14 and npm 11.11.
   `Claude-Session` or "Generated with" lines). Julian, 2026-10-02.
 - **Keep the forms hand-written.** Julian edits trip data through them as a
   deliberate check by eye; don't generate them from a schema.
-- **No migrations yet.** Schema changes mean `make reset-db`; don't write
-  Alembic or SQL migration scripts until a release is in sight.
+- **Alembic from Phase 29a on** (Julian, 2026-10-03: the app is deployed
+  after `rebuild`). Every schema change gets a migration
+  (`alembic revision --autogenerate`, then review it). `make migrate`
+  applies them, and start.sh and dev.sh run it. 0001 is the schema as
+  deployed from `rebuild`. A pre-Alembic database is stamped there, not
+  rebuilt.
 - **Local-only, private repo.** Personal trip material in `reference/` is
   fine to keep in git.
 - **AI/chat is out of scope** until the core timeline and editing are solid.
