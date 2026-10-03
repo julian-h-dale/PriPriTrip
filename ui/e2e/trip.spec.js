@@ -75,8 +75,51 @@ test("bottom nav and map page", async ({ page }) => {
 
   await nav.getByRole("link", { name: "Map" }).click();
   await expect(nav.getByRole("link", { name: "Map" })).toHaveAttribute("aria-current", "page");
-  // No Map ID is configured yet (Julian hasn't created one) — this should
-  // degrade gracefully, not crash.
-  await expect(page.getByText(/No Map ID is configured yet/)).toBeVisible();
-  await page.screenshot({ path: screenshotPath("07-map-no-map-id"), fullPage: true });
+
+  // Every located stay/travel-endpoint/activity in the sample trip (2 stays,
+  // 4 located travel endpoints, 4 located activities).
+  const pins = page.locator("gmp-advanced-marker");
+  await expect(pins).toHaveCount(10);
+  await page.screenshot({ path: screenshotPath("07-map"), fullPage: true });
+
+  // Clicking one opens an info window with its title, day, and both links.
+  await pins.first().click({ force: true });
+  const infoWindow = page.locator(".gm-style-iw");
+  await expect(infoWindow.getByRole("link", { name: "View day" })).toBeVisible();
+  await expect(infoWindow.getByRole("link", { name: "Directions" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("07a-map-info-window"), fullPage: true });
+});
+
+test("map search and filters", async ({ page }) => {
+  await login(page);
+  await page.getByRole("link", { name: SAMPLE_TRIP }).click();
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+  const pins = page.locator("gmp-advanced-marker");
+  await expect(pins).toHaveCount(10);
+
+  // Search matches the trip's own markers first; picking one pans + opens it.
+  await page.getByRole("combobox", { name: "Search this trip" }).fill("Kornhaus");
+  const suggestion = page.getByRole("option", { name: /Kornhauskeller/ });
+  await expect(suggestion).toBeVisible();
+  await page.screenshot({ path: screenshotPath("08-map-search-suggestions"), fullPage: true });
+  await suggestion.click();
+  await expect(page.locator(".gm-style-iw")).toContainText("Dinner at Kornhauskeller");
+
+  // House filter: only the sample trip's 2 stays.
+  await page.getByRole("button", { name: "Show only stays" }).click();
+  await expect(pins).toHaveCount(2);
+  // Round-tripping the filter off shouldn't lose any markers (regression:
+  // Google Maps silently dropped one of two co-located markers — e.g.
+  // Chicago appearing on both the outbound and return flight — when
+  // detaching/reattaching instead of rebuilding them).
+  await page.getByRole("button", { name: "Show only stays" }).click();
+  await expect(pins).toHaveCount(10);
+
+  // Calendar filter: one day, combined with House.
+  await page.getByRole("button", { name: "Show one day" }).click();
+  await page.getByRole("textbox", { name: "Pick a day" }).fill("2026-05-12");
+  await expect(page.getByRole("button", { name: /Showing Tue, May 12/ })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("09-map-date-filter"), fullPage: true });
+  await page.getByRole("button", { name: "Show only stays" }).click();
+  await expect(pins).toHaveCount(1); // Beausite Park Hotel covers that night
 });

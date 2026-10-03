@@ -7,7 +7,7 @@ import { datePart } from "@/shared/utils/time";
  * the map widget itself.
  */
 
-function markerFromLocation(loc, { id, kind, mode, day, title }) {
+function markerFromLocation(loc, { id, kind, mode, day, endDay, title }) {
   if (loc?.lat == null || loc?.lng == null) return null;
   return {
     id,
@@ -16,10 +16,15 @@ function markerFromLocation(loc, { id, kind, mode, day, title }) {
     lat: loc.lat,
     lng: loc.lng,
     title,
+    city: loc.city ?? null,
     imgRef: loc.imgRef ?? null,
     placeId: loc.placeId ?? null,
     address: loc.address ?? null,
     day, // the trip date this marker belongs to, for "view that day"
+    // A stay's last covered night, exclusive (datePart(checkOut)) — lets the
+    // calendar filter match any night it covers, not just check-in day.
+    // Absent for travel/activity markers, which only ever match their `day`.
+    endDay: endDay ?? null,
   };
 }
 
@@ -31,6 +36,7 @@ export function buildMapMarkers(trip) {
       id: `stay-${stay.id}`,
       kind: "stay",
       day: datePart(stay.checkIn),
+      endDay: datePart(stay.checkOut),
       title: stay.name,
     });
     if (marker) markers.push(marker);
