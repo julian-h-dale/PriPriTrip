@@ -111,7 +111,7 @@ beforeEach(() => {
 describe("adding travel from the travel coverage view", () => {
   // The sample trip's travel covers May 10-12 and 14; May 13 has none.
   async function openAddTravel(user) {
-    await user.click(await screen.findByRole("button", { name: "Show which days have travel" }));
+    await user.click(await screen.findByRole("button", { name: "Travel" }));
     await user.click(within(day("2026-05-13")).getByRole("button"));
     return screen.getByRole("dialog", { name: "Add travel" });
   }
@@ -179,7 +179,7 @@ describe("adding travel from the travel coverage view", () => {
   it("goes to the day page instead when a date already has more than one leg", async () => {
     const user = userEvent.setup();
     renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Show which days have travel" }));
+    await user.click(await screen.findByRole("button", { name: "Travel" }));
     // May 11 has both the overnight arrival and the Zürich -> Bern train.
     await user.click(within(day("2026-05-11")).getByRole("button"));
     expect(await screen.findByText("day page")).toBeInTheDocument();
@@ -191,7 +191,7 @@ describe("opening a leg from the travel coverage view", () => {
   it("shows a read-only quick look first, not the edit form", async () => {
     const user = userEvent.setup();
     renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Show which days have travel" }));
+    await user.click(await screen.findByRole("button", { name: "Travel" }));
     await user.click(within(day("2026-05-14")).getByRole("button"));
     const dialog = screen.getByRole("dialog", { name: "Zürich → Chicago" });
     expect(within(dialog).queryByLabelText("From")).not.toBeInTheDocument();
@@ -201,7 +201,7 @@ describe("opening a leg from the travel coverage view", () => {
   it("opens the edit form from the quick look's Edit button", async () => {
     const user = userEvent.setup();
     renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Show which days have travel" }));
+    await user.click(await screen.findByRole("button", { name: "Travel" }));
     await user.click(within(day("2026-05-14")).getByRole("button"));
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const dialog = screen.getByRole("dialog", { name: "Edit travel" });
@@ -212,7 +212,7 @@ describe("opening a leg from the travel coverage view", () => {
 describe("adding a stay from the stays coverage view", () => {
   // The sample trip's stays cover May 11-13; May 10 has none.
   async function openAddStay(user) {
-    await user.click(await screen.findByRole("button", { name: "Show which nights have a stay" }));
+    await user.click(await screen.findByRole("button", { name: "Stays" }));
     await user.click(within(day("2026-05-10")).getByRole("button"));
     return screen.getByRole("dialog", { name: "Add stay" });
   }
@@ -287,7 +287,7 @@ describe("opening a stay from the stays coverage view", () => {
   it("shows a read-only quick look first, not the edit form", async () => {
     const user = userEvent.setup();
     renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Show which nights have a stay" }));
+    await user.click(await screen.findByRole("button", { name: "Stays" }));
     await user.click(within(day("2026-05-11")).getByRole("button"));
     const dialog = screen.getByRole("dialog", { name: "Hotel Goldener Schlüssel" });
     expect(within(dialog).queryByLabelText("Name")).not.toBeInTheDocument();
@@ -297,7 +297,7 @@ describe("opening a stay from the stays coverage view", () => {
   it("opens the edit form from the quick look's Edit button", async () => {
     const user = userEvent.setup();
     renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Show which nights have a stay" }));
+    await user.click(await screen.findByRole("button", { name: "Stays" }));
     await user.click(within(day("2026-05-11")).getByRole("button"));
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const dialog = screen.getByRole("dialog", { name: "Edit stay" });

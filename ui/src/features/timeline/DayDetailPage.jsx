@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { DayForm } from "@/features/timeline/DayForm";
@@ -29,7 +29,7 @@ import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { cn } from "@/shared/utils/cn";
-import { formatDayHeading } from "@/shared/utils/time";
+import { daysBetween, formatDayHeading } from "@/shared/utils/time";
 
 function ActivityActions({ entry, busy, readOnly, onEdit, onMove, onDelete }) {
   const title = entry.item.title;
@@ -121,6 +121,38 @@ function AdjacentDayLink({ date, tripId, direction }) {
   );
 }
 
+// A horizontal swipe at least this long (px), and clearly more sideways than
+// up/down, changes day — so scrolling the page never does.
+const SWIPE_MIN_PX = 60;
+
+/** Touch handlers: swipe left/right for the next/previous day. */
+function useDaySwipe({ prevUrl, nextUrl }) {
+  const navigate = useNavigate();
+  const start = useRef(null);
+  return {
+    onTouchStart(e) {
+      // React bubbles events from portals (the edit dialogs) through here
+      // too; a swipe inside a dialog must not change the day.
+      if (!e.currentTarget.contains(e.target)) {
+        start.current = null;
+        return;
+      }
+      const t = e.touches[0];
+      start.current = { x: t.clientX, y: t.clientY };
+    },
+    onTouchEnd(e) {
+      if (!start.current) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.current.x;
+      const dy = t.clientY - start.current.y;
+      start.current = null;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+      const url = dx < 0 ? nextUrl : prevUrl;
+      if (url) navigate(url);
+    },
+  };
+}
+
 /** One day's own timeline: its entries as points on an hour-ordered rail. */
 function DayDetail({ trip, date }) {
   const dispatch = useDispatch();
@@ -148,6 +180,8 @@ function DayDetail({ trip, date }) {
       document.getElementById(`entry-${openKey}`)?.scrollIntoView?.({ block: "start" })
     );
   }, [openKey]);
+  const dayUrl = (d) => (d ? `/trips/${trip.id}/days/${d}` : null);
+  const swipe = useDaySwipe({ prevUrl: dayUrl(rows[index - 1]?.date), nextUrl: dayUrl(rows[index + 1]?.date) });
 
   if (!row) {
     return (
@@ -226,15 +260,24 @@ function DayDetail({ trip, date }) {
     </Button>
   );
 
+  const dayCount = daysBetween(trip.startDate, trip.endDate) + 1;
+  const dayNumber = daysBetween(trip.startDate, row.date) + 1;
+  const adjacent = (
+    <div className="flex items-center justify-between gap-3">
+      <AdjacentDayLink date={rows[index - 1]?.date} tripId={trip.id} direction="prev" />
+      <AdjacentDayLink date={rows[index + 1]?.date} tripId={trip.id} direction="next" />
+    </div>
+  );
+
   return (
-    <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <AdjacentDayLink date={rows[index - 1]?.date} tripId={trip.id} direction="prev" />
-        <AdjacentDayLink date={rows[index + 1]?.date} tripId={trip.id} direction="next" />
-      </div>
+    <div {...swipe}>
+      <div className="mb-4">{adjacent}</div>
 
       <header className="mb-4 flex flex-col gap-1">
         <h1 className="break-words text-xl font-semibold leading-snug">{heading}</h1>
+        <p className="text-sm text-muted-foreground">
+          {row.afterTrip ? "The morning after the trip" : `Day ${dayNumber} of ${dayCount}`}
+        </p>
         {blurb && <Markdown className="text-sm text-muted-foreground">{blurb}</Markdown>}
       </header>
 
@@ -290,6 +333,8 @@ function DayDetail({ trip, date }) {
           </Button>
         </div>
       )}
+
+      <div className="mt-6">{adjacent}</div>
 
       {form?.kind === "activity" && (
         <ActivityForm
@@ -350,7 +395,7 @@ function DayDetail({ trip, date }) {
           </Button>
         </DialogFooter>
       </Dialog>
-    </>
+    </div>
   );
 }
 
@@ -381,14 +426,6 @@ export function DayDetailPage() {
   return (
     <BottomNavLayout tripId={tripId}>
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <Link
-          to={`/trips/${tripId}`}
-          className="mb-4 inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Trip
-        </Link>
-
         {current ? (
           <DayDetail key={`${current.id}:${date}`} trip={current} date={date} />
         ) : status === "notFound" ? (

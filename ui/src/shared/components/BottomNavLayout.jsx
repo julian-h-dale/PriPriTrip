@@ -13,7 +13,7 @@ import { TopBar } from "@/shared/components/TopBar";
  * bar (☰, the trip's name, search, plus any `actions`) sits above, then the
  * offline bar when the trip is the phone's saved copy.
  */
-export function BottomNavLayout({ tripId, actions, children }) {
+export function BottomNavLayout({ tripId, actions, showTitle = true, children }) {
   const online = useSelector((s) => s.network?.online ?? true);
   const { stale, savedAt, trip } = useSelector((s) => s.timeline ?? {});
   const loaded = trip?.id === tripId ? trip : null;
@@ -21,7 +21,7 @@ export function BottomNavLayout({ tripId, actions, children }) {
   return (
     // Height excludes the notch padding #root adds in the installed app.
     <div className="flex h-[calc(100dvh-env(safe-area-inset-top))] flex-col">
-      <TopBar title={loaded?.name ?? ""}>
+      <TopBar title={showTitle ? (loaded?.name ?? "") : ""}>
         {actions}
         {loaded && (
           <button

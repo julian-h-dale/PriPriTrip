@@ -84,7 +84,7 @@ test("stays and travel coverage views", async ({ page }) => {
   await (await tripLink(page, SAMPLE_TRIP)).click();
   await expect(page.getByRole("heading", { name: SAMPLE_TRIP, level: 1 })).toBeVisible();
 
-  await page.getByRole("button", { name: "Show which nights have a stay" }).click();
+  await page.getByRole("button", { name: "Stays" }).click();
   await page.screenshot({ path: screenshotPath("05-stays-view"), fullPage: true });
 
   // A covered night opens a quick read-only look first, not the edit form.
@@ -105,7 +105,7 @@ test("stays and travel coverage views", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("05b-stays-view-add-stay"), fullPage: true });
   await page.keyboard.press("Escape");
 
-  await page.getByRole("button", { name: "Show which days have travel" }).click();
+  await page.getByRole("button", { name: "Travel" }).click();
   await page.screenshot({ path: screenshotPath("06-travel-view"), fullPage: true });
 });
 

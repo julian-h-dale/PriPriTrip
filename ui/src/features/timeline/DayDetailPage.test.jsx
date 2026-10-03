@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -95,12 +95,39 @@ describe("DayDetailPage", () => {
     const user = userEvent.setup();
     renderDay("2026-05-12");
     await screen.findByRole("heading", { name: "Tue, May 12" });
-    expect(screen.getByRole("link", { name: /Mon, May 11/ })).toHaveAttribute(
-      "href",
-      "/trips/trip-1/days/2026-05-11"
-    );
-    await user.click(screen.getByRole("link", { name: /Wed, May 13/ }));
+    expect(screen.getByText("Day 3 of 5")).toBeInTheDocument();
+    // At the top and again at the bottom of the day.
+    const prev = screen.getAllByRole("link", { name: /Mon, May 11/ });
+    expect(prev).toHaveLength(2);
+    prev.forEach((link) => expect(link).toHaveAttribute("href", "/trips/trip-1/days/2026-05-11"));
+    const next = screen.getAllByRole("link", { name: /Wed, May 13/ });
+    await user.click(next[next.length - 1]);
     expect(await screen.findByRole("heading", { name: "Wed, May 13" })).toBeInTheDocument();
+  });
+
+  it("swipes between days, but not on a mostly vertical drag", async () => {
+    renderDay("2026-05-12");
+    const heading = await screen.findByRole("heading", { name: "Tue, May 12" });
+    const touch = (x, y) => ({ clientX: x, clientY: y });
+    // Mostly vertical (scrolling): stays put.
+    fireEvent.touchStart(heading, { touches: [touch(200, 300)] });
+    fireEvent.touchEnd(heading, { changedTouches: [touch(130, 500)] });
+    expect(screen.getByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
+    // Swipe left: the next day.
+    fireEvent.touchStart(heading, { touches: [touch(300, 300)] });
+    fireEvent.touchEnd(heading, { changedTouches: [touch(150, 310)] });
+    expect(await screen.findByRole("heading", { name: "Wed, May 13" })).toBeInTheDocument();
+    // Swipe right: back again.
+    const wed = screen.getByRole("heading", { name: "Wed, May 13" });
+    fireEvent.touchStart(wed, { touches: [touch(100, 300)] });
+    fireEvent.touchEnd(wed, { changedTouches: [touch(260, 290)] });
+    expect(await screen.findByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
+  });
+
+  it("has no separate back link: the top bar and Timeline tab cover it", async () => {
+    renderDay("2026-05-12");
+    await screen.findByRole("heading", { name: "Tue, May 12" });
+    expect(screen.queryByRole("link", { name: "Trip" })).not.toBeInTheDocument();
   });
 
   it("shows a fallback for a date outside the trip", async () => {

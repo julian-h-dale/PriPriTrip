@@ -8,6 +8,9 @@
 
 - **Current work (2026-10-03):** **Run stage 2** ("find it fast",
   `implementation_plan.md`, Phases 20–24), built one commit per phase.
+  **All five are done**, waiting on Julian's look at 375px. **Next
+  follow-up:** a text-size preference that also scales the timeline rails
+  and dots.
   - **Phase 20 ✅:** `/` lands on the active or next upcoming trip
     (`pickLandingTrip`), else `/trips`. The trips list moved to `/trips`,
     grouped Active / Upcoming / Past (collapsed), with delete behind a "⋯"
@@ -40,6 +43,13 @@
     snippets), places and day titles. Each booking is listed once, where it
     starts. A result links to `/trips/:id/days/:date?open=<entry key>`,
     which expands that entry and scrolls to it.
+  - **Phase 24 ✅:** the day page shows "Day N of M", has prev/next at the
+    top and bottom, and swipes left/right between days (horizontal only,
+    60px minimum, ignoring dialogs). Its "← Trip" link is gone. The
+    timeline's House/Plane icons became a **Plan | Stays | Travel**
+    segmented control. The before/after is in
+    `ui/e2e/screenshots/compare-segmented-control.png`, and Julian may
+    revert it.
 - **Earlier (2026-10-03):** Run stage 1 in `implementation_plan.md`,
   built as two commits, as Julian asked. **Both are done**, waiting on
   Julian's 375px look.
@@ -291,9 +301,10 @@
    map, and offline (DevTools → Network → Offline). Then deploy to Fly
    (HTTPS), install it on the phone, and try it in airplane mode before the
    Okinawa trip (Oct 29).
-5. **Next candidate:** `ui_review.md` items 1 and 2 (a today-aware Now/Next
-   card, and key details without expanding), building on
-   `shared/utils/tripDates.js`.
+5. **Julian:** look at Run stage 2 (Phases 20–24) at 375px. Keep or revert
+   the Plan | Stays | Travel control.
+   Then the text-size preference (the next follow-up), and later showing
+   the Today tab only while a trip is active.
 6. **Then, from the backlog:** editing the trip header; verification/gaps
    (rebuilt from `docs/lessons_learned.md`); merging `rebuild` into `main`;
    anything past Walk stage 3 (map search/filters was the last planned
@@ -309,7 +320,7 @@ git checkout rebuild
 make setup      # venv + npm install; creates api/.env with a fresh JWT_SECRET
 make seed       # seed users + the sample trip
 make dev        # API :8000 + UI :3000
-make verify     # should be green: 115 API + 159 UI tests
+make verify     # should be green: 115 API + 196 UI tests
 ```
 
 Tested with Python 3.12.3, Node 24.14 and npm 11.11.

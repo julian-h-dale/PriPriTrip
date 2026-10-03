@@ -106,8 +106,9 @@ describe("TripTimelinePage", () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("heading", { name: TRIP.name, level: 1 });
-    const stays = screen.getByRole("button", { name: "Show which nights have a stay" });
-    const travel = screen.getByRole("button", { name: "Show which days have travel" });
+    expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-pressed", "true");
+    const stays = screen.getByRole("button", { name: "Stays" });
+    const travel = screen.getByRole("button", { name: "Travel" });
     expect(stays).toHaveAttribute("aria-pressed", "false");
 
     await user.click(stays);
@@ -122,8 +123,10 @@ describe("TripTimelinePage", () => {
     expect(travel).toHaveAttribute("aria-pressed", "true");
     expect(day("2026-05-10")).toHaveTextContent("Sun, May 10Chicago → Zürich");
 
-    // Clicking the active view's own button returns to plan.
-    await user.click(travel);
+    // "Plan" goes back to the plan view.
+    const plan = screen.getByRole("button", { name: "Plan" });
+    await user.click(plan);
+    expect(plan).toHaveAttribute("aria-pressed", "true");
     expect(travel).toHaveAttribute("aria-pressed", "false");
     expect(day("2026-05-12")).toHaveTextContent("Tue, May 12Bern → Wengen");
   });

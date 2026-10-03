@@ -21,7 +21,7 @@ done here as they land.
 
 ## Findings, by priority
 
-### 1. Nothing knows "today" (highest impact)
+### 1. Nothing knows "today" (highest impact) — ✅ done 2026-10-03
 
 **Decision:** a **Today** tab: Today | Timeline | Map, Today first. For now it's always shown, and previews the first day when the trip isn't under way (easy to test); hiding it outside an active trip comes later. Next up includes timed activities. Past days are greyed on the timeline, but entries within a day are not, because many have no time. (Phase 21)
 
@@ -38,7 +38,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 - `shared/utils/tripDates.js` (`todayIn`, `tripPhase`, added in Phase 19)
   is the foundation for this.
 
-### 2. Key details are hidden behind expanding
+### 2. Key details are hidden behind expanding — ✅ done 2026-10-03
 
 **Decision:** keep drilling into the details; the list rows don't change (they got busy before). One shared `EntryDetails` component, ordered: facts and confirmation number, then notes, then places, then small photos last. No photos for airports and stations. The Today tab gives fast access without drilling. (Phase 22)
 
@@ -49,7 +49,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   details below the fold. Make photos thumbnails, or drop them for travel
   endpoints: airport photos don't help you find anything.
 
-### 3. Search exists only on the map
+### 3. Search exists only on the map — ✅ done 2026-10-03
 
 **Decision:** a search icon in the trip's top bar opens a full-screen search. Results are grouped by day, and tapping one opens that day with the entry expanded. (Phase 23)
 
@@ -58,7 +58,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   hotel name). It's a pure, local, offline-friendly function, like
   `markerSearch.js`.
 
-### 4. The stays/travel toggles have no labels
+### 4. The stays/travel toggles have no labels — ✅ done 2026-10-03
 
 **Decision:** try "Plan | Stays | Travel". Julian gets before/after screenshots and may revert it. (Phase 24)
 
@@ -66,7 +66,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   A text segmented control, "Plan | Stays | Travel", is clearer and fits at
   375px.
 
-### 5. Day page navigation
+### 5. Day page navigation — ✅ done 2026-10-03
 
 **Decision:** all three. Show "Day N of M", put prev/next at the bottom too and add swipe, and drop the "← Trip" link. (Phase 24)
 
@@ -90,7 +90,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   font issue in the test browser, but check it on the phone. Real SVG icons
   would remove the risk.
 
-### 7. Trips list
+### 7. Trips list — ✅ done 2026-10-03
 
 **Decision:** groups in this order: Active (hidden when empty), Upcoming, then Past at the bottom (collapsed). Delete goes in a "⋯" menu. The app lands on the next trip, and the trips list moves behind a nav drawer. (Phase 20)
 
@@ -100,7 +100,7 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
   dialog, but it's still easy to hit by mistake. Move delete into an
   overflow menu.
 
-### 8. Small tap targets and noise
+### 8. Small tap targets and noise — ✅ done 2026-10-03
 
 **Decision:** both. Drop the header line and enlarge the links. (Phase 20)
 

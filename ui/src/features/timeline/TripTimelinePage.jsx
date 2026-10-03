@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Home, Plane } from "lucide-react";
+import { Home, List, Plane } from "lucide-react";
 import { BookingDetailsDialog } from "@/features/timeline/BookingDetailsDialog";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { stayCoverage, travelCoverage } from "@/features/timeline/coverageView";
@@ -21,12 +21,16 @@ import { TravelForm } from "@/features/timeline/TravelForm";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
+import { cn } from "@/shared/utils/cn";
 import { formatDateRange } from "@/shared/utils/time";
 import { todayIn } from "@/shared/utils/tripDates";
 
+// Plan | Stays | Travel: exactly one at a time. (Was two unlabeled House/
+// Plane icon toggles; labeled segments are easier to find — ui_review §4.)
 const VIEWS = [
-  { view: "stays", icon: Home, label: "Show which nights have a stay" },
-  { view: "travel", icon: Plane, label: "Show which days have travel" },
+  { view: "plan", icon: List, label: "Plan" },
+  { view: "stays", icon: Home, label: "Stays" },
+  { view: "travel", icon: Plane, label: "Travel" },
 ];
 
 /**
@@ -54,9 +58,6 @@ function TripTimeline({ trip }) {
   // null, or { kind: "stay" | "travel", record } — the read-only quick look.
   const [details, setDetails] = useState(null);
 
-  function toggle(next) {
-    setView((current) => (current === next ? "plan" : next));
-  }
 
   function selectDate(date) {
     if (view === "stays") {
@@ -99,25 +100,28 @@ function TripTimeline({ trip }) {
 
   return (
     <>
-      <header className="mb-4 flex flex-col gap-1">
-        <div className="flex items-start justify-between gap-2">
+      <header className="mb-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
           <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
-          <div className="flex shrink-0 gap-1">
-            {VIEWS.map(({ view: v, icon: Icon, label }) => (
-              <Button
-                key={v}
-                variant={view === v ? "default" : "ghost"}
-                size="icon"
-                aria-pressed={view === v}
-                aria-label={label}
-                onClick={() => toggle(v)}
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            ))}
-          </div>
+          <p className="text-sm text-muted-foreground">{formatDateRange(trip.startDate, trip.endDate)}</p>
         </div>
-        <p className="text-sm text-muted-foreground">{formatDateRange(trip.startDate, trip.endDate)}</p>
+        <div role="group" aria-label="Timeline view" className="grid grid-cols-3 rounded-md border border-border bg-card p-1">
+          {VIEWS.map(({ view: v, icon: Icon, label }) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              onClick={() => setView(v)}
+              className={cn(
+                "flex min-h-10 items-center justify-center gap-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
       </header>
 
       <ol aria-label="Trip days" className="flex flex-col">
@@ -199,7 +203,8 @@ export function TripTimelinePage() {
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 
   return (
-    <BottomNavLayout tripId={tripId}>
+    // The page's own heading is the trip name, so the top bar doesn't repeat it.
+    <BottomNavLayout tripId={tripId} showTitle={false}>
       <div className="mx-auto max-w-2xl px-4 py-6">
         {current ? (
           <TripTimeline key={current.id} trip={current} />

@@ -1481,7 +1481,7 @@ From `ui_review.md`, discussed with Julian on 2026-10-03.
 - **Tests:** matching each field, grouping by day, an empty result, and the
   deep link opening the entry.
 
-### Phase 24 — Run: day navigation and the segmented control
+### Phase 24 — Run: day navigation and the segmented control ✅
 
 - "Day N of M", prev/next at the top and bottom, swipe (a touch handler
   with a distance threshold; vertical scrolling isn't hijacked). The
@@ -1493,6 +1493,19 @@ From `ui_review.md`, discussed with Julian on 2026-10-03.
 
 Each phase: `make verify` green, a live Playwright pass with screenshots at
 375px, PROGRESS updated, a commit.
+
+**Built (2026-10-03):** all five phases, one commit each.
+- `make verify`: 115 API + 196 UI. `ui/e2e/trip.spec.js` (10 tests) passes
+  live.
+- The timeline page keeps the trip name as its heading, so its top bar
+  doesn't repeat it (`showTitle={false}`). The other trip pages show it in
+  the top bar.
+- Swipe ignores touches from the portaled edit dialogs (React bubbles
+  portal events), so swiping inside a form never changes the day.
+- Before/after of the segmented control:
+  `ui/e2e/screenshots/compare-segmented-control.png` (gitignored, local
+  only). Julian may revert it.
+- **Waiting on:** Julian's look at 375px.
 
 ## After Phase 4 — First real trip
 
