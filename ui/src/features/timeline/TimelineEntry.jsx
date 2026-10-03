@@ -73,7 +73,7 @@ export function TimelineEntry({ entry, trip, expanded, onToggle, actions }) {
   );
 
   return (
-    <li className="relative pb-3 pl-7">
+    <li id={`entry-${entry.key}`} className="relative scroll-mt-16 pb-3 pl-7">
       <RailDot colorClassName={entry.kind === "activity" ? "bg-primary" : "bg-warning"} />
       <Card className="overflow-hidden">
         {hasDetails ? (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
@@ -136,7 +136,18 @@ function DayDetail({ trip, date }) {
   const [dayFormOpen, setDayFormOpen] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [openEntries, setOpenEntries] = useState(() => new Set());
+  // `?open=<entry key>` (from trip search) opens that entry and scrolls to it.
+  const [searchParams] = useSearchParams();
+  const openKey = searchParams.get("open");
+  const [openEntries, setOpenEntries] = useState(() => new Set(openKey ? [openKey] : []));
+  useEffect(() => {
+    if (!openKey) return;
+    // Also when already on this day and searching again.
+    setOpenEntries((current) => (current.has(openKey) ? current : new Set([...current, openKey])));
+    requestAnimationFrame(() =>
+      document.getElementById(`entry-${openKey}`)?.scrollIntoView?.({ block: "start" })
+    );
+  }, [openKey]);
 
   if (!row) {
     return (

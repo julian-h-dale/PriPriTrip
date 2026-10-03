@@ -33,6 +33,13 @@
     the day page's expanded entries, the stays/travel quick look and Today's
     plan. Order: facts (now with Room and Seat), confirmation number, notes,
     places. Photos are 64px thumbnails, with none for airports and stations.
+  - **Phase 23 ✅:** trip search. 🔍 in the trip's top bar opens a
+    full-screen `TripSearch` over `searchTrip`. It's on-device, ignores
+    case and accents, needs every word, and covers titles, confirmation
+    numbers, carrier and number, seat or room, notes (markdown stripped in
+    snippets), places and day titles. Each booking is listed once, where it
+    starts. A result links to `/trips/:id/days/:date?open=<entry key>`,
+    which expands that entry and scrolls to it.
 - **Earlier (2026-10-03):** Run stage 1 in `implementation_plan.md`,
   built as two commits, as Julian asked. **Both are done**, waiting on
   Julian's 375px look.

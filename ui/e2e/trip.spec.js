@@ -46,6 +46,18 @@ test("today tab (day 1 preview outside the trip)", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("19-today"), fullPage: true });
 });
 
+test("trip search opens a result on its day", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("button", { name: "Search this trip" }).click();
+  const search = page.getByRole("dialog", { name: /^Search / });
+  await search.getByRole("searchbox", { name: "Search this trip" }).fill("SBB");
+  await expect(search.getByRole("link", { name: /Chicago → Zürich/ })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("20-trip-search"), fullPage: true });
+  await search.getByRole("link", { name: /Chicago → Zürich/ }).click();
+  await expect(page.getByRole("button", { name: /Chicago → Zürich/, expanded: true })).toBeVisible();
+});
+
 test("trip timeline", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();

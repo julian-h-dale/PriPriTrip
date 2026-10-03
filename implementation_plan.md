@@ -1473,7 +1473,7 @@ From `ui_review.md`, discussed with Julian on 2026-10-03.
 - **Tests:** the order of the sections, no photo for travel endpoints, and
   the existing editing and coverage tests still pass.
 
-### Phase 23 — Run: trip search
+### Phase 23 — Run: trip search ✅
 
 - `tripSearch.js` (pure) searches the timeline entries.
 - `TripSearch` is a full-screen overlay opened from the top bar.
