@@ -6,10 +6,51 @@
 
 ## Status
 
-- **Current work (2026-10-03): Run stage 4** on the **`journal-memories`
+- **Current work (2026-10-03): Run stage 5** on branch **`run-stage-5`**
+  (off `main`, which has Run stage 4 merged (PR #7) and is deployed to Fly).
+  Main checkout, ports 8000/3000. Plan: `implementation_plan.md`, "Run
+  stage 5".
+  - **Fixed first (baseline was flaky):** outbox queue times are strictly
+    increasing, so photos picked together upload in the order picked
+    (`Photos.test.jsx` failed about 1 run in 5).
+  - **Phase 34 ✅ (Take photo):** a "Take photo" button beside "Add photos"
+    (`capture="environment"`, one shot). Recent Android opened only the
+    gallery for "Add photos". **Waiting on Julian:** try it on a real phone.
+    Deployed to Fly from `run-stage-5`.
+  - **Phase 35 ✅ (staying signed in):** `POST /auth/refresh`
+    (`routers/auth_refresh.py`) swaps a valid token for a fresh 60-day one.
+    `useTokenRefresh` (in App) calls it on start and on returning to the
+    foreground, online, when the token is over a day old. Failures are
+    quiet and keep the old token.
+  - **Phase 36 ✅ (photos wait for Upload):** `syncOutbox` skips `addPhoto`
+    unless `{ photos: true }` (`uploadPhotos`). An upload bar on the
+    Journal shows the count, size and progress, plus the camera-roll
+    warning. "Save to phone" (share sheet, or download) is in the viewer
+    for waiting photos. There's a stronger sign-out warning, and
+    `storage.persist()` at startup.
+    Fixed: a memory with waiting photos could vanish on reconnect.
+  - Phases 35–36 deployed to Fly from `run-stage-5`.
+  - **Fix (2026-10-04): out-of-memory kills on photo upload.** Photo
+    processing held several full-size decoded copies (+344 MB for a 24 MP
+    photo) and 2 workers shared 512 MB. Now it's a leaner pipeline (decode
+    JPEGs smaller, shrink before rotating, no extra copies: 24 MP +66 MB)
+    and **1 worker**. 1 GB is held in reserve: do it before the trip if
+    `fly logs` shows any `Out of memory` kill. Details in
+    `implementation_plan.md` ("Fix (2026-10-04)").
+  - **`fly.toml`:** `min_machines_running = 1` (Julian's change, committed
+    2026-10-04).
+  - **No seeding on boot (2026-10-04):** `deploy/start.sh` only migrates.
+    The seed replants the sample and demo trips (deleting their memories
+    and photos), so it's now only `make seed-remote`, on purpose.
+  - **Photo viewer:** tapping the photo (or the space around it) closes it.
+  - **Waiting on Julian:** on a real phone: Take photo, the warning, Save to
+    phone, Upload on Wi-Fi.
+  - **Live on Fly, still to do (Julian):** `fly volumes extend` (the volume
+    is 1 GB and photos are live) and the `SEED_*` secrets (none set, so the
+    seed accounts likely have their default passwords).
+- **Run stage 4 (2026-10-03)** on the **`journal-memories`
   worktree** (`../PriPriTrip-worktrees/journal-memories`, a branch stacked
-  on `rebuild`; API :8001, UI :3001). Local commits, not pushed. Julian is
-  deploying `rebuild` to Fly separately.
+  on `rebuild`; API :8001, UI :3001). Merged to `main` (PR #7) and deployed.
   - **Phase 29 ✅:**
     - `POST /trips/{id}/memories` takes the phone's `id` and `createdAt`
       (with an offset or Z). A retry with the same id gives 200 with the
@@ -423,9 +464,11 @@
    Offline memories, location and the blue dot, and photos (originals kept,
    unguessable URLs, a ~10 GB Fly volume). **Before deploying photos:**
    `fly volumes extend` to about 10 GB.
-6. **Julian (deploy):** set `SEED_*` secrets on Fly. `deploy/start.sh` seeds
-   on every boot, which creates the seed accounts (default passwords unless
-   overridden) and replants the Bern sample trip.
+6. **Julian (deploy):** set `SEED_*` secrets on Fly before the next
+   `make seed-remote`. Since 2026-10-04 the container no longer seeds on boot
+   (it replanted the demo trips, deleting their memories and photos, on every
+   wake from auto-stop). Seeding is only `make seed-remote`. The accounts
+   already on Fly were made with the default passwords, so change those too.
 7. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
    `changeme-viewer` for the viewer's side (`make seed` created it, already
    joined to the sample trip).

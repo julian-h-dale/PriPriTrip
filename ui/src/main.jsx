@@ -10,6 +10,10 @@ import "@/index.css";
 
 injectStore(store);
 watchNetwork(store);
+// Ask the browser not to clear the app's storage under pressure: photos
+// waiting to upload live there (granted for an installed app on most
+// browsers; best effort).
+navigator.storage?.persist?.().catch(() => {});
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

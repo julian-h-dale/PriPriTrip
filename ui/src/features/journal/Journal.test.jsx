@@ -249,6 +249,31 @@ describe("signing out with memories still waiting", () => {
     await user.click(within(screen.getByRole("dialog", { name: "Sign out anyway?" })).getByRole("button", { name: "Sign out" }));
     await vi.waitFor(() => expect(store.getState().auth.token).toBeNull());
   });
+
+  it("warns harder when photos are waiting for Upload, even with every memory synced", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("@/shared/components/TopBar");
+    const store = configureStore({
+      reducer: { auth: authReducer, journal: journalReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
+      preloadedState: {
+        auth: { token: fakeToken(USER), user: { email: "u@x.com", is_superuser: false }, status: "idle" },
+        journal: { tripId: null, items: [], status: "idle", stale: false, pendingCount: 0, waitingPhotos: { count: 3, bytes: 9e6 }, upload: null },
+      },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <TopBar title="Trip" />
+        </MemoryRouter>
+      </Provider>
+    );
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
+    const warning = screen.getByRole("dialog", { name: "Sign out anyway?" });
+    expect(warning).toHaveTextContent("3 photos haven’t been uploaded yet");
+    expect(warning).toHaveTextContent("aren’t saved anywhere else");
+    expect(store.getState().auth.token).not.toBeNull();
+  });
 });
 
 describe("coming back online", () => {
@@ -281,5 +306,36 @@ describe("coming back online", () => {
 
     expect(screen.getByText("Written offline")).toBeInTheDocument();
     expect(within(screen.getByText("Written offline").closest("li")).queryByText("Waiting to sync")).not.toBeInTheDocument();
+  });
+
+  it("…nor does one whose photos are still waiting for Upload", async () => {
+    const user = userEvent.setup();
+    const store = renderAt("/trips/trip-1/journal", { online: false });
+    await screen.findByRole("region", { name: "Mon, May 11" });
+    await user.click(screen.getByRole("button", { name: "New memory" }));
+    await user.type(screen.getByLabelText("What happened?"), "With a photo");
+    await user.upload(screen.getByLabelText("Choose photos"), new File([new Uint8Array(10)], "a.jpg", { type: "image/jpeg" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("With a photo");
+
+    const answers = [];
+    apiClient.get.mockImplementation(
+      (url) =>
+        new Promise((resolve) => {
+          answers.push(() => resolve({ data: url.endsWith("/memories") ? structuredClone(MEMORIES) : TRIP }));
+        })
+    );
+    apiClient.post.mockImplementation(async (url, body) => ({ data: { ...body, mine: true, photos: [] } }));
+    const refresh = store.dispatch(fetchMemories("trip-1"));
+    await vi.waitFor(() => expect(answers.length).toBeGreaterThan(0));
+    store.dispatch(setOnline(true));
+    await store.dispatch(syncOutbox());
+    answers.forEach((resolve) => resolve());
+    await refresh;
+
+    const card = screen.getByText("With a photo").closest("li");
+    expect(within(card).queryByText("Waiting to sync")).not.toBeInTheDocument();
+    expect(within(card).getAllByTitle("Waiting to upload")).toHaveLength(1);
+    expect(apiClient.post).toHaveBeenCalledTimes(1); // the memory, not the photo
   });
 });

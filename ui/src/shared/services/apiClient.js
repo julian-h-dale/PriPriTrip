@@ -42,6 +42,9 @@ apiClient.interceptors.response.use(
     } else if (!error.response && error.config?.offlineOk) {
       // A request the offline cache backs, failing for want of a network:
       // the offline bar says so — an error toast on every load would be noise.
+    } else if (error.config?.background) {
+      // Housekeeping the user didn't ask for (the token refresh): its
+      // failure changes nothing they can see, so no toast.
     } else {
       const message =
         error.response?.data?.detail || error.message || "Something went wrong";

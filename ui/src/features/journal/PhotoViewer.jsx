@@ -1,19 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Download, Maximize2, X } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { ChevronLeft, ChevronRight, Download, Maximize2, Save, X } from "lucide-react";
 import { photoSrc } from "@/features/journal/photoUrls";
+import { saveToPhone } from "@/features/journal/saveToPhone";
+import { notify } from "@/shared/notificationSlice";
+import { pendingPhotoFile } from "@/shared/services/outbox";
+import { userIdFromToken } from "@/shared/utils/authToken";
 
 const SWIPE_MIN_PX = 60;
+const TAP_SLOP_PX = 10; // a finger that moved further was swiping or panning
 
 /**
  * Full-screen photos: the display copy (fast), swipe or arrows between them,
  * "Full quality" to load the original — then pinch-zoom as on any page —
- * and "Download original".
+ * and "Download original". A photo still waiting to upload has "Save to
+ * phone" instead: one taken in the app isn't in the camera roll. Tapping the
+ * photo closes it.
  */
 export function PhotoViewer({ photos, start = 0, onClose }) {
+  const dispatch = useDispatch();
+  const userId = useSelector((s) => userIdFromToken(s.auth?.token));
   const [index, setIndex] = useState(start);
   const [full, setFull] = useState(false);
   const touch = useRef(null);
+  const gesture = useRef(false); // the last touch swiped, panned or pinched: its click isn't a tap
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const photo = photos[index];
@@ -33,6 +44,24 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- go only reads setters
   }, []);
 
+  // A waiting photo's file is read ahead, so the tap shares it at once:
+  // iOS only opens the share sheet straight after a tap.
+  const [file, setFile] = useState(null);
+  useEffect(() => {
+    setFile(null);
+    if (!photo?.pending) return undefined;
+    let live = true;
+    pendingPhotoFile(userId, photo.id).then((f) => live && setFile(f));
+    return () => {
+      live = false;
+    };
+  }, [userId, photo?.id, photo?.pending]);
+
+  async function save() {
+    const outcome = await saveToPhone(file);
+    if (outcome === "downloaded") dispatch(notify({ type: "success", message: "Photo downloaded" }));
+  }
+
   if (!photo) return null;
   const button =
     "rounded-md bg-black/50 p-2.5 text-white hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
@@ -46,13 +75,16 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
       onTouchStart={(e) => {
         const t = e.touches[0];
         touch.current = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null; // not pinch
+        gesture.current = e.touches.length > 1; // a new touch starts as a tap until it moves
       }}
       onTouchEnd={(e) => {
-        if (!touch.current || full) return;
+        if (!touch.current) return;
         const t = e.changedTouches[0];
         const dx = t.clientX - touch.current.x;
         const dy = t.clientY - touch.current.y;
         touch.current = null;
+        if (Math.hypot(dx, dy) > TAP_SLOP_PX) gesture.current = true; // a swipe or a pan, not a tap
+        if (full) return;
         if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > 1.5 * Math.abs(dy)) go(dx < 0 ? 1 : -1);
       }}
     >
@@ -74,9 +106,29 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
               <Download className="h-5 w-5" aria-hidden="true" />
             </a>
           )}
+          {photo.pending && (
+            <button
+              type="button"
+              onClick={save}
+              disabled={!file}
+              className={`${button} flex items-center gap-1.5 text-sm disabled:opacity-60`}
+            >
+              <Save className="h-5 w-5" aria-hidden="true" />
+              Save to phone
+            </button>
+          )}
         </div>
       </div>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto">
+      {/* Tapping the photo, or the black around it, closes the viewer (the arrows don't). */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto"
+        onClick={(e) => {
+          const wasGesture = gesture.current;
+          gesture.current = false;
+          if (wasGesture) return;
+          if (e.target === e.currentTarget || e.target.tagName === "IMG") onClose();
+        }}
+      >
         <img
           key={`${photo.id}:${full}`}
           src={photoSrc(full ? photo.originalUrl : photo.displayUrl)}

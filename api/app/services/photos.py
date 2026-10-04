@@ -2,7 +2,9 @@
 
 Rows say what a photo is and whose; files live in the PhotoStore. Making the
 display copy and thumbnail is CPU work, so it runs in a worker thread, one
-photo at a time (the production machine has 512 MB).
+photo at a time (the production machine has 512 MB). The lock is per process,
+so it covers the whole server only because production runs one gunicorn
+worker (deploy/start.sh).
 """
 
 from __future__ import annotations

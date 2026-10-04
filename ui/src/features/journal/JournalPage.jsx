@@ -3,7 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { CloudUpload, MapPin, NotebookPen, Pencil, Trash2 } from "lucide-react";
 import { journalDays, memoryTime } from "@/features/journal/journalDays";
-import { deleteMemory, fetchMemories } from "@/features/journal/journalSlice";
+import {
+  deleteMemory,
+  fetchMemories,
+  selectUpload,
+  selectWaitingPhotos,
+  uploadPhotos,
+} from "@/features/journal/journalSlice";
 import { MemoryDialog } from "@/features/journal/MemoryDialog";
 import { locationLabel } from "@/features/journal/nearestPlace";
 import { PhotoStrip } from "@/features/journal/PhotoStrip";
@@ -85,6 +91,40 @@ function MemoryCard({ memory, trip, onEdit, onDelete }) {
   );
 }
 
+const megabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+/**
+ * Photos wait on the phone until Upload is tapped (a web app can't tell
+ * Wi-Fi from cellular), so this bar shows while any are waiting — across
+ * all trips, since Upload sends them all.
+ */
+function UploadBar() {
+  const dispatch = useDispatch();
+  const { count, bytes } = useSelector(selectWaitingPhotos);
+  const upload = useSelector(selectUpload);
+  const online = useSelector((s) => s.network?.online ?? true);
+  if (count === 0 && !upload) return null;
+  return (
+    <Card role="region" aria-label="Photos waiting to upload" className="flex flex-col gap-2 border-warning/40 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="inline-flex items-center gap-2 text-sm font-medium">
+          <CloudUpload className="h-4 w-4 text-warning" aria-hidden="true" />
+          {upload
+            ? `Uploading ${Math.min(upload.done + 1, upload.total)} of ${upload.total}…`
+            : `${count} ${count === 1 ? "photo" : "photos"} waiting · ${megabytes(bytes)}`}
+        </p>
+        <Button size="sm" onClick={() => dispatch(uploadPhotos())} disabled={Boolean(upload) || !online}>
+          {upload ? "Uploading…" : "Upload"}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {online ? "Upload when you’re on Wi-Fi." : "You’re offline — upload when you’re back on Wi-Fi."} Photos taken
+        here aren’t in your camera roll: open one and tap Save to phone to keep a copy.
+      </p>
+    </Card>
+  );
+}
+
 function Journal({ trip }) {
   const dispatch = useDispatch();
   const { items, tripId, status } = useSelector((s) => s.journal);
@@ -113,6 +153,8 @@ function Journal({ trip }) {
         </div>
         <NewMemoryButton onClick={() => setEditing({ memory: null })} />
       </header>
+
+      <UploadBar />
 
       {groups.length === 0 ? (
         status === "loading" ? (

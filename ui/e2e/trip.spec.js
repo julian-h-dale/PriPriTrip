@@ -258,7 +258,7 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
     const viewer = await viewerContext.newPage();
     await login(viewer, SEED_VIEWER);
     const link = await tripLink(viewer, SAMPLE_TRIP);
-    await expect(viewer.getByText("Shared with you")).toBeVisible();
+    await expect(link.getByText("Shared with you")).toBeVisible();
     await viewer.screenshot({ path: screenshotPath("22-viewer-trips"), fullPage: true });
     await link.click();
     await expect(viewer.getByRole("button", { name: "Share trip" })).toHaveCount(0);

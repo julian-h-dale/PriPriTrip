@@ -56,6 +56,14 @@ export function mergeOp(existing, next) {
   return { ...existing, op: next.op, body: { ...existing.body, ...next.body } };
 }
 
+// Strictly increasing queue times, so writes queued in the same millisecond
+// (several photos picked at once) still send in the order they were queued.
+let lastQueued = 0;
+function nextQueuedAt() {
+  lastQueued = Math.max(Date.now(), lastQueued + 1);
+  return new Date(lastQueued).toISOString();
+}
+
 /**
  * Queue a write ({ userId, tripId, memoryId, op, body, entryId? }). Deleting
  * a memory also drops any of its photos still waiting to upload.
@@ -65,7 +73,7 @@ export function enqueue(write) {
   return safely(async () => {
     const entryId = entryOf(write);
     const k = key(write.userId, entryId);
-    const merged = mergeOp(await get(k, db()), { ...write, entryId, queuedAt: new Date().toISOString() });
+    const merged = mergeOp(await get(k, db()), { ...write, entryId, queuedAt: nextQueuedAt() });
     if (merged) await set(k, merged, db());
     else await del(k, db());
     if (write.op === "delete") {
@@ -84,6 +92,15 @@ export function pending(userId) {
     const all = (await entries(db())).map(([, v]) => v).filter((v) => v.userId === userId);
     return all.sort((a, b) => a.queuedAt.localeCompare(b.queuedAt));
   }, []);
+}
+
+/** A photo still waiting to upload, as a File from the phone's stored copy (null if gone). */
+export function pendingPhotoFile(userId, photoId) {
+  if (!userId) return Promise.resolve(null);
+  return safely(async () => {
+    const file = (await get(key(userId, `photo-${photoId}`), db()))?.body?.file;
+    return file ? new File([file.bytes], file.name, { type: file.type }) : null;
+  });
 }
 
 /** Drop a write once it has reached the server (or can never succeed). */

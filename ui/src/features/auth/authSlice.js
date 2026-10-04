@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearOutbox } from "@/shared/services/outbox";
 import { clearUser } from "@/shared/services/tripCache";
-import { userIdFromToken } from "@/shared/utils/authToken";
+import { tokenExpiry, userIdFromToken } from "@/shared/utils/authToken";
 
 const TOKEN_KEY = "auth_token";
 
@@ -35,7 +35,35 @@ export const signOut = createAsyncThunk("auth/signOut", async (_, { dispatch, ge
   dispatch(authSlice.actions.clearAuth());
 });
 
-export const fetchMe = createAsyncThunk("auth/fetchMe", async () => {
+const DAY_MS = 24 * 60 * 60 * 1000;
+// The server's token lifetime (JWT_EXPIRY_HOURS, 60 days). A token with less
+// than this minus a day left is over a day old, so it's worth swapping. If
+// the server's lifetime is ever shorter, this just refreshes on every open.
+const TOKEN_LIFETIME_MS = 60 * DAY_MS;
+
+/** True when the token is over a day old and still unexpired (so refreshable). */
+export function tokenNeedsRefresh(token, now = Date.now()) {
+  const exp = tokenExpiry(token);
+  if (!exp || exp <= now) return false;
+  return exp - now < TOKEN_LIFETIME_MS - DAY_MS;
+}
+
+/**
+ * A sliding sign-in: swap a token over a day old for a fresh 60-day one, so
+ * using the app within 60 days keeps you signed in. Quiet: a failure leaves
+ * the current token in place (it still works until it expires), and an
+ * already-expired one gets the usual 401 sign-out.
+ */
+export const refreshToken = createAsyncThunk(
+  "auth/refreshToken",
+  async () => {
+    const { data } = await apiClient.post("/auth/refresh", null, { silent: true, background: true });
+    return data.access_token;
+  },
+  { condition: (_, { getState }) => tokenNeedsRefresh(getState().auth.token) }
+);
+
+export const fetchMe =createAsyncThunk("auth/fetchMe", async () => {
   const { data } = await apiClient.get("/users/me", { silent: true, offlineOk: true });
   return data;
 });
@@ -65,6 +93,14 @@ const authSlice = createSlice({
       })
       .addCase(login.rejected, (state) => {
         state.status = "idle";
+      })
+      .addCase(refreshToken.fulfilled, (state, action) => {
+        // Only if still signed in as the same person (a sign-out may have
+        // happened while it was in flight).
+        if (state.token && userIdFromToken(state.token) === userIdFromToken(action.payload)) {
+          state.token = action.payload;
+          localStorage.setItem(TOKEN_KEY, action.payload);
+        }
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.user = action.payload;
