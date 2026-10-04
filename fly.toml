@@ -23,7 +23,7 @@ primary_region = "iad"
   # Cost control: let idle machines stop and start on demand.
   auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
 # Persistent state lives on a volume that outlives the ephemeral machine.
 # Create it once: fly volumes create data --size 1 --region <your-region>
