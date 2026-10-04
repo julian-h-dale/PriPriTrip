@@ -2470,19 +2470,36 @@ phone in a tunnel.)
 the foreground). 3 and full live updates only if 409s turn out to be
 annoying in practice.
 
+**Decisions** (answered 2026-10-04):
+- **A separate editor join code.** Joining with the viewer code makes you a
+  viewer; joining with the editor code makes you an editor.
+- **Editors can delete** stays, travels, days and activities. Only the
+  trip itself stays owner-only.
+- **A conflict is an error and a reload,** not a merge. No "theirs vs mine"
+  dialog and no "Use mine". Your unsaved edit is dropped, and you redo it on
+  the fresh copy if you still want it.
+- **Trip editing stays online-only.** Nothing about trip edits is queued
+  offline (only memories are), so there's nothing to reconcile later.
+- **Show who last changed an entry** in its details ("Edited by Pri, 2
+  minutes ago"). Possibly hidden before the trip.
+
 ### Design
 
 **1. An editor role.**
-- `TripMember.role`: `"viewer"` or `"editor"`. Joining with the trip's code
-  still makes you a viewer; the owner switches a member to editor (or back)
-  in the share dialog: `PUT /trips/{id}/members/{userId}` `{role}`, owner
-  only.
+- `TripMember.role`: `"viewer"` or `"editor"`.
+- **Two join codes per trip:** the existing one (viewer) and a new editor
+  code (a new column on `trips`, generated the same way). `POST
+  /trips/join` looks the code up in both and gives the matching role.
+  Joining again with the other code changes your role to that code's.
+- The share dialog shows both codes, labelled "Can view" and "Can edit".
+  The owner can make a new editor code (the old one stops working; people
+  who already joined keep their role) and remove members, as now.
 - `get_owned_trip` becomes **`get_editable_trip`**: owner or editor, else
   403 for a viewer and 404 for anyone else. Every trip-child write already
   goes through it, so this is the one place. `ViewableTrip.role` gains
   `"editor"`, and the UI already shows edit controls by role.
 - **Owner only, still:** deleting the trip, managing members and the join
-  code.
+  codes.
 - Editors can add, change, move and delete days, activities, stays and
   travels (soft delete, as now).
 
@@ -2501,6 +2518,11 @@ annoying in practice.
   - no header: **428 Precondition Required**, so an old cached app can't
     silently overwrite. Its toast says to reload the app.
   - an entry deleted meanwhile: **404**, as now.
+  - **Why a missing header is refused:** after a deploy, an installed app
+    can run its old cached code until it's reopened. That code sends no
+    version, so the server can't tell whether its save would overwrite
+    someone. Refusing it means the old app shows its usual "couldn't save"
+    error, and reopening the app fixes it. Nothing is overwritten.
 - **Not versioned:** adding (nothing to conflict with; the server picks the
   position) and **moving up/down** (`/move` only swaps positions; it
   doesn't bump the content version, so reordering never blocks an edit).
@@ -2509,30 +2531,31 @@ annoying in practice.
 
 **3. Conflicts in the UI.**
 - The forms send the `version` they were opened with.
-- **On 409, a dialog:** "Pri changed this 4 minutes ago." It shows their
-  version and yours side by side, field by field, with the differences
-  marked. Two choices:
-  - **Keep theirs** drops your edit;
-  - **Use mine** re-sends your edit with their version, overwriting theirs,
-    deliberately this time.
-
-  Either way the trip is refreshed.
-- **On 404 while saving or deleting:** a toast, "This was removed by someone
-  else", and the trip refreshes.
+- **On 409:** the form closes, a warning says "Pri changed this 4 minutes
+  ago. Showing the latest.", and the trip reloads. Your edit is dropped.
+- **On 404 while saving or deleting:** "This was removed by someone else",
+  and the trip reloads.
+- **On 428** (only an out-of-date app could get it, and the new app always
+  sends a version): "The app has been updated. Close and reopen it."
+- **Who changed it:** an entry's details show "Edited by Pri, 2 minutes
+  ago" (`updatedByName`, `updatedAt`). One component, so it's easy to hide
+  later.
 - **Fewer stale screens:** the trip is refetched when the app returns to the
   foreground (online). The same trigger already syncs the outbox.
 
 ### Phases
 
 - **Phase 40 — editors (API + UI).**
-  - The role, the member-role endpoint, `get_editable_trip`, and the share
-    dialog's viewer/editor switch.
-  - **Tests:** an editor can add, change, move and delete each kind of
-    entry. An editor can't delete the trip, change roles or remove members
-    (403). A viewer still gets 403 on writes; a stranger gets 404. Only the
-    owner can change a role.
-  - **Julian:** with two accounts, the owner makes a member an editor, and
-    the editor's phone shows edit controls after a refresh.
+  - The role, the editor join code (migration), `get_editable_trip`, and
+    both codes in the share dialog.
+  - **Tests:** the editor code makes an editor and the viewer code a
+    viewer; rejoining with the other code changes the role; a new editor
+    code stops the old one working. An editor can add, change, move and
+    delete each kind of entry, and can't delete the trip, see or renew the
+    codes, or remove members (403). A viewer still gets 403 on writes; a
+    stranger gets 404.
+  - **Julian:** with two accounts, join with the editor code; the second
+    phone shows edit controls.
 - **Phase 41 — versions and 409 (API).**
   - The migration, the shared version check, and `version` in `TripRead`.
   - **Tests:** a matching `If-Match` saves and bumps the version; a stale
@@ -2540,29 +2563,25 @@ annoying in practice.
     gives 428; an entry deleted meanwhile gives 404. `/move` doesn't change
     versions. The migration upgrades an existing database (versions 1).
 - **Phase 42 — conflicts in the UI.**
-  - `If-Match` from every edit and delete, the conflict dialog, the 404
-    toast, and the foreground refetch.
-  - **Tests:** a 409 opens the dialog with both versions; Keep theirs
-    refreshes and drops the edit; Use mine re-sends with the new version; a
-    404 gives the toast and refreshes; returning to the foreground
-    refetches.
+  - `If-Match` from every edit and delete, the conflict warning and
+    reload, the 404 and 428 messages, "Edited by …" in the details, and the
+    foreground refetch.
+  - **Tests:** a 409 closes the form, warns with the other person's name,
+    and reloads the trip; a 404 warns and reloads; a 428 says to reopen the
+    app; the details show who edited an entry and when; returning to the
+    foreground refetches.
   - **Julian, on two phones:** both open the same activity, both save, and
-    the second phone gets the dialog.
+    the second phone gets the warning and the first phone's change.
 
 ### Open questions (Run stage 7)
 
-1. **How does someone become an editor?** Planned: join as a viewer, then
-   the owner promotes them. The alternative is a second join code that
-   makes you an editor straight away.
-2. **Can editors delete stays and travels**, or only the owner? Planned:
-   editors can delete anything except the trip itself (it's a soft delete,
-   so it's recoverable in the database).
-3. **No `If-Match` gets 428.** That means anyone running an old cached copy
-   of the app must reload before they can save. OK, or should a missing
-   header fall back to last write wins for a while?
-4. **Should the timeline say who last changed an entry** (e.g. "edited by
-   Pri" in its details)? It's cheap once `updated_by` exists. Planned: only
-   in the conflict dialog.
+All answered 2026-10-04 (see Decisions above):
+1. How does someone become an editor? **A separate editor join code.**
+2. Can editors delete stays and travels? **Yes.**
+3. A save with no version? **Refused (428).** It only happens to an
+   out-of-date installed app, for the minutes before it's reopened.
+4. Show who last changed an entry? **Yes, in its details** (maybe hidden
+   before the trip).
 
 ## After Phase 4 — First real trip
 

@@ -17,8 +17,10 @@
   - **Next:** Phase 38 (map: Journal and Stays either-or, Journal off by
     default; Lucide outline pins), then Phase 39 (Embla 8.6.0 swipe
     between days, replacing the prev/next links).
-  - **Run stage 7 (editors, versions, 409 conflicts):** planned. **Waiting
-    on Julian:** its 4 open questions.
+  - **Run stage 7 (editors, versions, 409 conflicts):** planned, and the
+    open questions were answered 2026-10-04: an editor join code, editors
+    can delete, a conflict is an error and a reload (no merge), a missing
+    version is refused, and details show "Edited by …".
 - **Storage (2026-10-04):** SQLite and photos share the one 1 GB Fly volume.
   Plan: `fly volumes extend` before the trip. After the trip, maybe move
   photos to object storage (Tigris or R2; `photo_store.py` is ready for a
