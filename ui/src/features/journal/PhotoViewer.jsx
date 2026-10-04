@@ -9,12 +9,14 @@ import { pendingPhotoFile } from "@/shared/services/outbox";
 import { userIdFromToken } from "@/shared/utils/authToken";
 
 const SWIPE_MIN_PX = 60;
+const TAP_SLOP_PX = 10; // a finger that moved further was swiping or panning
 
 /**
  * Full-screen photos: the display copy (fast), swipe or arrows between them,
  * "Full quality" to load the original — then pinch-zoom as on any page —
  * and "Download original". A photo still waiting to upload has "Save to
- * phone" instead: one taken in the app isn't in the camera roll.
+ * phone" instead: one taken in the app isn't in the camera roll. Tapping the
+ * photo closes it.
  */
 export function PhotoViewer({ photos, start = 0, onClose }) {
   const dispatch = useDispatch();
@@ -22,6 +24,7 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
   const [index, setIndex] = useState(start);
   const [full, setFull] = useState(false);
   const touch = useRef(null);
+  const gesture = useRef(false); // the last touch swiped, panned or pinched: its click isn't a tap
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const photo = photos[index];
@@ -72,13 +75,16 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
       onTouchStart={(e) => {
         const t = e.touches[0];
         touch.current = e.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null; // not pinch
+        gesture.current = e.touches.length > 1; // a new touch starts as a tap until it moves
       }}
       onTouchEnd={(e) => {
-        if (!touch.current || full) return;
+        if (!touch.current) return;
         const t = e.changedTouches[0];
         const dx = t.clientX - touch.current.x;
         const dy = t.clientY - touch.current.y;
         touch.current = null;
+        if (Math.hypot(dx, dy) > TAP_SLOP_PX) gesture.current = true; // a swipe or a pan, not a tap
+        if (full) return;
         if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > 1.5 * Math.abs(dy)) go(dx < 0 ? 1 : -1);
       }}
     >
@@ -113,7 +119,16 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
           )}
         </div>
       </div>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto">
+      {/* Tapping the photo, or the black around it, closes the viewer (the arrows don't). */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto"
+        onClick={(e) => {
+          const wasGesture = gesture.current;
+          gesture.current = false;
+          if (wasGesture) return;
+          if (e.target === e.currentTarget || e.target.tagName === "IMG") onClose();
+        }}
+      >
         <img
           key={`${photo.id}:${full}`}
           src={photoSrc(full ? photo.originalUrl : photo.displayUrl)}

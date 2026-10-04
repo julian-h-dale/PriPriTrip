@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -238,6 +238,37 @@ describe("looking at photos", () => {
     expect(shown()).toBe(`${appConfig.apiBaseUrl}/photos/p2/original`);
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("closing the viewer with a tap", () => {
+  it("a tap on the photo or around it closes; the arrows and a swipe don't", async () => {
+    const user = userEvent.setup();
+    renderJournal([WITH_PHOTOS]);
+    await user.click(await screen.findByRole("button", { name: "Photo 1 of 2" }));
+    let viewer = screen.getByRole("dialog", { name: "Photo 1 of 2" });
+
+    await user.click(within(viewer).getByRole("button", { name: "Next photo" }));
+    viewer = screen.getByRole("dialog", { name: "Photo 2 of 2" }); // still open
+
+    // A swipe back is a swipe, not a tap, even if the browser sends a click after it.
+    const img = viewer.querySelector("img");
+    fireEvent.touchStart(img, { touches: [{ clientX: 100, clientY: 300 }] });
+    fireEvent.touchEnd(img, { changedTouches: [{ clientX: 250, clientY: 305 }] });
+    viewer = screen.getByRole("dialog", { name: "Photo 1 of 2" });
+    fireEvent.click(viewer.querySelector("img"));
+    expect(screen.getByRole("dialog", { name: "Photo 1 of 2" })).toBeInTheDocument();
+
+    // The next real tap still closes it.
+    const shown = viewer.querySelector("img");
+    fireEvent.touchStart(shown, { touches: [{ clientX: 100, clientY: 300 }] });
+    fireEvent.touchEnd(shown, { changedTouches: [{ clientX: 102, clientY: 301 }] });
+    fireEvent.click(shown);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Photo 2 of 2" }));
+    await user.click(screen.getByRole("dialog", { name: "Photo 2 of 2" }).querySelector("img").parentElement);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); // the black around it
   });
 });
 
