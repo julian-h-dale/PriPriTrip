@@ -10,20 +10,17 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import active
+from app.dependencies import Role, active
 from app.models import Day, Item, Stay, Travel, Trip, TripMember
 from app.schemas import TripRead, TripSummary
 from app.trip_document import DayWrite, ItemWrite, LocationDoc, StayDoc, TravelDoc, TripDocument
 from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
-
-# A user's footing on a trip: the owner edits, a viewer reads.
-Role = Literal["owner", "viewer"]
 
 
 def _location(loc: LocationDoc | None) -> dict[str, Any] | None:
@@ -134,10 +131,15 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
         .correlate(Trip)
         .scalar_subquery()
     )
-    joined = select(TripMember.trip_id).where(TripMember.user_id == user_id, active(TripMember))
+    member_role = (
+        select(TripMember.role)
+        .where(TripMember.trip_id == Trip.id, TripMember.user_id == user_id, active(TripMember))
+        .correlate(Trip)
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(Trip, stay_count, travel_count)
-        .where(or_(Trip.user_id == user_id, Trip.id.in_(joined)), active(Trip))
+        select(Trip, stay_count, travel_count, member_role)
+        .where(or_(Trip.user_id == user_id, member_role.is_not(None)), active(Trip))
         .order_by(Trip.start_date, Trip.created_at)
     )
     return [
@@ -145,9 +147,9 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
             trip,
             stay_count=sc,
             travel_count=tc,
-            role="owner" if trip.user_id == user_id else "viewer",
+            role="owner" if trip.user_id == user_id else "editor" if role == "editor" else "viewer",
         )
-        for trip, sc, tc in result.all()
+        for trip, sc, tc, role in result.all()
     ]
 
 

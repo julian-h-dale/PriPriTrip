@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { Check, Copy, UserMinus } from "lucide-react";
+import { Check, Copy, RefreshCw, UserMinus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { apiClient } from "@/shared/services/apiClient";
 
-function CopyId({ value }) {
+function CopyCode({ value, label }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -13,7 +13,7 @@ function CopyId({ value }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard can be blocked; the id is on screen to copy by hand.
+      // Clipboard can be blocked; the code is on screen to copy by hand.
     }
   }
   return (
@@ -22,7 +22,7 @@ function CopyId({ value }) {
       <button
         type="button"
         onClick={copy}
-        aria-label="Copy trip id"
+        aria-label={label}
         className="rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
@@ -31,15 +31,31 @@ function CopyId({ value }) {
   );
 }
 
+function CodeSection({ title, hint, children, action }) {
+  return (
+    <section aria-label={title} className="flex flex-col gap-1.5">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
+      {children}
+      <p className="text-xs text-muted-foreground">{hint}</p>
+      {action}
+    </section>
+  );
+}
+
 /**
- * The owner's Share screen: the trip's id to send (the other person pastes it
- * into "Join trip"), and who has joined, each removable.
+ * The owner's Share screen: two codes to send (the other person pastes one
+ * into "Join trip"). The view code is the trip's id; the edit code is a
+ * secret the owner can replace. Below, who has joined and how, each
+ * removable.
  */
 export function ShareTripDialog({ trip, open, onClose }) {
   const online = useSelector((s) => s.network?.online ?? true);
   const [members, setMembers] = useState(null); // null while loading
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState(null); // userId awaiting a second tap
+  const [editCode, setEditCode] = useState(null); // null while loading
+  const [codeFailed, setCodeFailed] = useState(false);
+  const [renewing, setRenewing] = useState(null); // null | "confirm" | "busy" | "done"
 
   useEffect(() => {
     if (!open) return undefined;
@@ -49,10 +65,31 @@ export function ShareTripDialog({ trip, open, onClose }) {
       .get(`/trips/${trip.id}/members`, { silent: true, offlineOk: true })
       .then(({ data }) => live && setMembers(data))
       .catch(() => live && setFailed(true));
+    setCodeFailed(false);
+    setRenewing(null);
+    apiClient
+      .get(`/trips/${trip.id}/edit-code`, { silent: true, offlineOk: true })
+      .then(({ data }) => live && setEditCode(data.code))
+      .catch(() => live && setCodeFailed(true));
     return () => {
       live = false;
     };
   }, [open, trip.id]);
+
+  async function renew() {
+    if (renewing !== "confirm") {
+      setRenewing("confirm");
+      return;
+    }
+    setRenewing("busy");
+    try {
+      const { data } = await apiClient.post(`/trips/${trip.id}/edit-code`, null, { silent: true });
+      setEditCode(data.code);
+      setRenewing("done");
+    } catch {
+      setRenewing(null);
+    }
+  }
 
   async function remove(userId) {
     if (confirming !== userId) {
@@ -69,10 +106,45 @@ export function ShareTripDialog({ trip, open, onClose }) {
       open={open}
       onClose={onClose}
       title="Share trip"
-      description="Send this trip id. They tap Join trip on their trips list and paste it. They’ll see everything, but only you can change the trip."
+      description="Send one of these codes. They tap Join trip on their trips list and paste it."
     >
       <div className="flex flex-col gap-4">
-        <CopyId value={trip.id} />
+        <CodeSection title="Can view" hint="Sees the whole trip and keeps a journal on it.">
+          <CopyCode value={trip.id} label="Copy view code" />
+        </CodeSection>
+        <CodeSection
+          title="Can edit"
+          hint={
+            renewing === "done"
+              ? "New code made. The old one no longer works; anyone who already joined keeps their access."
+              : "Can also change days, activities, stays and travel. Only you can delete the trip or remove people."
+          }
+          action={
+            editCode !== null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-start"
+                disabled={!online || renewing === "busy"}
+                onClick={renew}
+                aria-label={renewing === "confirm" ? "Confirm a new edit code" : "New edit code"}
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                {renewing === "confirm" ? "Confirm: the old code stops working" : "New edit code"}
+              </Button>
+            )
+          }
+        >
+          {codeFailed ? (
+            <p className="text-sm text-muted-foreground">
+              {online ? "Couldn’t load the edit code." : "The edit code shows when you’re online."}
+            </p>
+          ) : editCode === null ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <CopyCode value={editCode} label="Copy edit code" />
+          )}
+        </CodeSection>
         <section aria-label="Shared with" className="flex flex-col gap-2">
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Shared with</h3>
           {failed ? (
@@ -88,6 +160,9 @@ export function ShareTripDialog({ trip, open, onClose }) {
               {members.map((m) => (
                 <li key={m.userId} className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5">
                   <span className="min-w-0 flex-1 truncate text-sm">{m.email}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {m.role === "editor" ? "Can edit" : "Can view"}
+                  </span>
                   <Button
                     variant="ghost"
                     size="sm"

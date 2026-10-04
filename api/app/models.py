@@ -74,6 +74,12 @@ class Trip(SoftDeleteMixin, Base):
     end_date: Mapped[dt.date]
     timezone: Mapped[str]
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, server_default=func.now())
+    # The secret code that makes whoever joins with it an editor. Made on
+    # first ask, renewable by the owner (services/sharing.py). The trip's id
+    # is the viewer code, so this must never be shown to a member.
+    edit_code: Mapped[str | None] = mapped_column(default=None)
+
+    __table_args__ = (Index("uq_trips_edit_code", "edit_code", unique=True),)
 
     stays: Mapped[list[Stay]] = relationship(order_by="Stay.position", lazy="raise")
     travels: Mapped[list[Travel]] = relationship(order_by="Travel.position", lazy="raise")
@@ -174,8 +180,10 @@ def _utc_now() -> dt.datetime:
 
 class TripMember(SoftDeleteMixin, Base):
     """Someone a trip is shared with. The owner is `trips.user_id` and has no
-    member row, so every owner-only rule is unchanged; members can read the
-    trip (and keep a journal on it) but never edit it."""
+    member row, so every owner-only rule is unchanged. Every member can read
+    the trip (and keep a journal on it); an "editor" can also change its
+    days, activities, stays and travel. Only the owner deletes the trip or
+    manages who's on it."""
 
     __tablename__ = "trip_members"
 

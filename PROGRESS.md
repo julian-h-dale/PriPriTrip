@@ -23,7 +23,12 @@
     slide follows the finger; settling replaces the URL; the arrow keys
     work on desktop; the prev/next links are gone. **Julian, on a real
     phone:** swiping feels right, and vertical scrolling never changes day.
-  - **Next:** Run stage 7, Phase 40 (editors). Julian said to carry on
+  - **Phase 40 ✅ (editors):** an edit code (`trips.edit_code`, migration
+    **0005**) beside the view code (the trip id) in the Share dialog;
+    joining with it makes an editor. Editors pass `get_editable_trip`;
+    deleting the trip and managing members stay owner-only.
+    **Deploying:** start.sh migrates, so `fly deploy` applies 0005.
+  - **Next:** Phase 41 (versions and 409, API). Julian said to carry on
     through the phases without waiting, unless there are questions.
   - **Run stage 7 (editors, versions, 409 conflicts):** planned, and the
     open questions were answered 2026-10-04: an editor join code, editors

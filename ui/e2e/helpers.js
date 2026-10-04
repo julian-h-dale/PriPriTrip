@@ -19,6 +19,12 @@ export const SEED_VIEWER = {
   password: process.env.SEED_VIEWER_PASSWORD || "changeme-viewer",
 };
 
+/** The seed admin: not on any trip, so free to join one as an editor. */
+export const SEED_ADMIN = {
+  email: process.env.SEED_ADMIN_EMAIL || "admin@example.com",
+  password: process.env.SEED_ADMIN_PASSWORD || "changeme-admin",
+};
+
 /**
  * Logs in as the seed dev user, then opens the full trips list (signing in
  * itself lands on the next trip, not the list).

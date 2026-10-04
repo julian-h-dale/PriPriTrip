@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { API_URL } from "../playwright.config.js";
-import { SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
+import { SEED_ADMIN, SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Practical smoke checks: page views and basic clicking against the seeded
@@ -316,6 +316,47 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
   } finally {
     await ownerContext.close();
     await viewerContext.close();
+  }
+});
+
+test("sharing: someone joins with the edit code and can edit", async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const editorContext = await browser.newContext();
+  const editor = await editorContext.newPage();
+  let tripId = null;
+  try {
+    const owner = await ownerContext.newPage();
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    tripId = new URL(owner.url()).pathname.split("/")[2];
+    await owner.getByRole("button", { name: "Share trip" }).click();
+    const canEdit = owner.getByRole("dialog", { name: "Share trip" }).getByRole("region", { name: "Can edit" });
+    const code = (await canEdit.locator(".font-mono").textContent()).trim();
+    expect(code).toHaveLength(20);
+    await owner.screenshot({ path: screenshotPath("21a-share-dialog-codes"), fullPage: true });
+
+    await login(editor, SEED_ADMIN);
+    await editor.getByRole("button", { name: "Join trip" }).click();
+    const join = editor.getByRole("dialog", { name: "Join a trip" });
+    await join.getByLabel("Trip code").fill(code);
+    await join.getByRole("button", { name: "Join", exact: true }).click();
+    await editor.waitForURL(new RegExp(`/trips/${tripId}/today$`));
+    await editor.goto(`/trips/${tripId}/days/2026-05-11`);
+    await expect(editor.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
+    await expect(editor.getByRole("button", { name: /Add activity/ })).toBeVisible();
+    await expect(editor.getByRole("button", { name: "Share trip" })).toHaveCount(0);
+  } finally {
+    // Leave again, so the dev trip is shared as before.
+    if (tripId) {
+      const token = await editor.evaluate(() => localStorage.getItem("auth_token")).catch(() => null);
+      if (token) {
+        await editor.request.delete(`${API_URL}/trips/${tripId}/membership`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    }
+    await ownerContext.close();
+    await editorContext.close();
   }
 });
 

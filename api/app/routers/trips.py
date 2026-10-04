@@ -1,6 +1,7 @@
-"""Trips router. Thin handlers: reads via get_viewable_trip (owner or viewer),
-edits via get_owned_trip (owner only), logic in services/trips.py, document
-validation in app/trip_document.py."""
+"""Trips router. Thin handlers: reads via get_viewable_trip (any member),
+edits via get_editable_trip (owner or editor), deleting the trip via
+get_owned_trip (owner only), logic in services/trips.py, document validation
+in app/trip_document.py."""
 
 from __future__ import annotations
 
@@ -16,9 +17,10 @@ from starlette.datastructures import UploadFile
 from app.database import get_db
 from app.dependencies import (
     ViewableTrip,
-    get_owned_item,
-    get_owned_stay,
-    get_owned_travel,
+    get_editable_item,
+    get_editable_stay,
+    get_editable_travel,
+    get_editable_trip,
     get_owned_trip,
     get_viewable_trip,
 )
@@ -175,7 +177,7 @@ JsonBody = Annotated[dict[str, Any], Body()]
 )
 async def create_item(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     """Add an activity (an `ItemDoc` plus its `date`) at the end of that date."""
@@ -189,8 +191,8 @@ async def create_item(
 @router.put("/{trip_id}/items/{item_id}", response_model=TripRead, response_model_exclude_none=True)
 async def replace_item(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
-    item: Item = Depends(get_owned_item),
+    trip: Trip = Depends(get_editable_trip),
+    item: Item = Depends(get_editable_item),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     """Replace a whole activity. A different `date` moves it to that day."""
@@ -205,8 +207,8 @@ async def replace_item(
     "/{trip_id}/items/{item_id}", response_model=TripRead, response_model_exclude_none=True
 )
 async def delete_item(
-    trip: Trip = Depends(get_owned_trip),
-    item: Item = Depends(get_owned_item),
+    trip: Trip = Depends(get_editable_trip),
+    item: Item = Depends(get_editable_item),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead:
     return await trips_service.delete_item(db, trip, item)
@@ -221,8 +223,8 @@ class MoveRequest(CamelModel):
 )
 async def move_item(
     body: MoveRequest,
-    trip: Trip = Depends(get_owned_trip),
-    item: Item = Depends(get_owned_item),
+    trip: Trip = Depends(get_editable_trip),
+    item: Item = Depends(get_editable_item),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead:
     """Swap an activity with its neighbour in the day."""
@@ -233,7 +235,7 @@ async def move_item(
 async def update_day(
     day_date: dt.date,
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     """Set a date's title and summary (creates the day if the date has none)."""
@@ -260,7 +262,7 @@ def _frame(trip: Trip) -> TripFrame:
 )
 async def create_stay(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     try:
@@ -273,8 +275,8 @@ async def create_stay(
 @router.put("/{trip_id}/stays/{stay_id}", response_model=TripRead, response_model_exclude_none=True)
 async def replace_stay(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
-    stay: Stay = Depends(get_owned_stay),
+    trip: Trip = Depends(get_editable_trip),
+    stay: Stay = Depends(get_editable_stay),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     try:
@@ -288,8 +290,8 @@ async def replace_stay(
     "/{trip_id}/stays/{stay_id}", response_model=TripRead, response_model_exclude_none=True
 )
 async def delete_stay(
-    trip: Trip = Depends(get_owned_trip),
-    stay: Stay = Depends(get_owned_stay),
+    trip: Trip = Depends(get_editable_trip),
+    stay: Stay = Depends(get_editable_stay),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead:
     return await trips_service.delete_stay(db, trip, stay)
@@ -303,7 +305,7 @@ async def delete_stay(
 )
 async def create_travel(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     try:
@@ -318,8 +320,8 @@ async def create_travel(
 )
 async def replace_travel(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
-    travel: Travel = Depends(get_owned_travel),
+    trip: Trip = Depends(get_editable_trip),
+    travel: Travel = Depends(get_editable_travel),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead | JSONResponse:
     try:
@@ -333,8 +335,8 @@ async def replace_travel(
     "/{trip_id}/travels/{travel_id}", response_model=TripRead, response_model_exclude_none=True
 )
 async def delete_travel(
-    trip: Trip = Depends(get_owned_trip),
-    travel: Travel = Depends(get_owned_travel),
+    trip: Trip = Depends(get_editable_trip),
+    travel: Travel = Depends(get_editable_travel),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead:
     return await trips_service.delete_travel(db, trip, travel)

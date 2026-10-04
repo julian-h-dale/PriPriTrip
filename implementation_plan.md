@@ -2565,9 +2565,26 @@ annoying in practice.
 
 ### Phases
 
-- **Phase 40 — editors (API + UI).**
-  - The role, the editor join code (migration), `get_editable_trip`, and
-    both codes in the share dialog.
+- **Phase 40 — editors (API + UI).** ✅ (2026-10-04)
+  - **Built as planned. Details:**
+    - **The view code is the trip's id** (as before), so viewers already
+      know it. The edit code is a separate random secret
+      (`trips.edit_code`, 20 URL-safe characters, migration 0005), made the
+      first time the owner opens Share. `GET /trips/{id}/edit-code` reads
+      it and `POST` renews it, both owner only.
+    - **`POST /trips/join` takes `{code}`:** a trip id makes a viewer, an
+      edit code an editor. `{tripId}` still works for older apps.
+    - **`get_editable_trip`** (owner or editor) guards every trip-child
+      write, through `get_editable_item/stay/travel`. **`get_owned_trip`**
+      is now only for deleting the trip, the members list, removing members
+      and the edit code.
+    - **The Join dialog** takes either code ("Trip code"); the server tells
+      them apart.
+    - **The Share dialog** has two sections: "Can view" and "Can edit"
+      (with a two-tap "New edit code"). Each member shows "Can edit" or
+      "Can view". The trips list says "Shared with you · you can edit".
+    - **E2E:** the seed admin joins with the edit code, gets edit controls,
+      then leaves again (screenshot `21a`).
   - **Tests:** the editor code makes an editor and the viewer code a
     viewer; rejoining with the other code changes the role; a new editor
     code stops the old one working. An editor can add, change, move and

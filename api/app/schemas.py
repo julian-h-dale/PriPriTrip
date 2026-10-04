@@ -108,8 +108,9 @@ class TripRead(TripDocument):
     model_config = ConfigDict(title="TripRead", **_READ_CONFIG)
     id: uuid.UUID
     created_at: datetime
-    # The caller's footing on this trip: "owner" may edit, "viewer" may not.
-    role: Literal["owner", "viewer"] | None = None
+    # The caller's footing on this trip: "owner" and "editor" may edit,
+    # "viewer" may not.
+    role: Literal["owner", "editor", "viewer"] | None = None
     stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
     travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
     days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
@@ -124,18 +125,26 @@ class TripSummary(CamelModel):
     stay_count: int
     travel_count: int
     created_at: datetime
-    role: Literal["owner", "viewer"] = "owner"
+    role: Literal["owner", "editor", "viewer"] = "owner"
 
 
 class JoinTrip(CamelModel):
-    trip_id: uuid.UUID
+    """Join with the trip's id (as a viewer) or its edit code (as an editor).
+    `code` takes either; `tripId` is what older apps send."""
+
+    trip_id: uuid.UUID | None = None
+    code: str | None = Field(default=None, max_length=200)
 
 
 class MemberRead(CamelModel):
     user_id: uuid.UUID
     email: str
-    role: Literal["viewer"]
+    role: Literal["editor", "viewer"]
     joined_at: datetime
+
+
+class EditCode(CamelModel):
+    code: str
 
 
 MEMORY_MAX_CHARS = 2000
