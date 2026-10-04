@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { applyPending, clearOutbox, done, enqueue, mergeOp, pending, sortMemories } from "@/shared/services/outbox";
 
 const create = (text = "a") => ({ userId: "u1", tripId: "t1", memoryId: "m1", op: "create", body: { text, zone: "UTC", createdAt: "2026-05-11T18:00:00.000Z" } });
@@ -92,6 +92,17 @@ describe("photos in the outbox", () => {
     await enqueue(addPhoto("p1"));
     await enqueue(addPhoto("p2"));
     expect((await pending("u1")).map((o) => o.op)).toEqual(["create", "addPhoto", "addPhoto"]);
+  });
+
+  it("photos queued in the same millisecond still send in the order picked", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-05-11T18:00:00Z") });
+    try {
+      const ids = ["p9", "p1", "p5", "p3", "p7"]; // keys in IndexedDB sort differently
+      for (const id of ids) await enqueue(addPhoto(id));
+      expect((await pending("u1")).map((o) => o.body.photoId)).toEqual(ids);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("removing a photo that never uploaded leaves nothing to send", async () => {
