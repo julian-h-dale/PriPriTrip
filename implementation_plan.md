@@ -2457,12 +2457,12 @@ make them worse.
 3. **Field-level PATCH and merge.** Send only the fields that changed, so
    two people editing different fields of one entry both win. Builds on 2.
 4. **Live updates** (SSE or WebSocket) push changes to the other phones, so
-   screens are seconds stale, not minutes. Often with "Pri is editing".
+   screens are seconds stale, not minutes. Often with "PriPri is editing".
 5. **A sync engine or CRDTs** (Yjs, Automerge, Replicache/Zero, PowerSync,
    ElectricSQL): offline-first, merged automatically. A rewrite of the data
    layer; overkill for two or three people planning a trip.
 
-(Pessimistic locking, "Pri has this checked out", is the other classic.
+(Pessimistic locking, "PriPri has this checked out", is the other classic.
 It's a poor fit for phones that drop offline: a lock can be stuck on a
 phone in a tunnel.)
 
@@ -2480,7 +2480,7 @@ annoying in practice.
   the fresh copy if you still want it.
 - **Trip editing stays online-only.** Nothing about trip edits is queued
   offline (only memories are), so there's nothing to reconcile later.
-- **Show who last changed an entry** in its details ("Edited by Pri, 2
+- **Show who last changed an entry** in its details ("Edited by PriPri, 2
   minutes ago"). Possibly hidden before the trip.
 
 ### Design
@@ -2531,13 +2531,13 @@ annoying in practice.
 
 **3. Conflicts in the UI.**
 - The forms send the `version` they were opened with.
-- **On 409:** the form closes, a warning says "Pri changed this 4 minutes
+- **On 409:** the form closes, a warning says "PriPri changed this 4 minutes
   ago. Showing the latest.", and the trip reloads. Your edit is dropped.
 - **On 404 while saving or deleting:** "This was removed by someone else",
   and the trip reloads.
 - **On 428** (only an out-of-date app could get it, and the new app always
   sends a version): "The app has been updated. Close and reopen it."
-- **Who changed it:** an entry's details show "Edited by Pri, 2 minutes
+- **Who changed it:** an entry's details show "Edited by PriPri, 2 minutes
   ago" (`updatedByName`, `updatedAt`). One component, so it's easy to hide
   later.
 - **Fewer stale screens:** the trip is refetched when the app returns to the
@@ -2572,6 +2572,22 @@ annoying in practice.
     foreground refetches.
   - **Julian, on two phones:** both open the same activity, both save, and
     the second phone gets the warning and the first phone's change.
+
+### Deferred: "theirs or mine" on a conflict
+
+Not built now (Julian, 2026-10-04: a conflict is just an error and a
+reload). If losing an edit on a conflict turns out to annoy, this is the
+next step up, and the 409 already carries what it needs:
+- **On 409, a dialog instead of a reload:** "PriPri changed this 4 minutes
+  ago", with their version and yours side by side, field by field, and the
+  differences marked.
+- **Keep theirs:** drops your edit and reloads (what Phase 42 does anyway).
+- **Use mine:** re-sends your edit with their version number in
+  `If-Match`, so it deliberately overwrites theirs.
+- A cheaper middle step: on a conflict, keep your typed text and reopen the
+  form on the fresh copy, so you can re-apply it by hand.
+- Further up: field-level merge (approach 3), so edits to different fields
+  of one entry both win without asking.
 
 ### Open questions (Run stage 7)
 
