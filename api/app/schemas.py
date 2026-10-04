@@ -79,26 +79,37 @@ class UserUpdate(schemas.BaseUserUpdate):
 _READ_CONFIG = ConfigDict(from_attributes=True, populate_by_name=True, extra="ignore")
 
 
-class StayRead(StayDoc):
+class VersionRead(BaseModel):
+    """Which version an entry is at, and who last changed it (see
+    services/versions.py): the app sends `version` back in If-Match."""
+
+    version: int = 1
+    updated_at: datetime | None = None
+    # Read from the row to look up the name; never sent.
+    updated_by: uuid.UUID | None = Field(default=None, exclude=True)
+    updated_by_name: str | None = None
+
+
+class StayRead(StayDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     zone: str | None = None
 
 
-class TravelRead(TravelDoc):
+class TravelRead(TravelDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     depart_zone: str | None = None
     arrive_zone: str | None = None
 
 
-class ItemRead(ItemDoc):
+class ItemRead(ItemDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     zone: str | None = None
 
 
-class DayRead(DayDoc):
+class DayRead(DayDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     items: list[ItemRead] = Field(default_factory=list)  # type: ignore[assignment]

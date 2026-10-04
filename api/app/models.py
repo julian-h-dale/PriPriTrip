@@ -44,6 +44,22 @@ class SoftDeleteMixin:
     deleted_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
 
 
+class VersionedMixin:
+    """Optimistic concurrency for an entry several people can edit
+    (services/versions.py). Every change bumps `version`; a write must say
+    which version it was made from (If-Match), so a stale one is refused
+    instead of silently overwriting someone else's change. `updated_at` and
+    `updated_by` say who made the latest change (null until the first edit
+    through the API: imported rows have no editor). `updated_by` is a user
+    id with no foreign key on purpose: it's only shown as a name, and SQLite
+    can't add a foreign key to a table without rebuilding it, which its
+    children's foreign keys forbid once there's data."""
+
+    version: Mapped[int] = mapped_column(default=1, server_default=text("1"))
+    updated_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(default=None)
+
+
 class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     """fastapi-users base table plus app-specific profile fields."""
 
@@ -86,7 +102,7 @@ class Trip(SoftDeleteMixin, Base):
     days: Mapped[list[Day]] = relationship(order_by="Day.date", lazy="raise")
 
 
-class Stay(SoftDeleteMixin, Base):
+class Stay(SoftDeleteMixin, VersionedMixin, Base):
     """One accommodation booking, spanning nights."""
 
     __tablename__ = "stays"
@@ -105,7 +121,7 @@ class Stay(SoftDeleteMixin, Base):
     notes: Mapped[str | None]
 
 
-class Travel(SoftDeleteMixin, Base):
+class Travel(SoftDeleteMixin, VersionedMixin, Base):
     """One booked or scheduled leg (flight, train, ...)."""
 
     __tablename__ = "travels"
@@ -128,7 +144,7 @@ class Travel(SoftDeleteMixin, Base):
     notes: Mapped[str | None]
 
 
-class Day(SoftDeleteMixin, Base):
+class Day(SoftDeleteMixin, VersionedMixin, Base):
     """One calendar date of a trip. At most one live day per date."""
 
     __tablename__ = "days"
@@ -155,7 +171,7 @@ class Day(SoftDeleteMixin, Base):
     )
 
 
-class Item(SoftDeleteMixin, Base):
+class Item(SoftDeleteMixin, VersionedMixin, Base):
     """One planned activity on a day, kept in document order."""
 
     __tablename__ = "items"

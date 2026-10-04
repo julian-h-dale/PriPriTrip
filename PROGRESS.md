@@ -28,7 +28,12 @@
     joining with it makes an editor. Editors pass `get_editable_trip`;
     deleting the trip and managing members stay owner-only.
     **Deploying:** start.sh migrates, so `fly deploy` applies 0005.
-  - **Next:** Phase 41 (versions and 409, API). Julian said to carry on
+  - **Phase 41 ✅ (versions, API):** every stay, travel, day and activity
+    has a `version`; PUT/DELETE need `If-Match` (409 when stale, 428 when
+    missing). Migration **0006** (plain ADD COLUMNs; `updated_by` has no FK,
+    see the plan). **Don't deploy without Phase 42**: today's app sends no
+    version.
+  - **Next:** Phase 42 (conflicts in the UI). Julian said to carry on
     through the phases without waiting, unless there are questions.
   - **Run stage 7 (editors, versions, 409 conflicts):** planned, and the
     open questions were answered 2026-10-04: an editor join code, editors

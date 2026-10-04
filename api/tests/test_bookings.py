@@ -10,6 +10,7 @@ from httpx import AsyncClient
 
 from app.sample_data import load_sample_trip
 from app.settings import get_app_settings
+from tests.conftest import if_match
 
 Json = dict[str, Any]
 
@@ -62,7 +63,9 @@ async def test_zones_follow_a_stay_edit(client: AsyncClient, trip: Json) -> None
         "checkOut": bern["checkOut"],
         "location": {"name": "Naha hotel", "lat": NAHA["lat"], "lng": NAHA["lng"]},
     }
-    updated = (await client.put(f"/trips/{trip['id']}/stays/{bern['id']}", json=body)).json()
+    updated = (
+        await client.put(f"/trips/{trip['id']}/stays/{bern['id']}", json=body, headers=if_match(1))
+    ).json()
     assert stay_named(updated, "Hotel Goldener Schlüssel")["zone"] == "Asia/Tokyo"
     walk = updated["days"][0]["items"][1]  # no place of its own
     assert walk["zone"] == "Asia/Tokyo"
@@ -118,13 +121,15 @@ async def test_replace_and_delete_stay(client: AsyncClient, trip: Json) -> None:
     replaced = await client.put(
         f"/trips/{trip['id']}/stays/{bern['id']}",
         json={"name": "Hotel Bern", "checkIn": bern["checkIn"], "checkOut": bern["checkOut"]},
+        headers=if_match(1),
     )
     assert replaced.status_code == 200
     renamed = next(s for s in replaced.json()["stays"] if s["id"] == bern["id"])
     assert renamed["name"] == "Hotel Bern"
+    assert renamed["version"] == 2
     assert "location" not in renamed and "confirmationNumber" not in renamed  # full replace
 
-    deleted = await client.delete(f"/trips/{trip['id']}/stays/{bern['id']}")
+    deleted = await client.delete(f"/trips/{trip['id']}/stays/{bern['id']}", headers=if_match(2))
     assert deleted.status_code == 200
     assert all(s["id"] != bern["id"] for s in deleted.json()["stays"])
     assert (await client.delete(f"/trips/{trip['id']}/stays/{bern['id']}")).status_code == 404
@@ -199,12 +204,13 @@ async def test_replace_and_delete_travel(client: AsyncClient, trip: Json) -> Non
             "depart": "2026-05-12T12:34",
             "arrive": "2026-05-12T14:41",
         },
+        headers=if_match(1),
     )
     assert resp.status_code == 200
     moved = travel_titled(resp.json(), "Bern → Wengen (later train)")
     assert moved["id"] == train["id"] and moved["depart"] == "2026-05-12T12:34"
 
-    resp = await client.delete(f"/trips/{trip['id']}/travels/{train['id']}")
+    resp = await client.delete(f"/trips/{trip['id']}/travels/{train['id']}", headers=if_match(2))
     assert all(t["id"] != train["id"] for t in resp.json()["travels"])
 
 

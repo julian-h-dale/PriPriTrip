@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Trip, UserRecord
 from app.sample_data import load_sample_trip
+from tests.conftest import if_match
 
 Json = dict[str, Any]
 
@@ -146,6 +147,7 @@ async def test_replace_is_a_full_replace(client: AsyncClient, trip: Json) -> Non
     resp = await client.put(
         f"/trips/{trip['id']}/items/{target}",
         json={"date": "2026-05-11", "title": "Dinner (moved earlier)", "start": "2026-05-11T18:00"},
+        headers=if_match(1),
     )
     assert resp.status_code == 200, resp.text
     replaced = day(resp.json(), "2026-05-11")["items"][-1]  # type: ignore[index]
@@ -164,6 +166,7 @@ async def test_replace_with_a_new_date_moves_to_the_end_of_that_day(
     resp = await client.put(
         f"/trips/{trip['id']}/items/{target}",
         json={"date": "2026-05-13", "title": "Old Town & Zytglogge walk"},
+        headers=if_match(1),
     )
     assert resp.status_code == 200
     moved = resp.json()
@@ -176,6 +179,7 @@ async def test_replace_validates(client: AsyncClient, trip: Json) -> None:
     resp = await client.put(
         f"/trips/{trip['id']}/items/{target}",
         json={"date": "2026-05-11", "title": "  "},
+        headers=if_match(1),
     )
     assert resp.status_code == 422
     assert resp.json()["errors"][0]["path"] == "title"
@@ -186,7 +190,7 @@ async def test_replace_validates(client: AsyncClient, trip: Json) -> None:
 
 async def test_delete_hides_the_activity(client: AsyncClient, trip: Json) -> None:
     target = item_id(trip, "2026-05-11", "Lunch at Altes Tramdepot")
-    resp = await client.delete(f"/trips/{trip['id']}/items/{target}")
+    resp = await client.delete(f"/trips/{trip['id']}/items/{target}", headers=if_match(1))
     assert resp.status_code == 200
     assert "Lunch at Altes Tramdepot" not in titles(resp.json(), "2026-05-11")
     fresh = (await client.get(f"/trips/{trip['id']}")).json()
@@ -241,6 +245,7 @@ async def test_update_day_sets_title_and_summary(client: AsyncClient, trip: Json
     resp = await client.put(
         f"/trips/{trip['id']}/days/2026-05-11",
         json={"title": "Bern, slowly", "summary": "Jet lag day."},
+        headers=if_match(day(trip, "2026-05-11")["version"]),  # type: ignore[index]
     )
     assert resp.status_code == 200
     updated = day(resp.json(), "2026-05-11")
@@ -250,18 +255,23 @@ async def test_update_day_sets_title_and_summary(client: AsyncClient, trip: Json
 
 
 async def test_update_day_on_a_date_with_no_day_creates_it(client: AsyncClient, trip: Json) -> None:
-    resp = await client.put(f"/trips/{trip['id']}/days/2026-05-10", json={"title": "Fly out"})
+    assert day(trip, "2026-05-10") is None  # no row yet: version 0
+    resp = await client.put(
+        f"/trips/{trip['id']}/days/2026-05-10", json={"title": "Fly out"}, headers=if_match(0)
+    )
     assert resp.status_code == 200
     assert day(resp.json(), "2026-05-10")["title"] == "Fly out"  # type: ignore[index]
 
 
 async def test_update_day_can_clear_the_title(client: AsyncClient, trip: Json) -> None:
-    resp = await client.put(f"/trips/{trip['id']}/days/2026-05-11", json={})
+    resp = await client.put(f"/trips/{trip['id']}/days/2026-05-11", json={}, headers=if_match(1))
     assert "title" not in day(resp.json(), "2026-05-11")  # type: ignore[operator]
 
 
 async def test_update_day_outside_the_trip_is_rejected(client: AsyncClient, trip: Json) -> None:
-    resp = await client.put(f"/trips/{trip['id']}/days/2026-06-01", json={"title": "x"})
+    resp = await client.put(
+        f"/trips/{trip['id']}/days/2026-06-01", json={"title": "x"}, headers=if_match(0)
+    )
     assert resp.status_code == 422
     assert resp.json()["errors"][0]["path"] == "date"
 

@@ -177,3 +177,9 @@ async def viewer(db: AsyncSession, viewer_user: UserRecord) -> AsyncGenerator[As
 async def stranger(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async with await _client_for(db, await _user(db, "stranger@example.com")) as ac:
         yield ac
+
+
+def if_match(version: int) -> dict[str, str]:
+    """The If-Match header for changing an entry read at `version` (a day
+    with no row yet is version 0; a freshly imported entry is version 1)."""
+    return {"If-Match": f'"{version}"'}

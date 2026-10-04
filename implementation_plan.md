@@ -2593,8 +2593,33 @@ annoying in practice.
     stranger gets 404.
   - **Julian:** with two accounts, join with the editor code; the second
     phone shows edit controls.
-- **Phase 41 — versions and 409 (API).**
-  - The migration, the shared version check, and `version` in `TripRead`.
+- **Phase 41 — versions and 409 (API).** ✅ (2026-10-04)
+  - **Built as planned, with these details and deviations:**
+    - **`VersionedMixin`** (`version`, `updated_at`, `updated_by`) on
+      stays, travels, days and items; the check and the stamp live in
+      `services/versions.py`. The `if_match_version` dependency (in
+      `dependencies.py`) reads the header before the body is validated.
+    - **Deviation: `updated_by` has no foreign key.** On SQLite, adding a
+      foreign key rebuilds the table, and rebuilding `days` or `stays`
+      fails once activities point at them. The migration test only passed
+      because its database was empty; a copy of the dev database failed.
+      So 0006 is plain `ADD COLUMN`s, and the migration test now plants a
+      day and an activity, so it would catch a rebuild.
+    - **Existing rows keep `updated_at` null** (the plan said "now"): they
+      were imported, never edited, so there's no one to name.
+    - **A date with no day row is version 0**, so creating a day is
+      versioned too. Making an activity on an untitled date creates the
+      day at version 1.
+    - **If-Match** takes `"3"`, `W/"3"` or `3`. A missing one is 428 (its
+      message says to reopen the app); a malformed one is 400.
+    - **The 409 body** is `{detail: {message, version, updatedAt,
+      updatedByName, current}}`. `current` is the entry as the trip reads
+      it now.
+    - Every entry reads back with `version`, plus `updatedAt` and
+      `updatedByName` once edited through the API (the user's name, else
+      the first part of their email). Adding an entry stamps it too.
+  - **Don't deploy Phase 41 without Phase 42:** the deployed app sends no
+    version, so its edits would all get 428.
   - **Tests:** a matching `If-Match` saves and bumps the version; a stale
     one gives 409 with the current entry and who changed it; no header
     gives 428; an entry deleted meanwhile gives 404. `/move` doesn't change

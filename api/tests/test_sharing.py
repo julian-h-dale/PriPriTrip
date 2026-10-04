@@ -10,6 +10,7 @@ from httpx import AsyncClient
 
 from app.models import UserRecord
 from app.sample_data import load_sample_trip
+from tests.conftest import if_match
 
 
 async def shared_trip(owner: AsyncClient, viewer: AsyncClient) -> dict[str, Any]:
@@ -190,8 +191,8 @@ async def test_an_editor_changes_days_activities_stays_and_travel(
     full = (await client.get(f"/trips/{tid}")).json()
     stay = full["stays"][0]
     travel = full["travels"][0]
-    # A write takes the document shape: no id, no computed zones.
-    read_only = {"id", "zone", "departZone", "arriveZone"}
+    # A write takes the document shape: no id, version or computed zones.
+    read_only = {"id", "zone", "departZone", "arriveZone", "version", "updatedAt", "updatedByName"}
     stay_doc = {k: v for k, v in stay.items() if k not in read_only}
     travel_doc = {k: v for k, v in travel.items() if k not in read_only}
 
@@ -205,24 +206,38 @@ async def test_an_editor_changes_days_activities_stays_and_travel(
     item_id = next(i["id"] for d in added["days"] for i in d["items"] if i["title"] == "Pack")
     await ok(
         await editor.put(
-            f"/trips/{tid}/items/{item_id}", json={"date": "2026-05-10", "title": "Pack well"}
+            f"/trips/{tid}/items/{item_id}",
+            json={"date": "2026-05-10", "title": "Pack well"},
+            headers=if_match(1),
         )
     )
     await ok(await editor.post(f"/trips/{tid}/items/{item_id}/move", json={"direction": "up"}))
-    await ok(await editor.put(f"/trips/{tid}/days/2026-05-10", json={"title": "Travel day"}))
+    # Adding "Pack" made the date's day row (version 1).
     await ok(
         await editor.put(
-            f"/trips/{tid}/stays/{stay['id']}", json={**stay_doc, "notes": "By PriPri"}
+            f"/trips/{tid}/days/2026-05-10", json={"title": "Travel day"}, headers=if_match(1)
         )
     )
     await ok(
-        await editor.put(f"/trips/{tid}/travels/{travel['id']}", json={**travel_doc, "seat": "12A"})
+        await editor.put(
+            f"/trips/{tid}/stays/{stay['id']}",
+            json={**stay_doc, "notes": "By PriPri"},
+            headers=if_match(1),
+        )
+    )
+    await ok(
+        await editor.put(
+            f"/trips/{tid}/travels/{travel['id']}",
+            json={**travel_doc, "seat": "12A"},
+            headers=if_match(1),
+        )
     )
     await ok(await editor.post(f"/trips/{tid}/stays", json=stay_doc))
     await ok(await editor.post(f"/trips/{tid}/travels", json=travel_doc))
-    await ok(await editor.delete(f"/trips/{tid}/items/{item_id}"))
-    await ok(await editor.delete(f"/trips/{tid}/stays/{stay['id']}"))
-    await ok(await editor.delete(f"/trips/{tid}/travels/{travel['id']}"))
+    # Moving didn't change the activity's version; each edit did.
+    await ok(await editor.delete(f"/trips/{tid}/items/{item_id}", headers=if_match(2)))
+    await ok(await editor.delete(f"/trips/{tid}/stays/{stay['id']}", headers=if_match(2)))
+    await ok(await editor.delete(f"/trips/{tid}/travels/{travel['id']}", headers=if_match(2)))
 
     # The owner sees the editor's changes.
     after = (await client.get(f"/trips/{tid}")).json()

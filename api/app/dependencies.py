@@ -17,12 +17,13 @@ import uuid
 from dataclasses import dataclass
 from typing import Literal
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
+from app.services.versions import parse_if_match
 from app.users import current_active_user
 
 
@@ -187,3 +188,9 @@ async def get_own_memory(
             status_code=status.HTTP_403_FORBIDDEN, detail="Only its author can change a memory"
         )
     return memory
+
+
+async def if_match_version(if_match: str | None = Header(default=None)) -> int:
+    """The version a change to an entry was made from (services/versions.py):
+    428 without one."""
+    return parse_if_match(if_match)
