@@ -92,10 +92,10 @@ function TripTimeline({ trip }) {
     const thunk =
       kind === "stay"
         ? record
-          ? replaceStay({ tripId, stayId: record.id, stay: payload })
+          ? replaceStay({ tripId, stayId: record.id, stay: payload, version: record.version })
           : createStay({ tripId, stay: payload })
         : record
-          ? replaceTravel({ tripId, travelId: record.id, travel: payload })
+          ? replaceTravel({ tripId, travelId: record.id, travel: payload, version: record.version })
           : createTravel({ tripId, travel: payload });
     return runEdit(dispatch, thunk);
   }

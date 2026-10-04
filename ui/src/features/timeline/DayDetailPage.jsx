@@ -152,11 +152,11 @@ function DayDetail({ trip, row }) {
     const thunk =
       kind === "activity"
         ? record
-          ? replaceItem({ tripId, itemId: record.id, item: payload })
+          ? replaceItem({ tripId, itemId: record.id, item: payload, version: record.version })
           : createItem({ tripId, item: payload })
         : kind === "stay"
-          ? replaceStay({ tripId, stayId: record.id, stay: payload })
-          : replaceTravel({ tripId, travelId: record.id, travel: payload });
+          ? replaceStay({ tripId, stayId: record.id, stay: payload, version: record.version })
+          : replaceTravel({ tripId, travelId: record.id, travel: payload, version: record.version });
     return runEdit(dispatch, thunk);
   }
 
@@ -172,10 +172,10 @@ function DayDetail({ trip, row }) {
     setBusy(true);
     await dispatch(
       kind === "activity"
-        ? deleteItem({ tripId, itemId: record.id })
+        ? deleteItem({ tripId, itemId: record.id, version: record.version })
         : kind === "stay"
-          ? deleteStay({ tripId, stayId: record.id })
-          : deleteTravel({ tripId, travelId: record.id })
+          ? deleteStay({ tripId, stayId: record.id, version: record.version })
+          : deleteTravel({ tripId, travelId: record.id, version: record.version })
     );
     setBusy(false);
     setDeleting(null);
@@ -309,7 +309,10 @@ function DayDetail({ trip, row }) {
           onClose={() => setDayFormOpen(false)}
           date={row.date}
           day={day}
-          onSave={(payload) => runEdit(dispatch, updateDay({ tripId: trip.id, date: row.date, day: payload }))}
+          onSave={(payload) =>
+            // A date with no day row yet is version 0.
+            runEdit(dispatch, updateDay({ tripId: trip.id, date: row.date, day: payload, version: day?.version ?? 0 }))
+          }
         />
       )}
 

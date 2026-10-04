@@ -27,6 +27,14 @@ describe("apiClient offline handling", () => {
     expect(store.dispatch).not.toHaveBeenCalled();
   });
 
+  it("leaves a status the caller handles to the caller, and only that status", async () => {
+    const handles = [404, 409, 428];
+    await onError({ config: { handles }, response: { status: 409, data: { detail: { version: 2 } } } });
+    expect(store.dispatch).not.toHaveBeenCalled();
+    await onError({ config: { handles }, response: { status: 500, data: { detail: "boom" } } });
+    expect(store.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "error/setError" }));
+  });
+
   it("still signs out on a real 401, offline-tolerant or not", async () => {
     window.history.pushState({}, "", "/login"); // already there: no jsdom navigation
     await onError({ config: { offlineOk: true }, response: { status: 401 } });

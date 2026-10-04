@@ -33,8 +33,16 @@
     missing). Migration **0006** (plain ADD COLUMNs; `updated_by` has no FK,
     see the plan). **Don't deploy without Phase 42**: today's app sends no
     version.
-  - **Next:** Phase 42 (conflicts in the UI). Julian said to carry on
-    through the phases without waiting, unless there are questions.
+  - **Phase 42 ✅ (conflicts in the UI):** edits send `If-Match`. A
+    conflict is a warning saying who changed it and when, then a reload,
+    and the form closes. Details show "Edited by …". The trip reloads when
+    the app returns to the foreground.
+  - **Run stages 6 and 7 are done** (Phases 37–42), on `run-stage-6`, not
+    pushed or deployed. **Deploy 41 and 42 together** (migrations 0005 and
+    0006 run on start).
+  - **Waiting on Julian:** look at the phone-width UI (map pins, swiping,
+    the Share dialog), try two phones editing one activity, then push/PR
+    and deploy. Also still: `fly volumes extend`.
   - **Run stage 7 (editors, versions, 409 conflicts):** planned, and the
     open questions were answered 2026-10-04: an editor join code, editors
     can delete, a conflict is an error and a reload (no merge), a missing

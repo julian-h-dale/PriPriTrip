@@ -3,6 +3,7 @@ import { apiClient } from "@/shared/services/apiClient";
 import { notify } from "@/shared/notificationSlice";
 import { readTrip, removeTrip, saveTrip } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
+import { formatAgo } from "@/shared/utils/time";
 
 /**
  * Stale-while-revalidate, like the trips list: the phone's saved copy (if
@@ -30,11 +31,28 @@ export const fetchTrip = createAsyncThunk(
   }
 );
 
+/** What to say when someone else changed (409) or removed (404) an entry
+ * while you were editing it. */
+function conflictMessage(status, detail) {
+  if (status === 404) return "That was removed by someone else. Showing the latest.";
+  const who = detail?.updatedByName ?? "Someone else";
+  const when = detail?.updatedAt ? ` ${formatAgo(detail.updatedAt)}` : "";
+  return `${who} changed this${when}. Showing the latest.`;
+}
+
+const OUT_OF_DATE = "The app has been updated. Close and reopen it, then try again.";
+
 /**
  * Edits all return the whole updated trip, which replaces the one in state —
  * so the timeline (markers included) recomputes from the server's truth.
  * A rejected edit resolves to `{ detail, errors: [{ path, message }] }` for
  * the form to show inline.
+ *
+ * Changing or deleting an entry sends the version it was read at (If-Match;
+ * api/app/services/versions.py). If someone else got there first (409) or
+ * removed it (404), there's nothing to merge: a warning says who, the trip
+ * reloads, and the edit resolves to `{ reloaded: true }` so its form closes.
+ * A 428 means this app is too old to send a version.
  */
 function tripEdit(type, request, successMessage) {
   return createAsyncThunk(type, async (args, { dispatch, getState, rejectWithValue }) => {
@@ -45,7 +63,17 @@ function tripEdit(type, request, successMessage) {
       if (successMessage) dispatch(notify({ type: "success", message: successMessage }));
       return data;
     } catch (err) {
+      const status = err.response?.status;
       const body = err.response?.data;
+      if (status === 409 || status === 404) {
+        dispatch(notify({ type: "warning", message: conflictMessage(status, body?.detail) }));
+        dispatch(fetchTrip(args.tripId));
+        return rejectWithValue({ reloaded: true, detail: null, errors: [] });
+      }
+      if (status === 428) {
+        dispatch(notify({ type: "error", message: OUT_OF_DATE }));
+        return rejectWithValue({ detail: OUT_OF_DATE, errors: [] });
+      }
       return rejectWithValue({
         detail: typeof body?.detail === "string" ? body.detail : "Couldn’t save",
         errors: Array.isArray(body?.errors) ? body.errors : [],
@@ -54,7 +82,13 @@ function tripEdit(type, request, successMessage) {
   });
 }
 
-const quiet = { silent: true };
+// `handles`: tripEdit explains these itself, so no generic error toast.
+const quiet = { silent: true, handles: [404, 409, 428] };
+
+/** Request options for changing an entry read at `version`. */
+function versioned(version) {
+  return { ...quiet, headers: { "If-Match": `"${version}"` } };
+}
 
 export const createItem = tripEdit(
   "timeline/createItem",
@@ -64,13 +98,15 @@ export const createItem = tripEdit(
 
 export const replaceItem = tripEdit(
   "timeline/replaceItem",
-  ({ tripId, itemId, item }) => apiClient.put(`/trips/${tripId}/items/${itemId}`, item, quiet),
+  ({ tripId, itemId, item, version }) =>
+    apiClient.put(`/trips/${tripId}/items/${itemId}`, item, versioned(version)),
   "Activity saved"
 );
 
 export const deleteItem = tripEdit(
   "timeline/deleteItem",
-  ({ tripId, itemId }) => apiClient.delete(`/trips/${tripId}/items/${itemId}`, quiet),
+  ({ tripId, itemId, version }) =>
+    apiClient.delete(`/trips/${tripId}/items/${itemId}`, versioned(version)),
   "Activity deleted"
 );
 
@@ -82,9 +118,11 @@ export const moveItem = tripEdit(
   null
 );
 
+// `version`: the day row's, or 0 for a date that has no row yet.
 export const updateDay = tripEdit(
   "timeline/updateDay",
-  ({ tripId, date, day }) => apiClient.put(`/trips/${tripId}/days/${date}`, day, quiet),
+  ({ tripId, date, day, version }) =>
+    apiClient.put(`/trips/${tripId}/days/${date}`, day, versioned(version)),
   "Day saved"
 );
 
@@ -96,13 +134,15 @@ export const createStay = tripEdit(
 
 export const replaceStay = tripEdit(
   "timeline/replaceStay",
-  ({ tripId, stayId, stay }) => apiClient.put(`/trips/${tripId}/stays/${stayId}`, stay, quiet),
+  ({ tripId, stayId, stay, version }) =>
+    apiClient.put(`/trips/${tripId}/stays/${stayId}`, stay, versioned(version)),
   "Stay saved"
 );
 
 export const deleteStay = tripEdit(
   "timeline/deleteStay",
-  ({ tripId, stayId }) => apiClient.delete(`/trips/${tripId}/stays/${stayId}`, quiet),
+  ({ tripId, stayId, version }) =>
+    apiClient.delete(`/trips/${tripId}/stays/${stayId}`, versioned(version)),
   "Stay deleted"
 );
 
@@ -114,14 +154,15 @@ export const createTravel = tripEdit(
 
 export const replaceTravel = tripEdit(
   "timeline/replaceTravel",
-  ({ tripId, travelId, travel }) =>
-    apiClient.put(`/trips/${tripId}/travels/${travelId}`, travel, quiet),
+  ({ tripId, travelId, travel, version }) =>
+    apiClient.put(`/trips/${tripId}/travels/${travelId}`, travel, versioned(version)),
   "Travel saved"
 );
 
 export const deleteTravel = tripEdit(
   "timeline/deleteTravel",
-  ({ tripId, travelId }) => apiClient.delete(`/trips/${tripId}/travels/${travelId}`, quiet),
+  ({ tripId, travelId, version }) =>
+    apiClient.delete(`/trips/${tripId}/travels/${travelId}`, versioned(version)),
   "Travel deleted"
 );
 

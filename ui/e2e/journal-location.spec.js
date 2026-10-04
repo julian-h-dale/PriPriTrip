@@ -25,8 +25,10 @@ test("location: a memory names the place it was written near, pins on the map, a
   await expect(card).not.toContainText("Waiting to sync");
 
   await nav.getByRole("link", { name: "Map" }).click();
-  // The memory's own pin, and the blue "you are here" dot.
-  await expect(page.locator("gmp-advanced-marker[title^='Located memory']")).toHaveCount(1);
+  // Memories show only with the Journal filter on: then the memory's own
+  // pin, and the blue "you are here" dot.
+  await page.getByRole("button", { name: "Show only memories" }).click();
+  await expect(page.locator(`gmp-advanced-marker[title^='${text}']`)).toHaveCount(1);
   await expect(page.locator("gmp-advanced-marker[title='You are here']")).toHaveCount(1);
   await page.getByRole("button", { name: "Show where I am" }).click();
   await page.waitForTimeout(1000);

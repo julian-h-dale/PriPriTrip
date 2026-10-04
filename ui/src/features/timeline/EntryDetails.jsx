@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Copy, ExternalLink, MapPin } from "lucide-react";
 import { Markdown } from "@/shared/components/Markdown";
 import { mapsUrl } from "@/shared/utils/mapsLinks";
+import { formatAgo } from "@/shared/utils/time";
 
 /** A confirmation number, with a copy button. */
 export function ConfirmationNumber({ value }) {
@@ -95,7 +96,8 @@ export function PlaceRow({ label, loc, photo = true }) {
  * expanded entries, the stays/travel quick look and the Today tab, so it
  * reads the same everywhere.
  *
- * `d` is describeEntry()'s output (facts, confirmation, notes, locations, photos).
+ * `d` is describeEntry()'s output (facts, confirmation, notes, locations,
+ * photos, and who last edited it).
  */
 export function EntryDetails({ d }) {
   return (
@@ -115,6 +117,17 @@ export function EntryDetails({ d }) {
       {d.locations.map(({ label, loc }) => (
         <PlaceRow key={label} label={label} loc={loc} photo={d.photos} />
       ))}
+      {d.edited && <EditedBy edited={d.edited} />}
     </div>
+  );
+}
+
+/** "Edited by PriPri, 2 minutes ago". Its own component so it's easy to hide
+ * later (Julian may, before the trip). */
+function EditedBy({ edited }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      Edited by {edited.name}, {formatAgo(edited.at)}
+    </p>
   );
 }

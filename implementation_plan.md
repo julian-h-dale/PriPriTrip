@@ -2624,10 +2624,31 @@ annoying in practice.
     one gives 409 with the current entry and who changed it; no header
     gives 428; an entry deleted meanwhile gives 404. `/move` doesn't change
     versions. The migration upgrades an existing database (versions 1).
-- **Phase 42 — conflicts in the UI.**
-  - `If-Match` from every edit and delete, the conflict warning and
-    reload, the 404 and 428 messages, "Edited by …" in the details, and the
-    foreground refetch.
+- **Phase 42 — conflicts in the UI.** ✅ (2026-10-04)
+  - **Built as planned. Details:**
+    - Every change and delete thunk takes the entry's `version` and sends
+      `If-Match`. Updating a day sends its row's version, or 0.
+    - **`tripEdit` handles 409, 404 and 428 in one place.** 409/404: a
+      warning toast ("PriPri changed this 2 minutes ago. Showing the
+      latest." / "That was removed by someone else."), then `fetchTrip`, and
+      the edit resolves to `{ reloaded: true }`, which closes the forms.
+      428: an error toast, and the form stays open, saying to reopen the
+      app.
+    - **The API client's generic error toast skips statuses a request
+      `handles`** (trip edits: 404, 409, 428). Without that, a 409 also
+      showed "Request failed".
+    - **"Edited by PriPri, 2 minutes ago"** is one small `EditedBy`
+      component at the end of `EntryDetails` (`formatAgo` in `time.js`),
+      easy to hide before the trip.
+    - **`useTripRefresh`** (in App) reloads the open trip when the app
+      returns to the foreground, online.
+    - **E2E:** the owner and the seed admin (an editor) open the same
+      dinner; the admin saves first, and the owner gets the warning and the
+      admin's version (screenshot `24`). The test restores the dinner and
+      leaves afterwards.
+    - Fixed a Phase 38 miss: the `journal-location` e2e assumed memory pins
+      show by default; it now turns on Journal (and matches only its own
+      memory, so a failed run's leftovers can't break the next one).
   - **Tests:** a 409 closes the form, warns with the other person's name,
     and reloads the trip; a 404 warns and reloads; a 428 says to reopen the
     app; the details show who edited an entry and when; returning to the

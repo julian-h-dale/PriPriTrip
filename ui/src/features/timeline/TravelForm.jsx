@@ -80,7 +80,8 @@ export function TravelForm({ open, onClose, trip, travel, date, prefill, onSave 
     setBusy(true);
     const result = await onSave(travelPayload(values, travel));
     setBusy(false);
-    if (result.ok) {
+    // reloaded: someone else changed or removed it; a warning already said so.
+    if (result.ok || result.reloaded) {
       onClose();
       return;
     }

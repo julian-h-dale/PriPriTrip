@@ -43,14 +43,14 @@ const fakeSearch = {
 function readTrip() {
   const trip = structuredClone(sampleTrip);
   trip.id = "trip-1";
-  trip.stays.forEach((s, i) => Object.assign(s, { id: `stay-${i}`, zone: "Europe/Zurich" }));
+  trip.stays.forEach((s, i) => Object.assign(s, { id: `stay-${i}`, zone: "Europe/Zurich", version: 1 }));
   trip.travels.forEach((t, i) =>
-    Object.assign(t, { id: `travel-${i}`, departZone: "Europe/Zurich", arriveZone: "Europe/Zurich" })
+    Object.assign(t, { id: `travel-${i}`, departZone: "Europe/Zurich", arriveZone: "Europe/Zurich", version: 1 })
   );
   Object.assign(trip.travels[0], { departZone: "America/Chicago" });
   Object.assign(trip.travels[3], { arriveZone: "America/Chicago" });
   trip.days.forEach((day, d) =>
-    day.items.forEach((item, i) => Object.assign(item, { id: `item-${d}-${i}`, zone: "Europe/Zurich" }))
+    day.items.forEach((item, i) => Object.assign(item, { id: `item-${d}-${i}`, zone: "Europe/Zurich", version: 1 }))
   );
   return trip;
 }
@@ -138,7 +138,11 @@ describe("stays", () => {
     expect(confirm).toHaveTextContent("removed from every day it covers");
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 
-    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/stays/stay-1", { silent: true });
+    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/stays/stay-1", {
+      silent: true,
+      handles: [404, 409, 428],
+      headers: { "If-Match": '"1"' },
+    });
     expect(screen.queryByText(/Staying at Beausite/)).not.toBeInTheDocument();
   });
 });
