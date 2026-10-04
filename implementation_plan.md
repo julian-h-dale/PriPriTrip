@@ -2241,7 +2241,25 @@ ours. "Add photos" stays for the gallery.
       expired token or an inactive user gets 401.
     - UI: a token over a day old is refreshed on start and stored; a fresh
       one isn't; offline or a failed refresh leaves the old token in place.
-- **Phase 36 — photos wait for an upload (UI).**
+- **Phase 36 — photos wait for an upload (UI).** ✅
+  - **Built as planned, plus:**
+    - **Two counts instead of one:** memory writes (they drive the 30 s
+      retry and the sign-out warning) and waiting photos with their size.
+      Counting held photos as "pending" would have retried every 30 s
+      forever.
+    - **Save to phone lives in the viewer** (tap a waiting thumbnail). The
+      file is read ahead when the photo is shown, because iOS only opens
+      the share sheet straight after a tap.
+    - **The bar counts photos across all trips,** because Upload sends
+      them all. It's disabled offline.
+    - **Fixed, found by the parallel e2e run:** a memory whose photos were
+      waiting could vanish from the journal on reconnect (the
+      refresh/sync race from Phase 33: held photos made the memory look
+      unsent). A regression test fails without the fix.
+    - **Also fixed:** the sharing e2e test now looks for "Shared with you"
+      on the sample trip only (the Athens demo trip is shared too).
+    - **Live:** the updated `journal-photos.spec.js` passes; the full live
+      suite passed 5 runs in a row.
   - Held `addPhoto` entries, the upload bar with progress, waiting
     thumbnails from local bytes, Save to phone, the warnings,
     `storage.persist()`.

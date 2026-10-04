@@ -94,6 +94,15 @@ export function pending(userId) {
   }, []);
 }
 
+/** A photo still waiting to upload, as a File from the phone's stored copy (null if gone). */
+export function pendingPhotoFile(userId, photoId) {
+  if (!userId) return Promise.resolve(null);
+  return safely(async () => {
+    const file = (await get(key(userId, `photo-${photoId}`), db()))?.body?.file;
+    return file ? new File([file.bytes], file.name, { type: file.type }) : null;
+  });
+}
+
 /** Drop a write once it has reached the server (or can never succeed). */
 export function done(userId, entryId) {
   if (!userId) return Promise.resolve();

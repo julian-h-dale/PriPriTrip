@@ -21,9 +21,17 @@
     (`routers/auth_refresh.py`) swaps a valid token for a fresh 60-day one.
     `useTokenRefresh` (in App) calls it on start and on returning to the
     foreground, online, when the token is over a day old. Failures are
-    quiet and keep the old token. Not deployed yet.
-  - **Next:** Phase 36 (photos wait for a manual Upload; a warning and Save
-    to phone).
+    quiet and keep the old token.
+  - **Phase 36 ✅ (photos wait for Upload):** `syncOutbox` skips `addPhoto`
+    unless `{ photos: true }` (`uploadPhotos`). An upload bar on the
+    Journal shows the count, size and progress, plus the camera-roll
+    warning. "Save to phone" (share sheet, or download) is in the viewer
+    for waiting photos. There's a stronger sign-out warning, and
+    `storage.persist()` at startup.
+    Fixed: a memory with waiting photos could vanish on reconnect.
+  - Phases 35–36 deployed to Fly from `run-stage-5`.
+  - **Waiting on Julian:** on a real phone: Take photo, the warning, Save to
+    phone, Upload on Wi-Fi.
   - **Live on Fly, still to do (Julian):** `fly volumes extend` (the volume
     is 1 GB and photos are live) and the `SEED_*` secrets (none set, so the
     seed accounts likely have their default passwords).

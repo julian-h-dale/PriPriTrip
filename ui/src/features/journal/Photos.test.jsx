@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -88,7 +88,7 @@ beforeEach(async () => {
 });
 
 describe("adding photos to a memory", () => {
-  it("queues the memory first, then each photo with its own id, and uploads them in that order", async () => {
+  it("sends the memory at once; its photos wait for Upload, then go in the order picked", async () => {
     const user = userEvent.setup();
     const posts = [];
     apiClient.post.mockImplementation(async (url, body) => {
@@ -96,22 +96,37 @@ describe("adding photos to a memory", () => {
       if (body instanceof FormData) return { data: photo(body.get("id")) };
       return { data: { ...body, photos: [], mine: true, authorEmail: "user@example.com", receivedAt: body.createdAt } };
     });
-    renderJournal();
+    const store = renderJournal();
     await user.click(await screen.findByRole("button", { name: "New memory" }));
     const dialog = screen.getByRole("dialog", { name: "New memory" });
     await user.type(within(dialog).getByLabelText("What happened?"), "Two photos");
-    await user.upload(within(dialog).getByLabelText("Choose photos"), [picture("a.jpg"), picture("b.jpg")]);
+    const MB = 1024 * 1024;
+    await user.upload(within(dialog).getByLabelText("Choose photos"), [picture("a.jpg", 1.5 * MB), picture("b.jpg", 1.5 * MB)]);
     expect(within(dialog).getAllByRole("button", { name: /^Remove new photo/ })).toHaveLength(2);
+    expect(within(dialog).getByText(/wait on this phone until you tap Upload/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(posts).toHaveLength(3));
+    // The memory syncs by itself; the photos stay on the phone.
+    const bar = await screen.findByRole("region", { name: "Photos waiting to upload" });
+    expect(within(bar).getByText("2 photos waiting · 3.0 MB")).toBeInTheDocument();
+    expect(within(bar).getByText(/aren’t in your camera roll/)).toBeInTheDocument();
+    await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0].url).toBe("/trips/trip-1/memories");
+    expect(await pending(USER)).toHaveLength(2);
+
+    await user.click(within(bar).getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(posts).toHaveLength(3));
+    await waitFor(() =>
+      expect(store.getState().notification.items.map((n) => n.message)).toContain("Photos uploaded")
+    );
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Photos waiting to upload" })).not.toBeInTheDocument());
     const memoryId = posts[0].body.id;
     for (const p of posts.slice(1)) {
       expect(p.url).toBe(`/trips/trip-1/memories/${memoryId}/photos`);
       expect(p.body.get("id")).toMatch(/^[0-9a-f-]{36}$/);
       expect(p.body.get("file")).toBeInstanceOf(Blob);
     }
+    expect(posts.slice(1).map((p) => p.body.get("file").name)).toEqual(["a.jpg", "b.jpg"]);
     await waitFor(async () => expect(await pending(USER)).toEqual([]));
     // The strip now shows the uploaded thumbnails from the API.
     const card = screen.getByText("Two photos").closest("li");
@@ -119,6 +134,42 @@ describe("adding photos to a memory", () => {
     expect(imgs.map((i) => i.getAttribute("src"))).toEqual(
       posts.slice(1).map((p) => `${appConfig.apiBaseUrl}/photos/${p.body.get("id")}/thumb`)
     );
+  });
+
+  it("an interrupted upload stops, says so, and carries on later without sending a photo twice", async () => {
+    const user = userEvent.setup();
+    const sent = [];
+    let dropNext = false;
+    apiClient.post.mockImplementation(async (url, body) => {
+      if (body instanceof FormData) {
+        if (dropNext) {
+          dropNext = false;
+          throw new Error("Network Error"); // no response: the signal dropped
+        }
+        sent.push(body.get("file").name);
+        if (sent.length === 1) dropNext = true;
+        return { data: photo(body.get("id")) };
+      }
+      return { data: { ...body, photos: [], mine: true, authorEmail: "user@example.com", receivedAt: body.createdAt } };
+    });
+    const store = renderJournal();
+    await user.click(await screen.findByRole("button", { name: "New memory" }));
+    const dialog = screen.getByRole("dialog", { name: "New memory" });
+    await user.type(within(dialog).getByLabelText("What happened?"), "Three photos");
+    await user.upload(within(dialog).getByLabelText("Choose photos"), [picture("a.jpg"), picture("b.jpg"), picture("c.jpg")]);
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    const bar = await screen.findByRole("region", { name: "Photos waiting to upload" });
+    await waitFor(() => expect(within(bar).getByText(/^3 photos waiting/)).toBeInTheDocument());
+    await user.click(within(bar).getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(within(bar).getByText(/^2 photos waiting/)).toBeInTheDocument());
+    expect(store.getState().notification.items.map((n) => n.message)).toContain(
+      "Upload stopped: 2 photos are still on this phone. Tap Upload to carry on."
+    );
+
+    await user.click(within(bar).getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Photos waiting to upload" })).not.toBeInTheDocument());
+    expect(sent).toEqual(["a.jpg", "b.jpg", "c.jpg"]);
   });
 
   it("refuses photos over 25 MB and more than 10", async () => {
@@ -187,5 +238,57 @@ describe("looking at photos", () => {
     expect(shown()).toBe(`${appConfig.apiBaseUrl}/photos/p2/original`);
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Save to phone, for a photo still waiting to upload", () => {
+  async function openWaitingPhoto(user) {
+    apiClient.post.mockImplementation(async (url, body) => ({
+      data: { ...body, photos: [], mine: true, authorEmail: "user@example.com", receivedAt: body.createdAt },
+    }));
+    renderJournal();
+    await user.click(await screen.findByRole("button", { name: "New memory" }));
+    const dialog = screen.getByRole("dialog", { name: "New memory" });
+    await user.type(within(dialog).getByLabelText("What happened?"), "Sunset");
+    await user.upload(within(dialog).getByLabelText("Take a photo"), picture("shot.jpg"));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await user.click(await screen.findByRole("button", { name: "Photo 1 of 1" }));
+    const viewer = screen.getByRole("dialog", { name: "Photo 1 of 1" });
+    expect(within(viewer).queryByRole("link", { name: "Download original" })).not.toBeInTheDocument();
+    const save = within(viewer).getByRole("button", { name: "Save to phone" });
+    await waitFor(() => expect(save).toBeEnabled()); // the file is read ahead
+    return save;
+  }
+
+  function stub(name, value) {
+    Object.defineProperty(navigator, name, { value, configurable: true, writable: true });
+  }
+  afterEach(() => {
+    delete navigator.share;
+    delete navigator.canShare;
+    vi.restoreAllMocks();
+  });
+
+  it("opens the share sheet with the photo's own file", async () => {
+    const user = userEvent.setup();
+    const share = vi.fn(async () => {});
+    stub("canShare", () => true);
+    stub("share", share);
+    await user.click(await openWaitingPhoto(user));
+    expect(share).toHaveBeenCalledTimes(1);
+    const [file] = share.mock.calls[0][0].files;
+    expect(file).toBeInstanceOf(File);
+    expect(file.name).toBe("shot.jpg");
+    expect(file.size).toBe(1000);
+  });
+
+  it("downloads it where the browser can't share files", async () => {
+    const user = userEvent.setup();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    URL.createObjectURL ??= () => "blob:x";
+    URL.revokeObjectURL ??= () => {};
+    await user.click(await openWaitingPhoto(user));
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(click.mock.contexts[0].download).toBe("shot.jpg");
   });
 });

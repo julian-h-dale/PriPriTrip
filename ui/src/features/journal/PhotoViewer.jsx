@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Download, Maximize2, X } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { ChevronLeft, ChevronRight, Download, Maximize2, Save, X } from "lucide-react";
 import { photoSrc } from "@/features/journal/photoUrls";
+import { saveToPhone } from "@/features/journal/saveToPhone";
+import { notify } from "@/shared/notificationSlice";
+import { pendingPhotoFile } from "@/shared/services/outbox";
+import { userIdFromToken } from "@/shared/utils/authToken";
 
 const SWIPE_MIN_PX = 60;
 
 /**
  * Full-screen photos: the display copy (fast), swipe or arrows between them,
  * "Full quality" to load the original — then pinch-zoom as on any page —
- * and "Download original".
+ * and "Download original". A photo still waiting to upload has "Save to
+ * phone" instead: one taken in the app isn't in the camera roll.
  */
 export function PhotoViewer({ photos, start = 0, onClose }) {
+  const dispatch = useDispatch();
+  const userId = useSelector((s) => userIdFromToken(s.auth?.token));
   const [index, setIndex] = useState(start);
   const [full, setFull] = useState(false);
   const touch = useRef(null);
@@ -32,6 +40,24 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- go only reads setters
   }, []);
+
+  // A waiting photo's file is read ahead, so the tap shares it at once:
+  // iOS only opens the share sheet straight after a tap.
+  const [file, setFile] = useState(null);
+  useEffect(() => {
+    setFile(null);
+    if (!photo?.pending) return undefined;
+    let live = true;
+    pendingPhotoFile(userId, photo.id).then((f) => live && setFile(f));
+    return () => {
+      live = false;
+    };
+  }, [userId, photo?.id, photo?.pending]);
+
+  async function save() {
+    const outcome = await saveToPhone(file);
+    if (outcome === "downloaded") dispatch(notify({ type: "success", message: "Photo downloaded" }));
+  }
 
   if (!photo) return null;
   const button =
@@ -73,6 +99,17 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
             <a href={photoSrc(photo.originalUrl)} download className={button} aria-label="Download original">
               <Download className="h-5 w-5" aria-hidden="true" />
             </a>
+          )}
+          {photo.pending && (
+            <button
+              type="button"
+              onClick={save}
+              disabled={!file}
+              className={`${button} flex items-center gap-1.5 text-sm disabled:opacity-60`}
+            >
+              <Save className="h-5 w-5" aria-hidden="true" />
+              Save to phone
+            </button>
           )}
         </div>
       </div>

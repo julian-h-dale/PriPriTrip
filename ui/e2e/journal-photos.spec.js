@@ -6,7 +6,7 @@ import { login, screenshotPath, tripLink } from "./helpers.js";
 
 const LAKE = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "lake.jpg");
 
-test("photos: added offline, uploaded when back online, viewed full screen", async ({ page, context }) => {
+test("photos: added offline, held on the phone until Upload, viewed full screen", async ({ page, context }) => {
   const text = `Photo memory ${Date.now()}`;
   await login(page);
   await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
@@ -30,7 +30,16 @@ test("photos: added offline, uploaded when back online, viewed full screen", asy
     if (r.request().method() === "POST" && /\/memories\/[^/]+\/photos$/.test(r.url())) uploads.push(r.status());
   });
   await context.setOffline(false);
+  // Back online, the memory syncs by itself but its photos wait for Upload.
+  await expect(card.getByText("Waiting to sync")).toHaveCount(0);
+  const bar = page.getByRole("region", { name: "Photos waiting to upload" });
+  await expect(bar).toContainText("2 photos waiting");
+  await expect(card.getByTitle("Waiting to upload")).toHaveCount(2);
+  expect(uploads).toEqual([]);
+  await page.screenshot({ path: screenshotPath("29a-photos-waiting"), fullPage: true });
+  await bar.getByRole("button", { name: "Upload" }).click();
   await expect(card.getByTitle("Waiting to upload")).toHaveCount(0);
+  await expect(bar).toHaveCount(0);
   expect(uploads).toEqual([201, 201]);
   await expect(card.locator("img")).toHaveCount(2);
   await page.screenshot({ path: screenshotPath("29-journal-photos"), fullPage: true });

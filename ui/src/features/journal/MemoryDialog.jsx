@@ -345,6 +345,11 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
             </Button>
           </div>
           {photos.problem && <p className="text-xs text-warning">{photos.problem}</p>}
+          {photos.added.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              New photos wait on this phone until you tap Upload in the Journal.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>

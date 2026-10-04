@@ -51,8 +51,17 @@ async function toPhotoEntry(file) {
   };
 }
 
+/** Recount what's waiting: memory writes (sent automatically) and photos (sent on Upload). */
 async function refreshPendingCount(dispatch, getState) {
-  dispatch(pendingCountChanged((await pending(userOf(getState))).length));
+  const ops = await pending(userOf(getState));
+  const photos = ops.filter((op) => op.op === "addPhoto");
+  dispatch(
+    pendingCountChanged({
+      memories: ops.length - photos.length,
+      photos: photos.length,
+      photoBytes: photos.reduce((n, op) => n + (op.body.file?.bytes?.byteLength ?? 0), 0),
+    })
+  );
 }
 
 export const fetchMemories = createAsyncThunk(
@@ -72,7 +81,8 @@ export const fetchMemories = createAsyncThunk(
       const { data } = await apiClient.get(`/trips/${tripId}/memories`, { silent: true, offlineOk: true });
       await saveMemories(userId, tripId, data);
       const after = await pending(userId);
-      const stillQueued = new Set(after.map((op) => op.memoryId));
+      // Memory writes only: photos waiting for Upload don't make the memory itself unsent.
+      const stillQueued = new Set(after.filter((op) => !isPhotoOp(op)).map((op) => op.memoryId));
       const onServer = new Set(data.map((m) => m.id));
       const { items, tripId: shown } = getState().journal;
       const syncedMeanwhile =
@@ -127,48 +137,74 @@ const forAction = (op) => (isPhotoOp(op) ? { ...op, body: { photoId: op.body.pho
 let syncing = null;
 
 /**
- * Send everything in the outbox, oldest first. Stops at the first network
- * failure or server error (try again later) or a 401 (signed out; the outbox
- * is kept for after signing in). A write the server rejects for good — 404
- * (no longer on the trip), 409, 422 — is dropped with a toast, since
- * retrying can't help. One sync runs at a time; a request during one runs
- * again after it.
+ * Send the outbox, oldest first. Photos wait on the phone until the user
+ * taps Upload (`{ photos: true }`, see `uploadPhotos`): a web app can't tell
+ * Wi-Fi from cellular, so they choose when. Everything else — memories,
+ * edits, deletes, photo removals — goes whenever this runs.
+ *
+ * Stops at the first network failure or server error (try again later) or a
+ * 401 (signed out; the outbox is kept for after signing in). A write the
+ * server rejects for good — 404 (no longer on the trip), 409, 422 — is
+ * dropped with a toast, since retrying can't help. One sync runs at a time;
+ * a request during one runs again after it.
  */
-export const syncOutbox = () => (dispatch, getState) => {
-  // Asked again mid-sync (e.g. the connection just came back while an
-  // offline pass was finishing): run once more right after, never drop it.
-  if (syncing) return syncing.then(() => dispatch(syncOutbox()));
-  syncing = (async () => {
-    try {
-      const userId = userOf(getState);
-      for (const op of await pending(userId)) {
-        if (getState().network?.online === false) break;
-        try {
-          const { data } = await SEND[op.op](op);
-          await done(userId, op.entryId ?? op.memoryId);
-          dispatch(synced({ op: forAction(op), data: data ?? null }));
-        } catch (err) {
-          const status = err.response?.status;
-          if (!status || status === 401 || status >= 500) break; // try again later
-          await done(userId, op.entryId ?? op.memoryId);
-          dispatch(syncFailed({ op: forAction(op) }));
-          dispatch(
-            notify({
-              type: "error",
-              message: isPhotoOp(op)
-                ? "A photo couldn’t be uploaded and was dropped."
-                : "A memory couldn’t be saved and was dropped.",
-            })
-          );
+export const syncOutbox =
+  ({ photos = false } = {}) =>
+  (dispatch, getState) => {
+    // Asked again mid-sync (e.g. the connection just came back while an
+    // offline pass was finishing): run once more right after, never drop it.
+    if (syncing) return syncing.then(() => dispatch(syncOutbox({ photos })));
+    syncing = (async () => {
+      try {
+        const userId = userOf(getState);
+        const ops = (await pending(userId)).filter((op) => photos || op.op !== "addPhoto");
+        const uploads = ops.filter((op) => op.op === "addPhoto").length;
+        if (uploads) dispatch(uploadProgress({ done: 0, total: uploads }));
+        let uploaded = 0;
+        for (const op of ops) {
+          if (getState().network?.online === false) break;
+          try {
+            const { data } = await SEND[op.op](op);
+            await done(userId, op.entryId ?? op.memoryId);
+            dispatch(synced({ op: forAction(op), data: data ?? null }));
+            if (op.op === "addPhoto") dispatch(uploadProgress({ done: ++uploaded, total: uploads }));
+          } catch (err) {
+            const status = err.response?.status;
+            if (!status || status === 401 || status >= 500) break; // try again later
+            await done(userId, op.entryId ?? op.memoryId);
+            dispatch(syncFailed({ op: forAction(op) }));
+            dispatch(
+              notify({
+                type: "error",
+                message: isPhotoOp(op)
+                  ? "A photo couldn’t be uploaded and was dropped."
+                  : "A memory couldn’t be saved and was dropped.",
+              })
+            );
+          }
         }
+        await persist(getState);
+        await refreshPendingCount(dispatch, getState);
+      } finally {
+        dispatch(uploadProgress(null));
+        syncing = null;
       }
-      await persist(getState);
-      await refreshPendingCount(dispatch, getState);
-    } finally {
-      syncing = null;
-    }
-  })();
-  return syncing;
+    })();
+    return syncing;
+  };
+
+/** Upload the photos waiting on this phone (and anything else queued), then say how it went. */
+export const uploadPhotos = () => async (dispatch, getState) => {
+  await dispatch(syncOutbox({ photos: true }));
+  const left = getState().journal.waitingPhotos.count;
+  dispatch(
+    left === 0
+      ? notify({ type: "success", message: "Photos uploaded" })
+      : notify({
+          type: "error",
+          message: `Upload stopped: ${left} ${left === 1 ? "photo is" : "photos are"} still on this phone. Tap Upload to carry on.`,
+        })
+  );
 };
 
 const isOnline = (getState) => getState().network?.online !== false;
@@ -275,7 +311,15 @@ export const deleteMemory =
 
 const journalSlice = createSlice({
   name: "journal",
-  initialState: { tripId: null, items: [], status: "idle", stale: false, pendingCount: 0 },
+  initialState: {
+    tripId: null,
+    items: [],
+    status: "idle",
+    stale: false,
+    pendingCount: 0, // memory writes waiting (they go automatically)
+    waitingPhotos: { count: 0, bytes: 0 }, // photos waiting for Upload
+    upload: null, // { done, total } while uploading
+  },
   reducers: {
     memoriesLoaded(state, action) {
       if (state.tripId !== action.payload.tripId) return;
@@ -331,7 +375,12 @@ const journalSlice = createSlice({
       }
     },
     pendingCountChanged(state, action) {
-      state.pendingCount = action.payload;
+      const { memories, photos, photoBytes } = action.payload;
+      state.pendingCount = memories;
+      state.waitingPhotos = { count: photos, bytes: photoBytes };
+    },
+    uploadProgress(state, action) {
+      state.upload = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -358,10 +407,22 @@ const journalSlice = createSlice({
   },
 });
 
-const { memoriesLoaded, localWrite, synced, syncFailed, pendingCountChanged } = journalSlice.actions;
+const { memoriesLoaded, localWrite, synced, syncFailed, pendingCountChanged, uploadProgress } =
+  journalSlice.actions;
 export default journalSlice.reducer;
 
-/** How many of your memories haven't reached the server yet. */
+/** How many of your memory writes haven't reached the server yet (photos not counted). */
 export function selectPendingMemories(state) {
   return state.journal?.pendingCount ?? 0;
+}
+
+const NO_PHOTOS = { count: 0, bytes: 0 };
+/** Photos waiting on this phone for Upload: { count, bytes }. */
+export function selectWaitingPhotos(state) {
+  return state.journal?.waitingPhotos ?? NO_PHOTOS;
+}
+
+/** { done, total } while photos are uploading, else null. */
+export function selectUpload(state) {
+  return state.journal?.upload ?? null;
 }
