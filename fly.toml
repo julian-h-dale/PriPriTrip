@@ -4,7 +4,7 @@
 # Before first deploy, set the JWT secret (never bake it into the image):
 #   fly secrets set JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
 
-app = "your-app-name"
+app = "pripri-trip"
 primary_region = "iad"
 
 [build]

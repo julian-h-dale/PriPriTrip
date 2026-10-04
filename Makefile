@@ -1,13 +1,14 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed migrate reset-db schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed migrate reset-db seed-remote schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
 	@echo "  setup         Install backend + frontend dependencies (creates api/.env)"
 	@echo "  seed          Create seed users + sample data (idempotent)"
 	@echo "  migrate       Upgrade the database to the latest schema (Alembic)"
+	@echo "  seed-remote   Seed the Fly app's database (FLY_APP=pripri-trip); run after fly deploy"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
@@ -40,6 +41,12 @@ seed:
 #   cd api && alembic revision --autogenerate -m "what changed"   (then review it)
 migrate:
 	cd api && . .venv/bin/activate && python -m app.migrate
+
+# Seed the deployed Fly app. The seed data ships inside the image, so `fly deploy`
+# first if it changed. Idempotent, same as `make seed`. Needs flyctl logged in.
+FLY_APP ?= pripri-trip
+seed-remote:
+	fly ssh console -a $(FLY_APP) -C "python -m app.seed"
 
 # Deletes the database DATABASE_URL names (a worktree's own, too — this used
 # to hardcode api/data/app.db), migrates a fresh one, and re-seeds.
