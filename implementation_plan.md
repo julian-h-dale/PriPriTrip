@@ -2399,8 +2399,15 @@ to passing the SVG element as `glyph`.
     sample had no place ids (`buildMapMarkers`, and the day page's map
     link, which now carries `query_place_id`); they now expect the real
     ones. Nothing fetches the `imgRef` URLs in a test.
-- **Phase 38 — map filters and outline pins (UI).**
-  - The either-or filter and its default; Lucide pin glyphs.
+- **Phase 38 — map filters and outline pins (UI).** ✅ (2026-10-04)
+  - **Built as planned, plus:**
+    - The pin icons come from the vanilla **`lucide`** package (`^0.469.0`,
+      the same version as lucide-react). lucide-react doesn't export its
+      icon shapes, and `react-dom/server` would be a large extra download
+      for a few icons. `glyphSrc` with an SVG data URL works on the live
+      map (checked in Chromium at 375px).
+    - The picked-Google-place pin's "+" is the outline `Plus` icon too.
+    - The buttons are labelled "Show only memories" and "Show only stays".
   - **Tests:** `mapFilters.test.js`: the default hides memories; `"memories"`
     shows only memories; `"stays"` shows only stays; the date combines with
     each. `MapControls`: turning Journal on turns the house off and the

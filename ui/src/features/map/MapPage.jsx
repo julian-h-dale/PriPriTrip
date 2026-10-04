@@ -9,7 +9,7 @@ import { memoryMarkers } from "@/features/map/memoryMarkers";
 import { MapControls } from "@/features/map/MapControls";
 import { MapInfoContent } from "@/features/map/MapInfoContent";
 import { filterMarkers } from "@/features/map/mapFilters";
-import { colorFor, directionsUrl, glyphFor, iconFor } from "@/features/map/mapStyle";
+import { colorFor, directionsUrl, glyphSrcFor, iconFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import { isArea } from "@/features/map/placeActions";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { stayCoverage } from "@/features/timeline/coverageView";
@@ -123,7 +123,8 @@ function TripMap({ trip }) {
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
-  const [stayOnly, setStayOnly] = useState(false);
+  // The "what" filter: null (the trip's places), "stays" or "memories".
+  const [only, setOnly] = useState(null);
   const [date, setDate] = useState("");
   // null | { kind: "trip", marker } | { kind: "place", place, types }
   const [info, setInfo] = useState(null);
@@ -137,7 +138,6 @@ function TripMap({ trip }) {
     () => [...buildMapMarkers(trip), ...memoryMarkers(journal ?? [])],
     [trip, journal]
   );
-  const [showMemories, setShowMemories] = useState(true);
   // The blue "you are here" dot: { marker, circle, stop, last } once watching.
   const meRef = useRef(null);
   const [locating, setLocating] = useState(false);
@@ -223,13 +223,13 @@ function TripMap({ trip }) {
     const map = mapRef.current;
 
     entriesRef.current.forEach(({ element }) => (element.map = null));
-    entriesRef.current = filterMarkers(markers, { stayOnly, date: date || null, memories: showMemories }).map((marker) => {
+    entriesRef.current = filterMarkers(markers, { only, date: date || null }).map((marker) => {
       const color = colorFor(marker);
       const pin = new PinElement({
         background: color,
         borderColor: color,
         glyphColor: "#fff",
-        glyphText: glyphFor(marker),
+        glyphSrc: glyphSrcFor(marker),
       });
       const advanced = new AdvancedMarkerElement({
         map,
@@ -244,11 +244,11 @@ function TripMap({ trip }) {
       return { element: advanced, data: marker };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openInfoWindow closes over refs/setters only
-  }, [ready, markers, stayOnly, date, showMemories]);
+  }, [ready, markers, only, date]);
 
   const visibleMarkers = useMemo(
-    () => filterMarkers(markers, { stayOnly, date: date || null, memories: showMemories }),
-    [markers, stayOnly, date, showMemories]
+    () => filterMarkers(markers, { only, date: date || null }),
+    [markers, only, date]
   );
 
   function selectMarker(marker) {
@@ -368,8 +368,7 @@ function TripMap({ trip }) {
     const pin = new PinElement({
       background: "#ffffff",
       borderColor: "#12151c",
-      glyphColor: "#12151c",
-      glyphText: "+",
+      glyphSrc: NEW_PLACE_GLYPH_SRC,
     });
     const marker = new AdvancedMarkerElement({ map, position, title: place.name, content: pin, zIndex: 1000 });
     marker.addListener("click", () => openInfoWindow({ kind: "place", place, types }, marker));
@@ -441,10 +440,8 @@ function TripMap({ trip }) {
           online={online}
           resultName={result?.place.name ?? null}
           onClearResult={clearResult}
-          stayOnly={stayOnly}
-          onToggleStayOnly={() => setStayOnly((v) => !v)}
-          showMemories={showMemories}
-          onToggleMemories={() => setShowMemories((v) => !v)}
+          only={only}
+          onOnlyChange={setOnly}
           onLocate={locateMe}
           locating={locating}
           date={date}

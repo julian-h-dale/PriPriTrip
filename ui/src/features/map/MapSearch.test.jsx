@@ -13,6 +13,7 @@ import notificationReducer from "@/shared/notificationSlice";
 import { MapPage } from "@/features/map/MapPage";
 import { apiClient } from "@/shared/services/apiClient";
 import { createPlacesSearch } from "@/shared/services/googlePlaces";
+import { glyphSrcFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
@@ -202,7 +203,7 @@ describe("map search with Google places", () => {
 
     expect(await screen.findByText("Not in this trip")).toBeInTheDocument();
     expect(fake.map.setZoom).toHaveBeenLastCalledWith(15);
-    expect(fake.markers.at(-1).content.glyphText).toBe("+");
+    expect(fake.markers.at(-1).content.glyphSrc).toBe(NEW_PLACE_GLYPH_SRC);
     // A café: Add activity only, the rest behind More…
     expect(screen.getByRole("button", { name: "Add activity" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add stay" })).not.toBeInTheDocument();
@@ -246,7 +247,7 @@ describe("map search with Google places", () => {
     const list = await search("Bern");
     await userEvent.click(within(await within(list).findByRole("option", { name: /^Bern/ })).getByRole("button"));
     await waitFor(() => expect(fake.map.setZoom).toHaveBeenLastCalledWith(12));
-    expect(fake.markers.some((m) => m.content.glyphText === "+")).toBe(false);
+    expect(fake.markers.some((m) => m.content.glyphSrc === NEW_PLACE_GLYPH_SRC)).toBe(false);
     expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
   });
 
@@ -270,20 +271,48 @@ describe("map search with Google places", () => {
 });
 
 describe("memories and the blue dot on the map", () => {
-  const glyphs = () => fake.markers.filter((m) => m.map !== null).map((m) => m.content?.glyphText);
+  const MEMORY = glyphSrcFor({ kind: "memory" });
+  const STAY = glyphSrcFor({ kind: "stay" });
+  const shown = () => fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc);
+  const glyphs = () => shown().map((m) => m.content.glyphSrc);
 
-  it("shows memories with a location as their own pins, and the toggle hides them", async () => {
+  it("hides memories by default; Journal shows only memories", async () => {
     const user = userEvent.setup();
     renderMap();
-    await waitFor(() => expect(glyphs()).toContain("✎"));
-    expect(glyphs().filter((g) => g === "✎")).toHaveLength(1); // only the one with a location
-    const pin = fake.markers.find((m) => m.content?.glyphText === "✎" && m.map !== null);
+    const journal = await screen.findByRole("button", { name: "Show only memories" });
+    await waitFor(() => expect(glyphs()).toContain(STAY));
+    expect(journal).toHaveAttribute("aria-pressed", "false");
+    expect(glyphs()).not.toContain(MEMORY);
+
+    await user.click(journal);
+    await waitFor(() => expect(glyphs()).toContain(MEMORY));
+    expect(glyphs()).toEqual([MEMORY]); // only the one memory with a location
+    const pin = shown()[0];
     act(() => pin.listeners.click());
     expect(await screen.findByText("Fondue was huge")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open journal" })).toHaveAttribute("href", "/trips/trip-1/journal");
 
-    await user.click(screen.getByRole("button", { name: "Show memories" }));
-    await waitFor(() => expect(glyphs()).not.toContain("✎"));
+    await user.click(journal);
+    await waitFor(() => expect(glyphs()).not.toContain(MEMORY));
+    expect(glyphs()).toContain(STAY);
+  });
+
+  it("Journal and House are either-or", async () => {
+    const user = userEvent.setup();
+    renderMap();
+    const journal = await screen.findByRole("button", { name: "Show only memories" });
+    const house = screen.getByRole("button", { name: "Show only stays" });
+
+    await user.click(journal);
+    await user.click(house);
+    expect(house).toHaveAttribute("aria-pressed", "true");
+    expect(journal).toHaveAttribute("aria-pressed", "false");
+    await waitFor(() => expect(new Set(glyphs())).toEqual(new Set([STAY])));
+
+    await user.click(journal);
+    expect(journal).toHaveAttribute("aria-pressed", "true");
+    expect(house).toHaveAttribute("aria-pressed", "false");
+    await waitFor(() => expect(glyphs()).toEqual([MEMORY]));
   });
 
   it("locate me: asks, then shows a blue dot with an honest accuracy circle and follows it", async () => {
