@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { ImagePlus, MapPin, MapPinOff, X } from "lucide-react";
+import { Camera, ImagePlus, MapPin, MapPinOff, X } from "lucide-react";
 import { MAX_PHOTO_BYTES, MAX_PHOTOS, createMemory, updateMemory } from "@/features/journal/journalSlice";
 import { photoSrc } from "@/features/journal/photoUrls";
 import { locationLabel } from "@/features/journal/nearestPlace";
@@ -98,9 +98,10 @@ function PhotoTile({ src, label, onRemove }) {
 }
 
 /**
- * Photos for a memory: "Add photos" opens the phone's own menu (camera,
- * photo library, files) — no camera code of ours, and choosing a photo is
- * the permission. New picks preview from the phone's copy; existing ones
+ * Photos for a memory: "Take photo" opens the phone's camera app
+ * (`capture`), and "Add photos" opens the phone's own picker (the library;
+ * iOS also offers the camera there, recent Android doesn't). No camera code
+ * of ours, and taking or choosing a photo is the permission. New picks preview from the phone's copy; existing ones
  * (when editing) can be removed. At most 10, 25 MB each.
  */
 function usePhotoPicks(existing) {
@@ -170,6 +171,7 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
   const here = useNewMemoryLocation(open && !memory);
   const photos = usePhotoPicks(memory?.photos ?? []);
   const fileInput = useRef(null);
+  const cameraInput = useRef(null);
   const trimmed = text.trim();
 
   async function handleSubmit(e) {
@@ -294,7 +296,30 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
               ))}
             </div>
           )}
-          <div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={cameraInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              aria-label="Take a photo"
+              tabIndex={-1}
+              onChange={(e) => {
+                photos.add(e.target.files ?? []);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={photos.room <= 0}
+              onClick={() => cameraInput.current?.click()}
+            >
+              <Camera className="h-4 w-4" aria-hidden="true" />
+              Take photo
+            </Button>
             <input
               ref={fileInput}
               type="file"

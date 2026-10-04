@@ -2215,7 +2215,10 @@ ours. "Add photos" stays for the gallery.
 
 ### Phases
 
-- **Phase 34 — Take photo (UI).**
+- **Phase 34 — Take photo (UI).** ✅
+  - **Built as planned.** Disabled at 10 photos, like "Add photos".
+    Checked at 375px in a Playwright screenshot (both buttons fit on one
+    line).
   - The "Take photo" button and its `capture="environment"` input.
   - **Tests:** the button's input has `capture="environment"` and no
     `multiple`; a picked file joins the previews like "Add photos".

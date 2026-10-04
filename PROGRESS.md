@@ -6,10 +6,25 @@
 
 ## Status
 
-- **Current work (2026-10-03): Run stage 4** on the **`journal-memories`
+- **Current work (2026-10-03): Run stage 5** on branch **`run-stage-5`**
+  (off `main`, which has Run stage 4 merged (PR #7) and is deployed to Fly).
+  Main checkout, ports 8000/3000. Plan: `implementation_plan.md`, "Run
+  stage 5".
+  - **Fixed first (baseline was flaky):** outbox queue times are strictly
+    increasing, so photos picked together upload in the order picked
+    (`Photos.test.jsx` failed about 1 run in 5).
+  - **Phase 34 ✅ (Take photo):** a "Take photo" button beside "Add photos"
+    (`capture="environment"`, one shot). Recent Android opened only the
+    gallery for "Add photos". **Waiting on Julian:** try it on a real phone.
+  - **Next:** Phase 35 (staying signed in: `POST /auth/refresh`, a quiet
+    daily refresh), then Phase 36 (photos wait for a manual Upload; a
+    warning and Save to phone).
+  - **Live on Fly, still to do (Julian):** `fly volumes extend` (the volume
+    is 1 GB and photos are live) and the `SEED_*` secrets (none set, so the
+    seed accounts likely have their default passwords).
+- **Run stage 4 (2026-10-03)** on the **`journal-memories`
   worktree** (`../PriPriTrip-worktrees/journal-memories`, a branch stacked
-  on `rebuild`; API :8001, UI :3001). Local commits, not pushed. Julian is
-  deploying `rebuild` to Fly separately.
+  on `rebuild`; API :8001, UI :3001). Merged to `main` (PR #7) and deployed.
   - **Phase 29 ✅:**
     - `POST /trips/{id}/memories` takes the phone's `id` and `createdAt`
       (with an offset or Z). A retry with the same id gives 200 with the

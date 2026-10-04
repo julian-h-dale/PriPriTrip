@@ -132,6 +132,23 @@ describe("adding photos to a memory", () => {
     expect(screen.getAllByRole("button", { name: /^Remove new photo/ })).toHaveLength(10);
     expect(screen.getByText("A memory holds at most 10 photos.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add photos" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Take photo" })).toBeDisabled();
+  });
+
+  it("Take photo opens the back camera, one shot at a time, and joins the previews", async () => {
+    const user = userEvent.setup();
+    renderJournal();
+    await user.click(await screen.findByRole("button", { name: "New memory" }));
+    const camera = screen.getByLabelText("Take a photo");
+    expect(camera).toHaveAttribute("capture", "environment");
+    expect(camera).toHaveAttribute("accept", "image/*");
+    expect(camera).not.toHaveAttribute("multiple");
+    const click = vi.spyOn(camera, "click");
+    await user.click(screen.getByRole("button", { name: "Take photo" }));
+    expect(click).toHaveBeenCalled();
+    await user.upload(camera, picture("shot.jpg"));
+    await user.upload(screen.getByLabelText("Choose photos"), picture("library.jpg"));
+    expect(screen.getAllByRole("button", { name: /^Remove new photo/ })).toHaveLength(2);
   });
 
   it("editing can remove a photo (and add more)", async () => {
