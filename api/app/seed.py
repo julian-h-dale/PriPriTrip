@@ -1,9 +1,10 @@
 """Idempotent seed script.
 
 Creates three users from env-driven credentials (a general test user, a
-test admin, and a viewer) plus the sample trip for the test user — shared
-with the viewer — so a fresh clone has something to log in with, the UI
-isn't empty on first run, and both sides of sharing can be tried.
+test admin, and a viewer) plus the sample trip and a demo trip (Chicago to Athens, dated around today so
+there is always a current trip) for the test user — shared with the viewer — so
+a fresh clone has something to log in with, the UI isn't empty on first run,
+and both sides of sharing can be tried.
 
 Run:  python -m app.seed   (or: make seed)
 Safe to run repeatedly.
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from typing import Any
 
 from fastapi_users.exceptions import UserAlreadyExists
 from sqlalchemy import delete, select
@@ -20,6 +22,7 @@ from sqlalchemy import delete, select
 from app.database import AsyncSessionLocal, engine
 from app.models import Base, Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
 from app.sample_data import load_sample_trip
+from app.sample_data.demo_trip import build_demo_trip
 from app.schemas import UserCreate
 from app.services.trips import import_trip
 from app.settings import get_app_settings
@@ -49,9 +52,9 @@ async def _create_user(email: str, password: str, *, is_superuser: bool, name: s
                     print(f"  exists  {'admin' if is_superuser else 'user'}: {email}")
 
 
-async def _seed_sample_data() -> None:
+async def _seed_trip(raw: dict[str, Any]) -> None:
     settings = get_app_settings()
-    doc = validate_trip_document(load_sample_trip())
+    doc = validate_trip_document(raw)
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(UserRecord).filter_by(email=settings.seed_user_email))
         user = result.scalar_one_or_none()
@@ -68,7 +71,7 @@ async def _seed_sample_data() -> None:
         await session.commit()
 
         summary = await import_trip(session, user.id, doc)
-        print(f"  replanted sample trip: {doc.name}")
+        print(f"  replanted trip: {doc.name}")
 
         viewer = await session.scalar(
             select(UserRecord).filter_by(email=settings.seed_viewer_email)
@@ -100,7 +103,8 @@ async def main() -> None:
         is_superuser=False,
         name="Test Viewer",
     )
-    await _seed_sample_data()
+    await _seed_trip(load_sample_trip())
+    await _seed_trip(build_demo_trip())
     print("Done.")
 
 
