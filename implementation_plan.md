@@ -2414,9 +2414,22 @@ to passing the SVG element as `glyph`.
     reverse, and Journal starts unpressed. `mapStyle`: every kind and travel
     mode has an icon.
   - **Julian, at 375px:** the pins read clearly on the map.
-- **Phase 39 — swipe between days (UI).**
-  - `embla-carousel-react@8.6.0`, the carousel, and URL sync. The links and
-    `useDaySwipe` go.
+- **Phase 39 — swipe between days (UI).** ✅ (2026-10-04)
+  - **Built as planned, plus:**
+    - `embla-carousel-auto-height@8.6.0` (Embla's own plugin) sizes the
+      carousel to the day in view.
+    - The page scrolls inside `BottomNavLayout`, not the window, so its
+      scroll container is marked `data-scroll-root`. A swipe scrolls that
+      to the top once the new day settles.
+    - Neighbouring days are `aria-hidden` and `inert`, so only the day in
+      view can be read out or focused.
+    - The edit dialogs are portals, so drags inside them never reach Embla;
+      no extra guard is needed.
+    - Tests use a small fake Embla (`src/test/fakeEmbla.js`, mocked for
+      every test in `setup.js`); jsdom has no layout for the real one.
+    - The Playwright test drags with the mouse, swipes with real touch
+      events, checks a vertical drag doesn't change the day, and checks Back
+      goes to the timeline (screenshots `03a`, `03b`).
   - **Tests:** with Embla mocked in jsdom (it measures layout, which jsdom
     doesn't have): the URL picks the slide; settling on a slide replaces the
     URL; only the current day and its neighbours render a timeline; the

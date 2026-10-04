@@ -80,6 +80,53 @@ test("day detail page", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("04-day-detail-entry-expanded"), fullPage: true });
 });
 
+test("day detail: swipe between days", async ({ browser }) => {
+  // A phone: touch events, as well as the mouse.
+  const context = await browser.newContext({ hasTouch: true, viewport: { width: 375, height: 812 } });
+  const page = await context.newPage();
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  const tripPath = new URL(page.url()).pathname;
+  await page.getByRole("list", { name: "Trip days" }).getByRole("link", { name: /Tue, May 12/ }).click();
+  // The timeline has a "Tue, May 12" heading too: wait for the day's own page.
+  await expect(page).toHaveURL(/\/days\/2026-05-12$/);
+  await expect(page.getByText("Day 3 of 5")).toBeVisible();
+
+  // A mouse drag to the left: the next day, and the URL follows.
+  await page.mouse.move(320, 400);
+  await page.mouse.down();
+  await page.mouse.move(200, 405, { steps: 5 });
+  await page.screenshot({ path: screenshotPath("03a-day-swipe-mid-drag") });
+  await page.mouse.move(40, 410, { steps: 5 });
+  await page.mouse.up();
+  await expect(page).toHaveURL(/\/days\/2026-05-13$/);
+  await expect(page.getByRole("heading", { name: "Wed, May 13" })).toBeVisible();
+
+  // A mostly vertical drag scrolls; it doesn't change the day.
+  await page.mouse.move(200, 600);
+  await page.mouse.down();
+  await page.mouse.move(215, 250, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/\/days\/2026-05-13$/);
+
+  // A real touch swipe to the right: back a day.
+  const cdp = await context.newCDPSession(page);
+  const touch = (type, x, y) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+  await touch("touchStart", 40, 400);
+  for (let x = 80; x <= 340; x += 40) await touch("touchMove", x, 402);
+  await touch("touchEnd");
+  await expect(page).toHaveURL(/\/days\/2026-05-12$/);
+  await expect(page.getByRole("heading", { name: "Tue, May 12" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("03b-day-after-swipe") });
+
+  // Swiping replaced the URL, so Back goes to the timeline, not the last day.
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${tripPath}$`));
+  await context.close();
+});
+
 test("stays and travel coverage views", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();

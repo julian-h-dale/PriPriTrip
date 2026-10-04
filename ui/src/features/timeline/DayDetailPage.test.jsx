@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { Link, MemoryRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
@@ -10,6 +10,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { apiClient } from "@/shared/services/apiClient";
+import { fakeEmbla } from "@/test/fakeEmbla";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
@@ -17,6 +18,15 @@ vi.mock("@/shared/services/apiClient", () => ({
 }));
 
 const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z" };
+
+// Where the router is, and how it got there; plus a link from outside the
+// day swiper, like the timeline's or search's.
+const where = { path: null, type: null };
+function LocationProbe() {
+  where.path = useLocation().pathname;
+  where.type = useNavigationType();
+  return <Link to="/trips/trip-1/days/2026-05-14">Elsewhere: Thu</Link>;
+}
 
 function renderDay(date, tripId = "trip-1") {
   const store = configureStore({
@@ -36,6 +46,7 @@ function renderDay(date, tripId = "trip-1") {
         <Routes>
           <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
         </Routes>
+        <LocationProbe />
       </MemoryRouter>
     </Provider>
   );
@@ -91,37 +102,62 @@ describe("DayDetailPage", () => {
     expect(screen.getByText("Chicago")).toBeInTheDocument();
   });
 
-  it("links to the adjacent days and not past the ends of the trip", async () => {
-    const user = userEvent.setup();
+  it("opens on the URL's day; only it and its neighbours render, and there are no prev/next links", async () => {
     renderDay("2026-05-12");
     await screen.findByRole("heading", { name: "Tue, May 12" });
     expect(screen.getByText("Day 3 of 5")).toBeInTheDocument();
-    // At the top and again at the bottom of the day.
-    const prev = screen.getAllByRole("link", { name: /Mon, May 11/ });
-    expect(prev).toHaveLength(2);
-    prev.forEach((link) => expect(link).toHaveAttribute("href", "/trips/trip-1/days/2026-05-11"));
-    const next = screen.getAllByRole("link", { name: /Wed, May 13/ });
-    await user.click(next[next.length - 1]);
-    expect(await screen.findByRole("heading", { name: "Wed, May 13" })).toBeInTheDocument();
+    expect(fakeEmbla.api.selectedScrollSnap()).toBe(2);
+    // The neighbours are there for the swipe, but hidden from the reader.
+    const all = screen.getAllByRole("heading", { level: 1, hidden: true }).map((h) => h.textContent);
+    expect(all).toEqual(["Mon, May 11", "Tue, May 12", "Wed, May 13"]);
+    expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Tue, May 12"]);
+    expect(screen.getByRole("heading", { name: "Tue, May 12" }).closest("[inert]")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Mon, May 11", hidden: true }).closest("[inert]")).not.toBeNull();
+    expect(screen.queryByRole("link", { name: /May 11|May 13/ })).not.toBeInTheDocument();
   });
 
-  it("swipes between days, but not on a mostly vertical drag", async () => {
+  it("settling on another day replaces the URL, so Back isn't every day swiped past", async () => {
     renderDay("2026-05-12");
-    const heading = await screen.findByRole("heading", { name: "Tue, May 12" });
-    const touch = (x, y) => ({ clientX: x, clientY: y });
-    // Mostly vertical (scrolling): stays put.
-    fireEvent.touchStart(heading, { touches: [touch(200, 300)] });
-    fireEvent.touchEnd(heading, { changedTouches: [touch(130, 500)] });
-    expect(screen.getByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
-    // Swipe left: the next day.
-    fireEvent.touchStart(heading, { touches: [touch(300, 300)] });
-    fireEvent.touchEnd(heading, { changedTouches: [touch(150, 310)] });
+    await screen.findByRole("heading", { name: "Tue, May 12" });
+    act(() => fakeEmbla.api.scrollNext());
     expect(await screen.findByRole("heading", { name: "Wed, May 13" })).toBeInTheDocument();
-    // Swipe right: back again.
-    const wed = screen.getByRole("heading", { name: "Wed, May 13" });
-    fireEvent.touchStart(wed, { touches: [touch(100, 300)] });
-    fireEvent.touchEnd(wed, { changedTouches: [touch(260, 290)] });
+    expect(where).toEqual({ path: "/trips/trip-1/days/2026-05-13", type: "REPLACE" });
+    act(() => fakeEmbla.api.scrollPrev());
     expect(await screen.findByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
+    expect(where.path).toBe("/trips/trip-1/days/2026-05-12");
+  });
+
+  it("a day picked elsewhere jumps straight there", async () => {
+    const user = userEvent.setup();
+    renderDay("2026-05-11");
+    await screen.findByRole("heading", { name: "Mon, May 11" });
+    await user.click(screen.getByRole("link", { name: "Elsewhere: Thu" }));
+    expect(await screen.findByRole("heading", { name: "Thu, May 14" })).toBeInTheDocument();
+    expect(fakeEmbla.api.selectedScrollSnap()).toBe(4);
+    expect(fakeEmbla.api.lastJump).toBe(true); // no animation
+    expect(where.type).toBe("PUSH"); // the swiper didn't navigate again
+  });
+
+  it("the arrow keys change the day, but not while typing or in a dialog", async () => {
+    const user = userEvent.setup();
+    renderDay("2026-05-12");
+    await screen.findByRole("heading", { name: "Tue, May 12" });
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(await screen.findByRole("heading", { name: "Wed, May 13" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(await screen.findByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
+
+    const input = document.body.appendChild(document.createElement("input"));
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    input.remove();
+    fireEvent.keyDown(window, { key: "ArrowRight", shiftKey: true });
+    expect(fakeEmbla.api.selectedScrollSnap()).toBe(2);
+
+    await user.click(screen.getByRole("button", { name: "Edit Tue, May 12 title and summary" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(fakeEmbla.api.selectedScrollSnap()).toBe(2);
   });
 
   it("has no separate back link: the top bar and Timeline tab cover it", async () => {

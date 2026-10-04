@@ -19,9 +19,12 @@
     Calendar narrows either. Pins use Lucide outline icons (vanilla
     `lucide` package, SVG data URL as `glyphSrc`). **Julian:** look at the
     pins at phone width.
-  - **Next:** Phase 39 (Embla 8.6.0 swipe between days, replacing the
-    prev/next links). Julian said to carry on through the phases without
-    waiting, unless there are questions.
+  - **Phase 39 ✅ (swipe between days):** Embla 8.6.0 (+ auto-height). The
+    slide follows the finger; settling replaces the URL; the arrow keys
+    work on desktop; the prev/next links are gone. **Julian, on a real
+    phone:** swiping feels right, and vertical scrolling never changes day.
+  - **Next:** Run stage 7, Phase 40 (editors). Julian said to carry on
+    through the phases without waiting, unless there are questions.
   - **Run stage 7 (editors, versions, 409 conflicts):** planned, and the
     open questions were answered 2026-10-04: an editor join code, editors
     can delete, a conflict is an error and a reload (no merge), a missing
