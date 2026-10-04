@@ -15,7 +15,9 @@
         "address": "Rathausgasse 72, 3011 Bern, Switzerland",
         "city": "Bern",
         "lat": 46.9486227,
-        "lng": 7.4487269
+        "lng": 7.4487269,
+        "placeId": "ChIJjxe45cM5jkcRYwP0oTEWgmU",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWE_PxymzzOOBOgah2OGL1aSsVWUFSzMR_AJsPjrolJUsHBv0q3myLL7IZqh3OrQKHk-bWK0CHc5pWQ9ngvI5oXRL4-UkX6jnRniFv7xMoKV0yxm90BvDXUGLTQpBO9iWjG_KzBKaX1u8A0LQw=s4800-w800"
       },
       "confirmationNumber": "SAMPLE-1001",
       "notes": "In the middle of the Old Town. If the room isn't ready, **drop bags** and head out."
@@ -29,7 +31,9 @@
         "name": "Beausite Park Hotel Wengen",
         "address": "Am Wengi, 3823 Wengen, Switzerland",
         "lat": 46.60852,
-        "lng": 7.9231963
+        "lng": 7.9231963,
+        "placeId": "ChIJLdqkjMKhj0cRbiiaKRaQy3A",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjDN-2Ovuwxf3Hsv-Mrty2mxn4xE-TgrfIcCyYl5hYYc814lwYYvzlNky_6rcNwHOfbw16eSrY46MM1aALwOIObhRYPcUeE7tB79VmeN1VUm3WgBUpl-R2EUO7knCVv7hxwZo2n6Zx6q2vuQSwk=s4800-w800"
       },
       "roomType": "Double, Jungfrau view",
       "confirmationNumber": "SAMPLE-1002",
@@ -43,8 +47,22 @@
       "carrier": "SWISS",
       "number": "LX 9",
       "seat": "23A",
-      "from": { "name": "Chicago O'Hare (ORD)", "city": "Chicago", "lat": 41.9786, "lng": -87.9048 },
-      "to": { "name": "Zürich Airport (ZRH)", "city": "Zürich", "lat": 47.4581, "lng": 8.5555 },
+      "from": {
+        "name": "Chicago O'Hare (ORD)",
+        "city": "Chicago",
+        "lat": 41.9786,
+        "lng": -87.9048,
+        "placeId": "ChIJ82J3aie0D4gRS61ZAgdHF1E",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWF6iQFAyanx_j8T-mNK1DA05gWJ80aA2jq775slMJHvVfBUqjbuz4YKfpKCMxbEnWxlBLhLGAH1Uc1tlz-A0lNgM34jmWHe8QcWYYMlhzz4MQMk4du0u8NX-MAV32qux-EWJ4jC7jAZtYK7=s4800-w800"
+      },
+      "to": {
+        "name": "Zürich Airport (ZRH)",
+        "city": "Zürich",
+        "lat": 47.4581,
+        "lng": 8.5555,
+        "placeId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWG5icsTsk4w_9yS3T_c9qOOGgwrjMzSDrX6SP1PJMYp8KageRhk64sOjg5oHY74-XFcvCSeRTX4DmuQZLb1zD8B6Z0Sj5YlcHr8G3DnVcQDPHDduOKx-eoIFLJDvvlQNziRnrsR-eVB-5at9Q=s4800-w800"
+      },
       "depart": "2026-05-10T17:40",
       "departTimezone": "America/Chicago",
       "arrive": "2026-05-11T09:25",
@@ -56,8 +74,18 @@
       "mode": "train",
       "carrier": "SBB",
       "number": "IC 8",
-      "from": { "name": "Zürich Flughafen", "city": "Zürich" },
-      "to": { "name": "Bern", "city": "Bern" },
+      "from": {
+        "name": "Zürich Flughafen",
+        "city": "Zürich",
+        "placeId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWG5icsTsk4w_9yS3T_c9qOOGgwrjMzSDrX6SP1PJMYp8KageRhk64sOjg5oHY74-XFcvCSeRTX4DmuQZLb1zD8B6Z0Sj5YlcHr8G3DnVcQDPHDduOKx-eoIFLJDvvlQNziRnrsR-eVB-5at9Q=s4800-w800"
+      },
+      "to": {
+        "name": "Bern",
+        "city": "Bern",
+        "placeId": "ChIJdxs61MA5jkcRmmVXBP5fVcs",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWH89QgG_PlhzYGe85I-K7bUdPLR8JEfd0nDBrH1hwCaxgrh2nnWbl9tfjcKDZFC1_M7oysCG7FPMyf3uy1k9J8n-NTHHQzR2jv5YiMuo0_sG_JuOMEmxviZV2gHcIwGn5h565zK-hPdizI7pA=s4800-w800"
+      },
       "depart": "2026-05-11T10:28",
       "arrive": "2026-05-11T11:28"
     },
@@ -65,8 +93,18 @@
       "title": "Bern → Wengen",
       "mode": "train",
       "carrier": "BLS / BOB / WAB",
-      "from": { "name": "Bern", "city": "Bern" },
-      "to": { "name": "Wengen", "city": "Wengen" },
+      "from": {
+        "name": "Bern",
+        "city": "Bern",
+        "placeId": "ChIJdxs61MA5jkcRmmVXBP5fVcs",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWH89QgG_PlhzYGe85I-K7bUdPLR8JEfd0nDBrH1hwCaxgrh2nnWbl9tfjcKDZFC1_M7oysCG7FPMyf3uy1k9J8n-NTHHQzR2jv5YiMuo0_sG_JuOMEmxviZV2gHcIwGn5h565zK-hPdizI7pA=s4800-w800"
+      },
+      "to": {
+        "name": "Wengen",
+        "city": "Wengen",
+        "placeId": "ChIJYdRtHsahj0cRgQMvzvqWqbE",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWGLQKNjre1woTDb0XSFxo-wZpYZVOsow1ywu_YzfHUB8xFWqK20IQeFV9f5ceLjp3-3p-feDS2rb46_HUISyYaCAaTh-p62U6MU_5XSjAchvNclPYrXpm0IwpqVOpRDwJb9DEWOB6mVPeszfA=s4800-w800"
+      },
       "depart": "2026-05-12T10:34",
       "arrive": "2026-05-12T12:41",
       "notes": "Change at **Interlaken Ost** and **Lauterbrunnen**. Wengen is car-free."
@@ -76,8 +114,22 @@
       "mode": "flight",
       "carrier": "SWISS",
       "number": "LX 8",
-      "from": { "name": "Zürich Airport (ZRH)", "city": "Zürich", "lat": 47.4581, "lng": 8.5555 },
-      "to": { "name": "Chicago O'Hare (ORD)", "city": "Chicago", "lat": 41.9786, "lng": -87.9048 },
+      "from": {
+        "name": "Zürich Airport (ZRH)",
+        "city": "Zürich",
+        "lat": 47.4581,
+        "lng": 8.5555,
+        "placeId": "ChIJfXVSQEJ1kEcRWHaIRtZ3a8Y",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWG5icsTsk4w_9yS3T_c9qOOGgwrjMzSDrX6SP1PJMYp8KageRhk64sOjg5oHY74-XFcvCSeRTX4DmuQZLb1zD8B6Z0Sj5YlcHr8G3DnVcQDPHDduOKx-eoIFLJDvvlQNziRnrsR-eVB-5at9Q=s4800-w800"
+      },
+      "to": {
+        "name": "Chicago O'Hare (ORD)",
+        "city": "Chicago",
+        "lat": 41.9786,
+        "lng": -87.9048,
+        "placeId": "ChIJ82J3aie0D4gRS61ZAgdHF1E",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWF6iQFAyanx_j8T-mNK1DA05gWJ80aA2jq775slMJHvVfBUqjbuz4YKfpKCMxbEnWxlBLhLGAH1Uc1tlz-A0lNgM34jmWHe8QcWYYMlhzz4MQMk4du0u8NX-MAV32qux-EWJ4jC7jAZtYK7=s4800-w800"
+      },
       "depart": "2026-05-14T13:05",
       "arrive": "2026-05-14T15:45",
       "arriveTimezone": "America/Chicago",
@@ -98,7 +150,9 @@
             "name": "Altes Tramdepot Brauerei",
             "address": "Grosser Muristalden 6, 3006 Bern, Switzerland",
             "lat": 46.9479,
-            "lng": 7.4605
+            "lng": 7.4605,
+            "placeId": "ChIJndZGr-U5jkcR-9Nck0Ks5io",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/ACvplmNuKlWpKj78oXsJZZ3nJCXVA6CyI2POJCwKIFsNaopKoKnCQawldcutk562ScUdJE6M76Pm0m2VYD-alfhBalbNVmZgiTxSOWeB2tUHDDKCtaigJNh-h10ENIN0k-GppwjcS-0gFf1e46oS=s4800-w800"
           }
         },
         {
@@ -114,7 +168,9 @@
             "address": "Kornhausplatz 18, 3011 Bern, Switzerland",
             "lat": 46.9493,
             "lng": 7.4466,
-            "url": "https://www.kornhaus-bern.ch"
+            "url": "https://www.kornhaus-bern.ch",
+            "placeId": "ChIJq-WxQ8E5jkcRuKvcsc0eYV8",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/ACvplmMA7MS9KsZps3mBjclP9jh5Ex8HnW9PhXV8-tSHtuvgUUIHHnJlbTRWJvsVOiU1cDxaCvNfOFQxN6EreFfkxIooZWfd3SG2dvDC3lk9-iTFSSZctba-6643lwWR-wqMJNeGJz0UPw=s4800-w800"
           },
           "confirmationNumber": "Table for 2, 19:00"
         }
@@ -129,7 +185,14 @@
           "title": "Morning at the Rose Garden",
           "start": "2026-05-12T08:30",
           "end": "2026-05-12T09:30",
-          "location": { "name": "Rosengarten Bern", "city": "Bern", "lat": 46.9537, "lng": 7.4605 }
+          "location": {
+            "name": "Rosengarten Bern",
+            "city": "Bern",
+            "lat": 46.9537,
+            "lng": 7.4605,
+            "placeId": "ChIJlYrlCd45jkcRYzSv1-5Gx-Q",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLflbGsTVw5EQK5HyHkREHbJ1FMkb7cYk-LaXiIIdSCW7aZKo4Nl_-XYxyXwT9QBNtn9aX2MmGMPNVVwbLEY1X3tV1WDPYsCSSclVLo2aus7eOx4h44u27hjaa680jWAym0Zd3CP3w=s4800-w800"
+          }
         },
         {
           "title": "Dinner at the hotel",
@@ -150,7 +213,14 @@
           "title": "Männlichen → Kleine Scheidegg hike",
           "start": "2026-05-13T09:30",
           "end": "2026-05-13T12:30",
-          "location": { "name": "Männlichen", "city": "Wengen", "lat": 46.6133, "lng": 7.9403 },
+          "location": {
+            "name": "Männlichen",
+            "city": "Wengen",
+            "lat": 46.6133,
+            "lng": 7.9403,
+            "placeId": "ChIJ4yTqTp2hj0cRaYbpT7k_FSw",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWHlXdyylvGgnJoOabpRJe4hWlly7iFljFUpL89LzUmWutRv7995Lf-2LetdDI0q7Ye62Ww7wD4Q9egkae4gL0H755oaIk2mhC94Ba6ZXocX1JGFIkboTruDxtsVJduG8upXj0fyow59WZQzpg=s4800-w800"
+          },
           "notes": "About **4.5 km**, mostly downhill.\n\n1. Cable car from Wengen\n2. Ridge path to Kleine Scheidegg\n3. Train back down to Wengen"
         },
         {

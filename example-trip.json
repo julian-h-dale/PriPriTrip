@@ -14,7 +14,9 @@
         "name": "Hotel Palm Royal Resort Kokusai Street",
         "city": "Naha",
         "lat": 26.2164036,
-        "lng": 127.6899187
+        "lng": 127.6899187,
+        "placeId": "ChIJZRVZ5Xpp5TQR_dEQE5ejr8I",
+        "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcXq2EkF9x8RDeRL2xXA0HqIh8voOx5k7_kyp3V01hBGd8EWc6DOrXnfmqj2ciO2JBcPg1e3LcKJ76Be2Z35xoy4J3Qax-lHKjthsIE4D4nWCSO46VO6hsKyFG31mUjhYQFE8C9jw=s4800-w800"
       },
       "timezone": "Asia/Tokyo",
       "roomType": "Standard Double Room",
@@ -30,7 +32,9 @@
         "name": "Tokashiku Marine Village",
         "city": "Tokashiki Island",
         "lat": 26.185769,
-        "lng": 127.3478751
+        "lng": 127.3478751,
+        "placeId": "ChIJue1QZphT5TQRXIN9P36M-Iw",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjC-8AWk6y19Ls7rrGBJ0dn9QRbGndT3ZeMwplndDX1koPKMPQMK2Fw59BArrEiOjAf41GDf2aQqau79IaGxPetXWx4ug7XZ42Lg_WjjOyJ7VBfE7w6Dy9-JnKmhwjcWDg2bq8yR-pxC9GObKeplwH-_SQ=s4800-w800"
       },
       "timezone": "Asia/Tokyo",
       "roomType": "Japanese-Style Triple Room with Sea View (3 futons)",
@@ -46,7 +50,9 @@
         "name": "Ryukyu Hotel & Resort Nashiro Beach",
         "city": "Itoman",
         "lat": 26.0998319,
-        "lng": 127.6597016
+        "lng": 127.6597016,
+        "placeId": "ChIJcbc7agtn5TQRA1kniXw8cXs",
+        "imgRef": "https://lh3.googleusercontent.com/grass-cs/ACvplmNdixEuBRkxOQfKyxFaVu9VklcStJUV3SCOv00Y8zLjjojyYP1dgZzEi3U4MDUwVqIbMd3EaJSdc1L7iRzbUOoJ32eqRImis6ePo9lv1TdFof1hDaDzPxGH9mbyp83MMg4ebMhLTg=s4800-w800"
       },
       "timezone": "Asia/Tokyo",
       "roomType": "Deluxe Twin Room",
@@ -62,7 +68,9 @@
         "address": "No. 37-1, Section 2, Chung Shan North Road, Zhongshan District, Taipei City 104, Taiwan",
         "city": "Taipei",
         "lat": 25.0536679,
-        "lng": 121.5229126
+        "lng": 121.5229126,
+        "placeId": "ChIJH5UrwGipQjQR5s5WfFvR-44",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjDit-kB2ixBpPXF4XVtkIQHoaL3VD3_t72piUKU5Cf-VSyLkuIhahTK0prATsespBgMVGQH1uiGOPm-XjExTArReBLNVm6WD76HhI_tT9d2s7tS0o3FNJm4WAN6um9tDeoWjTQBRmMY66CyOaw=s4800-w800"
       },
       "timezone": "Asia/Taipei",
       "roomType": "Premier Double Room, 1 queen bed",
@@ -80,13 +88,17 @@
         "name": "Chicago O'Hare International Airport (ORD), Terminal 5",
         "city": "Chicago",
         "lat": 41.9799743,
-        "lng": -87.909816
+        "lng": -87.909816,
+        "placeId": "ChIJvQg4-9O1D4gROS6m-S6-5LA",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBbnQtgtmNC-M4i5O7sI9qFeyRGm0d07PqTgDqq3WXsgoAi0zgDzitr0Jo9jp6srwU575C3ycQMXKE3iLOYCe7CT7LbNSVZ5y87N9DmyoUTj7jVbT0yzTa46UYTEFi7012h0u5XaoXfUMImBF2gMBdwMA=s4800-w800"
       },
       "to": {
         "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
         "city": "Taipei",
         "lat": 25.0793174,
-        "lng": 121.2345977
+        "lng": 121.2345977,
+        "placeId": "ChIJ1RXSYsCfQjQRCbG1qZC2o3A",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAFFmI2uFzUPqG_kV0ZE0Maolo0FXi8tYWqScJ1Yf5qd3WmlEriW5ZR4fp4uLsp-iLpY_x4nH-FXYJxMjGQIiCT6Zq60j0Y3u78QdWVY0yqj29DgGigGsWOFu_cPHhcCFns-D2qte-ECk6K2KJKg5Vndg=s4800-w800"
       },
       "depart": "2026-10-29T00:30",
       "departTimezone": "America/Chicago",
@@ -104,13 +116,17 @@
         "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
         "city": "Taipei",
         "lat": 25.0793174,
-        "lng": 121.2345977
+        "lng": 121.2345977,
+        "placeId": "ChIJ1RXSYsCfQjQRCbG1qZC2o3A",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAFFmI2uFzUPqG_kV0ZE0Maolo0FXi8tYWqScJ1Yf5qd3WmlEriW5ZR4fp4uLsp-iLpY_x4nH-FXYJxMjGQIiCT6Zq60j0Y3u78QdWVY0yqj29DgGigGsWOFu_cPHhcCFns-D2qte-ECk6K2KJKg5Vndg=s4800-w800"
       },
       "to": {
         "name": "Naha Airport (OKA), Terminal 1",
         "city": "Naha",
         "lat": 26.1966997,
-        "lng": 127.6489521
+        "lng": 127.6489521,
+        "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
       },
       "depart": "2026-10-30T06:55",
       "departTimezone": "Asia/Taipei",
@@ -127,13 +143,17 @@
         "name": "Tomari Port",
         "city": "Naha",
         "lat": 26.2253274,
-        "lng": 127.6827988
+        "lng": 127.6827988,
+        "placeId": "ChIJOy3eAX9p5TQRM8i7JkINg2E",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAwWlqco9VNr2_lgz4cN7-8KZ7J5KWSVv4aOIJkM03r-l-i9zAm73QNRXcbjPLd20-IDiLY1wJ8xCQK3_e1Q7B521QUk8qwqJWW_gWrMH0eY6HYcHVJ0c-8IeljAO_GptFBjh_e1-T3IHWCtQ=s4800-w800"
       },
       "to": {
         "name": "Tokashiki Port",
         "city": "Tokashiki Island",
         "lat": 26.1991475,
-        "lng": 127.3695236
+        "lng": 127.3695236,
+        "placeId": "ChIJO2g_esxT5TQRHY226THAHvg",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAraJ7HcLLQu8gxQ53TH64pyKyyR7xjwLkbknUzO8NzM6tC5sFlxxQDJYs8HnX3sZHDk9nSzKWe-XBYGHX3BhL2b0mlJoh0RD95aCwWQ5wpZpcyvcmf5BVu-y5b3kG_E1Xdcxd_6m3iMzMlG7rjnBq35A=s4800-w800"
       },
       "depart": "2026-11-02T09:00",
       "arrive": "2026-11-02T09:40",
@@ -148,13 +168,17 @@
         "name": "Tokashiki Port",
         "city": "Tokashiki Island",
         "lat": 26.1991475,
-        "lng": 127.3695236
+        "lng": 127.3695236,
+        "placeId": "ChIJO2g_esxT5TQRHY226THAHvg",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAraJ7HcLLQu8gxQ53TH64pyKyyR7xjwLkbknUzO8NzM6tC5sFlxxQDJYs8HnX3sZHDk9nSzKWe-XBYGHX3BhL2b0mlJoh0RD95aCwWQ5wpZpcyvcmf5BVu-y5b3kG_E1Xdcxd_6m3iMzMlG7rjnBq35A=s4800-w800"
       },
       "to": {
         "name": "Tomari Port",
         "city": "Naha",
         "lat": 26.2253274,
-        "lng": 127.6827988
+        "lng": 127.6827988,
+        "placeId": "ChIJOy3eAX9p5TQRM8i7JkINg2E",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAwWlqco9VNr2_lgz4cN7-8KZ7J5KWSVv4aOIJkM03r-l-i9zAm73QNRXcbjPLd20-IDiLY1wJ8xCQK3_e1Q7B521QUk8qwqJWW_gWrMH0eY6HYcHVJ0c-8IeljAO_GptFBjh_e1-T3IHWCtQ=s4800-w800"
       },
       "depart": "2026-11-03T17:00",
       "arrive": "2026-11-03T17:40",
@@ -170,13 +194,17 @@
         "name": "Naha Airport (OKA)",
         "city": "Naha",
         "lat": 26.1966997,
-        "lng": 127.6489521
+        "lng": 127.6489521,
+        "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
       },
       "to": {
         "name": "Taiwan Taoyuan International Airport (TPE), Terminal 1",
         "city": "Taipei",
         "lat": 25.0793174,
-        "lng": 121.2345977
+        "lng": 121.2345977,
+        "placeId": "ChIJ1RXSYsCfQjQRCbG1qZC2o3A",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAFFmI2uFzUPqG_kV0ZE0Maolo0FXi8tYWqScJ1Yf5qd3WmlEriW5ZR4fp4uLsp-iLpY_x4nH-FXYJxMjGQIiCT6Zq60j0Y3u78QdWVY0yqj29DgGigGsWOFu_cPHhcCFns-D2qte-ECk6K2KJKg5Vndg=s4800-w800"
       },
       "depart": "2026-11-09T09:45",
       "departTimezone": "Asia/Tokyo",
@@ -193,13 +221,17 @@
         "name": "Taiwan Taoyuan International Airport (TPE), Terminal 1",
         "city": "Taipei",
         "lat": 25.0793174,
-        "lng": 121.2345977
+        "lng": 121.2345977,
+        "placeId": "ChIJ1RXSYsCfQjQRCbG1qZC2o3A",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAFFmI2uFzUPqG_kV0ZE0Maolo0FXi8tYWqScJ1Yf5qd3WmlEriW5ZR4fp4uLsp-iLpY_x4nH-FXYJxMjGQIiCT6Zq60j0Y3u78QdWVY0yqj29DgGigGsWOFu_cPHhcCFns-D2qte-ECk6K2KJKg5Vndg=s4800-w800"
       },
       "to": {
         "name": "Naha Airport (OKA)",
         "city": "Naha",
         "lat": 26.1966997,
-        "lng": 127.6489521
+        "lng": 127.6489521,
+        "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
       },
       "depart": "2026-11-12T18:20",
       "departTimezone": "Asia/Taipei",
@@ -216,13 +248,17 @@
         "name": "Naha Airport (OKA), Terminal 1",
         "city": "Naha",
         "lat": 26.1966997,
-        "lng": 127.6489521
+        "lng": 127.6489521,
+        "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
       },
       "to": {
         "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
         "city": "Taipei",
         "lat": 25.0793174,
-        "lng": 121.2345977
+        "lng": 121.2345977,
+        "placeId": "ChIJbVMQJMSfQjQRkcP2QILo-3s",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjCxz6QhVGhaG-OkrLYhQM2J2sFBESGujG3FTwI2D74lpZqFGcnhjNQ2Nr9lYQwpq6W5J1w4qmyTViYQRuUsCSw_prp2PkUQpOEUKUrx_2HKbs1Xn9xE9TuIPIm4MSN7oxmvT8EiAqJq5PQDbYBE8Qci=s4800-w800"
       },
       "depart": "2026-11-13T10:15",
       "departTimezone": "Asia/Tokyo",
@@ -240,13 +276,17 @@
         "name": "Taiwan Taoyuan International Airport (TPE), Terminal 2",
         "city": "Taipei",
         "lat": 25.0793174,
-        "lng": 121.2345977
+        "lng": 121.2345977,
+        "placeId": "ChIJ1RXSYsCfQjQRCbG1qZC2o3A",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAFFmI2uFzUPqG_kV0ZE0Maolo0FXi8tYWqScJ1Yf5qd3WmlEriW5ZR4fp4uLsp-iLpY_x4nH-FXYJxMjGQIiCT6Zq60j0Y3u78QdWVY0yqj29DgGigGsWOFu_cPHhcCFns-D2qte-ECk6K2KJKg5Vndg=s4800-w800"
       },
       "to": {
         "name": "Chicago O'Hare International Airport (ORD), Terminal 5",
         "city": "Chicago",
         "lat": 41.9799743,
-        "lng": -87.909816
+        "lng": -87.909816,
+        "placeId": "ChIJvQg4-9O1D4gROS6m-S6-5LA",
+        "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBbnQtgtmNC-M4i5O7sI9qFeyRGm0d07PqTgDqq3WXsgoAi0zgDzitr0Jo9jp6srwU575C3ycQMXKE3iLOYCe7CT7LbNSVZ5y87N9DmyoUTj7jVbT0yzTa46UYTEFi7012h0u5XaoXfUMImBF2gMBdwMA=s4800-w800"
       },
       "depart": "2026-11-13T20:00",
       "departTimezone": "Asia/Taipei",

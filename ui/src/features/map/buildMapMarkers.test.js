@@ -64,7 +64,8 @@ describe("buildMapMarkers", () => {
 
   it("carries the photo and place id through when the location has them", () => {
     const kornhauskeller = byId("item-item-0-2");
-    expect(kornhauskeller.placeId).toBeNull(); // sample has none
+    expect(kornhauskeller.placeId).toBe("ChIJq-WxQ8E5jkcRuKvcsc0eYV8");
+    expect(kornhauskeller.imgRef).toBe("https://lh3.googleusercontent.com/grass-cs/ACvplmMA7MS9KsZps3mBjclP9jh5Ex8HnW9PhXV8-tSHtuvgUUIHHnJlbTRWJvsVOiU1cDxaCvNfOFQxN6EreFfkxIooZWfd3SG2dvDC3lk9-iTFSSZctba-6643lwWR-wqMJNeGJz0UPw=s4800-w800");
     expect(kornhauskeller.address).toBe("Kornhausplatz 18, 3011 Bern, Switzerland");
   });
 });

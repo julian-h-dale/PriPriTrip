@@ -6,7 +6,24 @@
 
 ## Status
 
-- **Current work (2026-10-03): Run stage 5** on branch **`run-stage-5`**
+- **Current work (2026-10-04): Run stages 6 and 7** on branch
+  **`run-stage-6`** (off `main` after PR #8). Plan: `implementation_plan.md`,
+  "Run stage 6" and "Run stage 7".
+  - **Phase 37 ✅ (places in the trip files):** `make backfill-photos` on
+    the dev database, then `placeId`/`imgRef` copied into
+    `example-trip.json`, `sample_trip.json` and `demo_trip.py`.
+    **Julian:** spot-check "Bern", "Wengen", "Syntagma" and "Athens
+    Airport" (matched by text search).
+  - **Next:** Phase 38 (map: Journal and Stays either-or, Journal off by
+    default; Lucide outline pins), then Phase 39 (Embla 8.6.0 swipe
+    between days, replacing the prev/next links).
+  - **Run stage 7 (editors, versions, 409 conflicts):** planned. **Waiting
+    on Julian:** its 4 open questions.
+- **Storage (2026-10-04):** SQLite and photos share the one 1 GB Fly volume.
+  Plan: `fly volumes extend` before the trip. After the trip, maybe move
+  photos to object storage (Tigris or R2; `photo_store.py` is ready for a
+  new class). Neon would only take the database; it has no object storage.
+- **Run stage 5 (2026-10-03)** on branch **`run-stage-5`**
   (off `main`, which has Run stage 4 merged (PR #7) and is deployed to Fly).
   Main checkout, ports 8000/3000. Plan: `implementation_plan.md`, "Run
   stage 5".

@@ -78,7 +78,7 @@ describe("DayDetailPage", () => {
     expect(screen.getByText("SAMPLE-1001")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open map" })).toHaveAttribute(
       "href",
-      "https://www.google.com/maps/search/?api=1&query=46.9486227,7.4487269"
+      "https://www.google.com/maps/search/?api=1&query=46.9486227,7.4487269&query_place_id=ChIJjxe45cM5jkcRYwP0oTEWgmU"
     );
     await user.click(screen.getByRole("button", { name: /Check in · Hotel Goldener/ }));
     expect(screen.queryByText("SAMPLE-1001")).not.toBeInTheDocument();

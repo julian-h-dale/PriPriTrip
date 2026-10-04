@@ -2312,6 +2312,258 @@ size, and its display copy and thumbnail are upright and keep the profile.
 This guards the output; peak memory isn't unit-testable (Pillow allocates
 outside Python), so the numbers above are the record.
 
+## Run stage 6 — places in the seed data, map filters and pins, swiping days
+
+Asked 2026-10-04 (Julian):
+- Put the Google place data (`placeId`, `imgRef`) into `example-trip.json`
+  and the seed data, using the existing backfill.
+- **Map filters:** Journal shouldn't be on by default, and when it's on the
+  map should show **only** memories.
+- **Map pins:** clean, simple outline icons like the app's buttons, not
+  emoji.
+- **Days:** the previous/next links are duplicated at the top and bottom of
+  the page. Replace them with a real swipe between days.
+
+**Decisions** (answered 2026-10-04):
+- Journal and Stays are **either-or** ("only memories" or "only stays").
+  The Calendar filter still narrows either one to a single day.
+- **Embla swipe only.** No sticky header; the prev/next links go.
+- **Use an up-to-date Embla:** `embla-carousel-react` **8.6.0**, the latest
+  stable release (2025-04). v9 has been in release candidates since
+  2026-01 (rc03 on 2026-08-21) and isn't released, so not that. It supports
+  React 18.
+
+### Design
+
+**1. Places in the trip files.** `make backfill-photos` runs against the dev
+database, then each location's `placeId` and `imgRef` are copied back into
+`example-trip.json`, `api/app/sample_data/sample_trip.json` and
+`api/app/sample_data/demo_trip.py`. The JSON files are matched by document
+position (with a name check), because one trip has the same name for two
+places (TPE Terminal 2 with two place ids). The demo trip is matched by
+name. The seed still plants only the sample and demo trips.
+
+**2. Map filters** (`mapFilters.js`, `MapControls.jsx`, `MapPage.jsx`):
+- One "what" filter: `null` (everything except memories), `"stays"` or
+  `"memories"`. The default is `null`, so memories are hidden by default.
+- Tapping Journal or the house toggles that filter; turning one on turns
+  the other off.
+- `filterMarkers(markers, { only, date })`. The date applies on top, as now
+  (a stay matches any night it covers, and a memory matches the day it was
+  made).
+
+**3. Outline pins.** The pin stays a coloured `PinElement` (same colours per
+kind). Its glyph becomes the same Lucide outline icon as the search rows
+(`iconFor`: BedDouble, the travel mode icons, MapPin, NotebookPen), drawn in
+white. It's rendered once per icon to an SVG data URL
+(`renderToStaticMarkup`) and passed as `glyphSrc`. `glyphFor` and the emoji
+go. If `glyphSrc` doesn't take an SVG data URL on the live map, we fall back
+to passing the SVG element as `glyph`.
+
+**4. Swiping between days** (`DayDetailPage.jsx`):
+- An Embla carousel with one slide per day of the trip. Only the current day
+  and its two neighbours render their timeline; the others are empty
+  slides, so a 16-day trip doesn't render 16 timelines.
+- The slide follows the finger, and releasing past halfway (or flicking)
+  settles on the next day. Embla only takes horizontal drags, so vertical
+  page scrolling is untouched.
+- **The URL stays the source of truth.** Settling on a slide replaces the
+  URL (`/trips/:id/days/:date`, `replace` so Back isn't a list of every day
+  swiped). A URL change from elsewhere (the timeline, the Today tab, search)
+  jumps the carousel with no animation.
+- **Height:** each slide is only as tall as its own day (`align-items:
+  flex-start` on the container), so a short day doesn't leave a long empty
+  page. After settling, the page scrolls to the top.
+- **Dialogs:** the edit dialogs are portals, but React still bubbles their
+  events to the carousel, so Embla's `watchDrag` ignores drags that start
+  outside the viewport. The current `useDaySwipe` guard does the same job
+  today.
+- Removed: `AdjacentDayLink` (top and bottom) and `useDaySwipe`.
+- At the trip's ends there's nothing to swipe to: Embla's edge resistance
+  shows that, with no loop.
+- **Desktop:** Embla also drags with a mouse. The arrow keys move between
+  days (a listener on the page, ignored while typing in a field or a dialog
+  is open), since the visible links are gone.
+
+### Phases
+
+- **Phase 37 — places in the trip files and seed data.** ✅ (2026-10-04)
+  - The backfill matched all 35 locations of the sample and demo trips (the
+    Okinawa trip already had all of them).
+  - The three documents still validate. Seeded locations have a `placeId`
+    and `imgRef`.
+  - **Julian:** spot-check the name-matched places that could be wrong:
+    "Bern", "Wengen", "Syntagma" and "Athens Airport" are city/area names,
+    matched by Places text search.
+  - **Tests:** the API tests pass unchanged. Two UI tests had assumed the
+    sample had no place ids (`buildMapMarkers`, and the day page's map
+    link, which now carries `query_place_id`); they now expect the real
+    ones. Nothing fetches the `imgRef` URLs in a test.
+- **Phase 38 — map filters and outline pins (UI).**
+  - The either-or filter and its default; Lucide pin glyphs.
+  - **Tests:** `mapFilters.test.js`: the default hides memories; `"memories"`
+    shows only memories; `"stays"` shows only stays; the date combines with
+    each. `MapControls`: turning Journal on turns the house off and the
+    reverse, and Journal starts unpressed. `mapStyle`: every kind and travel
+    mode has an icon.
+  - **Julian, at 375px:** the pins read clearly on the map.
+- **Phase 39 — swipe between days (UI).**
+  - `embla-carousel-react@8.6.0`, the carousel, and URL sync. The links and
+    `useDaySwipe` go.
+  - **Tests:** with Embla mocked in jsdom (it measures layout, which jsdom
+    doesn't have): the URL picks the slide; settling on a slide replaces the
+    URL; only the current day and its neighbours render a timeline; the
+    arrow keys change the day and are ignored in an input or a dialog; no
+    prev/next links remain. A Playwright check drags the page sideways at
+    375px and lands on the next day's URL.
+  - **Julian, on a real phone:** swiping feels right, vertical scrolling
+    never changes day, and dragging inside an edit dialog doesn't either.
+
+### Open questions (Run stage 6)
+
+None outstanding. The Embla version and the arrow keys are decided above;
+say if either should change.
+
+## Run stage 7 — more than one person editing a trip
+
+Asked 2026-10-04 (Julian): let several people edit a trip. Conflicts on the
+same entry are rare, but the "one trip document" model looked like it would
+make them worse.
+
+### Where we are
+
+- **Writes are already per entry:** `PUT/DELETE /trips/{id}/items/{itemId}`
+  (and `/move`), and the same for days, stays and travels. Only the
+  **responses** are the whole trip. That stays: it gives the editor
+  everyone else's changes after every save. So **no API breakdown is
+  needed**.
+- **Shared members are view-only:** `get_owned_trip` lets only the owner
+  write (a member gets 403), and `TripMember.role` is always `"viewer"`.
+- **Two people editing the same entry today:** the later save silently
+  overwrites the earlier one (last write wins), with no warning.
+- **Trip edits are online-only** (only memories go through the outbox), so
+  there are no offline trip edits to reconcile.
+- **Memories are per author** and already safe to retry (phone-made ids).
+  They aren't part of this stage.
+
+### The common approaches (simplest first)
+
+1. **Last write wins.** What we have. Fine when conflicts are rare and
+   cheap.
+2. **Optimistic concurrency.** The standard for REST APIs. Each row has a
+   `version`; the client says which version it edited (`If-Match`); a stale
+   write gets **409** and the user picks theirs or mine. Nothing is lost
+   silently.
+3. **Field-level PATCH and merge.** Send only the fields that changed, so
+   two people editing different fields of one entry both win. Builds on 2.
+4. **Live updates** (SSE or WebSocket) push changes to the other phones, so
+   screens are seconds stale, not minutes. Often with "Pri is editing".
+5. **A sync engine or CRDTs** (Yjs, Automerge, Replicache/Zero, PowerSync,
+   ElectricSQL): offline-first, merged automatically. A rewrite of the data
+   layer; overkill for two or three people planning a trip.
+
+(Pessimistic locking, "Pri has this checked out", is the other classic.
+It's a poor fit for phones that drop offline: a lock can be stuck on a
+phone in a tunnel.)
+
+**Chosen:** 2, plus a cheap part of 4 (refetch when the app comes back to
+the foreground). 3 and full live updates only if 409s turn out to be
+annoying in practice.
+
+### Design
+
+**1. An editor role.**
+- `TripMember.role`: `"viewer"` or `"editor"`. Joining with the trip's code
+  still makes you a viewer; the owner switches a member to editor (or back)
+  in the share dialog: `PUT /trips/{id}/members/{userId}` `{role}`, owner
+  only.
+- `get_owned_trip` becomes **`get_editable_trip`**: owner or editor, else
+  403 for a viewer and 404 for anyone else. Every trip-child write already
+  goes through it, so this is the one place. `ViewableTrip.role` gains
+  `"editor"`, and the UI already shows edit controls by role.
+- **Owner only, still:** deleting the trip, managing members and the join
+  code.
+- Editors can add, change, move and delete days, activities, stays and
+  travels (soft delete, as now).
+
+**2. Versions (optimistic concurrency).**
+- Stays, travels, days and items get `version` (int, starts at 1),
+  `updated_at` (`UtcDateTime`) and `updated_by` (user id). One migration;
+  existing rows get version 1 and `updated_at` = now.
+- Every entry in `TripRead` carries its `version`, plus `updatedAt` and
+  `updatedByName` for the conflict message.
+- **`PUT` and `DELETE` on an entry need `If-Match: <version>`.** One helper
+  in `services/` checks it and bumps the version, so each write calls it
+  instead of checking by hand:
+  - a match: the write goes ahead, and `version + 1`;
+  - a mismatch: **409** with the entry's current state, its version, and
+    who changed it and when;
+  - no header: **428 Precondition Required**, so an old cached app can't
+    silently overwrite. Its toast says to reload the app.
+  - an entry deleted meanwhile: **404**, as now.
+- **Not versioned:** adding (nothing to conflict with; the server picks the
+  position) and **moving up/down** (`/move` only swaps positions; it
+  doesn't bump the content version, so reordering never blocks an edit).
+  Moving an activity to another day is a content change (its `date`), so
+  it is versioned.
+
+**3. Conflicts in the UI.**
+- The forms send the `version` they were opened with.
+- **On 409, a dialog:** "Pri changed this 4 minutes ago." It shows their
+  version and yours side by side, field by field, with the differences
+  marked. Two choices:
+  - **Keep theirs** drops your edit;
+  - **Use mine** re-sends your edit with their version, overwriting theirs,
+    deliberately this time.
+
+  Either way the trip is refreshed.
+- **On 404 while saving or deleting:** a toast, "This was removed by someone
+  else", and the trip refreshes.
+- **Fewer stale screens:** the trip is refetched when the app returns to the
+  foreground (online). The same trigger already syncs the outbox.
+
+### Phases
+
+- **Phase 40 — editors (API + UI).**
+  - The role, the member-role endpoint, `get_editable_trip`, and the share
+    dialog's viewer/editor switch.
+  - **Tests:** an editor can add, change, move and delete each kind of
+    entry. An editor can't delete the trip, change roles or remove members
+    (403). A viewer still gets 403 on writes; a stranger gets 404. Only the
+    owner can change a role.
+  - **Julian:** with two accounts, the owner makes a member an editor, and
+    the editor's phone shows edit controls after a refresh.
+- **Phase 41 — versions and 409 (API).**
+  - The migration, the shared version check, and `version` in `TripRead`.
+  - **Tests:** a matching `If-Match` saves and bumps the version; a stale
+    one gives 409 with the current entry and who changed it; no header
+    gives 428; an entry deleted meanwhile gives 404. `/move` doesn't change
+    versions. The migration upgrades an existing database (versions 1).
+- **Phase 42 — conflicts in the UI.**
+  - `If-Match` from every edit and delete, the conflict dialog, the 404
+    toast, and the foreground refetch.
+  - **Tests:** a 409 opens the dialog with both versions; Keep theirs
+    refreshes and drops the edit; Use mine re-sends with the new version; a
+    404 gives the toast and refreshes; returning to the foreground
+    refetches.
+  - **Julian, on two phones:** both open the same activity, both save, and
+    the second phone gets the dialog.
+
+### Open questions (Run stage 7)
+
+1. **How does someone become an editor?** Planned: join as a viewer, then
+   the owner promotes them. The alternative is a second join code that
+   makes you an editor straight away.
+2. **Can editors delete stays and travels**, or only the owner? Planned:
+   editors can delete anything except the trip itself (it's a soft delete,
+   so it's recoverable in the database).
+3. **No `If-Match` gets 428.** That means anyone running an old cached copy
+   of the app must reload before they can save. OK, or should a missing
+   header fall back to last write wins for a while?
+4. **Should the timeline say who last changed an entry** (e.g. "edited by
+   Pri" in its details)? It's cheap once `updated_by` exists. Planned: only
+   in the conflict dialog.
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it
