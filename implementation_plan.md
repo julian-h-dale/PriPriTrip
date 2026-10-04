@@ -2275,6 +2275,43 @@ ours. "Add photos" stays for the gallery.
   - **Julian, on a real phone:** take a photo, check the warning, Save to
     phone, then upload on Wi-Fi.
 
+### Fix (2026-10-04): photo uploads killed for running out of memory on Fly
+
+**Seen:** uploads failed intermittently. `fly logs` showed `Out of memory:
+Killed process (gunicorn)` with the worker at about 290 MB, on a 512 MB
+machine running nginx and **two** workers.
+
+**Cause:** `photos.process` held several full-size decoded copies at once:
+the decode, the rotate, the RGB convert, and a full copy before each
+resize. A decoded photo is width x height x 3 bytes (72 MB at 24 MP, the
+iPhone 15/16 default), so each upload's extra peak was about 191 MB at
+12 MP, 344 MB at 24 MP and 639 MB at 48 MP. Two workers could also
+process two photos at once, because the one-at-a-time lock is per process.
+
+**Fix (Julian chose 1 and 2; 3 is held in reserve before the trip):**
+1. **A leaner pipeline** (`photos._display`), with the same output:
+   - JPEGs are decoded at 1/2, 1/4 or 1/8 scale where that still gives at
+     least the display size (`draft`, asked for the fitted size such as
+     2560 x 1920, not a 2560 box, which blocks non-square photos);
+   - the image is shrunk in place, then turned upright, so the rotation
+     copies a display-size image;
+   - the thumbnail is made from the display copy;
+   - no RGB convert when the photo is already RGB;
+   - the reported width and height still come from the original (the
+     file header, swapped for sideways orientations).
+   - **Measured on the Pi** (fresh process each, sideways synthetic JPEGs):
+     12 MP 191 → 98 MB, 24 MP 344 → 66 MB, 48 MP 639 → 97 MB.
+2. **One gunicorn worker** (`deploy/start.sh`): one less baseline, and the
+   photo lock now covers the whole server.
+3. **Held in reserve:** 1 GB (`memory = "1gb"` under `[[vm]]` in
+   `fly.toml`). Do it before the trip if any kill shows in `fly logs`. HEIC
+   can't be decoded smaller, so it still decodes at full size.
+
+**Tests:** a 24 MP sideways JPEG with a colour profile keeps its full upright
+size, and its display copy and thumbnail are upright and keep the profile.
+This guards the output; peak memory isn't unit-testable (Pillow allocates
+outside Python), so the numbers above are the record.
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it

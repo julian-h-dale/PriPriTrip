@@ -20,7 +20,12 @@ python -m app.seed
 # lifecycle tracks the API process.
 nginx -g 'daemon off;' &
 
+# One worker: the app is async, so one process serves a family's traffic,
+# and the machine has 512 MB. Each worker costs its own baseline memory, and
+# the one-photo-at-a-time lock (services/photos.py) is per process — two
+# workers could process two photos at once. Two 24 MP uploads together were
+# what got workers killed for running out of memory.
 exec gunicorn app.main:app \
   --worker-class uvicorn.workers.UvicornWorker \
-  --workers 2 \
+  --workers 1 \
   --bind 127.0.0.1:8000

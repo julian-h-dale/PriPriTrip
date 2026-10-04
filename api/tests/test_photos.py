@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from PIL import Image
+from PIL import Image, ImageCms
 
 from app.sample_data import load_sample_trip
 from app.settings import get_app_settings
@@ -81,6 +81,35 @@ async def test_full_quality_original_plus_upright_exif_free_copies(client: Async
 
     listed = (await client.get(f"/trips/{tid}/memories")).json()
     assert [p["id"] for p in listed[0]["photos"]] == [photo["id"]]
+
+
+async def test_a_big_sideways_photo_keeps_its_full_size_profile_and_upright_copies(
+    client: AsyncClient,
+) -> None:
+    """A 24 MP JPEG is decoded at half size to save memory (512 MB machine);
+    what's stored and reported must not change because of it."""
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    memory = await _memory(client, tid)
+    img = Image.new("RGB", (5712, 4284), (200, 120, 40))
+    img.paste((10, 20, 30), (0, 0, 200, 4284))  # a dark stripe down the left edge
+    exif = Image.Exif()
+    exif[0x0112] = 6  # stand upright by turning 90° clockwise: the left edge goes on top
+    icc = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    out = io.BytesIO()
+    img.save(out, "JPEG", quality=90, exif=exif, icc_profile=icc)
+    resp = await _upload(client, tid, memory["id"], out.getvalue())
+    assert resp.status_code == 201, resp.text
+    photo = resp.json()
+    assert (photo["width"], photo["height"]) == (4284, 5712)  # the original's, upright
+
+    display = Image.open(io.BytesIO((await client.get(photo["displayUrl"])).content))
+    assert display.size == (1920, 2560)
+    assert display.info.get("icc_profile") == icc
+    top, bottom = display.getpixel((960, 20)), display.getpixel((960, 2540))
+    assert max(top) < 60 and min(bottom) > 30  # the stripe is on top: turned the right way
+    thumb = Image.open(io.BytesIO((await client.get(photo["thumbUrl"])).content))
+    assert thumb.size == (360, 480)
+    assert thumb.info.get("icc_profile") == icc
 
 
 async def test_small_photos_are_never_upscaled_and_png_transparency_is_flattened(

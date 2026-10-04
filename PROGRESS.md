@@ -30,6 +30,15 @@
     `storage.persist()` at startup.
     Fixed: a memory with waiting photos could vanish on reconnect.
   - Phases 35–36 deployed to Fly from `run-stage-5`.
+  - **Fix (2026-10-04): out-of-memory kills on photo upload.** Photo
+    processing held several full-size decoded copies (+344 MB for a 24 MP
+    photo) and 2 workers shared 512 MB. Now it's a leaner pipeline (decode
+    JPEGs smaller, shrink before rotating, no extra copies: 24 MP +66 MB)
+    and **1 worker**. 1 GB is held in reserve: do it before the trip if
+    `fly logs` shows any `Out of memory` kill. Details in
+    `implementation_plan.md` ("Fix (2026-10-04)").
+  - **Julian's uncommitted edit:** `fly.toml` `min_machines_running = 1`
+    (deploys include it; not committed by the agent).
   - **Waiting on Julian:** on a real phone: Take photo, the warning, Save to
     phone, Upload on Wi-Fi.
   - **Live on Fly, still to do (Julian):** `fly volumes extend` (the volume

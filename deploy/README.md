@@ -103,6 +103,12 @@ Set `JWT_SECRET` with `fly secrets set` before the machine serves traffic.
 ### Cost control
 
 `shared-cpu-1x` / 512MB is the baseline for a single-user demo (nginx + Python).
+It runs **one** gunicorn worker (`start.sh`), so only one photo is processed at
+a time. Photo processing peaks at about 100 MB (measured: 12, 24 and 48 MP
+JPEGs). If uploads ever get `Out of memory: Killed process (gunicorn)` in
+`fly logs`, go to 1 GB: set `memory = "1gb"` under `[[vm]]` in `fly.toml`
+and deploy (`fly scale memory` alone is undone by the next deploy). Full-size HEIC photos are
+the case to watch, since they can't be decoded smaller.
 Stopping the machine freezes compute billing, leaving only the small volume fee:
 
 ```bash
