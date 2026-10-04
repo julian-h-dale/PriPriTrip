@@ -2144,6 +2144,106 @@ later.
     nightly copy) before relying on it for a real trip.
   - **Answer:** snapshots for now; an off-site copy before a real trip (2026-10-03).
 
+## Run stage 5 — Take photo, staying signed in, photos wait for Wi-Fi
+
+Asked 2026-10-03 (Julian, after trying the deployed app on his phone):
+- **"Add photos" opened the gallery, with no camera.** Recent Android goes
+  straight to the gallery for `accept="image/*"`; only iOS offers "Take
+  Photo" in that menu. Add a button that opens the camera.
+- **Stay signed in** as long as the app is used within the 60-day window.
+- **Photos wait on the phone until the user uploads them.** A web app can't
+  tell Wi-Fi from cellular on iOS (only Chrome on Android can), and it
+  can't run on a schedule in the background (no iOS background sync;
+  Android's periodic sync can't be timed or relied on). So the user chooses
+  when, by hand.
+
+**Decisions** (answered 2026-10-03):
+- **Manual upload only.** No "upload automatically" switch.
+- **Photos taken in the app usually aren't in the camera roll** (iOS, and
+  most Android, with `capture`). A photo waiting to upload gets a warning
+  *and* a "Save to phone" button.
+- **A simple sliding window for sign-in.** No server-side token list and
+  no remote sign-out; changing `JWT_SECRET` still signs everyone out.
+
+### Design
+
+**1. Take photo.** A second button beside "Add photos": the same hidden
+input pattern with `accept="image/*" capture="environment"` (one photo, no
+`multiple`), feeding the same `photos.add`. The phone's camera app takes
+the picture, so there's still no permission prompt and no viewfinder of
+ours. "Add photos" stays for the gallery.
+
+**2. Staying signed in.**
+- **Today:** one 60-day JWT at login, never refreshed. Day 61 signs you out
+  however often you used the app. (Unsynced writes survive: the outbox is
+  keyed by user and sends after the next sign-in.)
+- **`POST /auth/refresh`** (bearer token required, through
+  `current_active_user`): returns a fresh 60-day token. It lives in
+  `routers/auth_refresh.py`, beside fastapi-users' own `/auth/login`, and
+  keeps its `{access_token, token_type}` shape.
+- **The app refreshes quietly** when it starts or returns to the foreground,
+  online only, and only if the token is more than a day old (`exp − 60
+  days`, read from the token itself; no extra storage). A failed refresh is
+  ignored: the token in hand still works until it expires.
+- So any use within 60 days keeps you signed in indefinitely, and 60 days
+  away means signing in again.
+
+**3. Photos wait for an upload.**
+- **Memory text still syncs straight away** (it's tiny). Only `addPhoto`
+  outbox entries are held. `removePhoto` and deletes still sync, so
+  removing a waiting photo still sends nothing.
+- **`syncOutbox` skips `addPhoto`** unless asked: `uploadPhotos()` runs the
+  same loop with photos included. The automatic triggers (start, reconnect,
+  foreground, every 30 s) never send photos.
+- **Waiting photos show on their memory** from their local bytes (the
+  outbox already keeps them), marked "Waiting to upload".
+- **The Journal shows one bar while anything waits:** "12 photos waiting
+  (85 MB) · Upload", with progress ("Uploading 3 of 12"). An interrupted
+  upload resumes on the next tap, and a photo already sent isn't sent again
+  (photo ids make retries safe, Phase 32).
+- **Save to phone**, on a waiting photo (and in the viewer): the share sheet
+  with the file (`navigator.share({files})`, which offers "Save Image" on
+  iOS), falling back to a download where file sharing isn't supported.
+- **The warning** on the bar and in the memory dialog: "Photos taken here
+  aren't in your camera roll until you save them. Not uploaded yet."
+- **Keep the stash:** `navigator.storage.persist()` at startup (granted
+  automatically for an installed app on most browsers; best effort).
+- **Signing out** with photos waiting gets its own, stronger warning, on top
+  of the existing unsynced-memories one.
+- **Other people on the trip see a memory's photos only after the upload.**
+  The memory itself appears straight away.
+
+### Phases
+
+- **Phase 34 — Take photo (UI).**
+  - The "Take photo" button and its `capture="environment"` input.
+  - **Tests:** the button's input has `capture="environment"` and no
+    `multiple`; a picked file joins the previews like "Add photos".
+  - **Julian, on a real phone over HTTPS:** Take photo opens the camera,
+    and Add photos still opens the gallery.
+- **Phase 35 — staying signed in.**
+  - `POST /auth/refresh` and the quiet refresh in the app.
+  - **Tests:**
+    - API: a valid token gets a new one with a later `exp`; no token, an
+      expired token or an inactive user gets 401.
+    - UI: a token over a day old is refreshed on start and stored; a fresh
+      one isn't; offline or a failed refresh leaves the old token in place.
+- **Phase 36 — photos wait for an upload (UI).**
+  - Held `addPhoto` entries, the upload bar with progress, waiting
+    thumbnails from local bytes, Save to phone, the warnings,
+    `storage.persist()`.
+  - **Tests:**
+    - automatic sync sends memories but not photos; Upload sends the
+      photos, oldest first, after their memory;
+    - an interrupted upload resumes without duplicates;
+    - the bar's count and size; a removed waiting photo sends nothing;
+    - Save to phone shares the file, or downloads it without file sharing;
+    - signing out with photos waiting warns.
+  - **Live:** update `e2e/journal-photos.spec.js`: photos picked offline
+    don't upload on reconnect; Upload sends them.
+  - **Julian, on a real phone:** take a photo, check the warning, Save to
+    phone, then upload on Wi-Fi.
+
 ## After Phase 4 — First real trip
 
 Julian provides the itinerary. We convert it to a trip document, validate it
