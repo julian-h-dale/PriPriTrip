@@ -11,10 +11,10 @@ mkdir -p /data
 # its data — see api/app/migrate.py.
 python -m app.migrate
 
-# Seed the initial users + sample data. Idempotent: existing
-# users are left untouched, so this is safe on every boot. Without this a fresh
-# container (or a fresh volume) has an empty database and nobody can log in.
-python -m app.seed
+# No seeding here. The seed replants the sample and demo trips (deleting
+# their memories and photos), and the machine restarts whenever it wakes
+# from auto-stop. Seed on purpose instead: `make seed-remote` (once on a
+# fresh volume, so there are accounts to sign in with).
 
 # nginx in the background; the API in the foreground so the container's
 # lifecycle tracks the API process.

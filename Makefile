@@ -8,7 +8,7 @@ help:
 	@echo "  setup         Install backend + frontend dependencies (creates api/.env)"
 	@echo "  seed          Create seed users + sample data (idempotent)"
 	@echo "  migrate       Upgrade the database to the latest schema (Alembic)"
-	@echo "  seed-remote   Seed the Fly app's database (FLY_APP=pripri-trip); run after fly deploy"
+	@echo "  seed-remote   Seed the Fly app (FLY_APP=pripri-trip); never automatic. Replants demo trips"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
@@ -42,8 +42,11 @@ seed:
 migrate:
 	cd api && . .venv/bin/activate && python -m app.migrate
 
-# Seed the deployed Fly app. The seed data ships inside the image, so `fly deploy`
-# first if it changed. Idempotent, same as `make seed`. Needs flyctl logged in.
+# Seed the deployed Fly app. The only way it's seeded: the container never seeds
+# on boot. Run it once on a fresh volume (so there are accounts to sign in with),
+# or on purpose to replant the sample and demo trips — that deletes their
+# memories and photos. The seed data ships inside the image, so `fly deploy`
+# first if it changed. Needs flyctl logged in.
 FLY_APP ?= pripri-trip
 seed-remote:
 	fly ssh console -a $(FLY_APP) -C "python -m app.seed"

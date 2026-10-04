@@ -20,7 +20,7 @@ volume is not.
 |---|---|
 | `Dockerfile` (repo root) | Multi-stage build: Node compiles the UI, Python runtime + nginx serve it. |
 | `deploy/nginx.conf` | Single ingress on `:8080`; rewrite-and-strip `/api` → backend. |
-| `deploy/start.sh` | Entrypoint: `mkdir -p /data`, seed the database, start nginx + gunicorn. |
+| `deploy/start.sh` | Entrypoint: `mkdir -p /data`, migrate the database, start nginx + gunicorn. It never seeds: run `make seed-remote` yourself (once on a fresh volume). |
 | `deploy/runtime-config.js` | Overwrites the dev API base with same-origin `/api`. |
 | `fly.toml` | Fly app config: port, volume mount, VM size, `DATABASE_URL`. |
 

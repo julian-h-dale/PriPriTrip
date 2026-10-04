@@ -37,8 +37,12 @@
     and **1 worker**. 1 GB is held in reserve: do it before the trip if
     `fly logs` shows any `Out of memory` kill. Details in
     `implementation_plan.md` ("Fix (2026-10-04)").
-  - **Julian's uncommitted edit:** `fly.toml` `min_machines_running = 1`
-    (deploys include it; not committed by the agent).
+  - **`fly.toml`:** `min_machines_running = 1` (Julian's change, committed
+    2026-10-04).
+  - **No seeding on boot (2026-10-04):** `deploy/start.sh` only migrates.
+    The seed replants the sample and demo trips (deleting their memories
+    and photos), so it's now only `make seed-remote`, on purpose.
+  - **Photo viewer:** tapping the photo (or the space around it) closes it.
   - **Waiting on Julian:** on a real phone: Take photo, the warning, Save to
     phone, Upload on Wi-Fi.
   - **Live on Fly, still to do (Julian):** `fly volumes extend` (the volume
@@ -460,9 +464,11 @@
    Offline memories, location and the blue dot, and photos (originals kept,
    unguessable URLs, a ~10 GB Fly volume). **Before deploying photos:**
    `fly volumes extend` to about 10 GB.
-6. **Julian (deploy):** set `SEED_*` secrets on Fly. `deploy/start.sh` seeds
-   on every boot, which creates the seed accounts (default passwords unless
-   overridden) and replants the Bern sample trip.
+6. **Julian (deploy):** set `SEED_*` secrets on Fly before the next
+   `make seed-remote`. Since 2026-10-04 the container no longer seeds on boot
+   (it replanted the demo trips, deleting their memories and photos, on every
+   wake from auto-stop). Seeding is only `make seed-remote`. The accounts
+   already on Fly were made with the default passwords, so change those too.
 7. **Julian:** try Run stage 3 at 375px. Sign in as `pripri@example.com` /
    `changeme-viewer` for the viewer's side (`make seed` created it, already
    joined to the sample trip).
