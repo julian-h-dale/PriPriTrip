@@ -16,9 +16,14 @@
   - **Phase 34 ✅ (Take photo):** a "Take photo" button beside "Add photos"
     (`capture="environment"`, one shot). Recent Android opened only the
     gallery for "Add photos". **Waiting on Julian:** try it on a real phone.
-  - **Next:** Phase 35 (staying signed in: `POST /auth/refresh`, a quiet
-    daily refresh), then Phase 36 (photos wait for a manual Upload; a
-    warning and Save to phone).
+    Deployed to Fly from `run-stage-5`.
+  - **Phase 35 ✅ (staying signed in):** `POST /auth/refresh`
+    (`routers/auth_refresh.py`) swaps a valid token for a fresh 60-day one.
+    `useTokenRefresh` (in App) calls it on start and on returning to the
+    foreground, online, when the token is over a day old. Failures are
+    quiet and keep the old token. Not deployed yet.
+  - **Next:** Phase 36 (photos wait for a manual Upload; a warning and Save
+    to phone).
   - **Live on Fly, still to do (Julian):** `fly volumes extend` (the volume
     is 1 GB and photos are live) and the `SEED_*` secrets (none set, so the
     seed accounts likely have their default passwords).

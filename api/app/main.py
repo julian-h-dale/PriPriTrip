@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import admin, config, memories, photos, sharing, trips
+from app.routers import admin, auth_refresh, config, memories, photos, sharing, trips
 from app.schemas import UserCreate, UserRead, UserUpdate
 from app.settings import get_app_settings
 from app.users import auth_backend, fastapi_users
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     application.include_router(
         fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"]
     )
+    application.include_router(auth_refresh.router)
     application.include_router(
         fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"]
     )

@@ -2224,7 +2224,17 @@ ours. "Add photos" stays for the gallery.
     `multiple`; a picked file joins the previews like "Add photos".
   - **Julian, on a real phone over HTTPS:** Take photo opens the camera,
     and Add photos still opens the gallery.
-- **Phase 35 — staying signed in.**
+- **Phase 35 — staying signed in.** ✅
+  - **Built as planned, plus:**
+    - **"Over a day old" is read from `exp`:** a token with less than 59
+      days left. The app assumes the server's 60 days; if that's ever
+      shorter, it just refreshes on each open, which is harmless.
+    - **A `background` request option:** a failed refresh shows no toast
+      (a 401 still signs out, as it should for an expired token).
+    - **A refresh landing after a sign-out is ignored,** so it can't sign
+      anyone back in.
+    - **Live:** a real login against the dev API refreshes with 200; no
+      token gets 401.
   - `POST /auth/refresh` and the quiet refresh in the app.
   - **Tests:**
     - API: a valid token gets a new one with a later `exp`; no token, an

@@ -21,6 +21,12 @@ describe("apiClient offline handling", () => {
     expect(store.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "error/setError" }));
   });
 
+  it("stays quiet when background housekeeping fails, online or not", async () => {
+    await onError({ config: { background: true }, response: { status: 500, data: { detail: "boom" } } });
+    await onError({ config: { background: true }, message: "Network Error" });
+    expect(store.dispatch).not.toHaveBeenCalled();
+  });
+
   it("still signs out on a real 401, offline-tolerant or not", async () => {
     window.history.pushState({}, "", "/login"); // already there: no jsdom navigation
     await onError({ config: { offlineOk: true }, response: { status: 401 } });
