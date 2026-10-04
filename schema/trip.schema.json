@@ -1,0 +1,637 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "DayDoc": {
+      "additionalProperties": false,
+      "description": "One calendar date. Activities keep the order they are written in.",
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional; an untitled day is headed by its date.",
+          "title": "Title"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "description": "Markdown text.",
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ItemDoc"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "DayDoc",
+      "type": "object"
+    },
+    "ItemDoc": {
+      "additionalProperties": false,
+      "description": "One planned activity on a day. Untimed activities are fine.",
+      "properties": {
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
+              "examples": [
+                "2026-05-11T15:00"
+              ],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
+              "examples": [
+                "2026-05-11T15:00"
+              ],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "description": "IANA timezone name, e.g. Europe/Zurich. Never a UTC offset.",
+              "examples": [
+                "Europe/Zurich"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only used when the activity's place has no coordinates; otherwise its zone comes from its place, else that night's stay, else the trip.",
+          "title": "Timezone"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocationDoc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "confirmationNumber": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confirmationnumber"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "description": "Markdown text.",
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "ItemDoc",
+      "type": "object"
+    },
+    "LocationDoc": {
+      "additionalProperties": false,
+      "description": "A place. Coordinates are optional; when given, both are required.",
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lat"
+        },
+        "lng": {
+          "anyOf": [
+            {
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lng"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "pattern": "^https?://",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A link for the place, e.g. a website.",
+          "title": "Url"
+        },
+        "placeId": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Google place id, for exact map links.",
+          "title": "Placeid"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The city or town it's in, for the timeline's day rows.",
+          "title": "City"
+        },
+        "imgRef": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "pattern": "^https?://",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first photo Google Places returned when the place was picked.",
+          "title": "Imgref"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "LocationDoc",
+      "type": "object"
+    },
+    "StayDoc": {
+      "additionalProperties": false,
+      "description": "One accommodation booking, spanning nights. Lives at trip level.",
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "default": "hotel",
+          "enum": [
+            "hotel",
+            "hostel",
+            "airbnb",
+            "rental",
+            "other"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "checkIn": {
+          "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
+          "examples": [
+            "2026-05-11T15:00"
+          ],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+          "title": "Checkin",
+          "type": "string"
+        },
+        "checkOut": {
+          "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
+          "examples": [
+            "2026-05-11T15:00"
+          ],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+          "title": "Checkout",
+          "type": "string"
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "description": "IANA timezone name, e.g. Europe/Zurich. Never a UTC offset.",
+              "examples": [
+                "Europe/Zurich"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only used when the place has no coordinates. A time's zone comes from where it happens (its place), else this field, else the trip's timezone.",
+          "title": "Timezone"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocationDoc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where you stay; its coordinates set the stay's clock."
+        },
+        "roomType": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Roomtype"
+        },
+        "confirmationNumber": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confirmationnumber"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "description": "Markdown text.",
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "name",
+        "checkIn",
+        "checkOut"
+      ],
+      "title": "StayDoc",
+      "type": "object"
+    },
+    "TravelDoc": {
+      "additionalProperties": false,
+      "description": "One booked or scheduled leg. Lives at trip level; the timeline places it\nby its departure. Incidental movement (\"walk to the old town\") is an\nactivity, not a travel.",
+      "properties": {
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "flight",
+            "train",
+            "bus",
+            "ferry",
+            "boat",
+            "car",
+            "other"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "carrier": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Carrier"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Flight/train number.",
+          "title": "Number"
+        },
+        "seat": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seat"
+        },
+        "from": {
+          "$ref": "#/$defs/LocationDoc",
+          "description": "Where the leg leaves from; sets the departure's clock."
+        },
+        "to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocationDoc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where it lands; sets the arrival's clock."
+        },
+        "depart": {
+          "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
+          "examples": [
+            "2026-05-11T15:00"
+          ],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+          "title": "Depart",
+          "type": "string"
+        },
+        "arrive": {
+          "anyOf": [
+            {
+              "description": "Local wall-clock date-time with no offset (what the ticket says), e.g. 2026-05-11T15:00. Interpreted in the relevant IANA timezone.",
+              "examples": [
+                "2026-05-11T15:00"
+              ],
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arrive"
+        },
+        "departTimezone": {
+          "anyOf": [
+            {
+              "description": "IANA timezone name, e.g. Europe/Zurich. Never a UTC offset.",
+              "examples": [
+                "Europe/Zurich"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only used when the place has no coordinates. A time's zone comes from where it happens (its place), else this field, else the trip's timezone.",
+          "title": "Departtimezone"
+        },
+        "arriveTimezone": {
+          "anyOf": [
+            {
+              "description": "IANA timezone name, e.g. Europe/Zurich. Never a UTC offset.",
+              "examples": [
+                "Europe/Zurich"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only used when the place has no coordinates. A time's zone comes from where it happens (its place), else this field, else the trip's timezone.",
+          "title": "Arrivetimezone"
+        },
+        "confirmationNumber": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confirmationnumber"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "description": "Markdown text.",
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "title",
+        "mode",
+        "from",
+        "depart"
+      ],
+      "title": "TravelDoc",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. Users write wall-clock times; each time's zone comes from its place's coordinates, else an explicit timezone field, else (activities) that night's stay, else the trip's timezone. Times in different zones are compared as real instants.",
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Document format version. Always 1.",
+      "title": "Schemaversion",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "startDate": {
+      "format": "date",
+      "title": "Startdate",
+      "type": "string"
+    },
+    "endDate": {
+      "format": "date",
+      "title": "Enddate",
+      "type": "string"
+    },
+    "timezone": {
+      "description": "IANA timezone name, e.g. Europe/Zurich. Never a UTC offset.",
+      "examples": [
+        "Europe/Zurich"
+      ],
+      "title": "Timezone",
+      "type": "string"
+    },
+    "stays": {
+      "items": {
+        "$ref": "#/$defs/StayDoc"
+      },
+      "title": "Stays",
+      "type": "array"
+    },
+    "travels": {
+      "items": {
+        "$ref": "#/$defs/TravelDoc"
+      },
+      "title": "Travels",
+      "type": "array"
+    },
+    "days": {
+      "items": {
+        "$ref": "#/$defs/DayDoc"
+      },
+      "title": "Days",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "name",
+    "startDate",
+    "endDate",
+    "timezone"
+  ],
+  "title": "PriPriTrip trip document",
+  "type": "object"
+}

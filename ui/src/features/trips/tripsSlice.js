@@ -1,0 +1,158 @@
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { apiClient } from "@/shared/services/apiClient";
+import { notify } from "@/shared/notificationSlice";
+import { readTripList, removeTrip, saveTrip, saveTripList } from "@/shared/services/tripCache";
+import { userIdFromToken } from "@/shared/utils/authToken";
+import { tripPhase } from "@/shared/utils/tripDates";
+
+/**
+ * Keep the phone's copy of every trip that hasn't ended fresh, so they open
+ * offline without having been opened first. Fire-and-forget, one at a time
+ * (a handful of small requests); a failure just leaves the older copy.
+ */
+async function cacheUnfinishedTrips(userId, summaries) {
+  for (const summary of summaries) {
+    if (tripPhase(summary) === "past") continue;
+    try {
+      const { data } = await apiClient.get(`/trips/${summary.id}`, { silent: true, offlineOk: true });
+      await saveTrip(userId, data);
+    } catch {
+      return; // offline or server gone — stop, don't hammer it
+    }
+  }
+}
+
+/**
+ * Stale-while-revalidate: the cached list (if any) renders straight away,
+ * then the server's copy replaces it. With no network the cached copy stays,
+ * marked stale with when it was saved.
+ */
+export const fetchTrips = createAsyncThunk(
+  "trips/fetch",
+  async (_, { dispatch, getState, rejectWithValue }) => {
+    const userId = userIdFromToken(getState().auth.token);
+    const cached = await readTripList(userId);
+    if (cached) dispatch(tripsFromCache(cached));
+    try {
+      const { data } = await apiClient.get("/trips", { silent: true, offlineOk: true });
+      if (userId) {
+        await saveTripList(userId, data);
+        cacheUnfinishedTrips(userId, data);
+      }
+      return data;
+    } catch (err) {
+      return rejectWithValue({ offline: !err.response, cached: Boolean(cached) });
+    }
+  }
+);
+
+/**
+ * Upload a trip document. Always creates a new trip. On a rejected document
+ * the payload is `{ detail, errors: [{ path, message }] }` so the dialog can
+ * list every problem.
+ */
+export const importTrip = createAsyncThunk(
+  "trips/import",
+  async (file, { dispatch, rejectWithValue }) => {
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const { data } = await apiClient.post("/trips/import", form, { silent: true });
+      dispatch(notify({ type: "success", message: `Imported “${data.name}”` }));
+      return data;
+    } catch (err) {
+      const body = err.response?.data;
+      return rejectWithValue({
+        detail: typeof body?.detail === "string" ? body.detail : "Import failed",
+        errors: Array.isArray(body?.errors) ? body.errors : [],
+      });
+    }
+  }
+);
+
+/**
+ * Join someone's trip as a viewer by its id. Resolves to the trip summary;
+ * rejects with a human message (unknown trip, or it's already yours).
+ */
+export const joinTrip = createAsyncThunk("trips/join", async (tripId, { dispatch, rejectWithValue }) => {
+  try {
+    const { data } = await apiClient.post("/trips/join", { tripId }, { silent: true });
+    dispatch(notify({ type: "success", message: `Joined “${data.name}”` }));
+    return data;
+  } catch (err) {
+    const status = err.response?.status;
+    return rejectWithValue(
+      status === 404 || status === 422
+        ? "No trip has that id. Check it was copied whole."
+        : status === 409
+          ? "That’s already your trip."
+          : "Couldn’t join right now. Try again."
+    );
+  }
+});
+
+/** Stop viewing a trip someone shared with you. */
+export const leaveTrip = createAsyncThunk("trips/leave", async (id, { dispatch, getState }) => {
+  await apiClient.delete(`/trips/${id}/membership`, { silent: true });
+  await removeTrip(userIdFromToken(getState().auth.token), id);
+  dispatch(notify({ type: "success", message: "Left the trip" }));
+  return id;
+});
+
+export const deleteTrip = createAsyncThunk("trips/delete", async (id, { dispatch, getState }) => {
+  await apiClient.delete(`/trips/${id}`, { silent: true });
+  await removeTrip(userIdFromToken(getState().auth.token), id);
+  dispatch(notify({ type: "success", message: "Trip deleted" }));
+  return id;
+});
+
+const tripsSlice = createSlice({
+  name: "trips",
+  // stale: showing the offline copy saved at `savedAt` because the server
+  // couldn't be reached.
+  initialState: { items: [], status: "idle", stale: false, savedAt: null },
+  reducers: {
+    tripsFromCache(state, action) {
+      state.items = action.payload.data;
+      state.savedAt = action.payload.savedAt;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchTrips.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(fetchTrips.fulfilled, (state, action) => {
+        state.status = "idle";
+        state.items = action.payload;
+        state.stale = false;
+        state.savedAt = null;
+      })
+      .addCase(fetchTrips.rejected, (state, action) => {
+        const { offline, cached } = action.payload ?? {};
+        if (offline && cached) {
+          state.status = "idle";
+          state.stale = true;
+        } else {
+          state.status = "failed";
+        }
+      })
+      .addCase(importTrip.fulfilled, (state, action) => {
+        state.items.push(action.payload);
+        state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+      })
+      .addCase(joinTrip.fulfilled, (state, action) => {
+        if (!state.items.some((t) => t.id === action.payload.id)) state.items.push(action.payload);
+        state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+      })
+      .addCase(leaveTrip.fulfilled, (state, action) => {
+        state.items = state.items.filter((t) => t.id !== action.payload);
+      })
+      .addCase(deleteTrip.fulfilled, (state, action) => {
+        state.items = state.items.filter((t) => t.id !== action.payload);
+      });
+  },
+});
+
+const { tripsFromCache } = tripsSlice.actions;
+export default tripsSlice.reducer;

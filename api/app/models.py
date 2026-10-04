@@ -1,110 +1,247 @@
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Uuid,
-    text,
-)
+"""SQLAlchemy declarative models.
 
-from app.database import Base
+Baseline conventions baked in from the first commit:
+- UUID primary keys (not enumerable sequential ints)
+- every domain row is owned via user_id (trip children through their trip)
+- soft delete via the SoftDeleteMixin
+
+Trip content mirrors the trip document (app/trip_document.py): bookings
+(stays, travels) at trip level, activities (items) inside days. Nothing derived
+is stored — the timeline computes its markers when it renders.
+
+Trip times are *wall-clock* values: a naive DATETIME (what the ticket says).
+They are deliberately not `UtcDateTime` — that type is for instants. Which
+clock a time is on is worked out when read (app/zones.py: the place's
+coordinates, else an explicit zone, else ...). The `*timezone` columns hold
+only an explicit zone the author wrote, never a computed one.
+
+Relationships are `lazy="raise"`: a trip is assembled with explicit
+`selectinload`, and a forgotten load fails loudly instead of a lazy load
+raising MissingGreenlet under asyncio.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import uuid
+from typing import Any, ClassVar
+
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Text, func, text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from app.db_types import UtcDateTime
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class SoftDeleteMixin:
+    """Reversible deletes hidden from normal queries."""
+
+    is_deleted: Mapped[bool] = mapped_column(default=False, index=True)
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
 
 
 class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
-    """
-    Extends the fastapi-users base table (id, email, hashed_password,
-    is_active, is_superuser, is_verified) with an application-level name.
-    """
+    """fastapi-users base table plus app-specific profile fields."""
 
     __tablename__ = "users"
 
-    name = Column(String, nullable=False, default="")
+    name: Mapped[str] = mapped_column(default="")
+    # IANA name (e.g. "America/Chicago"), never a fixed UTC offset — an offset
+    # is wrong twice a year. Anything date-shaped resolves against this, not the
+    # server clock. UTC is the right template default; a real product detects
+    # the browser zone at registration or asks.
+    timezone: Mapped[str] = mapped_column(default="UTC")
 
 
-class TripRecord(Base):
+# A wall-clock column: naive on purpose (see module docstring).
+WallClockColumn = DateTime(timezone=False)
+
+
+class Trip(SoftDeleteMixin, Base):
     __tablename__ = "trips"
 
-    trip_id = Column(Uuid(as_uuid=False), primary_key=True)
-    user_id = Column(Uuid(as_uuid=False), ForeignKey("users.id"), nullable=False)
-    trip_name = Column(String, nullable=False)
-    start_date = Column(String, nullable=False)
-    end_date = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
+    # The document format a trip is read back as.
+    schema_version: ClassVar[int] = 1
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str]
+    start_date: Mapped[dt.date]
+    end_date: Mapped[dt.date]
+    timezone: Mapped[str]
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, server_default=func.now())
+
+    stays: Mapped[list[Stay]] = relationship(order_by="Stay.position", lazy="raise")
+    travels: Mapped[list[Travel]] = relationship(order_by="Travel.position", lazy="raise")
+    days: Mapped[list[Day]] = relationship(order_by="Day.date", lazy="raise")
 
 
-class TripDayRecord(Base):
-    __tablename__ = "trip_days"
+class Stay(SoftDeleteMixin, Base):
+    """One accommodation booking, spanning nights."""
 
-    day_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
-    title = Column(String, nullable=False)
-    date = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    is_alternate = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed = Column(Boolean, nullable=False, default=False, server_default="false")
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    __tablename__ = "stays"
 
-
-class TripPointRecord(Base):
-    __tablename__ = "trip_points"
-
-    point_id = Column(Uuid(as_uuid=False), primary_key=True)
-    trip_id = Column(Uuid(as_uuid=False), ForeignKey("trips.trip_id"), nullable=False)
-    day_id = Column(Uuid(as_uuid=False), ForeignKey("trip_days.day_id"), nullable=False)
-    type = Column(String, nullable=False)
-    title = Column(String, nullable=False)
-    start_date_time = Column(String, nullable=True)
-    end_date_time = Column(String, nullable=True)
-    confirmation_number = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    image_url = Column(String, nullable=True)
-    logo_url = Column(String, nullable=True)
-    completed = Column(Boolean, nullable=False, default=False, server_default="false")
-    completed_date_time = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    updated_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    position: Mapped[int]
+    name: Mapped[str]
+    type: Mapped[str]
+    check_in: Mapped[dt.datetime] = mapped_column(WallClockColumn)
+    check_out: Mapped[dt.datetime] = mapped_column(WallClockColumn)
+    timezone: Mapped[str | None]
+    location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    room_type: Mapped[str | None]
+    confirmation_number: Mapped[str | None]
+    notes: Mapped[str | None]
 
 
-class LocationRecord(Base):
-    __tablename__ = "locations"
+class Travel(SoftDeleteMixin, Base):
+    """One booked or scheduled leg (flight, train, ...)."""
 
-    location_id = Column(Uuid(as_uuid=False), primary_key=True)
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), nullable=False)
-    role = Column(String, nullable=False)
-    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
-    name = Column(String, nullable=False)
-    lat = Column(Float, nullable=True)
-    lng = Column(Float, nullable=True)
-    full_address = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    link = Column(String, nullable=True)
-    google_place_id = Column(String, nullable=True)
-    google_maps_uri = Column(String, nullable=True)
+    __tablename__ = "travels"
 
-
-class TravelDetailRecord(Base):
-    __tablename__ = "travel_details"
-
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
-    mode = Column(String, nullable=False)
-    operator = Column(String, nullable=True)
-    vehicle_number = Column(String, nullable=True)
-    cabin_class = Column(String, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    position: Mapped[int]
+    title: Mapped[str]
+    mode: Mapped[str]
+    carrier: Mapped[str | None]
+    number: Mapped[str | None]
+    seat: Mapped[str | None]
+    from_location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    to_location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    depart: Mapped[dt.datetime] = mapped_column(WallClockColumn)
+    arrive: Mapped[dt.datetime | None] = mapped_column(WallClockColumn)
+    depart_timezone: Mapped[str | None]
+    arrive_timezone: Mapped[str | None]
+    confirmation_number: Mapped[str | None]
+    notes: Mapped[str | None]
 
 
-class StayDetailRecord(Base):
-    __tablename__ = "stay_details"
+class Day(SoftDeleteMixin, Base):
+    """One calendar date of a trip. At most one live day per date."""
 
-    point_id = Column(Uuid(as_uuid=False), ForeignKey("trip_points.point_id"), primary_key=True)
-    stay_type = Column(String, nullable=False)
-    check_in_time = Column(String, nullable=True)
-    check_out_time = Column(String, nullable=True)
-    room_type = Column(String, nullable=True)
+    __tablename__ = "days"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    date: Mapped[dt.date]
+    title: Mapped[str | None]  # optional: an untitled day is headed by its date
+    summary: Mapped[str | None]
+
+    items: Mapped[list[Item]] = relationship(order_by="Item.position", lazy="raise")
+
+    __table_args__ = (
+        # v1 grew duplicate days from three different writers; the database
+        # holds the line instead. Soft-deleted days are exempt.
+        Index(
+            "uq_days_trip_date_live",
+            "trip_id",
+            "date",
+            unique=True,
+            sqlite_where=text("is_deleted = 0"),
+            postgresql_where=text("NOT is_deleted"),
+        ),
+    )
+
+
+class Item(SoftDeleteMixin, Base):
+    """One planned activity on a day, kept in document order."""
+
+    __tablename__ = "items"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    day_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("days.id"), index=True)
+    position: Mapped[int]
+    title: Mapped[str]
+    start: Mapped[dt.datetime | None] = mapped_column(WallClockColumn)
+    end: Mapped[dt.datetime | None] = mapped_column(WallClockColumn)
+    timezone: Mapped[str | None]
+    location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    confirmation_number: Mapped[str | None]
+    notes: Mapped[str | None]
+
+
+def _utc_now() -> dt.datetime:
+    """Server time, UTC, to the microsecond. SQLite's CURRENT_TIMESTAMP only
+    has whole seconds, which would leave same-second rows unordered."""
+    return dt.datetime.now(dt.UTC)
+
+
+class TripMember(SoftDeleteMixin, Base):
+    """Someone a trip is shared with. The owner is `trips.user_id` and has no
+    member row, so every owner-only rule is unchanged; members can read the
+    trip (and keep a journal on it) but never edit it."""
+
+    __tablename__ = "trip_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(default="viewer")
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+
+    __table_args__ = (
+        Index(
+            "uq_trip_members_trip_user_live",
+            "trip_id",
+            "user_id",
+            unique=True,
+            sqlite_where=text("is_deleted = 0"),
+            postgresql_where=text("NOT is_deleted"),
+        ),
+    )
+
+
+class Memory(SoftDeleteMixin, Base):
+    """One entry in a trip's journal: a point-in-time note by one traveler.
+
+    Memories can be written offline, so the phone makes their `id` and
+    `created_at` (UTC, the moment Save was tapped). `created_at` is the
+    journal's only ordering key — an edit never moves a memory. The server's
+    own stamp of when it arrived is `received_at` (kept for reference). `zone`
+    is the IANA zone the author's phone was in: display only, so a dinner
+    written in Tokyo still reads in Tokyo time when reread anywhere else.
+    """
+
+    __tablename__ = "memories"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    zone: Mapped[str]
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+    updated_at: Mapped[dt.datetime | None] = mapped_column(UtcDateTime, default=None)
+    received_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+    # Where the phone was when it was written (optional; the author can leave
+    # it off). `accuracy` is the phone's own uncertainty radius, in metres.
+    lat: Mapped[float | None] = mapped_column(default=None)
+    lng: Mapped[float | None] = mapped_column(default=None)
+    accuracy: Mapped[float | None] = mapped_column(default=None)
+
+    __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)
+
+
+class Photo(SoftDeleteMixin, Base):
+    """A photo on a journal memory. The files (original, display copy,
+    thumbnail) live in the PhotoStore, not the database; this row is what
+    they are and whose. Its random UUID is also what makes its URL
+    unguessable — photos are served without a login check."""
+
+    __tablename__ = "photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    memory_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("memories.id"), index=True)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # The original's file type as stored ("jpeg", "png", "webp", "heic").
+    original_format: Mapped[str]
+    original_bytes: Mapped[int]
+    width: Mapped[int]
+    height: Mapped[int]
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)

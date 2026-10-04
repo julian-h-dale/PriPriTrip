@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "name": "Bern & Wengen Long Weekend",
+  "startDate": "2026-05-10",
+  "endDate": "2026-05-14",
+  "timezone": "Europe/Zurich",
+  "stays": [
+    {
+      "name": "Hotel Goldener Schlüssel",
+      "type": "hotel",
+      "checkIn": "2026-05-11T14:00",
+      "checkOut": "2026-05-12T10:00",
+      "location": {
+        "name": "Hotel Goldener Schlüssel",
+        "address": "Rathausgasse 72, 3011 Bern, Switzerland",
+        "city": "Bern",
+        "lat": 46.9486227,
+        "lng": 7.4487269
+      },
+      "confirmationNumber": "SAMPLE-1001",
+      "notes": "In the middle of the Old Town. If the room isn't ready, **drop bags** and head out."
+    },
+    {
+      "name": "Beausite Park Hotel",
+      "type": "hotel",
+      "checkIn": "2026-05-12T15:00",
+      "checkOut": "2026-05-14T10:00",
+      "location": {
+        "name": "Beausite Park Hotel Wengen",
+        "address": "Am Wengi, 3823 Wengen, Switzerland",
+        "lat": 46.60852,
+        "lng": 7.9231963
+      },
+      "roomType": "Double, Jungfrau view",
+      "confirmationNumber": "SAMPLE-1002",
+      "notes": "Ask for a **Jungfrau-view** room with a balcony."
+    }
+  ],
+  "travels": [
+    {
+      "title": "Chicago → Zürich",
+      "mode": "flight",
+      "carrier": "SWISS",
+      "number": "LX 9",
+      "seat": "23A",
+      "from": { "name": "Chicago O'Hare (ORD)", "city": "Chicago", "lat": 41.9786, "lng": -87.9048 },
+      "to": { "name": "Zürich Airport (ZRH)", "city": "Zürich", "lat": 47.4581, "lng": 8.5555 },
+      "depart": "2026-05-10T17:40",
+      "departTimezone": "America/Chicago",
+      "arrive": "2026-05-11T09:25",
+      "confirmationNumber": "SAMPLE-LX7Q2K",
+      "notes": "Overnight flight. Download the **SBB app** before landing."
+    },
+    {
+      "title": "Zürich Airport → Bern",
+      "mode": "train",
+      "carrier": "SBB",
+      "number": "IC 8",
+      "from": { "name": "Zürich Flughafen", "city": "Zürich" },
+      "to": { "name": "Bern", "city": "Bern" },
+      "depart": "2026-05-11T10:28",
+      "arrive": "2026-05-11T11:28"
+    },
+    {
+      "title": "Bern → Wengen",
+      "mode": "train",
+      "carrier": "BLS / BOB / WAB",
+      "from": { "name": "Bern", "city": "Bern" },
+      "to": { "name": "Wengen", "city": "Wengen" },
+      "depart": "2026-05-12T10:34",
+      "arrive": "2026-05-12T12:41",
+      "notes": "Change at **Interlaken Ost** and **Lauterbrunnen**. Wengen is car-free."
+    },
+    {
+      "title": "Zürich → Chicago",
+      "mode": "flight",
+      "carrier": "SWISS",
+      "number": "LX 8",
+      "from": { "name": "Zürich Airport (ZRH)", "city": "Zürich", "lat": 47.4581, "lng": 8.5555 },
+      "to": { "name": "Chicago O'Hare (ORD)", "city": "Chicago", "lat": 41.9786, "lng": -87.9048 },
+      "depart": "2026-05-14T13:05",
+      "arrive": "2026-05-14T15:45",
+      "arriveTimezone": "America/Chicago",
+      "confirmationNumber": "SAMPLE-LX7Q2K"
+    }
+  ],
+  "days": [
+    {
+      "date": "2026-05-11",
+      "title": "Arrive in Bern",
+      "summary": "Land in Zürich, train to Bern, and keep the afternoon easy in the Old Town.",
+      "items": [
+        {
+          "title": "Lunch at Altes Tramdepot",
+          "start": "2026-05-11T12:15",
+          "end": "2026-05-11T13:30",
+          "location": {
+            "name": "Altes Tramdepot Brauerei",
+            "address": "Grosser Muristalden 6, 3006 Bern, Switzerland",
+            "lat": 46.9479,
+            "lng": 7.4605
+          }
+        },
+        {
+          "title": "Old Town & Zytglogge walk",
+          "notes": "- Zytglogge clock tower\n- Kramgasse arcades\n- Aare viewpoint at the **Rosengarten** if energy allows"
+        },
+        {
+          "title": "Dinner at Kornhauskeller",
+          "start": "2026-05-11T19:00",
+          "end": "2026-05-11T21:00",
+          "location": {
+            "name": "Kornhauskeller",
+            "address": "Kornhausplatz 18, 3011 Bern, Switzerland",
+            "lat": 46.9493,
+            "lng": 7.4466,
+            "url": "https://www.kornhaus-bern.ch"
+          },
+          "confirmationNumber": "Table for 2, 19:00"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-12",
+      "title": "Up to Wengen",
+      "summary": "A slow morning in Bern, then the train into the mountains.",
+      "items": [
+        {
+          "title": "Morning at the Rose Garden",
+          "start": "2026-05-12T08:30",
+          "end": "2026-05-12T09:30",
+          "location": { "name": "Rosengarten Bern", "city": "Bern", "lat": 46.9537, "lng": 7.4605 }
+        },
+        {
+          "title": "Dinner at the hotel",
+          "start": "2026-05-12T19:00",
+          "end": "2026-05-12T21:00"
+        },
+        {
+          "title": "Stargazing from the balcony"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-13",
+      "title": "Männlichen ridge",
+      "summary": "The big hiking day — cable car up, ridge walk across, train down.",
+      "items": [
+        {
+          "title": "Männlichen → Kleine Scheidegg hike",
+          "start": "2026-05-13T09:30",
+          "end": "2026-05-13T12:30",
+          "location": { "name": "Männlichen", "city": "Wengen", "lat": 46.6133, "lng": 7.9403 },
+          "notes": "About **4.5 km**, mostly downhill.\n\n1. Cable car from Wengen\n2. Ridge path to Kleine Scheidegg\n3. Train back down to Wengen"
+        },
+        {
+          "title": "Lunch at Kleine Scheidegg"
+        },
+        {
+          "title": "Fondue night",
+          "start": "2026-05-13T19:30",
+          "end": "2026-05-13T21:30"
+        }
+      ]
+    }
+  ]
+}

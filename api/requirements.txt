@@ -1,8 +1,27 @@
-fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
-asyncpg>=0.29.0
-sqlalchemy[asyncio]>=2.0
-pydantic>=2.0
-fastapi-users[sqlalchemy]>=13.0.0
-python-jose[cryptography]>=3.3.0
-bcrypt>=4.0.0
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+gunicorn==23.*
+sqlalchemy[asyncio]==2.0.*
+aiosqlite==0.20.*
+alembic==1.18.*
+pydantic==2.10.*
+pydantic-settings==2.8.*
+fastapi-users[sqlalchemy]==14.*
+python-multipart==0.0.*
+# IANA zone data for zoneinfo, so slim containers resolve Europe/Zurich etc.
+tzdata==2025.*
+# Offline coordinates -> IANA timezone (Rust; no numpy). See app/zones.py.
+tzfpy==2.*
+# Server-side Google Places lookups (app/google_places_server.py — photo
+# backfill only; the app otherwise never calls Google from the server).
+httpx==0.28.*
+# Journal photos: display copies and thumbnails, and iPhone HEIC files.
+pillow==11.*
+pillow-heif==1.*
+
+# Dev / tooling
+ruff==0.8.*
+mypy==1.14.*
+pytest==8.*
+pytest-asyncio==0.25.*
+jsonschema==4.*

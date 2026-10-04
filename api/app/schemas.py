@@ -1,229 +1,212 @@
-from typing import List, Optional
+"""Pydantic v2 request/response schemas.
 
-from pydantic import BaseModel
+Kept separate from SQLAlchemy models so internal columns never leak onto
+the wire. camelCase aliases keep the frontend contract stable regardless
+of Python style.
+"""
 
-from app.enums import LocationRole, PointType, StayType, TravelMode
+from __future__ import annotations
 
+import uuid
+from datetime import date, datetime, time
+from typing import Annotated, Literal
 
-# ── Auth ────────────────────────────────────────────────────────────────────
+from fastapi_users import schemas
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
-class AuthResponse(BaseModel):
-    token: str
-    mapsApiKey: str
-
-
-# ── Trip header ─────────────────────────────────────────────────────────────
-
-class TripHeader(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
+from app.trip_document import DayDoc, IanaTimezone, ItemDoc, StayDoc, TravelDoc, TripDocument
 
 
-# ── Location ────────────────────────────────────────────────────────────────
+class CamelModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
-class LocationCreate(BaseModel):
-    locationId: str
-    role: LocationRole
+
+def _reject_tzinfo(value: time) -> time:
+    # Swagger's auto-generated example for a `time` field is "08:25:57.353Z",
+    # which Pydantic parses into a tz-aware time and SQLAlchemy round-trips
+    # intact — then it explodes at the first comparison against a naive time.
+    # Reject it at the boundary with a clear 422 instead of a 500 three calls
+    # later. Silently stripping the offset is the tempting fix and the wrong
+    # one — it would store 08:25 local for a client that meant 08:25 UTC.
+    if value.tzinfo is not None:
+        raise ValueError("wall-clock time must not carry a timezone offset")
+    return value
+
+
+# A wall-clock time (no offset). Use for values like "this routine ends at
+# 09:00", as opposed to instants, which are UTC-aware datetimes.
+WallClockTime = Annotated[time, AfterValidator(_reject_tzinfo), Field(examples=["08:30:00"])]
+
+
+# ---- Users (fastapi-users) ----
+#
+# NOTE: fastapi-users owns these schemas and they are snake_case
+# (`is_active`, `is_superuser`); the camelCase wire rule applies to domain
+# endpoints only. fastapi-users constructs and validates these internally, so
+# they deliberately do not extend CamelModel.
+
+
+class UserRead(schemas.BaseUser[uuid.UUID]):
+    name: str = ""
+    timezone: str = "UTC"
+
+
+class UserCreate(schemas.BaseUserCreate):
+    name: str = ""
+    timezone: str = "UTC"
+
+
+class UserUpdate(schemas.BaseUserUpdate):
+    name: str | None = None
+    timezone: str | None = None
+
+
+# ---- Trips ----
+#
+# Read models are the document models plus ids, so `GET /trips/{id}` returns
+# the trip in the same shape it was imported in (lessons: one schema source).
+# They also carry read-only `zone` fields: the clock each time is on, computed
+# by app/zones.py when the trip is read (never stored; never accepted back).
+# They are built from ORM rows (`from_attributes`) and accept field names as
+# well as aliases, because ORM attributes are snake_case.
+
+
+_READ_CONFIG = ConfigDict(from_attributes=True, populate_by_name=True, extra="ignore")
+
+
+class StayRead(StayDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+    zone: str | None = None
+
+
+class TravelRead(TravelDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+    depart_zone: str | None = None
+    arrive_zone: str | None = None
+
+
+class ItemRead(ItemDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+    zone: str | None = None
+
+
+class DayRead(DayDoc):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+    items: list[ItemRead] = Field(default_factory=list)  # type: ignore[assignment]
+
+
+class TripRead(TripDocument):
+    model_config = ConfigDict(title="TripRead", **_READ_CONFIG)
+    id: uuid.UUID
+    created_at: datetime
+    # The caller's footing on this trip: "owner" may edit, "viewer" may not.
+    role: Literal["owner", "viewer"] | None = None
+    stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
+    travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
+    days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
+
+
+class TripSummary(CamelModel):
+    id: uuid.UUID
     name: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    fullAddress: Optional[str] = None
-    description: Optional[str] = None
-    link: Optional[str] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
+    start_date: date
+    end_date: date
+    timezone: str
+    stay_count: int
+    travel_count: int
+    created_at: datetime
+    role: Literal["owner", "viewer"] = "owner"
 
 
-class LocationResponse(BaseModel):
-    locationId: str
-    pointId: str
-    role: LocationRole
-    name: str
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    fullAddress: Optional[str] = None
-    description: Optional[str] = None
-    link: Optional[str] = None
-    googlePlaceId: Optional[str] = None
-    googleMapsUri: Optional[str] = None
+class JoinTrip(CamelModel):
+    trip_id: uuid.UUID
 
 
-# ── Type-specific details ────────────────────────────────────────────────────
-
-class TravelDetail(BaseModel):
-    mode: TravelMode
-    operator: Optional[str] = None
-    vehicleNumber: Optional[str] = None
-    cabinClass: Optional[str] = None
+class MemberRead(CamelModel):
+    user_id: uuid.UUID
+    email: str
+    role: Literal["viewer"]
+    joined_at: datetime
 
 
-class StayDetail(BaseModel):
-    stayType: StayType
-    checkInTime: Optional[str] = None
-    checkOutTime: Optional[str] = None
-    roomType: Optional[str] = None
+MEMORY_MAX_CHARS = 2000
 
 
-# ── Trip Day ────────────────────────────────────────────────────────────────
-
-class TripDayCreate(BaseModel):
-    dayId: str
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
+def _memory_text(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("A memory needs some text")
+    if len(value) > MEMORY_MAX_CHARS:
+        raise ValueError(f"A memory is at most {MEMORY_MAX_CHARS} characters")
+    return value
 
 
-class TripDayUpdate(BaseModel):
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
+MemoryText = Annotated[str, AfterValidator(_memory_text)]
 
 
-class TripDayPatch(BaseModel):
-    title: Optional[str] = None
-    date: Optional[str] = None
-    description: Optional[str] = None
-    isAlternate: Optional[bool] = None
-    completed: Optional[bool] = None
+class MemoryLocation(CamelModel):
+    """Where the phone was when a memory was written."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    # The phone's uncertainty radius in metres, as the browser reports it.
+    accuracy: float | None = Field(default=None, ge=0)
 
 
-class TripDayResponse(BaseModel):
-    dayId: str
-    tripId: str
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool
-    deletedAt: Optional[str] = None
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
+class MemoryCreate(CamelModel):
+    """A new memory, possibly written offline: the phone makes its `id` (so a
+    retry can't duplicate it) and its `createdAt` (UTC, when Save was
+    tapped). Both are optional for callers that don't care; the server fills
+    them in."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    id: uuid.UUID | None = None
+    # Must carry an offset or Z — an instant, not a wall clock.
+    created_at: AwareDatetime | None = None
+    text: MemoryText
+    # The author's phone's zone right now (for display; ordering uses UTC).
+    zone: IanaTimezone
+    location: MemoryLocation | None = None
 
 
-# ── Trip Point ───────────────────────────────────────────────────────────────
+class MemoryUpdate(CamelModel):
+    """Changing a memory's words — and optionally dropping its location (send
+    `location: null`; leave it out to keep it). Its time and zone stay."""
 
-class TripPointCreate(BaseModel):
-    pointId: str
-    dayId: str
-    type: PointType
-    title: str
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationCreate] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: bool = False
-    completedDateTime: Optional[str] = None
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    text: MemoryText
+    location: MemoryLocation | None = None
 
 
-class TripPointUpdate(BaseModel):
-    dayId: str
-    type: PointType
-    title: str
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationCreate] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: bool = False
-    completedDateTime: Optional[str] = None
+class PhotoRead(CamelModel):
+    id: uuid.UUID
+    width: int
+    height: int
+    # Paths under the API (no login needed: the random id is the secret).
+    thumb_url: str
+    display_url: str
+    original_url: str
 
 
-class TripPointPatch(BaseModel):
-    dayId: Optional[str] = None
-    type: Optional[PointType] = None
-    title: Optional[str] = None
-    startDateTime: Optional[str] = None
-    endDateTime: Optional[str] = None
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: Optional[List[LocationCreate]] = None
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: Optional[bool] = None
-    completedDateTime: Optional[str] = None
-
-
-class TripPointResponse(BaseModel):
-    pointId: str
-    tripId: str
-    dayId: str
-    type: PointType
-    title: str
-    startDateTime: str
-    endDateTime: str
-    confirmationNumber: Optional[str] = None
-    description: Optional[str] = None
-    imageUrl: Optional[str] = None
-    logoUrl: Optional[str] = None
-    locations: List[LocationResponse] = []
-    travelDetail: Optional[TravelDetail] = None
-    stayDetail: Optional[StayDetail] = None
-    completed: bool
-    completedDateTime: Optional[str] = None
-    deletedAt: Optional[str] = None
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
-
-
-# ── Assembled trip response ──────────────────────────────────────────────────
-
-class TripDayWithPoints(TripDayResponse):
-    points: List[TripPointResponse] = []
-
-
-class TripListItem(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
-
-
-class TripResponse(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
-    days: List[TripDayWithPoints] = []
-
-
-# ── Import ───────────────────────────────────────────────────────────────────
-
-class TripDayImport(BaseModel):
-    dayId: str
-    title: str
-    date: str
-    description: Optional[str] = None
-    isAlternate: bool = False
-    completed: bool = False
-    points: List[TripPointCreate] = []
-
-
-class TripImport(BaseModel):
-    tripId: str
-    tripName: str
-    startDate: str
-    endDate: str
-    days: List[TripDayImport] = []
-
-
-class ImportResult(BaseModel):
-    status: str
-    daysImported: int
-    pointsImported: int
+class MemoryRead(CamelModel):
+    id: uuid.UUID
+    text: str
+    zone: str
+    created_at: datetime
+    updated_at: datetime | None = None
+    received_at: datetime
+    location: MemoryLocation | None = None
+    photos: list[PhotoRead] = Field(default_factory=list)
+    author_email: str
+    # True when the caller wrote it — only then may they edit or delete it.
+    mine: bool
