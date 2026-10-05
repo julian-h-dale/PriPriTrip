@@ -131,8 +131,9 @@ class FakeOWM:
             "date": params["date"],
             "temperature": {"min": 21.0, "max": 26.5},
             "precipitation": {"total": 3.2},
-            "humidity": {"afternoon": 68},
-            "cloud_cover": {"afternoon": 55},
+            # As OWM really sends them (seen live 2026-10-05): decimals.
+            "humidity": {"afternoon": 80.46},
+            "cloud_cover": {"afternoon": 97.94},
             "wind": {"max": {"speed": 7.7, "direction": 30}},
         }
 
@@ -210,6 +211,7 @@ async def test_forecast_for_the_next_8_days_then_the_outlook(
         7.7,
     )
     assert outlook["icon"] is None
+    assert (outlook["humidity"], outlook["clouds"]) == (80, 98)
     # Before the trip, "today" is the first day's place right now.
     assert body["today"]["place"] == "Taipei"
     assert body["today"]["temp"] == 27.5

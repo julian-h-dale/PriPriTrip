@@ -220,6 +220,11 @@ def _forecast_day(day: dt.date, place: Place, entry: dict[str, Any], cached: Cac
     )
 
 
+def _whole(value: Any) -> int | None:
+    """day_summary sends percentages with decimals (80.46); the page shows whole ones."""
+    return round(value) if isinstance(value, int | float) else None
+
+
 def _outlook_day(day: dt.date, place: Place, data: dict[str, Any], cached: Cached) -> WeatherDay:
     temp = data.get("temperature") or {}
     wind = (data.get("wind") or {}).get("max") or {}
@@ -231,8 +236,8 @@ def _outlook_day(day: dt.date, place: Place, data: dict[str, Any], cached: Cache
         high=temp.get("max"),
         low=temp.get("min"),
         rain=(data.get("precipitation") or {}).get("total"),
-        humidity=(data.get("humidity") or {}).get("afternoon"),
-        clouds=(data.get("cloud_cover") or {}).get("afternoon"),
+        humidity=_whole((data.get("humidity") or {}).get("afternoon")),
+        clouds=_whole((data.get("cloud_cover") or {}).get("afternoon")),
         wind_speed=wind.get("speed"),
         fetched_at=cached.fetched_at,
         stale=cached.stale,
