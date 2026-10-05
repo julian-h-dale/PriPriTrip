@@ -198,6 +198,7 @@ async def test_forecast_for_the_next_8_days_then_the_outlook(
     assert [d["kind"] for d in days] == ["forecast"] * 6 + ["outlook"] * 6
     first = days[1]  # Naha, 3 days out
     assert first["place"] == "Naha"
+    assert first["zone"] == "Asia/Tokyo"
     assert (first["high"], first["low"], first["pop"], first["rain"]) == (31, 25, 0.35, 2.4)
     assert (first["condition"], first["icon"], first["uvi"]) == ("Rain", "10d", 7.1)
     assert days[0]["place"] == "Taipei"

@@ -300,6 +300,7 @@ class BackupJournal(CamelModel):
 
 class WeatherNow(CamelModel):
     place: str
+    zone: str  # the place's IANA zone, for showing sunrise/sunset
     observed_at: datetime
     temp: float
     feels_like: float | None = None
@@ -319,6 +320,7 @@ class WeatherNow(CamelModel):
 class WeatherDay(CamelModel):
     date: date
     place: str | None = None
+    zone: str | None = None
     # "forecast": OWM's daily forecast (the next 8 days); "outlook": its
     # long-range daily summary (further out); "past": already happened;
     # "unavailable": no data could be had.

@@ -199,6 +199,7 @@ def _forecast_day(day: dt.date, place: Place, entry: dict[str, Any], cached: Cac
     return WeatherDay(
         date=day,
         place=place.name,
+        zone=place.zone,
         kind="forecast",
         high=temp.get("max"),
         low=temp.get("min"),
@@ -225,6 +226,7 @@ def _outlook_day(day: dt.date, place: Place, data: dict[str, Any], cached: Cache
     return WeatherDay(
         date=day,
         place=place.name,
+        zone=place.zone,
         kind="outlook",
         high=temp.get("max"),
         low=temp.get("min"),
@@ -243,6 +245,7 @@ def _now(place: Place, data: dict[str, Any], cached: Cached) -> WeatherNow | Non
         return None
     return WeatherNow(
         place=place.name,
+        zone=place.zone,
         observed_at=_instant(current.get("dt")) or cached.fetched_at,
         temp=current["temp"],
         feels_like=current.get("feels_like"),
