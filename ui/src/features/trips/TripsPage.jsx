@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { BedDouble, ChevronDown, LogOut, Plane, Trash2, Upload, UserPlus, Users } from "lucide-react";
+import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Trash2, Upload, UserPlus, Users } from "lucide-react";
 import { JoinTripDialog } from "@/features/sharing/JoinTripDialog";
+import { countdownLabel } from "@/features/trips/countdown";
 import { deleteTrip, fetchTrips, leaveTrip } from "@/features/trips/tripsSlice";
 import { ImportTripDialog } from "@/features/trips/ImportTripDialog";
 import { Button } from "@/shared/components/ui/button";
@@ -19,9 +20,22 @@ function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-function TripCard({ trip, onDelete, onLeave, readOnly }) {
+/** "Now" that moves on every 30 seconds while the list is open: one timer for every countdown. */
+function useNow(intervalMs = 30_000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
   const shared = trip.role === "viewer" || trip.role === "editor";
   const nights = daysBetween(trip.startDate, trip.endDate);
+  // Until the first day begins on this phone's clock (so it can still show
+  // on an "Active" trip whose own zone is already past midnight).
+  const countdown = now == null ? null : countdownLabel(trip.startDate, now);
   return (
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
       <Link
@@ -38,6 +52,12 @@ function TripCard({ trip, onDelete, onLeave, readOnly }) {
         <span className="text-sm text-muted-foreground">
           {formatDateRange(trip.startDate, trip.endDate)} · {plural(nights, "night")}
         </span>
+        {countdown && (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+            <Hourglass className="h-3.5 w-3.5" aria-hidden="true" />
+            {countdown}
+          </span>
+        )}
         <span className="flex gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <BedDouble className="h-3.5 w-3.5" aria-hidden="true" />
@@ -80,7 +100,7 @@ function TripCard({ trip, onDelete, onLeave, readOnly }) {
 }
 
 /** One group of the trips list: a heading, then its cards. */
-function TripGroup({ title, trips, onDelete, onLeave, readOnly }) {
+function TripGroup({ title, trips, onDelete, onLeave, readOnly, now }) {
   if (!trips.length) return null;
   return (
     <section aria-label={title} className="flex flex-col gap-2">
@@ -88,7 +108,7 @@ function TripGroup({ title, trips, onDelete, onLeave, readOnly }) {
       <ul className="flex flex-col gap-2">
         {trips.map((trip) => (
           <li key={trip.id}>
-            <TripCard trip={trip} onDelete={onDelete} onLeave={onLeave} readOnly={readOnly} />
+            <TripCard trip={trip} onDelete={onDelete} onLeave={onLeave} readOnly={readOnly} now={now} />
           </li>
         ))}
       </ul>
@@ -139,6 +159,7 @@ export function TripsPage() {
     setPendingDelete(null);
   }
 
+  const now = useNow();
   const firstLoad = status === "loading" && items.length === 0;
   const groups = groupTrips(items);
 
@@ -199,8 +220,8 @@ export function TripsPage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-6">
-            <TripGroup title="Active" trips={groups.active} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} />
-            <TripGroup title="Upcoming" trips={groups.upcoming} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} />
+            <TripGroup title="Active" trips={groups.active} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} now={now} />
+            <TripGroup title="Upcoming" trips={groups.upcoming} onDelete={setPendingDelete} onLeave={setPendingLeave} readOnly={readOnly} now={now} />
             {groups.past.length > 0 && (
               <div className="flex flex-col gap-2">
                 <button
