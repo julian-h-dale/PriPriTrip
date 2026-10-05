@@ -174,3 +174,12 @@ async def test_journals_hold_every_memory_public_or_not(
     assert journal["memories"][1]["photoIds"] == [pid]
     assert journal["memories"][1]["location"]["lat"] == 26.2
     assert journal["memories"][0]["author"] == "Test User"
+
+
+async def test_make_admin_turns_an_account_into_a_superuser(db: Any, test_user: Any) -> None:
+    from app.make_admin import make_admin
+
+    assert await make_admin(db, " USER@example.com ") is True
+    await db.refresh(test_user)
+    assert test_user.is_superuser
+    assert await make_admin(db, "nobody@example.com") is False

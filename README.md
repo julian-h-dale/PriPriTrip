@@ -121,7 +121,7 @@ off without touching yours. Sign up in the app as e.g. `backup@…`, then make
 it a superuser on Fly:
 
 ```bash
-fly ssh console -C "sqlite3 /data/app.db \"UPDATE users SET is_superuser=1 WHERE email='backup@…'\""
+fly ssh console -C "python -m app.make_admin backup@…"
 ```
 
 **2. The drive** (ext4: it stays plugged into the Pi). **Formatting erases
