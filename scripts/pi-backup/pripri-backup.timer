@@ -1,0 +1,12 @@
+# Installed by scripts/pi-backup/install.sh.
+[Unit]
+Description=Back up PriPriTrip every 30 minutes
+
+[Timer]
+OnCalendar=*:0/30
+# A run missed while the Pi was off happens soon after it boots.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
