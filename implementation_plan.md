@@ -2416,8 +2416,13 @@ to passing the SVG element as `glyph`.
   - **Julian, at 375px:** the pins read clearly on the map.
 - **Phase 39 — swipe between days (UI).** ✅ (2026-10-04)
   - **Built as planned, plus:**
-    - `embla-carousel-auto-height@8.6.0` (Embla's own plugin) sizes the
-      carousel to the day in view.
+    - ~~`embla-carousel-auto-height`~~ **Removed (fix, 2026-10-04):** it
+      fixed the carousel's height on arrival, so expanding entries clipped
+      the day and the page stopped scrolling (Julian spotted it). Now the
+      carousel takes its natural height, and the off-screen neighbours are
+      capped at one screen (`max-h-dvh`), so a long day next door can't add
+      empty space. The swipe e2e opens every entry and checks the page
+      scrolls to "Edit day" (screenshot `03c`).
     - The page scrolls inside `BottomNavLayout`, not the window, so its
       scroll container is marked `data-scroll-root`. A swipe scrolls that
       to the top once the new day settles.

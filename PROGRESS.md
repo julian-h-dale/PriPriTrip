@@ -19,7 +19,8 @@
     Calendar narrows either. Pins use Lucide outline icons (vanilla
     `lucide` package, SVG data URL as `glyphSrc`). **Julian:** look at the
     pins at phone width.
-  - **Phase 39 ✅ (swipe between days):** Embla 8.6.0 (+ auto-height). The
+  - **Phase 39 ✅ (swipe between days):** Embla 8.6.0. (Fixed: the
+    auto-height plugin clipped expanded days and stopped scrolling; removed.) The
     slide follows the finger; settling replaces the URL; the arrow keys
     work on desktop; the prev/next links are gone. **Julian, on a real
     phone:** swiping feels right, and vertical scrolling never changes day.

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import AutoHeight from "embla-carousel-auto-height";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
@@ -31,6 +30,7 @@ import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
+import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDayHeading } from "@/shared/utils/time";
 
 function ActivityActions({ entry, busy, readOnly, onEdit, onMove, onDelete }) {
@@ -355,7 +355,7 @@ function DaySwiper({ trip, date }) {
   const navigate = useNavigate();
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const index = rows.findIndex((r) => r.date === date);
-  const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: Math.max(index, 0) }, [AutoHeight()]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: Math.max(index, 0) });
   // Read by the Embla listeners, which outlive a render.
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
@@ -420,16 +420,19 @@ function DaySwiper({ trip, date }) {
   return (
     <div ref={wrapRef}>
       <div ref={emblaRef} className="overflow-hidden">
-        {/* items-start: each slide is only as tall as its own day; AutoHeight
-            sizes the container to the day in view. pan-y keeps vertical
+        {/* items-start: each slide is only as tall as its own day, and the
+            carousel as tall as its tallest slide, so the day in view grows
+            as its entries expand. The neighbours are capped at one screen
+            (only their top shows mid-swipe), so a long day next door can't
+            leave empty space under a short one. pan-y keeps vertical
             scrolling the browser's. */}
-        <div className="flex touch-pan-y touch-pinch-zoom items-start transition-[height] duration-200">
+        <div className="flex touch-pan-y touch-pinch-zoom items-start">
           {rows.map((r, i) => {
             const current = i === index;
             return (
               <div
                 key={r.date}
-                className="min-w-0 shrink-0 grow-0 basis-full px-4"
+                className={cn("min-w-0 shrink-0 grow-0 basis-full px-4", !current && "max-h-dvh overflow-hidden")}
                 aria-hidden={current ? undefined : "true"}
                 // Off-screen days can't be focused or read out.
                 inert={current ? undefined : ""}

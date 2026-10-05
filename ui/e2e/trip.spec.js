@@ -121,6 +121,18 @@ test("day detail: swipe between days", async ({ browser }) => {
   await expect(page.getByRole("heading", { name: "Tue, May 12" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("03b-day-after-swipe") });
 
+  // Regression: the day grows as its entries open, and the page scrolls to
+  // the end of it (a fixed carousel height once clipped it).
+  const plans = page.getByRole("list", { name: "Plans for Tue, May 12" });
+  const closed = plans.locator(":scope > li button[aria-expanded='false']");
+  while ((await closed.count()) > 0) await closed.first().click();
+  const editDay = page.getByRole("button", { name: "Edit Tue, May 12 title and summary" });
+  await editDay.scrollIntoViewIfNeeded();
+  await expect(editDay).toBeInViewport();
+  const scroll = await page.locator("[data-scroll-root]").evaluate((el) => [el.scrollHeight, el.clientHeight]);
+  expect(scroll[0]).toBeGreaterThan(scroll[1]);
+  await page.screenshot({ path: screenshotPath("03c-day-expanded-scrolled") });
+
   // Swiping replaced the URL, so Back goes to the timeline, not the last day.
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${tripPath}$`));
