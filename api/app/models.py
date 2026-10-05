@@ -94,8 +94,15 @@ class Trip(SoftDeleteMixin, Base):
     # first ask, renewable by the owner (services/sharing.py). The trip's id
     # is the viewer code, so this must never be shown to a member.
     edit_code: Mapped[str | None] = mapped_column(default=None)
+    # The secret code that makes whoever joins with it a viewer, made and
+    # renewed like the edit code. (The trip's id used to be the viewer code;
+    # it's in every URL, so it now only works for people already on the trip.)
+    view_code: Mapped[str | None] = mapped_column(default=None)
 
-    __table_args__ = (Index("uq_trips_edit_code", "edit_code", unique=True),)
+    __table_args__ = (
+        Index("uq_trips_edit_code", "edit_code", unique=True),
+        Index("uq_trips_view_code", "view_code", unique=True),
+    )
 
     stays: Mapped[list[Stay]] = relationship(order_by="Stay.position", lazy="raise")
     travels: Mapped[list[Travel]] = relationship(order_by="Travel.position", lazy="raise")
@@ -247,6 +254,9 @@ class Memory(SoftDeleteMixin, Base):
     lat: Mapped[float | None] = mapped_column(default=None)
     lng: Mapped[float | None] = mapped_column(default=None)
     accuracy: Mapped[float | None] = mapped_column(default=None)
+    # Viewers (people following along) see only public memories; the owner
+    # and editors see every one. Private unless its author says otherwise.
+    is_public: Mapped[bool] = mapped_column(default=False, server_default="0")
 
     __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)
 

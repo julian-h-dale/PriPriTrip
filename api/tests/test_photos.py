@@ -14,7 +14,7 @@ from PIL import Image, ImageCms
 
 from app.sample_data import load_sample_trip
 from app.settings import get_app_settings
-from tests.test_sharing import shared_trip
+from tests.test_sharing import edited_trip
 
 
 @pytest.fixture(autouse=True)
@@ -183,7 +183,7 @@ async def test_at_most_ten_per_memory_and_a_retry_never_duplicates(client: Async
 async def test_only_the_author_adds_or_removes_and_deleting_kills_the_urls(
     client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient, photo_dir: Path
 ) -> None:
-    tid = (await shared_trip(client, viewer))["id"]
+    tid = (await edited_trip(client, viewer))["id"]
     memory = await _memory(client, tid)
     photo = (await _upload(client, tid, memory["id"], jpeg(64, 48))).json()
     url = f"/trips/{tid}/memories/{memory['id']}/photos"

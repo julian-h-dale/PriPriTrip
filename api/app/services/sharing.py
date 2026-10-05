@@ -1,8 +1,10 @@
 """Sharing a trip: its owner (trips.user_id) and its members (trip_members),
 each a viewer or an editor.
 
-The trip's id is the viewer code; its edit code (trips.edit_code, a random
-secret only the owner sees) makes an editor. Editors' writes go through
+Two random secrets only the owner sees: the view code (trips.view_code) makes
+a viewer and the edit code (trips.edit_code) an editor. The trip's id used to
+be the viewer code; it's in every URL, so it now only works for people who are
+already on the trip. Editors' writes go through
 get_editable_trip, like the owner's.
 """
 
@@ -12,7 +14,7 @@ import datetime as dt
 import secrets
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import MemberRole, active
@@ -20,7 +22,7 @@ from app.models import Trip, TripMember, UserRecord
 
 # 15 random bytes: 20 URL-safe characters, short enough to paste, far too many
 # to guess.
-_EDIT_CODE_BYTES = 15
+_CODE_BYTES = 15
 
 
 async def membership(db: AsyncSession, trip_id: uuid.UUID, user_id: uuid.UUID) -> TripMember | None:
@@ -66,15 +68,28 @@ async def leave(db: AsyncSession, member: TripMember) -> None:
     await db.commit()
 
 
-async def trip_for_edit_code(db: AsyncSession, code: str) -> Trip | None:
-    """The live trip whose edit code this is, if any."""
-    return await db.scalar(select(Trip).where(Trip.edit_code == code, active(Trip)))
+async def trip_for_code(db: AsyncSession, code: str) -> tuple[Trip, MemberRole] | None:
+    """The live trip whose view or edit code this is, with the role it gives."""
+    trip = await db.scalar(
+        select(Trip).where(or_(Trip.edit_code == code, Trip.view_code == code), active(Trip))
+    )
+    if trip is None:
+        return None
+    return trip, "editor" if trip.edit_code == code else "viewer"
 
 
 async def edit_code(db: AsyncSession, trip: Trip, *, renew: bool = False) -> str:
     """The trip's edit code, made on first ask. `renew` replaces it: the old
     one stops working, and anyone who already joined keeps their role."""
     if trip.edit_code is None or renew:
-        trip.edit_code = secrets.token_urlsafe(_EDIT_CODE_BYTES)
+        trip.edit_code = secrets.token_urlsafe(_CODE_BYTES)
         await db.commit()
     return trip.edit_code
+
+
+async def view_code(db: AsyncSession, trip: Trip, *, renew: bool = False) -> str:
+    """The trip's view code, made and renewed like the edit code."""
+    if trip.view_code is None or renew:
+        trip.view_code = secrets.token_urlsafe(_CODE_BYTES)
+        await db.commit()
+    return trip.view_code

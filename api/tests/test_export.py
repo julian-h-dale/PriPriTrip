@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from app.sample_data import load_sample_trip
 from app.trip_document import validate_trip_document
 from tests.conftest import if_match
-from tests.test_sharing import shared_trip
+from tests.test_sharing import edited_trip, shared_trip
 
 EXAMPLE_TRIP = Path(__file__).parents[2] / "example-trip.json"
 
@@ -78,11 +78,24 @@ async def test_export_leaves_out_deleted_entries(client: AsyncClient) -> None:
     assert item["title"] not in titles
 
 
-async def test_a_viewer_can_export(client: AsyncClient, viewer: AsyncClient) -> None:
+async def test_a_viewer_can_export_without_confirmation_numbers(
+    client: AsyncClient, viewer: AsyncClient
+) -> None:
     trip = await shared_trip(client, viewer)
     resp = await viewer.get(f"/trips/{trip['id']}/export")
     assert resp.status_code == 200
-    assert resp.json() == load_sample_trip()
+    expected = load_sample_trip()
+    assert "confirmationNumber" in str(expected)  # the sample has some to hide
+    for entry in [*expected["stays"], *expected["travels"]] + [
+        i for d in expected["days"] for i in d.get("items", [])
+    ]:
+        entry.pop("confirmationNumber", None)
+    assert resp.json() == expected
+
+
+async def test_an_editor_exports_everything(client: AsyncClient, viewer: AsyncClient) -> None:
+    trip = await edited_trip(client, viewer)
+    assert (await viewer.get(f"/trips/{trip['id']}/export")).json() == load_sample_trip()
 
 
 async def test_a_stranger_gets_404(client: AsyncClient, stranger: AsyncClient) -> None:

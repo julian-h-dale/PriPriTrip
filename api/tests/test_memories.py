@@ -1,5 +1,7 @@
-"""The trip journal: memories by everyone on a trip, ordered by the server's
-UTC time, editable and deletable only by their author."""
+"""The trip journal: memories by the owner and editors, ordered by the
+server's UTC time, editable and deletable only by their author. (Who sees
+which memory — viewers and public ones — is tests/test_public_memories.py.)
+The `viewer` fixture joins as an editor here, so it can write."""
 
 from __future__ import annotations
 
@@ -12,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Memory, UserRecord
 from app.sample_data import load_sample_trip
-from tests.test_sharing import shared_trip
+from tests.test_sharing import edited_trip
 
 
 async def _write(
@@ -27,7 +29,7 @@ async def _write(
 async def test_everyone_on_the_trip_writes_and_reads_the_same_journal(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
-    tid = (await shared_trip(client, viewer))["id"]
+    tid = (await edited_trip(client, viewer))["id"]
     first = await _write(client, tid, "Fondue at Kornhauskeller", "Europe/Zurich")
     second = await _write(viewer, tid, "The joke about the cable car", "Asia/Tokyo")
 
@@ -142,7 +144,7 @@ async def test_a_retry_with_the_same_id_never_duplicates(client: AsyncClient) ->
 async def test_an_id_that_isnt_yours_to_reuse_is_a_409(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
-    tid = (await shared_trip(client, viewer))["id"]
+    tid = (await edited_trip(client, viewer))["id"]
     url = f"/trips/{tid}/memories"
     mid = str(uuid.uuid4())
     await client.post(url, json={"id": mid, "text": "the owner's", "zone": "UTC"})
@@ -205,7 +207,7 @@ async def test_editing_keeps_its_place_and_marks_it_edited(client: AsyncClient) 
 async def test_only_the_author_edits_or_deletes(
     client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient
 ) -> None:
-    tid = (await shared_trip(client, viewer))["id"]
+    tid = (await edited_trip(client, viewer))["id"]
     owners = await _write(client, tid, "the owner's")
     viewers = await _write(viewer, tid, "the viewer's")
 
@@ -243,7 +245,7 @@ async def test_text_and_zone_are_checked(client: AsyncClient) -> None:
 async def test_losing_access_to_the_trip_loses_its_journal(
     client: AsyncClient, viewer: AsyncClient, viewer_user: UserRecord
 ) -> None:
-    tid = (await shared_trip(client, viewer))["id"]
+    tid = (await edited_trip(client, viewer))["id"]
     await _write(viewer, tid, "mine")
     await client.delete(f"/trips/{tid}/members/{viewer_user.id}")
     assert (await viewer.get(f"/trips/{tid}/memories")).status_code == 404

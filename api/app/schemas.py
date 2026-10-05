@@ -140,8 +140,9 @@ class TripSummary(CamelModel):
 
 
 class JoinTrip(CamelModel):
-    """Join with the trip's id (as a viewer) or its edit code (as an editor).
-    `code` takes either; `tripId` is what older apps send."""
+    """Join with the trip's view code (as a viewer) or its edit code (as an
+    editor); the server tells them apart. The trip's id (`code`, or `tripId`
+    from older apps) only works for someone already on the trip."""
 
     trip_id: uuid.UUID | None = None
     code: str | None = Field(default=None, max_length=200)
@@ -155,6 +156,10 @@ class MemberRead(CamelModel):
 
 
 class EditCode(CamelModel):
+    code: str
+
+
+class ViewCode(CamelModel):
     code: str
 
 
@@ -197,15 +202,19 @@ class MemoryCreate(CamelModel):
     # The author's phone's zone right now (for display; ordering uses UTC).
     zone: IanaTimezone
     location: MemoryLocation | None = None
+    # Shown to viewers (people following the trip) too. Private by default.
+    is_public: bool = False
 
 
 class MemoryUpdate(CamelModel):
     """Changing a memory's words — and optionally dropping its location (send
-    `location: null`; leave it out to keep it). Its time and zone stay."""
+    `location: null`; leave it out to keep it) or changing who sees it
+    (`isPublic`; leave it out to keep it). Its time and zone stay."""
 
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
     text: MemoryText
     location: MemoryLocation | None = None
+    is_public: bool | None = None
 
 
 class PhotoRead(CamelModel):
@@ -230,3 +239,5 @@ class MemoryRead(CamelModel):
     author_email: str
     # True when the caller wrote it — only then may they edit or delete it.
     mine: bool
+    # Viewers see only public memories; the owner and editors see all.
+    is_public: bool = False

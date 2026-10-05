@@ -2854,7 +2854,10 @@ Asked 2026-10-05 (Julian), five features:
   the start of its first day, against the phone's clock. One unit at a time:
   days while more than 24 hours remain, then hours, then minutes.
 
-**Proposed order:** public memories first (it must land before the in-laws
+**Decisions (answered 2026-10-05):** every recommendation below, and the
+backup drive is ext4 on a Raspberry Pi 5 (Q-B5).
+
+**Order (Q-O1):** public memories first (it must land before the in-laws
 are invited, because today every viewer sees every memory), then the backup
 (before the trip), weather, currency, and the countdown. Each is independent,
 so the order can change.
@@ -2887,8 +2890,8 @@ so the order can change.
   - OpenWeatherMap's One Call 3.0 answers 401 unless the key has the "One Call
     by Call" subscription (tested with a dummy key, so this only shows the
     endpoint's rule, not Julian's key).
-- **This machine is a Raspberry Pi 5** (`rpt-rpi-2712` kernel). If it's the
-  backup Pi, the backup can be installed from this checkout (Q-B5).
+- **The backup Pi is a Raspberry Pi 5** with a drive dedicated to the backup
+  (Q-B5). The install script doesn't assume it's this checkout's machine.
 
 ### Design: public and private memories
 
@@ -2962,7 +2965,8 @@ so the order can change.
   `Persistent=true` (a run missed while the Pi was off happens at boot), and
   logs in `journalctl -u pripri-backup`. `scripts/pi-backup/install.sh`
   installs the unit files and the env file template; `make pi-backup-install`
-  calls it (a script, not hand setup, per AGENTS.md). The drive is mounted by
+  calls it (a script, not hand setup, per AGENTS.md). The drive is formatted
+  **ext4** (dedicated to the backup, never leaves the Pi; Q-B5), mounted by
   UUID in `/etc/fstab` with `nofail`, so the Pi still boots without it.
 - **Network:** the Pi pulls from `https://pripri-trip.fly.dev/api`; nothing
   connects to the Pi, so Tailscale isn't needed for the backup (only for
@@ -3153,18 +3157,18 @@ Public and private memories:
   - (b) Any editor, so either of you can share the other's entry.
   - Recommendation: **(a)**. It keeps "only the author changes a memory", and
     nobody's private note gets shared by someone else.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-P2. Can viewers still write memories?** Today every member can.
   - (a) No: viewers get a read-only feed of public entries.
   - (b) Yes, and theirs are always visible to everyone.
   - Recommendation: **(a)**. The journal is yours; the in-laws follow along.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-P3. Should viewers see confirmation numbers?** Q-S4 said yes when the
   only viewer was a traveler. With in-laws, those numbers (and a forwarded
   link) are enough to change a booking.
   - Recommendation: **hide them from viewers**, server-side. Notes, times and
     places stay. You two are editors, so you still see everything.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-P4. The viewer code is the trip id,** which is in every trip URL. Anyone
   who sees a link or screenshot can join and read the plan, and it can't be
   revoked (only each person removed).
@@ -3173,7 +3177,7 @@ Public and private memories:
     the trip stay.
   - Recommendation: **(b)** now that it's shared beyond the two of you. It
     reuses the edit code's machinery, so it's small.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 
 Photo backup:
 
@@ -3185,20 +3189,20 @@ Photo backup:
   - Recommendation: **(a)**, with a dedicated superuser account for the Pi
     (e.g. `backup@…`) so it can be disabled without touching yours. (b) is
     tighter but adds a second auth path to maintain.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-B2. What gets backed up?**
   - (a) Photo originals only.
   - (b) Originals plus each trip's `journal.json` (memory text, times,
     places, which photos belong to which memory).
   - Recommendation: **(b)**. The trip export is plan-only, so this is the only
     off-Fly copy of what you wrote. It's a few hundred KB.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-B3. A photo deleted in the app:** keep it on the drive (recommended: a
   backup, not a mirror) or delete it there too?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-B4. The folder layout:** `<trip>/<date>/<time>_<author>_<id>.jpg`
   (recommended, browsable by day) or one flat folder per trip?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-B5. The drive and the Pi.**
   - Is this machine (a Pi 5, where this session runs) the backup Pi?
   - How is the drive formatted? (a) **exFAT**: plug it into any Mac or PC to
@@ -3206,7 +3210,9 @@ Photo backup:
     loss, but a Mac/PC can't read it without extra software.
   - Recommendation: keep **exFAT** if that's what it is (likely, out of the
     box) so you can plug it in anywhere; ext4 only if it never leaves the Pi.
-  - **Answer:**
+  - **Answer:** a Raspberry Pi 5; the drive is dedicated to the backup and can
+    be formatted as needed (2026-10-05). **Resolved:** **ext4** (it never
+    leaves the Pi). The install script works on any Pi, this one or another.
 
 Weather:
 
@@ -3221,27 +3227,27 @@ Weather:
     Before the trip, nothing for its days until 5 days before.
   - Recommendation: **(a)**, with the 1,000 cap. "As many days as possible" and
     "works ahead of the trip" both need it. We'd use about 25 calls a day.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-W2. Which place is a day's weather?**
   - (a) One per day: where you sleep that night, else the travel day's
     arrival, else the previous day's.
   - (b) Every place with coordinates on the day.
   - Recommendation: **(a)**. Your places on one island are a few km apart;
     the overnight place is what matters, and it's one line per day.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-W3. "Today's weather" before and after the trip?**
   - Recommendation: before, current conditions at the trip's first place
     ("Naha right now"); during, today's place; after, not shown.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-W4. Units?**
   - Recommendation: **°F and mph**, with °C shown small beside the high/low.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-W5. A scheduled daily refresh, or refresh on request only?**
   - Recommendation: **on request only** (your 12-hour rule). It covers "once a
     day" whenever anyone looks, and makes no calls when nobody does. A daily
     job could be added later if the first load after a quiet day feels slow
     (it should take a second or two).
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 
 Currency:
 
@@ -3252,23 +3258,23 @@ Currency:
   - Recommendation: **(a)**. Frankfurter needs no key and allows browser calls,
     and the phone must keep the rate anyway for offline use. A server cache
     adds a table and an endpoint for no gain.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-C2. Which currencies does a trip have?**
   - (a) Worked out from the trip's places (Okinawa & Taipei → JPY and TWD),
     with an "Other…" picker.
   - (b) A currency field you set on the trip (a trip document change).
   - Recommendation: **(a)**: nothing to enter, and it follows the itinerary.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-C3. Calculator direction:** local → USD as asked, plus a swap button for
   USD → local (recommended, it's a few lines), or strictly one way?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 
 Pages, countdown, order:
 
 - **Q-N1. Weather and Currency in the drawer only while a trip is open?**
   Recommendation: **yes**; both need a trip to know the places. (The
   alternative is "your current or next trip" from anywhere.)
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-D1. Midnight on which clock?**
   - (a) **The phone's** (as asked): 12:00 AM Oct 29 in Chicago, 30 minutes
     before the 12:30 AM flight.
@@ -3276,13 +3282,13 @@ Pages, countdown, order:
     so it reaches zero a day early.
   - (c) The first booked departure ("boarding in 3 hours").
   - Recommendation: **(a)**.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-D2. Rounding:** whole units rounded down: 2 days 23 hours reads "2
   days", 47 hours reads "1 day", 23 h 59 m reads "23 hours", and under a
   minute reads "Starting now". Recommendation: as described.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-O1. Order:** public memories → backup → weather → currency → countdown?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 
 ## After Phase 4 — First real trip
 
