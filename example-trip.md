@@ -27,15 +27,16 @@
 
 ## Thu, Oct 29 — Travel Day
 - Depart Chicago O'Hare at **12:30 AM**
-- EVA Air BR55 → Taipei
-- Continue to Okinawa the following morning
+- EVA Air BR55 → Taipei (O'Hare Terminal 5 → TPE Terminal 2), arrive **5:25 AM** Oct 30
+- EVA Air BR112 → Naha, depart TPE **6:55 AM** Oct 30
+- Booking ref: `DAAL7X` · Ticket `695 2464270937` · 2 checked bags
 
 **Night:** Overnight flight
 
 ---
 
 ## Fri, Oct 30 — Arrive Naha
-**Arrive Naha:** 9:15 AM
+**Arrive Naha:** 9:15 AM (BR112, `DAAL7X`)
 
 ### Hotel Palm Royal Resort Kokusai Street — CONFIRMED
 - Check-in: **3:00 PM – midnight**
@@ -259,8 +260,9 @@ Preferred areas:
 # Taipei — High-Level Daily Plan
 
 ## Mon, Nov 9 — Arrival + Zhongshan / Dadaocheng
-**Hotel Nikko Taipei**
+**Hotel Nikko Taipei** (listed as Hotel Royal-Nikko Taipei) — Confirmation: `6158.360.312`
 
+- Tigerair Taiwan IT231: Naha → TPE Terminal 1, depart **9:45 AM**
 - Arrive TPE **10:20 AM**
 - Check in / leave luggage
 - Zhongshan neighborhood
@@ -353,10 +355,11 @@ Options:
 ---
 
 ## Fri, Nov 13 — Return Home
-- EVA Air BR113: Naha → Taipei
-- Depart Naha **10:15 AM**
-- EVA Air BR56: Taipei → Chicago
-- Arrive Chicago **7:35 PM**
+- EVA Air BR113: Naha → Taipei (TPE Terminal 2)
+- Depart Naha **10:15 AM**, arrive Taipei **10:55 AM**
+- EVA Air BR56: Taipei → Chicago (O'Hare Terminal 5)
+- Depart Taipei **8:00 PM**, arrive Chicago **7:35 PM**
+- Booking ref: `DAAL7X` · Ticket `695 2464270937` · 2 checked bags
 
 ---
 
@@ -370,7 +373,7 @@ Options:
 | **Nov 5 – Nov 6** | Anse Yomitan Toya | ✅ Confirmed |
 | **Nov 6 – Nov 8** | The Lodge Okinawa | ✅ Confirmed |
 | **Nov 8 – Nov 9** | Naha hotel | ⬜ **TBD** |
-| **Nov 9 – Nov 12** | Hotel Nikko Taipei | ✅ Confirmed |
+| **Nov 9 – Nov 12** | Hotel Nikko Taipei (Hotel Royal-Nikko Taipei) | ✅ Confirmed |
 | **Nov 12 – Nov 13** | JR Kyushu Hotel Blossom Naha | ✅ Confirmed |
 
 ---
