@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { CloudUpload, MapPin, NotebookPen, Pencil, Trash2 } from "lucide-react";
+import { CloudUpload, Eye, MapPin, NotebookPen, Pencil, Trash2 } from "lucide-react";
 import { journalDays, memoryTime } from "@/features/journal/journalDays";
 import {
+  canWriteMemories,
   deleteMemory,
   fetchMemories,
   selectUpload,
@@ -41,6 +42,8 @@ export function NewMemoryButton({ onClick, className, size = "sm" }) {
 
 function MemoryCard({ memory, trip, onEdit, onDelete }) {
   const zoneNote = memory.zone !== trip.timezone ? ` · ${zoneLabel(memory.zone)} time` : "";
+  // Viewers only ever see public memories, so the badge is for the travelers.
+  const showPublic = memory.isPublic && canWriteMemories(trip);
   return (
     <Card className="flex gap-2 p-3">
       <div className="min-w-0 flex-1">
@@ -51,6 +54,12 @@ function MemoryCard({ memory, trip, onEdit, onDelete }) {
           {zoneNote} · {memory.mine ? "You" : memory.authorEmail}
           {memory.updatedAt && " · edited"}
         </p>
+        {showPublic && (
+          <p className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
+            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+            Public
+          </p>
+        )}
         {memory.location && (
           <a
             href={mapsUrl(memory.location)}
@@ -127,6 +136,7 @@ function UploadBar() {
 
 function Journal({ trip }) {
   const dispatch = useDispatch();
+  const writer = canWriteMemories(trip);
   const { items, tripId, status } = useSelector((s) => s.journal);
   const groups = useMemo(
     () => journalDays(tripId === trip.id ? items : [], trip),
@@ -149,20 +159,26 @@ function Journal({ trip }) {
       <header className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold">Journal</h1>
-          <p className="text-sm text-muted-foreground">Everyone’s memories from this trip</p>
+          <p className="text-sm text-muted-foreground">
+            {writer ? "Everyone’s memories from this trip" : "What the travelers have shared"}
+          </p>
         </div>
-        <NewMemoryButton onClick={() => setEditing({ memory: null })} />
+        {writer && <NewMemoryButton onClick={() => setEditing({ memory: null })} />}
       </header>
 
-      <UploadBar />
+      {writer && <UploadBar />}
 
       {groups.length === 0 ? (
         status === "loading" ? (
           <div aria-label="Loading memories" className="h-20 animate-pulse rounded-lg border border-border bg-card" />
         ) : (
           <Card className="flex flex-col items-center gap-3 p-8 text-center">
-            <p className="font-medium">No memories yet</p>
-            <p className="text-sm text-muted-foreground">A meal, a museum, a funny joke — write it down while it’s fresh.</p>
+            <p className="font-medium">{writer ? "No memories yet" : "Nothing shared yet"}</p>
+            <p className="text-sm text-muted-foreground">
+              {writer
+                ? "A meal, a museum, a funny joke — write it down while it’s fresh."
+                : "Memories the travelers share will show up here."}
+            </p>
           </Card>
         )
       ) : (

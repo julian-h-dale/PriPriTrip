@@ -107,14 +107,21 @@ const SEND = {
         text: op.body.text,
         zone: op.body.zone,
         location: op.body.location ?? null,
+        isPublic: op.body.isPublic ?? false,
       },
       quiet
     ),
-  // `location: null` only when the edit removed it; otherwise it's left out (kept).
+  // `location: null` only when the edit removed it, and `isPublic` only when
+  // the edit set it; otherwise each is left out (kept). An edit queued before
+  // public memories existed has neither.
   update: (op) =>
     apiClient.put(
       `/trips/${op.tripId}/memories/${op.memoryId}`,
-      "location" in op.body ? { text: op.body.text, location: null } : { text: op.body.text },
+      {
+        text: op.body.text,
+        ...("isPublic" in op.body ? { isPublic: op.body.isPublic } : {}),
+        ...("location" in op.body ? { location: null } : {}),
+      },
       quiet
     ),
   delete: (op) => apiClient.delete(`/trips/${op.tripId}/memories/${op.memoryId}`, quiet),
@@ -209,12 +216,15 @@ export const uploadPhotos = () => async (dispatch, getState) => {
 
 const isOnline = (getState) => getState().network?.online !== false;
 
+/** Viewers follow along (public memories only) and don't write; the owner and editors do. */
+export const canWriteMemories = (trip) => Boolean(trip) && trip.role !== "viewer";
+
 /**
  * Write a new memory: on screen now, sent when there's a connection.
  * `location` ({ lat, lng, accuracy } or null) is where the phone was.
  */
 export const createMemory =
-  ({ tripId, text, location = null, files = [] }) =>
+  ({ tripId, text, location = null, files = [], isPublic = false }) =>
   async (dispatch, getState) => {
     const photos = await Promise.all(files.map(toPhotoEntry));
     const memory = {
@@ -225,6 +235,7 @@ export const createMemory =
       updatedAt: null,
       receivedAt: null,
       location,
+      isPublic,
       photos: photos.map((p) => pendingPhoto(p.photoId, p.file)),
       authorEmail: getState().auth?.user?.email ?? "",
       mine: true,
@@ -236,7 +247,7 @@ export const createMemory =
       tripId,
       memoryId: memory.id,
       op: "create",
-      body: { text, zone: memory.zone, createdAt: memory.createdAt, location },
+      body: { text, zone: memory.zone, createdAt: memory.createdAt, location, isPublic },
     });
     // Queued after the memory, so they're sent after it exists.
     for (const p of photos) {
@@ -261,11 +272,12 @@ export const createMemory =
   };
 
 /**
- * Change your memory's words (and optionally drop its location); its time
- * and place in the journal stay. A location is never added on an edit.
+ * Change your memory's words, who sees it (`isPublic`; left out, it stays),
+ * and optionally drop its location; its time and place in the journal stay.
+ * A location is never added on an edit.
  */
 export const updateMemory =
-  ({ tripId, id, text, clearLocation = false, addFiles = [], removePhotoIds = [] }) =>
+  ({ tripId, id, text, isPublic, clearLocation = false, addFiles = [], removePhotoIds = [] }) =>
   async (dispatch, getState) => {
     const added = await Promise.all(addFiles.map(toPhotoEntry));
     const current = getState().journal.items.find((m) => m.id === id);
@@ -278,6 +290,7 @@ export const updateMemory =
       text,
       photos,
       updatedAt: new Date().toISOString(),
+      ...(isPublic === undefined ? {} : { isPublic }),
       ...(clearLocation ? { location: null } : {}),
     };
     dispatch(localWrite({ tripId, op: "update", memory: changes }));
@@ -286,7 +299,11 @@ export const updateMemory =
       tripId,
       memoryId: id,
       op: "update",
-      body: clearLocation ? { text, location: null } : { text },
+      body: {
+        text,
+        ...(isPublic === undefined ? {} : { isPublic }),
+        ...(clearLocation ? { location: null } : {}),
+      },
     });
     for (const photoId of removePhotoIds) {
       await enqueue({ userId: userOf(getState), tripId, memoryId: id, entryId: `photo-${photoId}`, op: "removePhoto", body: { photoId } });

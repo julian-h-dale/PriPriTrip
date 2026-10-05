@@ -26,6 +26,7 @@ const asOwner = { ...base, role: "owner" };
 const asViewer = { ...base, role: "viewer" };
 const asEditor = { ...base, role: "editor" };
 const EDIT_CODE = "Xk3_pQ9vT2mLw8RzA1bC";
+const VIEW_CODE = "VIEWcode_0000000000";
 const summary = (role) => ({
   id: TRIP_ID,
   name: base.name,
@@ -116,7 +117,9 @@ describe("the owner", () => {
         ? { data: members }
         : url.endsWith("/edit-code")
           ? { data: { code: EDIT_CODE } }
-          : { data: asOwner }
+          : url.endsWith("/view-code")
+            ? { data: { code: VIEW_CODE } }
+            : { data: asOwner }
     );
   }
 
@@ -130,7 +133,9 @@ describe("the owner", () => {
     await user.click(await screen.findByRole("button", { name: "Share trip" }));
     const dialog = screen.getByRole("dialog", { name: "Share trip" });
     const view = within(dialog).getByRole("region", { name: "Can view" });
-    expect(within(view).getByText(TRIP_ID)).toBeInTheDocument();
+    expect(await within(view).findByText(VIEW_CODE)).toBeInTheDocument();
+    // The trip's id is in every URL, so it isn't a code any more.
+    expect(within(dialog).queryByText(TRIP_ID)).not.toBeInTheDocument();
     expect(within(view).getByRole("button", { name: "Copy view code" })).toBeInTheDocument();
     const edit = within(dialog).getByRole("region", { name: "Can edit" });
     expect(await within(edit).findByText(EDIT_CODE)).toBeInTheDocument();
@@ -158,6 +163,20 @@ describe("the owner", () => {
     expect(apiClient.post).toHaveBeenCalledWith(`/trips/${TRIP_ID}/edit-code`, null, { silent: true });
     expect(await within(edit).findByText("NEWcode_000000000000")).toBeInTheDocument();
     expect(within(edit).getByText(/The old one no longer works/)).toBeInTheDocument();
+  });
+
+  it("makes a new view code, with a second tap to confirm", async () => {
+    const user = userEvent.setup();
+    ownerApi([]);
+    apiClient.post.mockResolvedValue({ data: { code: "NEWview_00000000000" } });
+    renderAt(`/trips/${TRIP_ID}`);
+    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    const view = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can view" });
+    await within(view).findByText(VIEW_CODE);
+    await user.click(within(view).getByRole("button", { name: "New view code" }));
+    await user.click(within(view).getByRole("button", { name: "Confirm a new view code" }));
+    expect(apiClient.post).toHaveBeenCalledWith(`/trips/${TRIP_ID}/view-code`, null, { silent: true });
+    expect(await within(view).findByText("NEWview_00000000000")).toBeInTheDocument();
   });
 
   it("removes someone, with a second tap to confirm", async () => {

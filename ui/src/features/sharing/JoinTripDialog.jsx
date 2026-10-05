@@ -8,8 +8,8 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 
 
-/** Paste a code from a trip owner's Share screen to join the trip: the view
- * code (the trip's id) to see it, the edit code to change it too. */
+/** Paste a code from a trip owner’s Share screen to join the trip: the
+ * view code to see it, the edit code to change it too. */
 export function JoinTripDialog({ open, onClose }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
