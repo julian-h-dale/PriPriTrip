@@ -12,7 +12,7 @@ describe("Dialog hero fade", () => {
         <p>details</p>
       </Dialog>
     );
-    const hero = screen.getByTestId("dialog-hero");
+    const hero = screen.getByTestId("hero-fade");
     expect(hero).toHaveAttribute("src", PHOTO);
     expect(hero).toHaveAttribute("alt", "");
     expect(screen.getByRole("dialog", { name: "Hotel Royal" })).toHaveClass("pt-32");
@@ -24,8 +24,8 @@ describe("Dialog hero fade", () => {
         <p>details</p>
       </Dialog>
     );
-    fireEvent.error(screen.getByTestId("dialog-hero"));
-    expect(screen.queryByTestId("dialog-hero")).not.toBeInTheDocument();
+    fireEvent.error(screen.getByTestId("hero-fade"));
+    expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "Hotel Royal" })).not.toHaveClass("pt-32");
   });
 
@@ -35,7 +35,7 @@ describe("Dialog hero fade", () => {
         <p>details</p>
       </Dialog>
     );
-    expect(screen.queryByTestId("dialog-hero")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
   });
 });
 
@@ -51,7 +51,7 @@ describe("booking quick look", () => {
 
   it("a stay's photo is the hero, with no thumbnail repeated below", () => {
     render(<BookingDetailsDialog open onClose={() => {}} onEdit={() => {}} trip={TRIP} kind="stay" record={stay} />);
-    expect(screen.getByTestId("dialog-hero")).toHaveAttribute("src", PHOTO);
+    expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", PHOTO);
     expect(document.querySelectorAll("img")).toHaveLength(1);
     expect(screen.getByText("HR-1")).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe("booking quick look", () => {
     const { unmount } = render(
       <BookingDetailsDialog open onClose={() => {}} onEdit={() => {}} trip={TRIP} kind="travel" record={leg} />
     );
-    expect(screen.getByTestId("dialog-hero")).toHaveAttribute("src", "https://example.com/zrh.jpg");
+    expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", "https://example.com/zrh.jpg");
     expect(document.querySelectorAll("img")).toHaveLength(1); // no airport thumbnails below
     unmount();
 
@@ -76,6 +76,6 @@ describe("booking quick look", () => {
     render(
       <BookingDetailsDialog open onClose={() => {}} onEdit={() => {}} trip={TRIP} kind="travel" record={noDestinationPhoto} />
     );
-    expect(screen.getByTestId("dialog-hero")).toHaveAttribute("src", "https://example.com/ord.jpg");
+    expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", "https://example.com/ord.jpg");
   });
 });

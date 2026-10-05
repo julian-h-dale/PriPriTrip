@@ -16,7 +16,7 @@ import { formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
 
 /**
  * Presentation for one timeline entry: icon, title, times, and the details
- * shown when it expands. Pure — no React state — so it is easy to test.
+ * shown when it expands (`hero` is the one photo behind them). Pure — no React state — so it is easy to test.
  */
 
 export const MODE_ICON = { flight: Plane, train: TrainFront, bus: Bus, ferry: Ship, boat: Ship, car: Car, other: Route };
@@ -50,7 +50,7 @@ export function describeEntry(entry, trip) {
       notes: item.notes,
       confirmation: item.confirmationNumber,
       locations: item.location ? [{ label: "Where", loc: item.location }] : [],
-      photos: true,
+      hero: item.location?.imgRef ?? null,
       facts: [],
       edited: editedBy(item),
     };
@@ -76,7 +76,7 @@ export function describeEntry(entry, trip) {
       notes: stay.notes,
       confirmation: stay.confirmationNumber,
       locations: stay.location ? [{ label: "Where", loc: stay.location }] : [],
-      photos: true,
+      hero: stay.location?.imgRef ?? null,
       facts: [
         ["Check-in", fullTime(stay.checkIn, zone, tripZone)],
         ["Check-out", fullTime(stay.checkOut, zone, tripZone)],
@@ -113,8 +113,8 @@ export function describeEntry(entry, trip) {
       travel.from && { label: "From", loc: travel.from },
       travel.to && { label: "To", loc: travel.to },
     ].filter(Boolean),
-    // Airports and stations: a photo doesn't help you find anything.
-    photos: false,
+    // A leg's destination, else where it leaves from.
+    hero: travel.to?.imgRef ?? travel.from?.imgRef ?? null,
     facts: [
       [MODE_LABEL[travel.mode] ?? "Travel", carrier],
       ["Departs", fullTime(travel.depart, departZone, tripZone)],

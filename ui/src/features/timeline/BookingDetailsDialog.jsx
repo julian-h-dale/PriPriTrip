@@ -7,8 +7,8 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 /**
  * A quick, read-only look at an existing stay or leg — selecting a covered
  * date on the trip page's coverage views opens this, not the edit form
- * directly. "Edit" switches to the real form. The details are the same
- * `EntryDetails` the day page shows, so they read the same everywhere.
+ * directly. "Edit" switches to the real form. The details and the hero photo
+ * are the same ones the day page's expanded entries show.
  */
 export function BookingDetailsDialog({
   open,
@@ -26,23 +26,16 @@ export function BookingDetailsDialog({
     ? { kind: "stay", phase: "check-in", stay: record }
     : { kind: "travel", phase: "depart", travel: record, overnight: false };
   const d = describeEntry(entry, trip);
-  // The booking's photo becomes the dialog's hero (so no thumbnail as well):
-  // a stay's place, or a leg's destination (else where it leaves from).
-  // Entry rows elsewhere still skip airport/station photos (describeEntry).
-  const hero = isStay
-    ? (record.location?.imgRef ?? null)
-    : (record.to?.imgRef ?? record.from?.imgRef ?? null);
-
   return (
     <Dialog
       open={open}
       onClose={onClose}
       title={isStay ? record.name : record.title}
       className="max-w-lg"
-      heroImage={hero}
+      heroImage={d.hero}
     >
       <div className="-mx-1 flex min-h-0 flex-col gap-4 overflow-y-auto px-1">
-        <EntryDetails d={{ ...d, photos: d.photos && !hero }} />
+        <EntryDetails d={d} />
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>

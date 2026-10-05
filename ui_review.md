@@ -119,11 +119,13 @@ During the trip, finding tonight's hotel confirmation takes 4–5 taps: trips
 - **Hero fade in the stays/travel quick look** (2026-10-03, Julian's idea:
   thumbnails were hard to see). A stay's photo fills the top of the dialog
   and fades into the card behind the title; the details sit on solid card.
-  Legs use their destination's photo (else the departure point's), added
-  2026-10-03; entry rows still skip airport/station thumbnails. It's opt-in through
-  `Dialog`'s `heroImage`, and a deliberate departure from design_doc.md's "no
-  gradients", so it's easy to revert. Still to decide: whether to drop the
-  thumbnails on the day page's expanded entries too.
+  Legs use their destination's photo (else the departure point's).
+  **2026-10-05:** the expanded entries (day page, Today) use the same hero
+  fade, from one component (`HeroFade`) and one rule (`describeEntry().hero`),
+  so a stay, leg or activity looks the same in the dialog and in its row. The
+  small thumbnails are gone, and airport/station photos are used as heroes
+  too. It's still a deliberate departure from design_doc.md's "no gradients",
+  so it's easy to revert (drop the `HeroFade` uses).
 
 ## Next follow-up
 

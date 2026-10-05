@@ -1,7 +1,7 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed migrate reset-db seed-remote schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed migrate reset-db seed-remote list-trips export-trip schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
@@ -9,6 +9,8 @@ help:
 	@echo "  seed          Create seed users + sample data (idempotent)"
 	@echo "  migrate       Upgrade the database to the latest schema (Alembic)"
 	@echo "  seed-remote   Seed the Fly app (FLY_APP=pripri-trip); never automatic. Replants demo trips"
+	@echo "  list-trips    List your trips (id, dates, name); TRIP_EMAIL/TRIP_PASSWORD, API_URL"
+	@echo "  export-trip   TRIP=<id>  Save a trip as a trip document (JSON) in exports/; OUT=- for stdout"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
@@ -50,6 +52,15 @@ migrate:
 FLY_APP ?= pripri-trip
 seed-remote:
 	fly ssh console -a $(FLY_APP) -C "python -m app.seed"
+
+# Back up a trip, or move it between environments (import the file there).
+# Sign in with TRIP_EMAIL / TRIP_PASSWORD; API_URL defaults to the local API,
+# the deployed one is API_URL=https://pripri-trip.fly.dev/api. See README.md.
+list-trips:
+	@scripts/trip-client.sh list
+
+export-trip:
+	@scripts/trip-client.sh export "$(TRIP)"
 
 # Deletes the database DATABASE_URL names (a worktree's own, too — this used
 # to hardcode api/data/app.db), migrates a fresh one, and re-seeds.

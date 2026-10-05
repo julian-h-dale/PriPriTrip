@@ -3,7 +3,9 @@ import { describeEntry } from "@/features/timeline/describeEntry";
 import { EntryDetails } from "@/features/timeline/EntryDetails";
 import { RailDot } from "@/features/timeline/RailDot";
 import { Card } from "@/shared/components/ui/card";
+import { HeroFade } from "@/shared/components/ui/hero-fade";
 import { cn } from "@/shared/utils/cn";
+import { useHeroImage } from "@/shared/utils/useHeroImage";
 import { datePart, formatTime, zoneLabel } from "@/shared/utils/time";
 
 function TimeColumn({ d, tripZone }) {
@@ -90,12 +92,29 @@ export function TimelineEntry({ entry, trip, expanded, onToggle, actions }) {
         )}
 
         {hasDetails && expanded && (
-          <div className="flex flex-col gap-3 border-t border-border px-3 pb-3 pt-3 sm:pl-[8.25rem]">
-            <EntryDetails d={d} />
-            {actions}
-          </div>
+          <ExpandedDetails d={d}>{actions}</ExpandedDetails>
         )}
       </Card>
     </li>
+  );
+}
+
+/** The expanded part of a row: the entry's hero photo fading into the card
+ * (as in the details dialog), then its details and any actions. */
+function ExpandedDetails({ d, children }) {
+  const { hero, onError } = useHeroImage(d.hero);
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col gap-3 overflow-hidden border-t border-border px-3 pb-3 pt-3 sm:pl-[8.25rem]",
+        hero && "pt-28"
+      )}
+    >
+      {hero && <HeroFade src={hero} onError={onError} className="h-40" />}
+      <div className="relative flex flex-col gap-3">
+        <EntryDetails d={d} />
+        {children}
+      </div>
+    </div>
   );
 }

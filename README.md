@@ -80,6 +80,26 @@ Makefile             canonical commands (setup, seed, dev, test, verify, image)
 The app ships as a single unified container (UI + API behind one nginx),
 deployable to a single Fly.io Machine. See [deploy/README.md](deploy/README.md).
 
+## Back up or move a trip
+
+A trip exports as a trip document: the JSON that import takes (see
+`schema/trip.schema.json`). It is the **plan** only — trip, stays, travel, days
+and activities — not the journal (memories and photos), members or share codes.
+Anyone who can view a trip can export it.
+
+```bash
+export TRIP_EMAIL=you@example.com TRIP_PASSWORD=...   # password is asked for if unset
+make list-trips                                       # ids, dates, names
+make export-trip TRIP=<id>                            # -> exports/<trip-name>.json
+make export-trip TRIP=<id> OUT=-                      # to stdout instead
+make export-trip TRIP=<id> API_URL=https://pripri-trip.fly.dev/api   # the deployed app
+```
+
+`API_URL` defaults to the local API (the port in `api/.env`). To move a trip,
+import the file in the other environment (the Import button, or
+`POST /trips/import`): it always creates a new trip with a new id.
+`exports/` is git-ignored because a backup holds confirmation numbers.
+
 ## Verify everything
 
 ```bash

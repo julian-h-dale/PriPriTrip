@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { EntryDetails } from "@/features/timeline/EntryDetails";
+import { TimelineEntry } from "@/features/timeline/TimelineEntry";
 
 const TRIP = { timezone: "Asia/Tokyo" };
 const PHOTO = "https://example.com/photo.jpg";
@@ -41,7 +42,7 @@ function order(container) {
 }
 
 describe("EntryDetails", () => {
-  it("a stay: facts (with the room), confirmation, notes, then the place with a small photo", () => {
+  it("a stay: facts (with the room), confirmation, notes, then the place", () => {
     const d = describeEntry({ kind: "stay", phase: "check-in", stay }, TRIP);
     const { container } = render(<EntryDetails d={d} />);
     expect(screen.getByText("Room").nextSibling).toHaveTextContent("Twin, ocean view");
@@ -49,12 +50,10 @@ describe("EntryDetails", () => {
     expect(o.facts).toBeLessThan(o.confirmation);
     expect(o.confirmation).toBeLessThan(o.notes);
     expect(o.notes).toBeLessThan(o.place);
-    const img = container.querySelector("img");
-    expect(img).toHaveAttribute("src", PHOTO);
-    expect(img).toHaveClass("h-16", "w-16"); // a thumbnail, not a banner
+    expect(container.querySelector("img")).toBeNull(); // the photo is the hero, not here
   });
 
-  it("a flight: the seat in the facts, and no airport photos", () => {
+  it("a flight: the seat in the facts", () => {
     const d = describeEntry({ kind: "travel", phase: "depart", travel: flight, overnight: true }, TRIP);
     const { container } = render(<EntryDetails d={d} />);
     expect(screen.getByText("Seat").nextSibling).toHaveTextContent("42A");
@@ -62,5 +61,52 @@ describe("EntryDetails", () => {
     expect(container.querySelector("img")).toBeNull();
     const o = order(container);
     expect(o.confirmation).toBeLessThan(o.place);
+  });
+});
+
+describe("the hero photo", () => {
+  const activity = { title: "Shuri Castle", location: { name: "Shuri Castle", imgRef: PHOTO } };
+
+  it("is the place's photo for a stay or an activity, and a leg's destination else its origin", () => {
+    expect(describeEntry({ kind: "stay", phase: "check-in", stay }, TRIP).hero).toBe(PHOTO);
+    expect(describeEntry({ kind: "activity", item: activity }, TRIP).hero).toBe(PHOTO);
+    const to = { ...flight.to, imgRef: "https://example.com/to.jpg" };
+    const leg = (extra) => ({ kind: "travel", phase: "depart", travel: { ...flight, ...extra }, overnight: true });
+    expect(describeEntry(leg({ to }), TRIP).hero).toBe("https://example.com/to.jpg");
+    expect(describeEntry(leg({ to: { ...to, imgRef: undefined } }), TRIP).hero).toBe(PHOTO);
+    expect(describeEntry({ kind: "activity", item: { title: "Walk" } }, TRIP).hero).toBeNull();
+  });
+
+  function row(entry) {
+    return render(
+      <ul>
+        <TimelineEntry entry={{ ...entry, key: "k" }} trip={TRIP} expanded onToggle={() => {}} />
+      </ul>
+    );
+  }
+
+  it("fades in behind an expanded row, as in the details dialog", () => {
+    row({ kind: "stay", phase: "check-in", stay });
+    expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", PHOTO);
+    expect(document.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("an expanded flight gets one too (the same for every kind of entry)", () => {
+    row({ kind: "travel", phase: "depart", travel: flight, overnight: true });
+    expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", PHOTO);
+  });
+
+  it("is dropped, with its room, when the photo can't load", () => {
+    const { container } = row({ kind: "stay", phase: "check-in", stay });
+    expect(container.querySelector(".pt-28")).not.toBeNull();
+    fireEvent.error(screen.getByTestId("hero-fade"));
+    expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
+    expect(container.querySelector(".pt-28")).toBeNull();
+    expect(screen.getByText("HR-123")).toBeInTheDocument();
+  });
+
+  it("is absent without a photo", () => {
+    row({ kind: "activity", item: { title: "Walk", notes: "Easy" } });
+    expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
   });
 });
