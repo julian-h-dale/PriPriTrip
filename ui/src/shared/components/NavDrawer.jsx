@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { CloudSun, List, LogOut, Shield, X } from "lucide-react";
+import { CloudSun, Coins, List, LogOut, Shield, X } from "lucide-react";
 import { signOut } from "@/features/auth/authSlice";
 import { selectPendingMemories, selectWaitingPhotos } from "@/features/journal/journalSlice";
 import { Button } from "@/shared/components/ui/button";
@@ -101,6 +101,10 @@ export function NavDrawer({ open, onClose }) {
             <Link to={`/trips/${tripId}/weather`} onClick={onClose} className={ITEM}>
               <CloudSun className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Weather
+            </Link>
+            <Link to={`/trips/${tripId}/currency`} onClick={onClose} className={ITEM}>
+              <Coins className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              Currency
             </Link>
           </section>
         )}

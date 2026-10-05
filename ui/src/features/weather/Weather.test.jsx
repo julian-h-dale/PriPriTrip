@@ -182,10 +182,11 @@ describe("the drawer's Trip tools", () => {
     return screen.getByRole("navigation", { name: "Menu" });
   }
 
-  it("shows Weather for the trip on screen", async () => {
+  it("shows Weather and Currency for the trip on screen", async () => {
     const menu = await openDrawer("/trips/trip-1/days/2026-10-30");
     const tools = within(menu).getByRole("region", { name: "Trip tools" });
     expect(within(tools).getByRole("link", { name: "Weather" })).toHaveAttribute("href", "/trips/trip-1/weather");
+    expect(within(tools).getByRole("link", { name: "Currency" })).toHaveAttribute("href", "/trips/trip-1/currency");
   });
 
   it("has no Trip tools outside a trip", async () => {
