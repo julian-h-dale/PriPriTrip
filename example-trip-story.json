@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "name": "Okinawa & Taipei Trip — Fall 2026",
+  "name": "Okinawa & Taipei — Fall 2026",
   "startDate": "2026-10-29",
   "endDate": "2026-11-13",
   "timezone": "Asia/Tokyo",
@@ -163,7 +163,7 @@
       "arrive": "2026-10-30T05:25",
       "arriveTimezone": "Asia/Taipei",
       "confirmationNumber": "DAAL7X",
-      "notes": "Ticket 695 2464270937. 2 checked bags. Leaves 12:30 AM — be at ORD around 9:30 PM **Oct 28**. Confirm bags are checked through and get the BR112 boarding pass at ORD."
+      "notes": "Our big send-off. The flight leaves at 12:30 AM, so we head to O'Hare the evening of **Oct 28** and aim to be there around 9:30 PM. EVA Air flies from Terminal 5 (international). At the counter, ask them to check our bags all the way to Naha and print the BR112 boarding pass too, so Taipei is just a quick walk between gates.\n\nTicket 695 2464270937 · 2 checked bags."
     },
     {
       "title": "Taipei → Naha",
@@ -191,7 +191,7 @@
       "arrive": "2026-10-30T09:15",
       "arriveTimezone": "Asia/Tokyo",
       "confirmationNumber": "DAAL7X",
-      "notes": "Ticket 695 2464270937. 2 checked bags. In Taipei follow international transfer signs."
+      "notes": "A short hop to Okinawa. At Taoyuan we stay airside: follow the **Transfer** signs, go through the transfer security check, then find BR112's gate on the departure boards. Bags should be checked through, so no need to collect them.\n\nTicket 695 2464270937 · 2 checked bags."
     },
     {
       "title": "Tomari Port → Tokashiki Port",
@@ -216,7 +216,7 @@
       "depart": "2026-11-02T09:00",
       "arrive": "2026-11-02T09:40",
       "confirmationNumber": "TK11020064",
-      "notes": "2 adults. Reserved, not ticketed: show TK11020064 at the Marine Liner (north side) counter by ~8:00 and pay/issue tickets. Recorded ¥12,740 return for two — fares changed Oct 1, verify. Boarding from 8:30; aboard by 8:50. Sailing status posted ~8 AM."
+      "notes": "A 40-minute high-speed boat across turquoise water to the Kerama Islands.\n\n**Getting on:** the Marine Liner Tokashiki leaves from the north side of Tomari Port which isn't the same berth as the big car ferry — tell the taxi \"Tokashiki Marine Liner.\" Go to the ferry counter, show reservation **TK11020064**, and pay for/collect the tickets there (recorded ¥12,740 return for two; fares changed Oct 1, so it may differ a little). Boarding starts 30 minutes before departure and everyone must be aboard 10 minutes before. Sailing status is posted around 8 AM."
     },
     {
       "title": "Tokashiki Port → Tomari Port",
@@ -241,7 +241,7 @@
       "depart": "2026-11-03T17:00",
       "arrive": "2026-11-03T17:40",
       "confirmationNumber": "TK11020064",
-      "notes": "2 adults. Hotel shuttle to the port ~3:30 PM (hotel confirms the time). Aboard by 4:50."
+      "notes": "Back to Naha, salty and sun-tired. The hotel shuttle drops us at the port around 3:30–4 PM; pick up return tickets at the counter and be aboard by 4:50. In Naha, walk out of the terminal to the taxi rank (or meet a pre-arranged taxi) for the ride south to the wedding hotel."
     },
     {
       "title": "Tomari Port → Ryukyu Hotel",
@@ -264,7 +264,7 @@
         "imgRef": "https://lh3.googleusercontent.com/grass-cs/ACvplmNdixEuBRkxOQfKyxFaVu9VklcStJUV3SCOv00Y8zLjjojyYP1dgZzEi3U4MDUwVqIbMd3EaJSdc1L7iRzbUOoJ32eqRImis6ePo9lv1TdFof1hDaDzPxGH9mbyp83MMg4ebMhLTg=s4800-w800"
       },
       "depart": "2026-11-03T17:50",
-      "notes": "Arrange through the resort if possible; fare and pickup unconfirmed. Allow until ~7:15 PM including check-in."
+      "notes": "About an hour south down the coast to Itoman. Ask the resort to arrange it ahead, or grab a taxi from the Tomari Port rank and show them the hotel name. Let the hotel know we're arriving in the evening."
     },
     {
       "title": "Naha → Taipei",
@@ -291,7 +291,7 @@
       "departTimezone": "Asia/Tokyo",
       "arrive": "2026-11-09T10:20",
       "arriveTimezone": "Asia/Taipei",
-      "notes": "Be at the airport by 6:45–7:00 AM. Check Tigerair baggage allowance and counter deadline. Taiwan is 1 hour behind Japan."
+      "notes": "Goodbye Okinawa, hello Taiwan — it's only a 1.5-hour flight, and we gain an hour (Taiwan is one hour behind Japan). Be at Naha's international departures by 6:45–7:00 AM; check the Tigerair baggage allowance before we pack."
     },
     {
       "title": "Taipei → Naha",
@@ -318,7 +318,7 @@
       "departTimezone": "Asia/Taipei",
       "arrive": "2026-11-12T20:40",
       "arriveTimezone": "Asia/Tokyo",
-      "notes": "At TPE Terminal 1 by ~3:15 PM. Staying at JR Kyushu Hotel Blossom Naha tonight."
+      "notes": "Back to Okinawa for one last night. Be at Taoyuan Terminal 1 by ~3:15 PM; we gain the hour back on arrival."
     },
     {
       "title": "Naha → Taipei",
@@ -346,7 +346,7 @@
       "arrive": "2026-11-13T10:55",
       "arriveTimezone": "Asia/Taipei",
       "confirmationNumber": "DAAL7X",
-      "notes": "Ticket 695 2464270937. 2 checked bags. Connects to BR56 to Chicago."
+      "notes": "The first leg home. Ask at check-in to send our bags straight through to Chicago.\n\nTicket 695 2464270937 · 2 checked bags."
     },
     {
       "title": "Taipei → Chicago",
@@ -374,23 +374,37 @@
       "arrive": "2026-11-13T19:35",
       "arriveTimezone": "America/Chicago",
       "confirmationNumber": "DAAL7X",
-      "notes": "Ticket 695 2464270937. 2 checked bags."
+      "notes": "The long flight home, landing the same evening thanks to the date line. In Taipei follow the Transfer signs to the gate.\n\nTicket 695 2464270937 · 2 checked bags."
     }
   ],
   "days": [
     {
       "date": "2026-10-29",
-      "title": "Travel day",
-      "summary": "Overnight flight Chicago → Taipei on EVA BR55 (12:30 AM), connecting to Naha next morning. Head to ORD the evening of Oct 28.",
+      "title": "Off we go",
+      "summary": "The adventure starts with a late-night flight out of O'Hare. We sleep somewhere over the Pacific, change planes in Taipei, and wake up headed for the subtropical islands of Okinawa.",
       "items": []
     },
     {
       "date": "2026-10-30",
-      "title": "Arrive Naha",
-      "summary": "Land 9:15 AM, monorail to Makishi, drop bags, explore central Naha on foot. If tired: shorten Kokusai-dori, drop Sakurazaka; Tsuboya can move to Oct 31.",
+      "title": "Hello, Naha",
+      "summary": "We land in Okinawa's capital mid-morning, ride the little elevated monorail into town and drop our bags. Then it's an easy first day on foot: a lively shopping street, a buzzing fish market for lunch, a quiet old pottery quarter and our first Okinawan dinner. No pressure — if we're tired, we just do less.",
       "items": [
         {
-          "title": "Yui Rail to Makishi",
+          "title": "Through the airport",
+          "start": "2026-10-30T09:15",
+          "end": "2026-10-30T10:15",
+          "location": {
+            "name": "Naha Airport (OKA), Terminal 1",
+            "city": "Naha",
+            "lat": 26.1966997,
+            "lng": 127.6489521,
+            "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
+          },
+          "notes": "Immigration, bags and customs — allow about an hour. Then follow the signs for **Yui Rail / Monorail (ゆいレール)**: a signed walkway leads straight from the terminal to Naha Airport Station. No shuttle needed."
+        },
+        {
+          "title": "Monorail into town",
           "start": "2026-10-30T10:15",
           "end": "2026-10-30T10:45",
           "location": {
@@ -402,13 +416,22 @@
             "placeId": "ChIJ_0pwg8Vp5TQRtVaIpVykfdk",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWHHpSWeLMV7C9CDrpXsVS5XoIAJ7FtwSZkpvasbRAY7OidgREKNJPxIM5kPNeUSxd9iToDU-06JX5EAX_KUq8okEogaU09phSFVGNugj0QmlxYHZoIDkEQh126jF9vJceC0HquRGsD5SCBd=s4800-w640"
           },
-          "notes": "Toward Tedako-Uranishi, 8 stops (~16 min), no transfers. ¥320 each. Then a 4-min walk to the hotel. Backup: taxi (~15 min)."
+          "notes": "At the ticket machines, buy two one-way tickets to **Makishi (牧志), station 09** — ¥320 each. The ticket has a QR code: scan it at the gate going in and keep it to get out. Board toward **Tedako-Uranishi**; it's the only direction from the airport. Ride 8 stops (~16 min, no transfers), with views over the city as we go. Makishi is right after Miebashi."
         },
         {
-          "title": "Leave luggage at Palm Royal",
+          "title": "Walk to the hotel and drop our bags",
           "start": "2026-10-30T10:45",
           "end": "2026-10-30T11:15",
-          "notes": "Ask reception to hold bags until check-in. Keep passports and valuables."
+          "location": {
+            "name": "Hotel Palm Royal Resort Kokusai Street",
+            "address": "3-9-10 Makishi, Naha, Okinawa 900-0013",
+            "city": "Naha",
+            "lat": 26.2164036,
+            "lng": 127.6899187,
+            "placeId": "ChIJZRVZ5Xpp5TQR_dEQE5ejr8I",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcXq2EkF9x8RDeRL2xXA0HqIh8voOx5k7_kyp3V01hBGd8EWc6DOrXnfmqj2ciO2JBcPg1e3LcKJ76Be2Z35xoy4J3Qax-lHKjthsIE4D4nWCSO46VO6hsKyFG31mUjhYQFE8C9jw=s4800-w800"
+          },
+          "notes": "From Makishi Station take the elevator down, then a 4-minute walk along Kokusai-dori to Palm Royal. Ask reception to keep our luggage until check-in and head straight back out. Backup if we're wiped out: a 15-minute taxi from the airport, showing the hotel name ホテルパームロイヤルリゾート国際通り."
         },
         {
           "title": "Kokusai-dori",
@@ -423,7 +446,7 @@
             "placeId": "ChIJMS9BUXdp5TQRAl6RXvY5aY0",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWGjDqSRBlfusQ90wOLW6iLS8j9Kqb96nL_lwY0E-10DcCYQ6UJX5AG9j7Cvf2rjBzuaGUFL51oLBpd22enokolmXWcM-sw8kTWPTgz1fP2mumBQ7AxXlTkKYWpkahaf4SogQNQKEZGyB1fanw=s4800-w800"
           },
-          "notes": "Easy intro stroll on Naha's main shopping street — no need to walk all 1.6 km."
+          "notes": "\"International Street\" — Naha's colorful main drag, a mile of snack stands, souvenir shops and people-watching. Just a gentle first wander; we'll turn off into the market arcades before long."
         },
         {
           "title": "Makishi Public Market + lunch",
@@ -438,10 +461,10 @@
             "placeId": "ChIJy1Zdsr9p5TQR2ET-2o69ZKg",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdnZcXerwZe1AcNS9pCGA39RI17nUvIFktUzBO55Dbeycd5DcmT84AyGZnrgamvxr6rjBSm4ohHcMKHnuB8rOvd-yPifQFEHHTyhAQf2ciWRj0EwKDUlULSpT6RoffUvr4avhkJFzMqkcY=s4800-w800"
           },
-          "notes": "Mochiage: buy seafood downstairs, have it cooked upstairs (agree costs first). Then the Heiwa-dori arcade and Ukishima-dori."
+          "notes": "Naha's kitchen. Downstairs, stalls piled with tropical fish in impossible colors, lobster and island pork. The fun trick: buy seafood downstairs and have a restaurant upstairs cook it for us (ask the price first). Afterwards, get lost in the covered Heiwa-dori arcade and the indie cafés of Ukishima-dori."
         },
         {
-          "title": "Tsuboya Yachimun Street + café break",
+          "title": "Tsuboya pottery street + café break",
           "start": "2026-10-30T13:45",
           "end": "2026-10-30T15:15",
           "location": {
@@ -453,7 +476,7 @@
             "placeId": "ChIJq6pPF3Bp5TQRdYWzrypCCIA",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLeFk2zJFyndchhPsS8kuByAsTe1UqViPfpxw5gbvSsk8Z_6OEBdS6ISG_IwNoEnRcqbjSiZESqcCGPt_9apD4OQvWi0ZIbdBiBf995HiJ1wcHry9-JpaAP2YGJDw_ucu6xggY_2=s4800-w800"
           },
-          "notes": "Priority. Historic stone-paved pottery street. Try buku-buku cha (foamed Ryukyuan tea) if offered."
+          "notes": "One of the highlights of the day. A stone-paved lane where potters have worked for over 300 years, lined with shops of hand-thrown bowls and cups and the odd shisa lion on a rooftop. Find a café and try **buku-buku cha**, a Ryukyuan tea whipped into a tall cloud of foam."
         },
         {
           "title": "Sakurazaka side streets",
@@ -468,29 +491,38 @@
             "placeId": "ChIJq9MNnHpp5TQRipNdjRAbPbk",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWGk0ayW584ZYGXANMlVSxtLC4Z_jlqbcNOhjgHiy7TMWujMrp9OMsIrbC82x-elMmhQSAaFXnJxqXw_Ux-CrGOexveHeHnpfeZtGudcxjAxMNBbIc4CVoTYrbWNwRGSzuoy4sxgLPfEaxuCphs=s4800-w800"
           },
-          "notes": "Optional, first to drop. Small arts/bar streets around the Sakurazaka Theater."
+          "notes": "A little arty pocket of tiny bars and shops around an indie theater, on our way back. The first thing to skip if we're fading."
         },
         {
-          "title": "Check in / refresh",
+          "title": "Check in and freshen up",
           "start": "2026-10-30T15:45",
           "end": "2026-10-30T17:15",
-          "notes": "Or keep wandering — check-in runs to midnight."
+          "location": {
+            "name": "Hotel Palm Royal Resort Kokusai Street",
+            "address": "3-9-10 Makishi, Naha, Okinawa 900-0013",
+            "city": "Naha",
+            "lat": 26.2164036,
+            "lng": 127.6899187,
+            "placeId": "ChIJZRVZ5Xpp5TQR_dEQE5ejr8I",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcXq2EkF9x8RDeRL2xXA0HqIh8voOx5k7_kyp3V01hBGd8EWc6DOrXnfmqj2ciO2JBcPg1e3LcKJ76Be2Z35xoy4J3Qax-lHKjthsIE4D4nWCSO46VO6hsKyFG31mUjhYQFE8C9jw=s4800-w800"
+          },
+          "notes": "Collect the bags, shower off the flight. Check-in is open until midnight, so we can stay out longer if the afternoon's going well."
         },
         {
-          "title": "Okinawan dinner near the hotel",
+          "title": "Our first Okinawan dinner",
           "start": "2026-10-30T17:30",
           "end": "2026-10-30T18:45",
-          "notes": "Casual izakaya, nothing booked. Try Okinawa soba, rafute (braised pork belly), goya champuru, jimami tofu (contains peanuts)."
+          "notes": "A casual izakaya near the hotel. Things to try: **Okinawa soba** (chewy noodles in pork broth), **rafute** (melt-in-your-mouth braised pork belly), **goya champuru** (bitter melon stir-fry — an Okinawan icon) and **jimami tofu** (silky peanut tofu)."
         }
       ]
     },
     {
       "date": "2026-10-31",
-      "title": "Historic Naha",
-      "summary": "Shuri in the morning, prefectural museum (skippable), Sakaemachi for dinner. Alternatives: Tsuboya + Makishi arcades or hotel rest instead of the museum; free SYURI NO UTA live event 1:30–4 PM at the Suimuikan lawn stage (clashes with the afternoon).",
+      "title": "Naha history: the Ryukyu Kingdom",
+      "summary": "For 450 years Okinawa was its own kingdom, the Ryukyu Kingdom, trading with China, Japan and Southeast Asia. Today we visit its old royal capital at Shuri: a hilltop castle, a royal tomb, and an ancient cobbled lane winding down through the trees. In the afternoon, the island's story at the prefectural museum, then a lantern-lit market alley for dinner.",
       "items": [
         {
-          "title": "Yui Rail to Shuri",
+          "title": "Monorail up to Shuri",
           "start": "2026-10-31T08:45",
           "end": "2026-10-31T09:30",
           "location": {
@@ -502,10 +534,10 @@
             "placeId": "ChIJifUiMQds5TQRYPQjh1JVhvI",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLeY8qj0OQfGTWxNQ6MndnlZSfhD1IZ2YufgXbY5tOU1PCJEwITg-6g3atfOPWjPTnvEsxm2dCYCBFnauGrEGoxlV4_bWw1B0FMrnuLqGDfcBBNUEqzX7rZJgEqMoffkDZpIjrEu=s4800-w800"
           },
-          "notes": "Makishi → Shuri toward Tedako-Uranishi, then ~20-min walk to the castle."
+          "notes": "Breakfast near the hotel, then walk back to **Makishi Station** and ride toward Tedako-Uranishi to **Shuri (首里)**, 4 stops. From Shuri Station it's a ~20-minute walk uphill to the castle, following the signs."
         },
         {
-          "title": "Shuri Castle Park",
+          "title": "Shuri Castle",
           "start": "2026-10-31T09:30",
           "end": "2026-10-31T11:15",
           "location": {
@@ -517,10 +549,10 @@
             "placeId": "ChIJZ9v0bP5r5TQRi0-esrqficA",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAVOo9MVREbW0xssIy3-SV04IpejuN1zYvNLQHFFPqeGO4X6X5ec_fmsh7mZlewd5mONPw7GH4ZU6ehD9L_PIhDx9_jif2lclfgens61okGabekI5Yix1bGJxR7ztisV03bUWBLU-AiFub8uGrWA6GK9A=s4800-w800"
           },
-          "notes": "Paid area ¥400 at the counter; 8:30 AM–7 PM. Seiden main hall interior doesn't open until Nov 23 — gates, walls and views only."
+          "notes": "The red-lacquered palace of the Ryukyu kings, on a hill with views out to the sea. It burned in 2019 and is being rebuilt — the main hall reopens Nov 23, just after we leave — but the great stone walls, ceremonial gates and lookouts are open and we may see the restoration work. Paid area ¥400 each at the counter."
         },
         {
-          "title": "Tamaudun",
+          "title": "Tamaudun royal tomb",
           "start": "2026-10-31T11:30",
           "end": "2026-10-31T12:15",
           "location": {
@@ -532,7 +564,7 @@
             "placeId": "ChIJLZXjOP1r5TQRTvnj1SMSPTs",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLfndXFxQmwhBknc92y4n2hWw8YQ_K9DCBf-hKmFn3EnW-xlGqgpiljT-6FklS_B_tZTzAKv8O91222gn-GC1iG5TRkxbBj_jvCyfpqcVF7F38p7cQQ2vrCCQEjSJd4mi6nETxSupg=s4800-w800"
           },
-          "notes": "Royal mausoleum (1501), World Heritage. ¥300; 9 AM–6 PM."
+          "notes": "A short walk away: the stone mausoleum of the kings, built in 1501, guarded by carved lions. Quiet, shady, and a World Heritage site. ¥300 each."
         },
         {
           "title": "Lunch in Shuri",
@@ -540,7 +572,7 @@
           "end": "2026-10-31T13:15"
         },
         {
-          "title": "Shuri Kinjo-cho stone-paved road",
+          "title": "The old stone road down the hill",
           "start": "2026-10-31T13:15",
           "end": "2026-10-31T14:00",
           "location": {
@@ -552,10 +584,10 @@
             "placeId": "ChIJs45DcVdp5TQR70a1msYXhl4",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWERYI73HKbXNOw2O3Sq6CakUl0RKc7Cjh-eC09d7mHnQz0TrU6lW19tM0tKpOqO9YCCcQYHFkM3xI0URLPwOpHm8P-ghjQULv6_YWFh6kVxql2FYk8l7c5LtMdB5gDnDyQNN6N1_1nh0cNkrg=s4800-w800"
           },
-          "notes": "~300 m of a 16th-century road, downhill; slippery when wet. Ends away from the monorail — taxi onward to the museum."
+          "notes": "One of the prettiest walks in Okinawa: a 16th-century cobbled lane winding downhill between old stone walls, red-tiled roofs and huge banyan trees. Slippery if it rains. It ends at the bottom of the hill, away from the monorail — we'll grab a taxi from the main road to the museum."
         },
         {
-          "title": "Okinawa Prefectural Museum & Art Museum",
+          "title": "Okinawa Prefectural Museum",
           "start": "2026-10-31T15:00",
           "end": "2026-10-31T17:00",
           "location": {
@@ -567,10 +599,10 @@
             "placeId": "ChIJ-xOPl9lr5TQRH8VoYFpeKl4",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLfxldgUW_8oH0L8i_Q4y35SP9fZkkHKbXtvC10MaCLbQMU9kxG9N2wCue9l_9QubwPQAFFavU3iVoGwXIsl4oWcq16NAzI2DZppuUugwpw7DB3zSuUjObCUFciKMFBUTunHX54=s4800-w800"
           },
-          "notes": "Skip if tired. Museum ¥530 (art ¥400 separate), **cash only**. Sat 9 AM–8 PM. Ask for the English audio guide."
+          "notes": "The story of the islands, from coral reefs to kings to the war and after, in a striking fortress-like building. ¥530 each, **cash only**; ask for the English audio guide. Completely optional — swap for a nap if we need one."
         },
         {
-          "title": "Sakaemachi Arcade + izakaya dinner",
+          "title": "Sakaemachi market + izakaya dinner",
           "start": "2026-10-31T18:00",
           "end": "2026-10-31T20:00",
           "location": {
@@ -582,14 +614,14 @@
             "placeId": "ChIJAQDsBmRp5TQR9e89nmOJv8g",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWFgL5WV7xQSvGGCU_HU9IRURgovny1XIDWTGsWfBUvz0rRMtubRWIG2jtQUuENvYyIAGv1HW1ypNUjWksb0ku3QCiDKt97RcvI5CWAn8eE2D8A2Xpk2l1whdc0p1U2wUY_QvbZn0EEHKNSEoln5zk659w=s4800-w800"
           },
-          "notes": "Short wander, then one relaxed izakaya. Nothing booked."
+          "notes": "An old covered market that comes alive at night, when its tiny stalls turn into bars and izakayas with just a few stools each. Wander, pick one that feels right, and settle in."
         }
       ]
     },
     {
       "date": "2026-11-01",
-      "title": "Procession + dinner",
-      "summary": "Fukushuen and Kume in the morning, the Ryukyu Dynasty procession on Kokusai-dori, dinner. Alternative mornings: Makishi Market food wander, or a slow Kokusai / Tsuboya morning.",
+      "title": "A royal parade on Kokusai-dori",
+      "summary": "A Chinese garden in the morning, then the big event: the Ryukyu Dynasty Picture Scroll Procession, when about 700 people in royal court costume parade down Kokusai-dori — right outside our hotel. Then dinner out.",
       "items": [
         {
           "title": "Fukushuen Garden",
@@ -604,13 +636,19 @@
             "placeId": "ChIJVZMkWZtp5TQRid5LYJPR5JA",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWF7DufVhFIwbw78eysbZxuQ4UVXaGtiXQXLEiDxQYSncNF3-hKBKy_2WEPb88Ot1dvL72_8XpQo_TgDLWOqi42MVBxMDYFXdb1un1QWvokcSpZT2WnlkPKNjfq8QY7p5P1z3YGkhbQhJyxNTlqubNTGmA=s4800-w800"
           },
-          "notes": "Chinese-style garden (Naha–Fuzhou ties). ¥200; 9 AM–6 PM. ~30-min walk from the hotel."
+          "notes": "A walled Chinese garden of koi ponds, pavilions and a little waterfall, a gift celebrating Naha's centuries-old ties with Fuzhou. About a 30-minute walk from the hotel (or a short taxi). ¥200 each."
         },
         {
-          "title": "Kume neighborhood walk",
+          "title": "Stroll around Kume",
           "start": "2026-11-01T10:15",
           "end": "2026-11-01T10:45",
-          "notes": "Extend to Wakasa only if ahead of time."
+          "notes": "The neighborhood where Chinese scholars and envoys once lived. If we're ahead of time, keep wandering into Wakasa."
+        },
+        {
+          "title": "Early lunch",
+          "start": "2026-11-01T11:15",
+          "end": "2026-11-01T12:00",
+          "notes": "Eat, top up water and find a restroom before the crowds."
         },
         {
           "title": "Ryukyu Dynasty Picture Scroll Procession",
@@ -625,43 +663,50 @@
             "placeId": "ChIJMS9BUXdp5TQRAl6RXvY5aY0",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWGjDqSRBlfusQ90wOLW6iLS8j9Kqb96nL_lwY0E-10DcCYQ6UJX5AG9j7Cvf2rjBzuaGUFL51oLBpd22enokolmXWcM-sw8kTWPTgz1fP2mumBQ7AxXlTkKYWpkahaf4SogQNQKEZGyB1fanw=s4800-w800"
           },
-          "notes": "Shurijo Castle Revival Festival; free, ~700 costumed participants. Early lunch, then find a spot by noon (organizer's performance-point map). Roads close from noon — walk."
+          "notes": "The highlight of the Shurijo Castle Festival: a king and queen, court officials, Chinese envoys, musicians and dancers in brilliant silk, bringing an old painted scroll to life. Free. Find a spot along the street by noon — roads close then, so we walk."
         },
         {
-          "title": "Prep for Tokashiki",
-          "notes": "Pack an island bag; reconfirm the ferry and Tokashiku shuttle; sort an early breakfast."
+          "title": "Prep for the island",
+          "notes": "Pack a small beach bag for tomorrow and check the ferry and hotel shuttle are all set."
         },
         {
           "title": "Dinner",
-          "notes": "Existing commitment — restaurant and time still TBD. Don't book a replacement."
+          "notes": "We already have a dinner plan for tonight — restaurant and time to be filled in."
         }
       ]
     },
     {
       "date": "2026-11-02",
-      "title": "Naha → Tokashiki",
-      "summary": "Early taxi to Tomari Port for the 9:00 ferry, hotel shuttle, beach afternoon on Tokashiki.",
+      "title": "Island time on Tokashiki",
+      "summary": "A fast boat takes us out to Tokashiki, a small island in the Kerama chain — famous for some of the clearest water in the world, coral reefs and sea turtles. Our guesthouse sits right on the beach. Swim, snorkel, nap, eat a big dinner. That's the whole plan.",
       "items": [
         {
-          "title": "Check out of Palm Royal",
+          "title": "Taxi to Tomari Port",
           "start": "2026-11-02T07:20",
-          "end": "2026-11-02T07:40",
-          "notes": "Have reception call a taxi to the Marine Liner Tokashiki counter at Tomari Port. Pack swimwear separately from luggage."
+          "end": "2026-11-02T08:00",
+          "location": {
+            "name": "Tomari Port",
+            "city": "Naha",
+            "lat": 26.2253274,
+            "lng": 127.6827988,
+            "placeId": "ChIJOy3eAX9p5TQRM8i7JkINg2E",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAwWlqco9VNr2_lgz4cN7-8KZ7J5KWSVv4aOIJkM03r-l-i9zAm73QNRXcbjPLd20-IDiLY1wJ8xCQK3_e1Q7B521QUk8qwqJWW_gWrMH0eY6HYcHVJ0c-8IeljAO_GptFBjh_e1-T3IHWCtQ=s4800-w800"
+          },
+          "notes": "Check out and have reception call us a taxi to the **Tokashiki Marine Liner** at Tomari Port (north side) — about 15–20 minutes. Keep swimsuits in a day bag, separate from luggage. At the port: show our booking at the counter, collect tickets, and board from 8:30."
         },
         {
-          "title": "Hotel shuttle; leave luggage",
+          "title": "Hotel shuttle to the beach",
           "start": "2026-11-02T09:40",
           "end": "2026-11-02T10:15",
           "location": {
             "name": "Tokashiki Port",
-            "address": "346 Tokashiki, Shimajiri District, Okinawa 901-3501, Japan",
             "city": "Tokashiki Island",
-            "lat": 26.1991083,
-            "lng": 127.367602,
+            "lat": 26.1991475,
+            "lng": 127.3695236,
             "placeId": "ChIJO2g_esxT5TQRHY226THAHvg",
-            "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWFZt4usFIK0b5BtRuA2o3UGVwzu0D8SU_GCTOK9YhGdiorJWAQnBIUxYTjvQ3-Xk9GaGnvEqw8gRLH4iImVsQ6LLWY89HQjWhJ1rRk_2IiMjfysU5l0uapHjj2wl9qylMpu5socXRya_7buwU5A4LUETw=s4800-w800"
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAraJ7HcLLQu8gxQ53TH64pyKyyR7xjwLkbknUzO8NzM6tC5sFlxxQDJYs8HnX3sZHDk9nSzKWe-XBYGHX3BhL2b0mlJoh0RD95aCwWQ5wpZpcyvcmf5BVu-y5b3kG_E1Xdcxd_6m3iMzMlG7rjnBq35A=s4800-w800"
           },
-          "notes": "~10-min shuttle. Early room access not assumed."
+          "notes": "Tokashiku Marine Village's shuttle meets the boat for a 10-minute ride across the island's green hills. Drop the bags at reception and go find the sand."
         },
         {
           "title": "Tokashiku Beach",
@@ -676,61 +721,61 @@
             "placeId": "ChIJEdXi7-FT5TQRBRhFsYjvXws",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLccoLUMGKNzXo3l7tp_oEsf6ghXx6wbYyr99hv39zACAzGIFxctTlHwTV0S80w_1I97yvth6ec-HTaXJlrrAfVHB5jZUcq0sLGfJdlX7ZYIpziSeBxe2hogaunv4FB6MekxeLQ=s4800-w800"
           },
-          "notes": "Right by the hotel. Ask the marine desk about conditions and guided snorkels."
+          "notes": "A long, curving white-sand beach on a calm bay, right outside our door. Ask the marine desk about snorkel gear and what the water's like."
         },
         {
           "title": "Lunch",
           "start": "2026-11-02T12:00",
           "end": "2026-11-02T13:00",
-          "notes": "Hotel serves lunch noon–2 PM (not included)."
+          "notes": "The hotel serves lunch from noon to 2."
         },
         {
-          "title": "Snorkel or beach",
+          "title": "Snorkel with turtles (hopefully)",
           "start": "2026-11-02T13:00",
           "end": "2026-11-02T15:00",
-          "notes": "Options: guided snorkel, sea-turtle snorkel (sightings not guaranteed), or Aharen Beach (needs arranged transport). Hotel activities book the day before; nothing booked."
+          "notes": "Sea turtles graze the seagrass in this bay. Options: a guided snorkel, a turtle-focused trip, or Aharen Beach on the other side of the island. The hotel books its own trips the day before. Or just float."
         },
         {
           "title": "Check in, shower, rest",
           "start": "2026-11-02T15:00",
-          "end": "2026-11-02T16:00"
+          "end": "2026-11-02T16:00",
+          "notes": "A Japanese-style room with futons and a sea view."
         },
         {
-          "title": "Dinner at the hotel",
+          "title": "Dinner at the guesthouse",
           "start": "2026-11-02T18:00",
           "end": "2026-11-02T19:30",
-          "notes": "Included. Confirm the sitting at reception (service 6–8:30 PM)."
+          "notes": "Dinner's included — island home cooking. Ask reception what time they're serving."
         }
       ]
     },
     {
       "date": "2026-11-03",
-      "title": "Tokashiki → Itoman",
-      "summary": "Island day, 5:00 PM ferry back, then taxi to the wedding hotel. If weather threatens the return sailing, talk to the ferry operator early.",
+      "title": "One last swim, then the wedding hotel",
+      "summary": "We squeeze every drop out of Tokashiki — breakfast, beach, lunch, more beach — before the evening boat back to Naha and a taxi down to our resort in Itoman for the wedding.",
       "items": [
         {
           "title": "Breakfast",
           "start": "2026-11-03T07:30",
           "end": "2026-11-03T08:30",
-          "notes": "Included; last order 8:30."
+          "notes": "Included."
         },
         {
-          "title": "Beach or backup snorkel",
+          "title": "Morning swim or snorkel",
           "start": "2026-11-03T08:30",
           "end": "2026-11-03T10:15",
-          "notes": "Backup slot if Monday's snorkel didn't happen."
+          "notes": "A second chance at the turtles if yesterday didn't work out."
         },
         {
           "title": "Pack and check out",
           "start": "2026-11-03T10:15",
           "end": "2026-11-03T11:00",
-          "notes": "Checkout by 11. Leave bags with the hotel; keep a change of clothes."
+          "notes": "The hotel holds our bags; keep a change of clothes and toiletries handy."
         },
         {
           "title": "Lunch",
           "start": "2026-11-03T12:00",
-          "end": "2026-11-03T13:00",
-          "notes": "Not included."
+          "end": "2026-11-03T13:00"
         },
         {
           "title": "Final beach time",
@@ -738,60 +783,59 @@
           "end": "2026-11-03T14:45"
         },
         {
-          "title": "Shower, change, collect luggage",
+          "title": "Shower and change",
           "start": "2026-11-03T14:45",
           "end": "2026-11-03T15:30",
-          "notes": "Outdoor showers 9 AM–5 PM; confirm post-checkout use."
+          "notes": "Outdoor showers at the hotel, then collect the bags."
         },
         {
-          "title": "Hotel shuttle to Tokashiki Port",
+          "title": "Shuttle back to the port",
           "start": "2026-11-03T15:30",
           "end": "2026-11-03T16:00",
           "location": {
             "name": "Tokashiki Port",
-            "address": "346 Tokashiki, Shimajiri District, Okinawa 901-3501, Japan",
             "city": "Tokashiki Island",
-            "lat": 26.1991083,
-            "lng": 127.367602,
+            "lat": 26.1991475,
+            "lng": 127.3695236,
             "placeId": "ChIJO2g_esxT5TQRHY226THAHvg",
-            "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWFZt4usFIK0b5BtRuA2o3UGVwzu0D8SU_GCTOK9YhGdiorJWAQnBIUxYTjvQ3-Xk9GaGnvEqw8gRLH4iImVsQ6LLWY89HQjWhJ1rRk_2IiMjfysU5l0uapHjj2wl9qylMpu5socXRya_7buwU5A4LUETw=s4800-w800"
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAraJ7HcLLQu8gxQ53TH64pyKyyR7xjwLkbknUzO8NzM6tC5sFlxxQDJYs8HnX3sZHDk9nSzKWe-XBYGHX3BhL2b0mlJoh0RD95aCwWQ5wpZpcyvcmf5BVu-y5b3kG_E1Xdcxd_6m3iMzMlG7rjnBq35A=s4800-w800"
           },
-          "notes": "Hotel confirms the actual time."
+          "notes": "The hotel tells us the exact time. Collect return tickets at the counter; aboard by 4:50."
         },
         {
           "title": "Dinner",
           "start": "2026-11-03T19:30",
-          "notes": "Not included at the resort; check its restaurants or wedding-group plans."
+          "notes": "Settle into the resort and see what the restaurants — or the wedding group — are up to."
         }
       ]
     },
     {
       "date": "2026-11-04",
-      "title": "Wedding",
-      "summary": "Ceremony, reception and meeting times not supplied yet — day stays at the resort.",
+      "title": "The wedding",
+      "summary": "The reason for the whole trip. A slow morning by the sea at the resort, then celebrating the happy couple. Times to come from the invitation.",
       "items": [
         {
           "title": "Breakfast",
           "start": "2026-11-04T08:00",
           "end": "2026-11-04T09:00",
-          "notes": "Included. Move earlier if the wedding needs it."
+          "notes": "Included at the resort."
         },
         {
           "title": "Wedding",
-          "notes": "Times TBD. Confirm venue, dress code, transport and which meals are included."
+          "notes": "Ceremony and reception details to come. Check the dress code and whether transport's arranged."
         }
       ]
     },
     {
       "date": "2026-11-05",
-      "title": "Itoman → Yomitan",
-      "summary": "Rental car north: Ryukyu Glass Village, Yachimun no Sato, Cape Zanpa. Running late: keep glass + Yachimun, Zanpa only with daylight left.",
+      "title": "Glass, pottery and a sunset cape",
+      "summary": "We pick up a rental car and head north into Okinawa's craft country: glassblowers turning recycled bottles into bright blue glass, a village of potters and wood-fired kilns, and a wild clifftop cape for sunset. Tonight, a room with a jacuzzi looking out at the sea.",
       "items": [
         {
-          "title": "Check out; pick up rental car",
+          "title": "Pick up the rental car",
           "start": "2026-11-05T08:15",
           "end": "2026-11-05T10:00",
-          "notes": "**Not booked yet:** compact automatic, ETC card, deductible + NOC cover, return Nov 8. Bring IDP, Illinois license and passport. Pickup office decides the morning."
+          "notes": "Check out of the resort and collect the car (booking to come: small automatic with an ETC toll card). Bring the International Driving Permit, license and passports. Driving is on the left."
         },
         {
           "title": "Ryukyu Glass Village",
@@ -806,7 +850,7 @@
             "placeId": "ChIJqwNytRxn5TQRfL7OFx6hlYk",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdluJ3UN-wwcSxt-xdYqFTNQUAb2Ypxt64K3CJypXSkdHgx3FHug06IlPbBkmxTG_uWEa-3MTTwiInOokpZC3dZwmDHhf-ECscl_BgIM_GL-NX62mgykk4WkLV5SkzOoXhZiRL-bg=s4800-w800"
           },
-          "notes": "Must-do. Free; 9:30 AM–5:30 PM. Optional glassmaking class books from Oct 22; pieces are shipped after cooling."
+          "notes": "Okinawa's biggest glass workshop: watch artisans blow molten glass, then browse bubbly blue, green and amber cups and lamps. The tradition started after the war, using old soda and beer bottles. Free entry."
         },
         {
           "title": "Lunch",
@@ -814,7 +858,13 @@
           "end": "2026-11-05T12:15"
         },
         {
-          "title": "Yachimun no Sato",
+          "title": "Drive north",
+          "start": "2026-11-05T12:15",
+          "end": "2026-11-05T14:00",
+          "notes": "About 1¾ hours up the west coast to Yomitan, through Naha and along Route 58. Optional detour: Mihama American Village in Chatan."
+        },
+        {
+          "title": "Yachimun no Sato pottery village",
           "start": "2026-11-05T14:00",
           "end": "2026-11-05T15:30",
           "location": {
@@ -826,10 +876,10 @@
             "placeId": "ChIJk-6fnD0R5TQR6rFMH_YRWgc",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcGRJjDwgg92ZUZMPE6NHvgWpywWkOXo7_HOouWgAH-xthM-39GV-gTPM9cl2N1omIP02kpQrO6rFLOuqHHkIxuwWydUDruRUWBrxwL3L1-GUUp90DKoGaD6vB3DMOTxTQgoZJHvA=s4800-w800"
           },
-          "notes": "Priority. ~1h45 drive north. 19 independent pottery workshops and kilns, own hours; free to browse."
+          "notes": "A peaceful village of 19 pottery workshops and giant stepped wood-fired kilns, tucked among trees and red-tiled roofs. Wander between studios and maybe find a bowl to bring home."
         },
         {
-          "title": "Cape Zanpa",
+          "title": "Sunset at Cape Zanpa",
           "start": "2026-11-05T16:30",
           "end": "2026-11-05T18:00",
           "location": {
@@ -841,12 +891,11 @@
             "placeId": "ChIJ6y12xkcX5TQRX4pAIu5g0I8",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcEGiU3sYlbklsVoE9oZDXAKlyKOr3jX68HMmD2-J5Tnx3noRlH2I3czLbftIoigyiRsHddmENwgvJR7mPmNP6oa2CrhXHhG5S4Faaguh_I0idFlIfYuKM_wcn4ZADyT99CwxyxCQ=s4800-w800"
           },
-          "notes": "Weather permitting. Check sunset and arrive 30–45 min before. Lighthouse closes 4:30 PM."
+          "notes": "Dramatic coral-limestone cliffs, crashing waves and a white lighthouse — the classic sunset spot on this coast. Arrive 30–45 minutes before sunset."
         },
         {
           "title": "Dinner",
-          "start": "2026-11-05T19:00",
-          "notes": "Not included; nothing booked."
+          "start": "2026-11-05T19:00"
         },
         {
           "title": "Optional: Mihama American Village",
@@ -859,7 +908,7 @@
             "placeId": "ChIJzZoVCAUT5TQRzIueHYt83hs",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWG-jYVSbt8bJH-Keeqieft58HJ4jiFsLwW5vsk6YDkB6t6UVVDLaXveQb5IcclVgaTgocqC7vp8Jfd51QXo6nZ7c6J5iLMVQcPWtLst1o3Z9EzfhXPvbDwxcz1czy4-I9r2IQb8pIwRXGs59A=s4800-w800"
           },
-          "notes": "Between the glass village and Yomitan. Needs 2–3 hrs — replaces another block."
+          "notes": "A colorful seaside shopping-and-food district with a boardwalk, shaped by the nearby US bases. Fun, but it would need 2–3 hours, so it replaces something else."
         },
         {
           "title": "Alternative: Zakimi Castle",
@@ -872,28 +921,21 @@
             "placeId": "ChIJX6aakiAR5TQRCHgKEfmK5aY",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdNXp-OiVTE9m8xhOTrVStefB4pU-ze7ZKZqTp6tV-GFtUjNOSXZmSwtheIP-UpoEc0JTbG6sIAFj-tc_h50pxt_H5-VvAAYTv2kdeyFFaMy1kBBK6h_xxIT_J91op8t2JgdFDgFHCBNoeN=s4800-w800"
           },
-          "notes": "Free ruins, 45–60 min. Swap in for another stop, not in addition."
-        },
-        {
-          "title": "Bonus: Southeast Botanical Gardens",
-          "location": {
-            "name": "Southeast Botanical Gardens",
-            "address": "2146 Chibana, Okinawa, 904-2143, Japan",
-            "city": "Okinawa City",
-            "lat": 26.3755374,
-            "lng": 127.8065709,
-            "placeId": "ChIJ12iS29gR5TQRCznHnqmdqpc",
-            "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLfBfxoWfiRhiKbyyogxYg1B2B02z_XNGfaYJoqrLHz0LAYMM4oTklH_UXrTtTfl_Zk-8mZreE109NeAlm9Lg4N7rAy9qlDOrnqRl8iUs6HAEK8CCMw71feCqkV2giPti4eI5Us=s4800-w800"
-          },
-          "notes": "Optional evening only."
+          "notes": "Beautifully curved 15th-century stone walls with hilltop views. Free."
         }
       ]
     },
     {
       "date": "2026-11-06",
-      "title": "Yomitan → Nakijin",
-      "summary": "Churaumi, optional Bise, Nakijin Castle, then The Lodge. If short on time: Churaumi, Nakijin Castle, then Bise.",
+      "title": "Whale sharks and castle walls",
+      "summary": "A morning at Churaumi, one of the world's great aquariums, where whale sharks and manta rays glide past one enormous window. Then a stroll down a tunnel of ancient trees in a fishing village, a castle ruin in the clouds, and our first night glamping in the north.",
       "items": [
+        {
+          "title": "Drive to Churaumi",
+          "start": "2026-11-06T08:00",
+          "end": "2026-11-06T10:00",
+          "notes": "Check out early and drive about 1½–2 hours up the coast road past Onna's beaches and through Nago."
+        },
         {
           "title": "Okinawa Churaumi Aquarium",
           "start": "2026-11-06T10:00",
@@ -907,13 +949,13 @@
             "placeId": "ChIJPZ5hUjH65DQR_p_dD3CmCOo",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWEvpVXicSqmy6VSsgFd4rVodr21sPYyogRZpy4zX3u_wr2-MuJ5e2_Dm4m5WEMetLOty-RjhJZT6L_HOxUl0n0tBMD0y_9VeJNTpBiqcOdbMFxdl8T7Jy-Lk32vVaUiyinrQ5h3RU6-Xhfh6G17eERDUQ=s4800-w800"
           },
-          "notes": "Leave Yomitan by 8 (1.5–2 hr drive). ¥2,180; 8:30 AM–6:30 PM, last entry 5:30."
+          "notes": "The Kuroshio Sea tank is the showstopper — whale sharks and mantas swimming overhead. Also a living coral reef and sea turtles. ¥2,180 each."
         },
         {
           "title": "Lunch",
           "start": "2026-11-06T12:30",
           "end": "2026-11-06T13:15",
-          "notes": "At or near Ocean Expo Park."
+          "notes": "In Ocean Expo Park, by the sea."
         },
         {
           "title": "Bise Fukugi Tree Road",
@@ -928,7 +970,7 @@
             "placeId": "ChIJ6z_osjv65DQRNpoSOgG1iqM",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLf32ckeZ0xfqg6_xc3aVnGexi1AeDA5tDCPOJgKJTxlSVrWriCKV3vs0j8bfxJtMCHV3FIyuBpay_4aIWLPrDSFp_eRFA5umZ3yIt-RZPUcxe2_Foft9B1D2C9dReywJGUolrry=s4800-w800"
           },
-          "notes": "Optional. Shaded walking lanes, not a drive. Skip if the aquarium runs long."
+          "notes": "Sandy lanes through a village shaded by 20,000 fukugi trees, planted 300 years ago as typhoon windbreaks, opening onto the sea. Optional if the aquarium runs long."
         },
         {
           "title": "Nakijin Castle",
@@ -943,20 +985,41 @@
             "placeId": "ChIJk_KWO7b55DQRF6wOVeWpIDE",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdIkFcbJFbsWan-KgiIAmHU7840AnmDLIF9N8_7LlQFb_Y4unggoThWXDcLoP93ZOhhLXfUOzKhlASBTLOzXEHtS4GWLvi2puHyzg_7kaKJOLlDKm9kTAcuQGA84WOBuA4KbJZfvtga8NA=s4800-w800"
           },
-          "notes": "¥1,000; 8 AM–6 PM, last entry 5:30. Uneven steps."
+          "notes": "Over a mile of snaking stone walls along a hilltop, older than Shuri, with views over the East China Sea. ¥1,000 each; wear good shoes."
+        },
+        {
+          "title": "Glamping at The Lodge",
+          "start": "2026-11-06T16:30",
+          "end": "2026-11-06T17:30",
+          "location": {
+            "name": "The Lodge Okinawa",
+            "address": "1563 Imadomari, Nakijin, Okinawa",
+            "city": "Nakijin",
+            "lat": 26.6907903,
+            "lng": 127.9242358,
+            "placeId": "ChIJt05CXAD55DQRtWv9Jkvt6vA",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcxG2wQonTLT0iqu8b3Q6jINyChkuSzd93U3E4w_6xXCrJvVH3A6pe601u63NuAdx8GwX1Muqi5DiM_ImfS7QpRQ1UAVmYI3Jvb1shFCGr0svb1ZmY1-ExRCdkKpsL_ROTNAMo=s4800-w800"
+          },
+          "notes": "Our tent for two nights, with a queen bed and a sauna. Five minutes from the castle."
         },
         {
           "title": "Dinner",
           "start": "2026-11-06T18:00",
-          "notes": "No meals at the Lodge. Buy breakfast supplies for tomorrow."
+          "notes": "No meals at the Lodge — eat out nearby and pick up breakfast for tomorrow."
         }
       ]
     },
     {
       "date": "2026-11-07",
-      "title": "Yanbaru road trip",
-      "summary": "Route 58 up and back; the Route 70 east loop is optional. Backup: slow day with Ogimi and Cape Hedo, no ASMUI. Hiji Falls closed since the Nov 2024 floods — ask locally, don't drive there.",
+      "title": "Seeing north Okinawa",
+      "summary": "A road trip into Yanbaru, the wild, jungly north — a forest so rich it's a World Heritage site, home to birds found nowhere else. A sleepy village famous for long lives, a hike through giant limestone rocks, and the windswept northern tip of the island.",
       "items": [
+        {
+          "title": "Drive to Ogimi",
+          "start": "2026-11-07T07:45",
+          "end": "2026-11-07T09:00",
+          "notes": "About an hour up Route 58 along the coast."
+        },
         {
           "title": "Ogimi village",
           "start": "2026-11-07T09:00",
@@ -970,10 +1033,10 @@
             "placeId": "ChIJzx5RJvNa5DQRNVTrtv5ixGE",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLctBibkdQ-CYBFkTsqqilpEoS2k2Gz-e6qfbwEgqEhWvbaimdlixa0oXor-0LwsQ57A-mQRaT_uMf6NHdS1qVWYDT907lbk2BIu6sjwCpGayi-ERbwJAmVQzaaY8SFCMaOoB_KQZg=s4800-w800"
           },
-          "notes": "Leave the Lodge 7:45 (60–75 min). Short Shioya-area village and coast wander."
+          "notes": "A quiet seaside village known for its centenarians. Wander a bit, find coffee if anything's open."
         },
         {
-          "title": "ASMUI",
+          "title": "ASMUI Spiritual Hikes",
           "start": "2026-11-07T11:15",
           "end": "2026-11-07T13:30",
           "location": {
@@ -985,13 +1048,13 @@
             "placeId": "ChIJcRING21s5DQR2IzDT3jw1hQ",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdIXKpgILmdoYeM1si6VWzR8pmJ_DqhHCGjnZpBdGLW2yRTEOL3ymG7DgUtbh6jWuuXqQspFkyRTWyAsirTbwGVyiUojdrEOo1ZCsdDwUe-kEwrQNHQwGSnsWYhHD7Jygj-otA=s4800-w800"
           },
-          "notes": "¥2,500; 9:30 AM–5:30 PM, last entry 4. Shuttle, audio guide and lounge included; 60-min regular or 30-min short course. Download the audio guide beforehand."
+          "notes": "Paths through jungle and towering jagged limestone, with sacred sites and huge banyan trees. A shuttle takes us up; the main loop is about an hour. ¥2,500 each; download the audio guide before we lose signal."
         },
         {
           "title": "Lunch",
           "start": "2026-11-07T13:30",
           "end": "2026-11-07T14:15",
-          "notes": "Food near ASMUI uncertain — bring snacks."
+          "notes": "Food up here is limited — bring snacks."
         },
         {
           "title": "Cape Hedo",
@@ -1006,22 +1069,31 @@
             "placeId": "ChIJsVsyW1ts5DQRX7Fc17sFmHM",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLeuUgPuh02g6my-xuXtsjbM9iYrNSNcY3qxjE-ANipYGE2Wv-7v5Uz6Esr1KaRFh9UGsOi_79JHjBwvGqiXd5DvhMx7uW3RWXtHR6Rtt1DuXM5Ork_oesJpZMz8nPoA-3TEzyad=s4800-w800"
           },
-          "notes": "Northern-tip lookout. ~2 hr drive back to the Lodge afterwards."
+          "notes": "The northern tip of Okinawa: grassy cliffs over crashing surf and, on a clear day, the next island across the water."
+        },
+        {
+          "title": "Drive back to the Lodge",
+          "start": "2026-11-07T15:15",
+          "end": "2026-11-07T17:30",
+          "notes": "Back down Route 58 with a stop or two. Sauna time."
         },
         {
           "title": "Dinner",
-          "start": "2026-11-07T18:00",
-          "notes": "Prep for kayaking and checkout tomorrow."
+          "start": "2026-11-07T18:00"
         }
       ]
     },
     {
       "date": "2026-11-08",
-      "title": "Nakijin → Kayak → Naha",
-      "summary": "Checkout by 10. Guided mangrove kayak (start set by the tide), then drive south and return the car. Fallbacks: Kouri kayak/SUP or a slow Kouri morning. Tonight's Naha hotel isn't booked yet.",
+      "title": "Mangroves by kayak",
+      "summary": "We paddle a guided kayak through a mangrove forest on Okinawa's east coast — a quiet, green world of tangled roots, crabs and wading birds, completely different from the reefs. Then a long drive south to Naha to return the car. (Tonight's hotel isn't booked yet.)",
       "items": [
         {
-          "title": "Gesashi mangrove kayak",
+          "title": "Drive to Gesashi",
+          "notes": "Check out of the Lodge, then about an hour across the island to the east coast."
+        },
+        {
+          "title": "Mangrove kayaking",
           "location": {
             "name": "Yanbaru Nature School",
             "address": "82 Gesashi, Higashi, Okinawa 905-1205",
@@ -1031,15 +1103,15 @@
             "placeId": "ChIJFYH_XdRR5DQRI68wbqNn7Dc",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjCa-y_OrNhi0UgFGKFx3efwgQPx6pppLUCXx1rQ0K1y_5wIkwGxT5u1eNdedcIy4AlN_9ORlSS5nmTb_QVD0GhxBwQy9IeNpRbUii71geiM2xCDEk38vtGyPTAbqF_Zwp3I5j5Yh3hIXK9ZsyhC-8kW=s4800-w800"
           },
-          "notes": "**Not booked.** Candidate: 2-hr course, ¥5,500 each, at high tide. Book via gesashi.com or +81 980-43-2571; ask for English, meeting pin and changing facilities. Aim to leave by ~2 PM. 60–75 min from the Lodge."
+          "notes": "A two-hour guided paddle up the Gesashi River at high tide. The tide sets the start time (not booked yet). Bring a change of clothes and a towel."
         },
         {
           "title": "Lunch",
           "notes": "Before or after kayaking, depending on the tide."
         },
         {
-          "title": "Drive to Naha; refuel; return rental car",
-          "notes": "2–2.5 hr drive (expressway tolls extra) — navigate to the rental office. Allow 45–60 min for refuel and return, then 30–60 min to the hotel."
+          "title": "Drive to Naha and return the car",
+          "notes": "About 2–2½ hours south, partly on the expressway. Fill the tank, return the car, then a taxi or monorail to the hotel."
         },
         {
           "title": "Final Okinawa dinner"
@@ -1048,11 +1120,11 @@
     },
     {
       "date": "2026-11-09",
-      "title": "Arrival + Zhongshan / Dadaocheng",
-      "summary": "Morning flight to Taipei (1 hr behind Japan), easy neighborhood afternoon, Ningxia night market.",
+      "title": "Hello, Taipei",
+      "summary": "An early flight to Taiwan. We spend the afternoon in Taipei's old trading district, where 1800s shophouses sell herbs, dried mushrooms and tea, then dive into our first night market. Bring an appetite.",
       "items": [
         {
-          "title": "Check out; taxi to Naha Airport",
+          "title": "To Naha Airport",
           "start": "2026-11-09T06:00",
           "end": "2026-11-09T07:00",
           "location": {
@@ -1063,10 +1135,10 @@
             "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
           },
-          "notes": "Pre-arranged taxi. At the airport by 6:45–7:00 for the 9:45 flight."
+          "notes": "An early checkout and a pre-booked taxi to international departures."
         },
         {
-          "title": "Airport MRT to Taipei",
+          "title": "Airport train into Taipei",
           "start": "2026-11-09T11:45",
           "end": "2026-11-09T13:00",
           "location": {
@@ -1078,12 +1150,22 @@
             "placeId": "ChIJga-ve7-fQjQR5vzAPIpLKNY",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWGyn3_7XcSXcuu9ITl5WmarvBRoYY2fhcYf36d4gtsgDncCOH16ax1Goof03ivjDjasta2aqz8Y7axzs74RU3MR2ntuQltKdKlFaReb9UqArhU70FKEPuQHXguDXb8zwaXoSguOsIlFQ2SKgYK3RFAEVQ=s4800-w800"
           },
-          "notes": "A12 → A1 Taipei Main express (~35 min, NT$160 each), then taxi to the hotel."
+          "notes": "After immigration and bags, follow signs for the **Airport MRT** (purple). Buy tokens or tap a card (NT$160 each) and take the **Express** (purple train, fewer stops) from A12 Terminal 1 to **A1 Taipei Main Station**, ~35 minutes. From A1, take a taxi from the rank outside to the hotel — easiest with bags."
         },
         {
-          "title": "Leave luggage; lunch",
+          "title": "Drop bags at the hotel",
           "start": "2026-11-09T13:00",
-          "end": "2026-11-09T14:00"
+          "end": "2026-11-09T14:00",
+          "location": {
+            "name": "Hotel Royal-Nikko Taipei",
+            "address": "No. 37-1, Section 2, Chung Shan North Road, Zhongshan District, Taipei City 104, Taiwan",
+            "city": "Taipei",
+            "lat": 25.0536679,
+            "lng": 121.5229126,
+            "placeId": "ChIJH5UrwGipQjQR5s5WfFvR-44",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjDit-kB2ixBpPXF4XVtkIQHoaL3VD3_t72piUKU5Cf-VSyLkuIhahTK0prATsespBgMVGQH1uiGOPm-XjExTArReBLNVm6WD76HhI_tT9d2s7tS0o3FNJm4WAN6um9tDeoWjTQBRmMY66CyOaw=s4800-w800"
+          },
+          "notes": "Then lunch nearby."
         },
         {
           "title": "Zhongshan cafés and lanes",
@@ -1097,10 +1179,11 @@
             "lng": 121.5206377,
             "placeId": "ChIJbSEhom6pQjQREwct-uP33gA",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AO7kbWFkMyyBTL28FFVTMEkYtlbe78mxEMKZO_vi2dhu7YbDhNbDoqt3lGuf58R4GAI56_dOEc9TYt650gMEw8a-NmymRZfB9zhxH0qkCty1e4syjM4kqe0QIGNXAsSNgUsJfRQXpygJBZZIWxpIxN5Ar49u=s4800-w800"
-          }
+          },
+          "notes": "Our neighborhood: leafy back lanes full of design shops and good coffee."
         },
         {
-          "title": "Dihua Street / Dadaocheng",
+          "title": "Dihua Street",
           "start": "2026-11-09T16:15",
           "end": "2026-11-09T18:00",
           "location": {
@@ -1112,7 +1195,7 @@
             "placeId": "ChIJeXELiROpQjQR1REJMdOO8Xo",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdnX82DPniNVLwEv7vSaRw6juJLNvctnq2iiUX8rCZRf7HqO3X1QLzLWO_QmW1NhPohAnZP7CVgfq2nrsfWw3buJH1yUd7mSb9opH-eUpd5ltG9eZMTQ4VqHAXdfx4di0qmq-MS1GV7L_I=s4800-w800"
           },
-          "notes": "Old trading streets; optional riverside walk. Taxi or Green Line to Beimen."
+          "notes": "Taipei's oldest street: grand shophouses selling dried fruit, herbs and fabric, with tea houses and boutiques tucked into the courtyards. Taxi, or Green Line to Beimen."
         },
         {
           "title": "Ningxia Night Market",
@@ -1127,15 +1210,30 @@
             "placeId": "ChIJxUXPVmupQjQRtBB6oj-S5qI",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/ACvplmPtSc1jNv6M-4WSEwdIFzurAKblh7Ts9UdmR5MGuawMecZGSqWPE75tCjB6SR3BA62mWGPVMop52lU2AaU0jUzUhi7DnXqyalAqbblOmI_xd48xDKSMjDW8SONQu3hHX59keVpWBQ=s4800-w800"
           },
-          "notes": "Dinner. Cash; pay stalls individually. ~20-min walk back to the hotel."
+          "notes": "A street full of steaming stalls: oyster omelets, taro balls, grilled squid, bubble tea. Bring cash and share everything."
         }
       ]
     },
     {
       "date": "2026-11-10",
-      "title": "Classic Taipei + Taipei 101",
-      "summary": "Historic landmarks by day, Xinyi and the skyline in the evening.",
+      "title": "Temples, history and Taipei 101",
+      "summary": "Classic Taipei: a vast memorial hall, an ornate temple full of incense, an old brick street, and then up Taipei 101 — once the world's tallest building — for the city lights.",
       "items": [
+        {
+          "title": "Metro to Chiang Kai-shek Memorial Hall",
+          "start": "2026-11-10T09:00",
+          "end": "2026-11-10T09:30",
+          "location": {
+            "name": "Zhongshan Station",
+            "address": "No. 16, Nanjing W Rd, Zhongshan District, Taipei City, Taiwan 10491",
+            "city": "Taipei",
+            "lat": 25.052685,
+            "lng": 121.520391,
+            "placeId": "ChIJE-kmU2mpQjQRg3J0ihh6nvI",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjCTvEV3qnzpmPJyMR31Va9Bm2NFHcoHyL3Wjng209Te9dPH6a_5nGvu46p9eLCZMgZRxRk6m2xcSVjjHwdWD7Npo202zXEMZBQXXUs5jQONdYappErDp15zDrfCC77l3NWg6RdLxiwcF_nBRoIeRi3hfw=s4800-w800"
+          },
+          "notes": "Walk to Zhongshan Station; Red Line toward Xiangshan, 3 stops."
+        },
         {
           "title": "Chiang Kai-shek Memorial Hall",
           "start": "2026-11-10T09:30",
@@ -1149,7 +1247,7 @@
             "placeId": "ChIJTamiuZ2pQjQRsmnfkkID6UM",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLd47LjmqxHqTIyE6mwBmZxX7qdmYgaYdjvUmHCldlWjrJ_uVgwGz8Hwjk_SetW3ZYRmpnK8SG6D8uf7u15cWNjcKtDAFS2pCWD_02R7gQR20oxL-w5iuJq6w0FUXYZ_q0Ec3J6rqk1GGWYQ=s4800-w800"
           },
-          "notes": "Red Line from Zhongshan. Free."
+          "notes": "A huge white monument with a blue roof, set in a grand plaza between an opera house and a concert hall. Free."
         },
         {
           "title": "Longshan Temple",
@@ -1164,7 +1262,7 @@
             "placeId": "ChIJCd7n16ipQjQRihzEWF4z6Pg",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/ACvplmO3VouCxQfU5wfHVDB2MpSoiHJDJivZ6JGOrv-p8KCUP2Z5_FLBDTzxcd8DTew_WcsB_KcyNcF83z_tcYyHx-uImU-279WtsRe09M07HbQvMAT-lD118LkJwy-vhiFQvXMvUYTHVA=s4800-w800"
           },
-          "notes": "Active temple. Green Line to Ximen, Blue one stop."
+          "notes": "Taipei's most beloved temple, with dragons on every roofline, swirls of incense and locals praying. Green Line to Ximen, then Blue one stop."
         },
         {
           "title": "Lunch",
@@ -1184,16 +1282,16 @@
             "placeId": "ChIJ3bYX0KipQjQR6Q_UrbthM_8",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjC5KcY38ake6gY8E8q1VH4X7KaeGjy0WgH39MoC9M34wWi7BOc656imIx9LGCW4ckTt8pgNznuxg6fjQhrAfgaEdaoZx7IJQUkdpWZpF2KCWeMz1qNBy0ASinfOiK7ObPkD4k_fxqbGL-bj5w=s4800-w800"
           },
-          "notes": "Free."
+          "notes": "A preserved red-brick street from the Qing and Japanese eras. Free."
         },
         {
           "title": "Xinyi district",
           "start": "2026-11-10T15:00",
           "end": "2026-11-10T16:30",
-          "notes": "Blue Line to Taipei City Hall. Café and browsing."
+          "notes": "Blue Line east to Taipei City Hall. Taipei's glossy modern side: plazas, malls and cafés."
         },
         {
-          "title": "Taipei 101 Observatory",
+          "title": "Up Taipei 101",
           "start": "2026-11-10T16:30",
           "end": "2026-11-10T18:00",
           "location": {
@@ -1205,20 +1303,19 @@
             "placeId": "ChIJSTLZ6barQjQRMdkCqrP3CNU",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcuI43j-BrNaLwNdOoj0zTUE0UQSdQlcaHsSD-O2urU8aiuZdEEAzHFHdyoqcaXdDxs23-48tyNPax0sIsqyZiH3DwsVbX4hnFFtwvEwWLBuBOl7A3o6zTWIdMD4tKLsXBPGcsW8w=s4800-w800"
           },
-          "notes": "NT$600 each (88/89F). Pre-book if a slot matters, else check visibility. Entrance currently Office Tower 1F."
+          "notes": "The world's fastest elevators zip us up 89 floors in under a minute. Watch the city light up, and see the giant golden ball that keeps the tower steady in typhoons. NT$600 each; entrance currently at Office Tower 1F."
         },
         {
           "title": "Dinner",
           "start": "2026-11-10T18:00",
-          "end": "2026-11-10T19:30",
-          "notes": "Xinyi, or back toward Zhongshan."
+          "end": "2026-11-10T19:30"
         }
       ]
     },
     {
       "date": "2026-11-11",
-      "title": "National Palace Museum + Beitou",
-      "summary": "Museum in the morning, Beitou and a private hot spring in the afternoon. Backup if Beitou falls through: Shilin Residence, Shilin neighborhood and night market.",
+      "title": "Treasures and hot springs",
+      "summary": "The morning with an emperor's treasure — the National Palace Museum holds the old imperial collection of China. In the afternoon, up into the hills of Beitou, Taipei's hot-spring town, ending with a private soak just for the two of us.",
       "items": [
         {
           "title": "National Palace Museum",
@@ -1233,13 +1330,12 @@
             "placeId": "ChIJfUpAzTqsQjQRwQl6ORhwbV0",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLcZUPkXM21ugmG6D0yoVg1uTowCc_-rpfhMTwzFLJY1stDwvKrD-DoBvcTzVSQx_RueVXbjX4APpe7FI-1l0bHekUO-LXzCl7Sj4WCA4sWQwjVQUfKd7kbMsdGIUDTWQU66csfW=s4800-w800"
           },
-          "notes": "Taxi 30–45 min. NT$350; 9 AM–5 PM. Optional 10 AM English tour: request by Nov 4, check approval by Nov 8."
+          "notes": "A 30–45 minute taxi. Thousands of years of jade, bronze and porcelain, and, if it's on display, the famous Jadeite Cabbage. NT$350 each."
         },
         {
           "title": "Lunch",
           "start": "2026-11-11T12:00",
-          "end": "2026-11-11T13:00",
-          "notes": "At or near the museum."
+          "end": "2026-11-11T13:00"
         },
         {
           "title": "Beitou Park, Hot Spring Museum, Thermal Valley",
@@ -1254,7 +1350,7 @@
             "placeId": "ChIJ6fE69FCuQjQRPAp8aSmP8a0",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjAblQb4Wl6J2fFS7OsjPpcVUDIzttdXXi0fiOkrjpvymM_GQ_O_P4MawJUFXkpHKJ0LW_hmcNcq8kH0xB7DQjda5VIGSOvQ_ohvenBx0hTl53fO59DkgwHhXm-E01piFsSsIs5dVTfhv4fkLg=s4800-w800"
           },
-          "notes": "Taxi from the museum. All free and viewing only — no bathing. Skip one if late."
+          "notes": "A taxi up to Beitou. A 1913 Japanese bathhouse turned museum, then a steaming jade-green thermal lake. All free."
         },
         {
           "title": "Private hot-spring soak",
@@ -1269,25 +1365,32 @@
             "placeId": "ChIJ6TCF5WmuQjQRm9DanoDx2Mc",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLdJMHA92yjfmbjw-Oz8mgU2APuZJZZrLVOOfBQHDe-FDLk_1WuSI1dosfeeKPgTNphA7yKeUywMOdt592uUeLCH20B_qKhB1QtwuWPeNfuRXnRXw7oKaSOonNTunj5r9NKDsXE=s4800-w800"
           },
-          "notes": "**Not booked** — reservations open Oct 11 (one month ahead). ~NT$3,000 per room for two, 90 min. B2 counter; 5-min grace. Book online, +886 2 2898 8888 or rsvn@gvrb.com.tw."
+          "notes": "Our own private hot-spring room for 90 minutes, up in the hills. A short taxi uphill from Xinbeitou. **Booking opens Oct 11.**"
         },
         {
           "title": "Dinner",
-          "notes": "Beitou, or back in Zhongshan."
+          "notes": "In Beitou, or back in Zhongshan."
         }
       ]
     },
     {
       "date": "2026-11-12",
-      "title": "Taipei → Naha",
-      "summary": "Huashan in the morning, afternoon to the airport, late arrival in Naha.",
+      "title": "One last Taipei morning",
+      "summary": "A lazy last morning at Huashan, an old wine factory turned creative park full of design shops and exhibitions, then back to Okinawa for the night.",
       "items": [
         {
           "title": "Check out; leave bags",
-          "timezone": "Asia/Taipei",
           "start": "2026-11-12T08:00",
           "end": "2026-11-12T09:15",
-          "notes": "Confirm bag storage with Royal-Nikko."
+          "location": {
+            "name": "Hotel Royal-Nikko Taipei",
+            "address": "No. 37-1, Section 2, Chung Shan North Road, Zhongshan District, Taipei City 104, Taiwan",
+            "city": "Taipei",
+            "lat": 25.0536679,
+            "lng": 121.5229126,
+            "placeId": "ChIJH5UrwGipQjQR5s5WfFvR-44",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjDit-kB2ixBpPXF4XVtkIQHoaL3VD3_t72piUKU5Cf-VSyLkuIhahTK0prATsespBgMVGQH1uiGOPm-XjExTArReBLNVm6WD76HhI_tT9d2s7tS0o3FNJm4WAN6um9tDeoWjTQBRmMY66CyOaw=s4800-w800"
+          }
         },
         {
           "title": "Huashan 1914 Creative Park",
@@ -1302,36 +1405,53 @@
             "placeId": "ChIJbSTgI2WpQjQRcVwWB2cnyfE",
             "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLfiDrRglbT56vy1es1jxxW5pR555N9rIjXrcHvqGTgy1WAyyVE5I2dEf7bGFT99zK4CbWbhhQW6-qeMEGEkEZdVJhwq7i1WFmnbSmgDIe7QFlitINQxSu1XjdG_Uyvwx78sztDtlA=s4800-w800"
           },
-          "notes": "Free grounds; shops open individually. Taxi, or MRT to Zhongxiao Xinsheng Exit 1. Backups: Zhongshan cafés or Dadaocheng."
+          "notes": "Brick warehouses full of local designers, pop-up shows and cafés. Taxi, or MRT to Zhongxiao Xinsheng Exit 1."
         },
         {
           "title": "Lunch",
-          "timezone": "Asia/Taipei",
           "start": "2026-11-12T12:00",
-          "end": "2026-11-12T13:00"
+          "end": "2026-11-12T13:00",
+          "timezone": "Asia/Taipei"
         },
         {
-          "title": "Collect bags; to the airport",
-          "timezone": "Asia/Taipei",
+          "title": "Back to the airport",
           "start": "2026-11-12T13:45",
           "end": "2026-11-12T15:15",
-          "notes": "Taxi to A1, Airport MRT to A12 Terminal 1 (NT$160 each). At TPE by 3:15."
+          "location": {
+            "name": "Hotel Royal-Nikko Taipei",
+            "address": "No. 37-1, Section 2, Chung Shan North Road, Zhongshan District, Taipei City 104, Taiwan",
+            "city": "Taipei",
+            "lat": 25.0536679,
+            "lng": 121.5229126,
+            "placeId": "ChIJH5UrwGipQjQR5s5WfFvR-44",
+            "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjDit-kB2ixBpPXF4XVtkIQHoaL3VD3_t72piUKU5Cf-VSyLkuIhahTK0prATsespBgMVGQH1uiGOPm-XjExTArReBLNVm6WD76HhI_tT9d2s7tS0o3FNJm4WAN6um9tDeoWjTQBRmMY66CyOaw=s4800-w800"
+          },
+          "notes": "Collect bags, taxi to A1 Taipei Main, then the Airport MRT Express to A12 Terminal 1."
         },
         {
-          "title": "Airport → Blossom Naha",
+          "title": "Airport to Blossom Naha",
           "start": "2026-11-12T21:40",
           "end": "2026-11-12T22:20",
-          "notes": "Taxi if tired or late; or Yui Rail to Miebashi (~14 min, ¥320) + 5-min walk. Check-in ends 11 PM."
+          "location": {
+            "name": "JR Kyushu Hotel Blossom Naha",
+            "address": "2-16-1 Makishi, Naha, Okinawa",
+            "city": "Naha",
+            "lat": 26.2173462,
+            "lng": 127.6878124,
+            "placeId": "ChIJG66LQHtp5TQRIiNK6_jKMmo",
+            "imgRef": "https://lh3.googleusercontent.com/grass-cs/AABkmLfUmCgzyP7p35qO3uvTT8P8zOGlLhsCqUlpM6WZt3He4-O3i_3OJ3kEtCcasAXI50ApWrFty8cmfUOhrVDQjUWFH2CcERPJz_qoD2LRG2KrCu74TwGr-romFPUmOP1KFPgKftw=s4800-w800"
+          },
+          "notes": "A taxi is easiest this late. Or the monorail toward Tedako-Uranishi to **Miebashi**, then a 5-minute walk."
         }
       ]
     },
     {
       "date": "2026-11-13",
-      "title": "Return home",
-      "summary": "EVA BR113 Naha → Taipei (10:15 AM), then BR56 → Chicago (arrives 7:35 PM). Confirm bags are checked through in Naha.",
+      "title": "Homeward",
+      "summary": "A sunrise taxi to the airport and the long way home via Taipei, landing in Chicago the same evening with a camera roll full of memories.",
       "items": [
         {
-          "title": "Check out; to Naha Airport",
+          "title": "To Naha Airport",
           "start": "2026-11-13T06:30",
           "end": "2026-11-13T07:15",
           "location": {
@@ -1342,7 +1462,7 @@
             "placeId": "ChIJjSyLjsRp5TQRkP5WN6rOTFA",
             "imgRef": "https://lh3.googleusercontent.com/place-photos/AG9NLjBQ7jMlBIG1D1lIjuTfH5-LLJpVT0bAFi0afyY9JtzV2OXZplhE-9iF9qpW8ebAE9S1MUO36yFKOqcbtQ0FuehF0lj-bj_OIP61AqfjbofYS-96SIj8pvE-K2Jj-BHKKt8TbmIW0Dpm86ZZPgE=s4800-w728"
           },
-          "notes": "Taxi, or Yui Rail from Miebashi. At the airport ~7:15. Breakfast is included only if timing allows."
+          "notes": "Taxi from the hotel, or walk to Miebashi and take the monorail to the airport."
         }
       ]
     }
