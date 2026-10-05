@@ -174,8 +174,8 @@ function PublicSwitch({ id, checked, onChange }) {
       >
         <span
           aria-hidden="true"
-          className={`inline-block h-4 w-4 rounded-full bg-foreground transition-transform ${
-            checked ? "translate-x-6 bg-primary-foreground" : "translate-x-1"
+          className={`inline-block h-4 w-4 rounded-full transition-transform ${
+            checked ? "translate-x-6 bg-primary-foreground" : "translate-x-1 bg-muted-foreground"
           }`}
         />
       </button>

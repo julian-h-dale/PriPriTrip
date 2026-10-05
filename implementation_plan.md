@@ -3080,7 +3080,7 @@ so the order can change.
 
 ### Phases
 
-- **Phase 46 — public memories (API).**
+- **Phase 46 — public memories (API).** ✅ (2026-10-05)
   - **Scope:** migration 0007 (`memories.is_public`, `trips.view_code`);
     `is_public` on create/update and in `MemoryRead`; the viewer filter in
     `services/memories`; viewers can't create (403); `confirmationNumber`
@@ -3093,7 +3093,7 @@ so the order can change.
     editor's do; join with the view code makes a viewer, an old code fails
     after renewing, the trip id no longer joins a new user; the migration
     upgrades a copy of a database with memories (all private).
-- **Phase 47 — public memories (UI).**
+- **Phase 47 — public memories (UI).** ✅ (2026-10-05)
   - **Scope:** the "Visible to viewers" switch (outbox-aware), the Public
     badge, viewers' read-only Journal with its empty state, New memory hidden
     for viewers, the Share dialog's view code with "New view code".
@@ -3102,14 +3102,14 @@ so the order can change.
     dialog renews the view code.
   - **Julian, at 375px:** as an editor, mark one memory public; as the seed
     viewer, see only that one, with its photos.
-- **Phase 48 — backup manifest (API).**
+- **Phase 48 — backup manifest (API).** ✅ (2026-10-05)
   - **Scope:** `GET /admin/backup/photos` (cursor pages) and
     `GET /admin/backup/journal/{trip_id}`.
   - **Tests:** superuser only (401/403 otherwise); cursor order is stable and
     complete across pages, including a photo added between pages; deleted
     photos are left out; the journal dump has every live memory, public or
     not.
-- **Phase 49 — the Pi job.**
+- **Phase 49 — the Pi job.** ✅ (2026-10-05; install on the Pi pending)
   - **Scope:** `scripts/pi-backup/` (script, systemd service and timer,
     install script, env template), `make pi-backup-install`, a README section
     (formatting and mounting the drive by UUID, the env file, checking
@@ -3120,7 +3120,7 @@ so the order can change.
     photos stay on disk.
   - **Julian:** install on the Pi, upload a photo from the phone, and see it on
     the drive within 30 minutes.
-- **Phase 50 — weather (API).**
+- **Phase 50 — weather (API).** ✅ (2026-10-05; live check pending a key)
   - **Scope:** the spike against the real key (results noted here first, and
     raised if the long-range data isn't what's described); `weather_cache`
     (migration 0008); `services/weather.py` (day places, refresh, normalise);
@@ -3130,23 +3130,94 @@ so the order can change.
     stale data; two concurrent requests make one call per key; days past the
     8-day window use the outlook; past days are `none`; no key is 503;
     viewers can read it, strangers get 404.
-- **Phase 51 — weather (UI).**
+- **Phase 51 — weather (UI).** ✅ (2026-10-05)
   - **Scope:** the drawer's Trip tools, the Weather page (today, alerts, the
     day list with forecast/outlook/unavailable states), offline caching.
   - **Tests:** each day state renders; °F/mph with °C; alerts show; the drawer
     shows Trip tools only in a trip; offline shows the cached copy with its
     age.
   - **Julian, at 375px:** the Okinawa trip's weather page.
-- **Phase 52 — currency (UI).**
+- **Phase 52 — currency (UI).** ✅ (2026-10-05)
   - **Scope:** the zone → currency table and its generator, `tripCurrencies`,
     the rate cache, the Currency page and calculator.
   - **Tests:** JPY and TWD for the Okinawa trip; a cached rate within 12 hours
     makes no request, an older one refetches, a failed fetch uses the cached
     one with its date; the calculator's maths and rounding (USD to the cent; JPY and
     TWD to whole units); swap.
-- **Phase 53 — countdown (UI).**
+- **Phase 53 — countdown (UI).** ✅ (2026-10-05)
   - **Scope:** `countdownLabel`, the label on upcoming cards, the shared timer.
   - **Tests:** every boundary listed above; only upcoming trips get it.
+
+### Built (2026-10-05): Phases 46–53
+
+Julian answered the questions with "your recommendations" and asked for all
+phases to be built in one go, with the app never failing for want of a
+weather key. One commit per phase, each with `make verify` green (final: 226
+API + 330 UI tests). The e2e suite (22 specs, 375 px) passes live; new
+screenshots `24-journal-viewer`, `25-memory-public-switch`, `30`–`34` (trips
+countdown, drawer, weather, currency).
+
+**As planned, with these details and deviations:**
+- **Public memories (46–47).** `memories.is_public` and `trips.view_code`
+  (migration 0007, plain `ADD COLUMN`s). The viewer rule lives in
+  `services/memories.visible_to`. A viewer sees public memories plus any
+  they wrote themselves before this change. `get_journal_trip` stops
+  viewers from writing (403). `get_own_memory` returns 404 when a viewer
+  touches someone else's private memory.
+  - **Joining by trip id:** it now works only for someone already on the
+    trip, and changes nothing (no switching to viewer). New people need the
+    view or edit code.
+  - **Fixed along the way:** the outbox's send step picked fields one by
+    one, so it would have dropped `isPublic`.
+- **Backup (48–49).** Deviation: one `GET /admin/backup/journals` returns
+  every trip's journal, rather than one call per trip, so the Pi doesn't
+  need a trip list. Photos are ordered by upload time (`photos.created_at`
+  is the server's stamp; photos have no `received_at`).
+  - Added `python -m app.make_admin <email>`, because the Fly image has no
+    `sqlite3` command to make the backup account a superuser.
+  - The Pi script's tests (`api/tests/test_pi_backup.py`) run against a fake
+    server, and `make lint` covers `scripts/pi-backup/`.
+- **Weather (50–51).**
+  - **The spike didn't run:** there's no `OPENWEATHER_API_KEY` locally. The
+    code follows OWM's documented One Call 3.0 and `day_summary` shapes and
+    is tested against a fake. **First thing with a real key:** open the
+    weather page for the Okinawa trip. Check that days more than 8 days out
+    show an outlook (not "No forecast yet"), and that the forecast days line
+    up with the right dates.
+  - Deviation: with no key, the endpoint answers **200
+    `{configured: false}`** rather than 503, so nothing raises an error toast
+    and nothing can fail. A rejected key, a used-up daily limit or a network
+    failure comes back as `problem`, with stale or "unavailable" days, still
+    200.
+  - The response carries each place's `zone`, so sunrise and sunset show in
+    local time. Icons are lucide icons rather than OWM's images, so they work
+    offline.
+- **Currency (52).**
+  - The files live in `features/currency/` (the plan said `features/tools/`),
+    following the one-slice-per-feature rule.
+  - Amounts are formatted as US English on purpose ("¥", "NT$", "$"). A
+    phone set to another locale could otherwise show "US$", or a bare "$"
+    for NT$.
+  - TWD shows cents, as `Intl` does by default.
+- **Countdown (53).** The countdown shows on any card whose first day hasn't
+  begun on the phone's clock. For the first ~14 hours after midnight in
+  Tokyo, that includes a trip already listed under "Active", which goes by
+  the trip's own zone.
+
+**Before relying on it (Julian):**
+- **Deploy 46–53 together.** The old app's Share dialog shows the trip id as
+  the view code, and the trip id no longer lets new people join. Fly runs
+  migrations 0007 and 0008 on start.
+- **If PriPri joined the real trip as a viewer,** they need to rejoin with
+  the **edit code** to see private memories and write new ones. All
+  existing memories are now private.
+- `fly secrets set OPENWEATHER_API_KEY=…`, with the One Call by Call
+  subscription and a 1,000-a-day cap.
+- The Pi: format and mount the drive, `make pi-backup-install`, fill in
+  `/etc/pripri-backup.env`, `make pi-backup-run` (README, "Photo backup to
+  the Pi").
+- At 375 px: the Share dialog's two codes, a public memory as the seed
+  viewer, the Weather and Currency pages from the drawer.
 
 ### Open questions (Run stage 10)
 

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { API_URL } from "../playwright.config.js";
-import { SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
+import { login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Memories written with no connection wait in the phone's outbox and sync,
@@ -12,7 +12,7 @@ test("journal: offline memories sync once, in order, when back online", async ({
   const stamp = Date.now();
   const first = `Offline first ${stamp}`;
   const second = `Offline second ${stamp}`;
-  await login(page, SEED_VIEWER);
+  await login(page); // the owner (viewers don't write memories)
   await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
   const tripId = new URL(page.url()).pathname.split("/")[2];
   await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Journal" }).click();
