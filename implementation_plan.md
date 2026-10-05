@@ -3152,7 +3152,7 @@ so the order can change.
 
 Julian answered the questions with "your recommendations" and asked for all
 phases to be built in one go, with the app never failing for want of a
-weather key. One commit per phase, each with `make verify` green (final: 226
+weather key. One commit per phase, each with `make verify` green (final: 218
 API + 330 UI tests). The e2e suite (22 specs, 375 px) passes live; new
 screenshots `24-journal-viewer`, `25-memory-public-switch`, `30`–`34` (trips
 countdown, drawer, weather, currency).
@@ -3374,6 +3374,11 @@ Asked 2026-10-05 (Julian):
 Also answered then: the dev password for `pripri@example.com` is
 `changeme-viewer` (the built-in `SEED_VIEWER_PASSWORD` default).
 
+**Decisions (answered 2026-10-05):** every recommendation: a random one-time
+password (not `changeme-<username>`), a flag the server enforces, public
+sign-up closed, invite by email and name, resets on the Admin page, and
+Change password in the drawer.
+
 ### Where we are
 
 - **Accounts are fastapi-users.** `POST /auth/login` returns a 60-day JWT,
@@ -3403,7 +3408,9 @@ e2e sign in with aren't caught (Q-A2).
 **API** (thin routers; logic in `services/users.py`):
 - `POST /admin/users` with `{ email, name }` creates an active, verified,
   non-superuser account, with the temporary password (Q-A1) and the flag
-  set. It returns the user and the temporary password, once. An email
+  set. It returns the user and the temporary password, once. The temporary
+  password is random and readable: three groups of four lowercase letters
+  and digits, with look-alikes left out (`k7mq-x2pd-9rhw`). An email
   already in use gives 409.
 - `POST /admin/users/{id}/reset-password` sets the temporary password and
   the flag, and returns the password once. You can't reset yourself (409;
@@ -3486,7 +3493,7 @@ e2e sign in with aren't caught (Q-A2).
     reset.
   - Recommendation: **(b)**. It's the same flow for you (copy, text it),
     just not guessable.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-A2. How is "still has the default" detected and enforced?**
   - (a) A flag set by invite and reset, cleared by a change, and enforced
     by the server (every route but auth answers 403 until changed).
@@ -3497,11 +3504,11 @@ e2e sign in with aren't caught (Q-A2).
   - (c) The flag, but enforced only by the app's screens.
   - Recommendation: **(a)**. The server enforcing it also locks out an old
     session after a reset.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-A3. Close public sign-up?** `POST /auth/register` lets anyone make an
   account today (no screen, but the endpoint is live).
   - Recommendation: **yes**, now that admins invite people.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-A4. What does an invite take?**
   - (a) Email and name.
   - (b) Also a trip and a role, joining them to it straight away (handy for
@@ -3509,12 +3516,12 @@ e2e sign in with aren't caught (Q-A2).
   - (c) Also "make admin".
   - Recommendation: **(a)** for now. They join with a code as today, and
     "admin" stays a deliberate `make_admin`.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 - **Q-A5. Where do resets live?** Recommendation: on the **Admin page**,
   per user (the drawer item stays "Invite someone", as asked). Plus
   **"Change password" in the drawer for everyone**, since the forced change
   needs that form anyway.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-05).
 
 ## After Phase 4 — First real trip
 

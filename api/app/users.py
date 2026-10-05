@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.authentication import (
     AuthenticationBackend,
@@ -63,3 +63,16 @@ fastapi_users = FastAPIUsers[UserRecord, uuid.UUID](get_user_manager, [auth_back
 
 current_active_user = fastapi_users.current_user(active=True)
 current_superuser = fastapi_users.current_user(active=True, superuser=True)
+
+
+PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED"
+
+
+async def require_password_ok(user: UserRecord = Depends(current_active_user)) -> UserRecord:
+    """Every feature route's gate: someone still holding an admin-issued
+    temporary password can only sign in, read /users/me and change it (403
+    PASSWORD_CHANGE_REQUIRED otherwise). Mounted on the routers in main.py, so
+    a new router gets it by being mounted there."""
+    if user.must_change_password:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, PASSWORD_CHANGE_REQUIRED)
+    return user

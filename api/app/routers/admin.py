@@ -12,12 +12,21 @@ capability check on a collection everyone knows exists.
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import UserRecord
-from app.schemas import BackupJournal, BackupPhotoPage, UserRead
+from app.schemas import (
+    BackupJournal,
+    BackupPhotoPage,
+    InvitedUser,
+    InviteUser,
+    TemporaryPassword,
+    UserRead,
+)
 from app.services import backup as backup_service
 from app.services import users as users_service
 from app.users import current_superuser
@@ -28,6 +37,33 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(curren
 @router.get("/users", response_model=list[UserRead])
 async def list_users(db: AsyncSession = Depends(get_db)) -> list[UserRecord]:
     return await users_service.list_users(db)
+
+
+@router.post("/users", response_model=InvitedUser, status_code=status.HTTP_201_CREATED)
+async def invite_user(body: InviteUser, db: AsyncSession = Depends(get_db)) -> InvitedUser:
+    """A new account with a random temporary password, returned once for the
+    admin to send. They choose their own when they first sign in."""
+    try:
+        user, password = await users_service.invite(db, body.email, body.name)
+    except users_service.EmailTaken:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Someone already has that email") from None
+    return InvitedUser(user=UserRead.model_validate(user), temporary_password=password)
+
+
+@router.post("/users/{user_id}/reset-password", response_model=TemporaryPassword)
+async def reset_password(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: UserRecord = Depends(current_superuser),
+) -> TemporaryPassword:
+    """A new temporary password, returned once. Until they change it, their
+    account — including any phone still signed in — can do nothing else."""
+    if user_id == admin.id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Use Change password for your own")
+    user = await db.get(UserRecord, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    return TemporaryPassword(temporary_password=await users_service.reset_password(db, user))
 
 
 # ---- backups: what the Pi pulls (scripts/pi-backup/) ----

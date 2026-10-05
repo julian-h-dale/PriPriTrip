@@ -71,6 +71,11 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     # server clock. UTC is the right template default; a real product detects
     # the browser zone at registration or asks.
     timezone: Mapped[str] = mapped_column(default="UTC")
+    # Set when an admin invites someone or resets their password (they have a
+    # temporary password); cleared when they choose their own. While set, the
+    # API answers only sign-in, /users/me and change-password
+    # (app.users.require_password_ok).
+    must_change_password: Mapped[bool] = mapped_column(default=False, server_default="0")
 
 
 # A wall-clock column: naive on purpose (see module docstring).

@@ -12,7 +12,7 @@ from datetime import date, datetime, time
 from typing import Annotated, Literal
 
 from fastapi_users import schemas
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
 
 from app.trip_document import DayDoc, IanaTimezone, ItemDoc, StayDoc, TravelDoc, TripDocument
@@ -54,6 +54,8 @@ WallClockTime = Annotated[time, AfterValidator(_reject_tzinfo), Field(examples=[
 class UserRead(schemas.BaseUser[uuid.UUID]):
     name: str = ""
     timezone: str = "UTC"
+    # True while they still have an admin-issued temporary password.
+    must_change_password: bool = False
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -362,3 +364,26 @@ class WeatherRead(CamelModel):
     today: WeatherNow | None = None
     days: list[WeatherDay] = Field(default_factory=list)
     alerts: list[WeatherAlert] = Field(default_factory=list)
+
+
+# ---- accounts: invites, resets, changing your password ----
+
+
+class InviteUser(CamelModel):
+    email: EmailStr
+    name: str = Field(default="", max_length=100)
+
+
+class TemporaryPassword(CamelModel):
+    """Shown to the admin once, to send; the person must change it on sign-in."""
+
+    temporary_password: str
+
+
+class InvitedUser(TemporaryPassword):
+    user: UserRead
+
+
+class ChangePassword(CamelModel):
+    current_password: str = Field(max_length=200)
+    new_password: str = Field(max_length=200)

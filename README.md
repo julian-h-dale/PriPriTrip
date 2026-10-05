@@ -117,8 +117,9 @@ is only for reaching it yourself). Nothing is ever deleted from the drive.
 ```
 
 **1. A backup account.** A superuser used only by the Pi, so it can be turned
-off without touching yours. Sign up in the app as e.g. `backup@…`, then make
-it a superuser on Fly:
+off without touching yours. Invite it from the app (☰ on the trips screen →
+Invite someone, e.g. `backup@…`), sign in as it once to choose its password,
+then make it a superuser on Fly:
 
 ```bash
 fly ssh console -C "python -m app.make_admin backup@…"
