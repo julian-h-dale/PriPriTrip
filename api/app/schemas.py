@@ -292,3 +292,71 @@ class BackupJournal(CamelModel):
     start_date: date
     end_date: date
     memories: list[BackupMemory]
+
+
+# ---- weather (GET /trips/{id}/weather) ----
+# Metric, as OpenWeatherMap sends it (°C, m/s, mm); the page converts.
+
+
+class WeatherNow(CamelModel):
+    place: str
+    observed_at: datetime
+    temp: float
+    feels_like: float | None = None
+    condition: str | None = None
+    description: str | None = None
+    icon: str | None = None
+    humidity: int | None = None
+    wind_speed: float | None = None
+    wind_gust: float | None = None
+    uvi: float | None = None
+    sunrise: datetime | None = None
+    sunset: datetime | None = None
+    fetched_at: datetime
+    stale: bool = False
+
+
+class WeatherDay(CamelModel):
+    date: date
+    place: str | None = None
+    # "forecast": OWM's daily forecast (the next 8 days); "outlook": its
+    # long-range daily summary (further out); "past": already happened;
+    # "unavailable": no data could be had.
+    kind: Literal["forecast", "outlook", "past", "unavailable"]
+    high: float | None = None
+    low: float | None = None
+    feels_like: float | None = None
+    condition: str | None = None
+    description: str | None = None
+    summary: str | None = None
+    icon: str | None = None
+    pop: float | None = None  # chance of rain, 0 to 1
+    rain: float | None = None  # mm
+    humidity: int | None = None
+    clouds: int | None = None
+    wind_speed: float | None = None
+    wind_gust: float | None = None
+    uvi: float | None = None
+    sunrise: datetime | None = None
+    sunset: datetime | None = None
+    fetched_at: datetime | None = None
+    stale: bool = False
+
+
+class WeatherAlert(CamelModel):
+    place: str
+    event: str
+    sender: str | None = None
+    start: datetime
+    end: datetime
+    description: str | None = None
+
+
+class WeatherRead(CamelModel):
+    # False when no OpenWeatherMap key is set: nothing else is filled in.
+    configured: bool
+    # A short explanation when some or all of it couldn't be fetched.
+    problem: str | None = None
+    today: WeatherNow | None = None
+    days: list[WeatherDay] = Field(default_factory=list)
+    alerts: list[WeatherAlert] = Field(default_factory=list)

@@ -18,7 +18,7 @@ from app.migrate import BASELINE, alembic_config, migrate, reset
 from app.models import Base
 
 # The latest migration: bump it with each new one.
-HEAD = "0007"
+HEAD = "0008"
 
 
 def _url(tmp_path: Path) -> str:

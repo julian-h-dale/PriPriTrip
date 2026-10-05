@@ -279,3 +279,18 @@ class Photo(SoftDeleteMixin, Base):
     width: Mapped[int]
     height: Mapped[int]
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+
+
+class WeatherCache(Base):
+    """OpenWeatherMap answers, cached by place (services/weather.py). A cache
+    of public data keyed by coordinates — not anyone's data — so, unlike the
+    domain tables, it has no owner and no soft delete: rows are overwritten
+    when refreshed."""
+
+    __tablename__ = "weather_cache"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    # e.g. "onecall:26.22,127.69" or "day:26.22,127.69:2026-11-02".
+    key: Mapped[str] = mapped_column(unique=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    fetched_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
