@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -31,6 +32,7 @@ from app.schemas import CamelModel, TripRead, TripSummary
 from app.services import trips as trips_service
 from app.trip_document import (
     DayWrite,
+    TripDocument,
     TripDocumentError,
     TripFrame,
     parse_part,
@@ -150,6 +152,25 @@ async def get_trip(
 ) -> TripRead:
     """The whole trip, for its owner or anyone who joined it (with their role)."""
     return await trips_service.get_trip(db, viewable.trip.id, viewable.role)
+
+
+@router.get(
+    "/{trip_id}/export",
+    response_model=TripDocument,
+    response_model_by_alias=True,
+    response_model_exclude_none=True,
+)
+async def export_trip(
+    viewable: ViewableTrip = Depends(get_viewable_trip),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+    """The trip as a downloadable trip document, ready to import elsewhere."""
+    doc = await trips_service.export_trip(db, viewable.trip.id)
+    slug = re.sub(r"[^a-z0-9]+", "-", doc.name.lower()).strip("-") or "trip"
+    return JSONResponse(
+        doc.model_dump(mode="json", by_alias=True, exclude_none=True),
+        headers={"Content-Disposition": f'attachment; filename="{slug}.json"'},
+    )
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)

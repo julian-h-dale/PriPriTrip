@@ -20,7 +20,16 @@ from app.dependencies import Role, active
 from app.models import Day, Item, Stay, Travel, Trip, TripMember, UserRecord
 from app.schemas import TripRead, TripSummary, VersionRead
 from app.services import versions
-from app.trip_document import DayWrite, ItemWrite, LocationDoc, StayDoc, TravelDoc, TripDocument
+from app.trip_document import (
+    DayDoc,
+    DayWrite,
+    ItemDoc,
+    ItemWrite,
+    LocationDoc,
+    StayDoc,
+    TravelDoc,
+    TripDocument,
+)
 from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
 
 
@@ -187,6 +196,44 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
     # own role so the UI knows whether it may edit.
     trip.role = role
     return trip
+
+
+def _doc_part(model: type[Any], read: Any) -> Any:
+    """The document fields of a read model, without its ids, versions and zones."""
+    return model.model_validate(read.model_dump(include=set(model.model_fields), by_alias=True))
+
+
+async def export_trip(db: AsyncSession, trip_id: uuid.UUID) -> TripDocument:
+    """The trip as a clean trip document: what import takes, nothing more.
+
+    Built from the same read as the app, then narrowed to the document models'
+    own fields, so a field added to the format is exported without a second
+    list to keep in step. Plans only: memories, photos and members aren't in
+    the document.
+    """
+    trip = await get_trip(db, trip_id)
+    days = [
+        DayDoc.model_validate(
+            {
+                **day.model_dump(include={"date", "title", "summary"}, by_alias=True),
+                "items": [_doc_part(ItemDoc, item).model_dump(by_alias=True) for item in day.items],
+            }
+        )
+        for day in trip.days
+    ]
+    return TripDocument.model_validate(
+        {
+            **trip.model_dump(
+                include={"schema_version", "name", "start_date", "end_date", "timezone"},
+                by_alias=True,
+            ),
+            "stays": [_doc_part(StayDoc, stay).model_dump(by_alias=True) for stay in trip.stays],
+            "travels": [
+                _doc_part(TravelDoc, travel).model_dump(by_alias=True) for travel in trip.travels
+            ],
+            "days": [d.model_dump(by_alias=True) for d in days],
+        }
+    )
 
 
 def _entries(trip: TripRead) -> list[VersionRead]:

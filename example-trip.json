@@ -21,7 +21,7 @@
       "timezone": "Asia/Tokyo",
       "roomType": "Standard Double Room",
       "confirmationNumber": "5641.021.203",
-      "notes": "2 adults, no meals included. ¥68,720. Free cancellation ran through Oct 26, 2026."
+      "notes": "2 adults, no meals included. Check-in 3:00 PM – midnight. ¥68,720. Free cancellation ran through Oct 26, 2026.\n\nWell positioned for the Nov 1 Ryukyu Dynasty procession on Kokusai-dori."
     },
     {
       "name": "Tokashiku Marine Village",
@@ -39,7 +39,7 @@
       "timezone": "Asia/Tokyo",
       "roomType": "Japanese-Style Triple Room with Sea View (3 futons)",
       "confirmationNumber": "5547.500.982",
-      "notes": "2 adults. Breakfast and dinner included. ¥36,766. Free cancellation ran through Oct 29, 2026.\n\nHotel runs a shuttle between Tokashiki Port and the hotel (~10 min). Confirm the 9:40 AM arrival pickup and the 5:00 PM return ferry with the hotel before the trip.\n\nCoordinates are approximate (Tokashiku Beach, which the hotel sits on) — OpenStreetMap doesn't have the guesthouse itself pinned."
+      "notes": "2 adults. Check-in 3:00 PM – 6:00 PM. Breakfast and dinner included. ¥36,766. Free cancellation ran through Oct 29, 2026.\n\nHotel runs a shuttle between Tokashiki Port and the hotel (~10 min). Contact the hotel before travel with the Nov 2 arrival (9:40 AM) and Nov 3 departure (5:00 PM ferry). Ask about snorkeling operators.\n\nCoordinates are approximate (Tokashiku Beach, which the hotel sits on) — OpenStreetMap doesn't have the guesthouse itself pinned."
     },
     {
       "name": "Ryukyu Hotel & Resort Nashiro Beach",
@@ -56,10 +56,38 @@
       },
       "timezone": "Asia/Tokyo",
       "roomType": "Deluxe Twin Room",
-      "notes": "2 adults. Breakfast included.\n\n**Wedding day is Nov 4** — stay primarily at the resort.\n\nRyukyu Glass Village is a must-do; timing TBD, possibly the morning of Nov 5 after checkout."
+      "notes": "2 adults. Breakfast included. Wedding stay — **wedding day is Nov 4**."
     },
     {
-      "name": "Hotel Royal-Nikko Taipei",
+      "name": "Anse Yomitan Toya",
+      "type": "hotel",
+      "checkIn": "2026-11-05T15:00",
+      "checkOut": "2026-11-06T11:00",
+      "location": {
+        "name": "Anse Yomitan Toya",
+        "city": "Yomitan"
+      },
+      "timezone": "Asia/Tokyo",
+      "roomType": "Ocean King Room with Jacuzzi Bath",
+      "confirmationNumber": "5321.148.594",
+      "notes": "Sea view. Check-in 3:00 PM – 11:30 PM. No meals included. Free parking."
+    },
+    {
+      "name": "The Lodge Okinawa",
+      "type": "hotel",
+      "checkIn": "2026-11-06T15:00",
+      "checkOut": "2026-11-08T10:00",
+      "location": {
+        "name": "The Lodge Okinawa",
+        "city": "Nakijin"
+      },
+      "timezone": "Asia/Tokyo",
+      "roomType": "Tent / glamping-style unit, queen bed, sauna",
+      "confirmationNumber": "5802.023.707",
+      "notes": "2 nights. Check-in 3:00 PM – 7:00 PM. No meals included. Free parking.\n\n**¥15,000 refundable damage deposit at arrival.**"
+    },
+    {
+      "name": "Hotel Nikko Taipei",
       "type": "hotel",
       "checkIn": "2026-11-09T15:00",
       "checkOut": "2026-11-12T11:00",
@@ -75,7 +103,21 @@
       "timezone": "Asia/Taipei",
       "roomType": "Premier Double Room, 1 queen bed",
       "confirmationNumber": "6158.360.312",
-      "notes": "Booked via Booking.com. 2 adults, no breakfast. Booking PIN 9273. TWD 22,585 total, prepaid in full at any time.\n\nFree cancellation through Nov 5, 2026, 11:59 PM Taipei time; after that, no changes and the full amount is forfeited.\n\nPool is closed for seasonal maintenance during the stay. Bring toiletries, photo ID and the card used to book for check-in. About a 3-minute walk from Zhongshan MRT Exit 3."
+      "notes": "Booked via Booking.com (listed as Hotel Royal-Nikko Taipei). 2 adults, no breakfast. Booking PIN 9273. TWD 22,585 total, prepaid in full at any time.\n\nFree cancellation through Nov 5, 2026, 11:59 PM Taipei time; after that, no changes and the full amount is forfeited.\n\nPool is closed for seasonal maintenance during the stay. Bring toiletries, photo ID and the card used to book for check-in. About a 3-minute walk from Zhongshan MRT Exit 3."
+    },
+    {
+      "name": "JR Kyushu Hotel Blossom Naha",
+      "type": "hotel",
+      "checkIn": "2026-11-12T15:00",
+      "checkOut": "2026-11-13T11:00",
+      "location": {
+        "name": "JR Kyushu Hotel Blossom Naha",
+        "city": "Naha"
+      },
+      "timezone": "Asia/Tokyo",
+      "roomType": "Superior Double Room",
+      "confirmationNumber": "5547.504.097",
+      "notes": "Check-in 3:00 PM – 11:00 PM; check-out Nov 13 between 5:00 AM and 11:00 AM. Breakfast included."
     }
   ],
   "travels": [
@@ -105,7 +147,7 @@
       "arrive": "2026-10-30T05:25",
       "arriveTimezone": "Asia/Taipei",
       "confirmationNumber": "DAAL7X",
-      "notes": "Ticket 695 2464270937. 2 checked bags."
+      "notes": "Ticket 695 2464270937. 2 checked bags. Connects onward to Naha the same morning."
     },
     {
       "title": "Taipei → Naha",
@@ -237,7 +279,7 @@
       "departTimezone": "Asia/Taipei",
       "arrive": "2026-11-12T20:40",
       "arriveTimezone": "Asia/Tokyo",
-      "notes": "Ask about luggage storage after Taipei checkout (11:00 AM) and leave time for the airport transfer and check-in. Naha accommodation for this night is still TBD."
+      "notes": "Ask about luggage storage after Taipei checkout (11:00 AM) and leave time for the airport transfer and check-in. Staying at JR Kyushu Hotel Blossom Naha tonight."
     },
     {
       "title": "Naha → Taipei",
@@ -265,7 +307,7 @@
       "arrive": "2026-11-13T10:55",
       "arriveTimezone": "Asia/Taipei",
       "confirmationNumber": "DAAL7X",
-      "notes": "Ticket 695 2464270937. 2 checked bags."
+      "notes": "Ticket 695 2464270937. 2 checked bags. Connects to BR56 to Chicago."
     },
     {
       "title": "Taipei → Chicago",
@@ -296,5 +338,289 @@
       "notes": "Ticket 695 2464270937. 2 checked bags."
     }
   ],
-  "days": []
+  "days": [
+    {
+      "date": "2026-10-29",
+      "title": "Travel day",
+      "summary": "Depart Chicago O'Hare at 12:30 AM on EVA Air BR55 → Taipei; continue to Okinawa the following morning. Overnight flight.",
+      "items": []
+    },
+    {
+      "date": "2026-10-30",
+      "title": "Arrive Naha",
+      "summary": "Arrive Naha 9:15 AM. Easy central Naha.",
+      "items": [
+        {
+          "title": "Drop luggage / check in when available",
+          "notes": "Palm Royal check-in opens 3:00 PM."
+        },
+        {
+          "title": "Walk Kokusai-dori"
+        },
+        {
+          "title": "Makishi Public Market area"
+        },
+        {
+          "title": "Easy Okinawan dinner"
+        },
+        {
+          "title": "Optional: Tsuboya Yachimun Street / Sakurazaka side streets"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "title": "Historic Naha",
+      "items": [
+        {
+          "title": "Shuri Castle / Shuri area"
+        },
+        {
+          "title": "Tamaudun / historic Shuri surroundings"
+        },
+        {
+          "title": "Shuri Kinjo stone-paved road",
+          "notes": "If energy allows."
+        },
+        {
+          "title": "Afternoon / evening",
+          "notes": "Choose one:\n\n- **A.** Tsuboya pottery district + Makishi arcades\n- **B.** Okinawa Prefectural Museum & Art Museum\n- **C.** Sakaemachi Arcade / small izakaya evening"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "title": "Procession + dinner",
+      "items": [
+        {
+          "title": "Morning",
+          "notes": "Choose one:\n\n- **A.** Makishi Public Market / food wandering\n- **B.** Fukushuen Garden + Kume / Wakasa\n- **C.** Slow morning around Kokusai / Tsuboya"
+        },
+        {
+          "title": "Ryukyu Dynasty Picture Scroll Procession (Shurijo Castle Revival Festival)",
+          "start": "2026-11-01T12:30",
+          "end": "2026-11-01T15:00",
+          "location": {
+            "name": "Kokusai-dori"
+          },
+          "notes": "Free. Palm Royal is well positioned for the procession. Expect traffic restrictions around Kokusai-dori from around noon."
+        },
+        {
+          "title": "Dinner",
+          "notes": "Details TBD."
+        }
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "title": "Naha → Tokashiki",
+      "summary": "Marine Liner Tokashiki ferry 9:00 AM from Tomari Port; hotel shuttle from Tokashiki Port; leave luggage at the hotel.",
+      "items": [
+        {
+          "title": "Tokashiku Beach",
+          "location": {
+            "name": "Tokashiku Beach"
+          },
+          "notes": "Swim / relax / snorkel."
+        },
+        {
+          "title": "Activity",
+          "notes": "Choose one:\n\n- **A.** Guided snorkeling trip\n- **B.** Sea-turtle-focused snorkeling\n- **C.** Aharen Beach visit"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "title": "Tokashiki → Itoman",
+      "summary": "Check out of Tokashiku Marine Village by 11:00 AM and leave luggage with the hotel. Ferry back at 5:00 PM, then travel to Ryukyu Hotel after arriving in Naha.",
+      "items": [
+        {
+          "title": "Island day on Tokashiki",
+          "notes": "Breakfast, then spend most of the day on the island. Shower / change before departure."
+        }
+      ]
+    },
+    {
+      "date": "2026-11-04",
+      "title": "Wedding",
+      "items": [
+        {
+          "title": "Wedding day",
+          "notes": "Keep the day centered on the resort / wedding schedule. Schedule TBD."
+        }
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "title": "Itoman → Yomitan",
+      "summary": "Check out of Ryukyu Hotel by 11:00 AM, pick up rental car, load luggage.",
+      "items": [
+        {
+          "title": "Ryukyu Glass Village",
+          "location": {
+            "name": "Ryukyu Glass Village"
+          },
+          "notes": "Must-do. First stop."
+        },
+        {
+          "title": "Yomitan stop",
+          "notes": "Choose one:\n\n- **A.** Yachimun no Sato — pottery village / workshops\n- **B.** Zakimi Castle — castle ruins\n- **C.** Cape Zanpa — sunset / relaxed end to the day"
+        },
+        {
+          "title": "Southeast Botanical Gardens",
+          "notes": "Optional evening. Bonus rather than a commitment."
+        }
+      ]
+    },
+    {
+      "date": "2026-11-06",
+      "title": "Yomitan → Nakijin",
+      "summary": "Recommended order below, then check in at The Lodge Okinawa. Priority if time runs short: Churaumi, Nakijin Castle, then Bise.",
+      "items": [
+        {
+          "title": "Okinawa Churaumi Aquarium"
+        },
+        {
+          "title": "Bise Fukugi Tree Road",
+          "notes": "Optional."
+        },
+        {
+          "title": "Nakijin Castle"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-07",
+      "title": "Yanbaru road trip",
+      "summary": "Driving note: full Route 70 east-coast loop is optional. Return by the easier western route if tired.",
+      "items": [
+        {
+          "title": "Ogimi Village"
+        },
+        {
+          "title": "Yanbaru forest area"
+        },
+        {
+          "title": "Cape Hedo"
+        },
+        {
+          "title": "Substantial nature stop",
+          "notes": "Choose one:\n\n- **A.** Hiji Falls — forest walk / waterfall\n- **B.** ASMUI — limestone landscape; easier pairing with Cape Hedo\n- **C.** Slow Yanbaru day — villages, roadside stops, Cape Hedo"
+        },
+        {
+          "title": "Return to Nakijin"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-08",
+      "title": "Nakijin → Kayak → Naha",
+      "summary": "Check out of The Lodge by 10:00 AM.",
+      "items": [
+        {
+          "title": "Morning",
+          "notes": "Choose one:\n\n- **A.** Gesashi Bay mangrove kayaking (preferred) — guided; different ecosystem from Tokashiki; tour time depends on tides\n- **B.** Kouri-area ocean kayak / SUP\n- **C.** Skip kayaking — slow Kouri morning + relaxed drive south"
+        },
+        {
+          "title": "Drive to Naha, refuel, return rental car"
+        },
+        {
+          "title": "Final Okinawa dinner"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-09",
+      "title": "Arrival + Zhongshan / Dadaocheng",
+      "summary": "Arrive TPE 10:20 AM. Easy arrival day centered on walkable neighborhoods, food, shops and old Taipei streets.",
+      "items": [
+        {
+          "title": "Check in / leave luggage at Hotel Nikko Taipei"
+        },
+        {
+          "title": "Zhongshan neighborhood"
+        },
+        {
+          "title": "Dihua Street / Dadaocheng"
+        },
+        {
+          "title": "Ningxia Night Market"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-10",
+      "title": "Classic Taipei + Taipei 101",
+      "summary": "Main historic landmarks during the day, then modern Taipei and skyline views at night.",
+      "items": [
+        {
+          "title": "Chiang Kai-shek Memorial Hall"
+        },
+        {
+          "title": "Longshan Temple"
+        },
+        {
+          "title": "Bopiliao Historic Block"
+        },
+        {
+          "title": "Xinyi district"
+        },
+        {
+          "title": "Taipei 101",
+          "notes": "Late afternoon / evening."
+        }
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "title": "National Palace Museum + Beitou",
+      "items": [
+        {
+          "title": "National Palace Museum",
+          "start": "2026-11-11T09:00",
+          "end": "2026-11-11T12:30",
+          "notes": "Focus on highlights rather than trying to see everything."
+        },
+        {
+          "title": "Beitou afternoon",
+          "notes": "Lunch / transfer to Xinbeitou, then Beitou Park, Beitou Hot Spring Museum and Thermal Valley."
+        },
+        {
+          "title": "Private hot-spring soak",
+          "location": {
+            "name": "Grand View Resort Beitou"
+          },
+          "notes": "Planned. Recommended: **Grand View Resort Beitou**.\n\n- Private spring rooms are reservation-only, for 2 guests\n- Most sessions are 90 minutes\n- Reservations open one month in advance — try to book once the window opens for Nov 11\n- Book via the resort's official online booking page for Private Hot Spring Rooms, call +886 2 2898 8888, or email rsvn@gvrb.com.tw"
+        },
+        {
+          "title": "Evening",
+          "notes": "Choose one:\n\n- **A.** Dinner in Beitou\n- **B.** Return to Zhongshan for dinner"
+        },
+        {
+          "title": "Backup: Shilin-focused afternoon/evening",
+          "notes": "Keep as the backup if Beitou plans change: Chiang Kai-shek Shilin Residence, Shilin neighborhood, Shilin Night Market."
+        }
+      ]
+    },
+    {
+      "date": "2026-11-12",
+      "title": "Taipei → Naha",
+      "summary": "Tigerair Taiwan IT232 leaves TPE Terminal 1 at 6:20 PM, arriving Naha 8:40 PM.",
+      "items": [
+        {
+          "title": "Morning / early afternoon",
+          "notes": "Choose one:\n\n- **A.** Huashan 1914 Creative Park\n- **B.** Final Zhongshan café / shopping morning\n- **C.** Dadaocheng revisit / riverside walk"
+        },
+        {
+          "title": "Lunch before airport transfer"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "title": "Return home",
+      "summary": "EVA Air BR113 Naha → Taipei (departs 10:15 AM), then BR56 Taipei → Chicago (arrives 7:35 PM).",
+      "items": []
+    }
+  ]
 }

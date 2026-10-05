@@ -6,6 +6,18 @@
 
 ## Status
 
+- **Current work (2026-10-05): Run stage 8, export a trip** on branch
+  **`update-trip-example`**. Plan: `implementation_plan.md`, "Run stage 8".
+  - **Phase 43 ✅ (export endpoint):** `GET /trips/{id}/export` returns a
+    clean trip document (what import takes: no ids, versions, `role` or
+    `zone`) as a named download; anyone who can view the trip may call it.
+    `services/trips.export_trip` narrows the read to the document models'
+    fields. Tests in `api/tests/test_export.py` (round trip of the sample and
+    `example-trip.json`). **Waiting on Julian** before Phase 44
+    (`make export-trip`, `make list-trips`).
+  - **Phase 44 (next):** `scripts/export-trip.sh`, the make tasks, README,
+    `exports/` git-ignored.
+
 - **Current work (2026-10-04): Run stages 6 and 7** on branch
   **`run-stage-6`** (off `main` after PR #8). Plan: `implementation_plan.md`,
   "Run stage 6" and "Run stage 7".
