@@ -6,6 +6,11 @@
 
 ## Status
 
+- **Planning (2026-10-05): Run stage 11, admin invites and password
+  resets** (Phases 54–55). Plan: `implementation_plan.md`, "Run stage 11".
+  **Waiting on Julian's answers** to Q-A1 to Q-A5. The weather key is set
+  locally and the live check passed (one fix: `day_summary` sends decimals).
+
 - **Run stage 10 ✅ (2026-10-05): Phases 46–53** on branch
   **`image-downloader`**: public/private memories and view codes, the Pi
   photo backup, weather, currency, countdown. One commit per phase, `make
