@@ -1,6 +1,8 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import { HeroFade } from "@/shared/components/ui/hero-fade";
 import { cn } from "@/shared/utils/cn";
+import { useHeroImage } from "@/shared/utils/useHeroImage";
 
 /**
  * Modal dialog — hand-rolled in the shadcn *shape* like the other primitives
@@ -10,10 +12,8 @@ import { cn } from "@/shared/utils/cn";
  * returns to the opener on close.
  *
  * `heroImage` (optional): a photo shown at the top of the panel, fading into
- * the card behind the title — the "hero fade". Decorative only (alt=""), and
- * the content always sits on solid card. Without one, or if it fails to load
- * (e.g. offline: photos aren't cached), it's the plain dialog. A deliberate,
- * opt-in departure from design_doc.md's "no gradients" — see ui_review.md.
+ * the card behind the title (see hero-fade.jsx). Without one, or if it fails
+ * to load (e.g. offline), it's the plain dialog.
  */
 export function Dialog({ open, onClose, title, description, children, className, heroImage }) {
   const titleId = useId();
@@ -24,9 +24,7 @@ export function Dialog({ open, onClose, title, description, children, className,
   // otherwise every keystroke in a form re-ran it and yanked focus away.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const [heroFailed, setHeroFailed] = useState(false);
-  useEffect(() => setHeroFailed(false), [heroImage]);
-  const hero = heroImage && !heroFailed ? heroImage : null;
+  const { hero, onError: onHeroError } = useHeroImage(heroImage);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -60,19 +58,7 @@ export function Dialog({ open, onClose, title, description, children, className,
           className
         )}
       >
-        {hero && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-48" aria-hidden="true">
-            <img
-              src={hero}
-              alt=""
-              data-testid="dialog-hero"
-              className="h-full w-full object-cover"
-              onError={() => setHeroFailed(true)}
-            />
-            {/* Clear at the top, solid card by the time the title's text ends. */}
-            <div className="absolute inset-0 bg-gradient-to-b from-card/0 via-card/70 to-card" />
-          </div>
-        )}
+        {hero && <HeroFade src={hero} onError={onHeroError} className="h-48" />}
         <div className="relative flex flex-col gap-1">
           <h2 id={titleId} className="text-base font-semibold">
             {title}

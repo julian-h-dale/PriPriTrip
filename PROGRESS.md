@@ -6,6 +6,11 @@
 
 ## Status
 
+- **Phase 45 ✅ (2026-10-05): one look for an entry's details.** Expanded
+  rows get the dialog's hero fade (`HeroFade`, `useHeroImage`,
+  `describeEntry().hero`); thumbnails removed. **Julian, on a phone:** the
+  fade and text contrast on a stay, flight and activity. Phase 44 (make
+  export-trip) is still waiting for your go-ahead.
 - **Current work (2026-10-05): Run stage 8, export a trip** on branch
   **`update-trip-example`**. Plan: `implementation_plan.md`, "Run stage 8".
   - **Phase 43 ✅ (export endpoint):** `GET /trips/{id}/export` returns a

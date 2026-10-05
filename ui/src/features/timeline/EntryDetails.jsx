@@ -36,14 +36,10 @@ export function ConfirmationNumber({ value }) {
 
 /**
  * One place: label, name, address, then its links (open in the maps app,
- * website). A small photo sits beside it when `photo` is on and there is
- * one — a thumbnail, never a banner pushing the details down.
+ * website). Its photo is the entry's hero (hero-fade.jsx), not shown here.
  */
-export function PlaceRow({ label, loc, photo = true }) {
+export function PlaceRow({ label, loc }) {
   const map = mapsUrl(loc);
-  // Photos are Google-hosted and not cached offline: hide one that can't load.
-  const [photoFailed, setPhotoFailed] = useState(false);
-  const showPhoto = photo && loc.imgRef && !photoFailed;
   return (
     <div className="flex gap-3">
       <div className="flex min-w-0 flex-1 flex-col">
@@ -77,14 +73,6 @@ export function PlaceRow({ label, loc, photo = true }) {
           </span>
         )}
       </div>
-      {showPhoto && (
-        <img
-          src={loc.imgRef}
-          alt=""
-          className="h-16 w-16 shrink-0 rounded-md object-cover"
-          onError={() => setPhotoFailed(true)}
-        />
-      )}
     </div>
   );
 }
@@ -92,12 +80,12 @@ export function PlaceRow({ label, loc, photo = true }) {
 /**
  * The details of one stay, leg or activity, in the order you look for them:
  * the booking facts and confirmation number first, then notes, then places
- * (photos small, and none for travel endpoints). Shared by the day page's
+ * (its photo is the hero behind them). Shared by the day page's
  * expanded entries, the stays/travel quick look and the Today tab, so it
  * reads the same everywhere.
  *
  * `d` is describeEntry()'s output (facts, confirmation, notes, locations,
- * photos, and who last edited it).
+ * hero photo, and who last edited it).
  */
 export function EntryDetails({ d }) {
   return (
@@ -115,7 +103,7 @@ export function EntryDetails({ d }) {
       {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
       {d.notes && <Markdown className="text-muted-foreground">{d.notes}</Markdown>}
       {d.locations.map(({ label, loc }) => (
-        <PlaceRow key={label} label={label} loc={loc} photo={d.photos} />
+        <PlaceRow key={label} label={label} loc={loc} />
       ))}
       {d.edited && <EditedBy edited={d.edited} />}
     </div>
