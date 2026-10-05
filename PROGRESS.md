@@ -6,6 +6,12 @@
 
 ## Status
 
+- **Planning (2026-10-05): Run stage 10** on branch **`image-downloader`**:
+  public/private memories, photo backup to the Pi, weather, currency,
+  countdown (Phases 46–53). Plan: `implementation_plan.md`, "Run stage 10".
+  **Waiting on Julian's answers** to its open questions (Q-P1…Q-O1) before
+  any phase work.
+
 - **Phase 44 ✅ (2026-10-05): `make export-trip` / `make list-trips`**
   (`scripts/trip-client.sh`; `TRIP_EMAIL`/`TRIP_PASSWORD`, `API_URL`, `OUT`;
   README "Back up or move a trip"). Tried against a local API: list, export,
