@@ -3446,7 +3446,7 @@ e2e sign in with aren't caught (Q-A2).
 
 ### Phases
 
-- **Phase 54 — invites, resets and the forced change (API).**
+- **Phase 54 — invites, resets and the forced change (API).** ✅ (2026-10-05)
   - **Scope:** migration 0009; the two admin endpoints; change-password;
     `require_password_ok` on every feature router; register unmounted;
     `UserRead.must_change_password`; README (backup account via invite).
@@ -3463,7 +3463,7 @@ e2e sign in with aren't caught (Q-A2).
     - an old token after a reset is locked until the password changes;
     - `POST /auth/register` is gone (404/405);
     - the migration leaves existing users unflagged.
-- **Phase 55 — invites, resets and the forced change (UI).**
+- **Phase 55 — invites, resets and the forced change (UI).** ✅ (2026-10-05)
   - **Scope:** the Invite dialog in the drawer (trips screen, admins), the
     Admin page's Reset password and badge, the forced change screen, and
     Change password in the drawer.
@@ -3477,6 +3477,40 @@ e2e sign in with aren't caught (Q-A2).
   - **E2E:** the admin invites a throwaway user, who signs in and is made to
     change the password. The admin resets it, and it's forced again.
     Screenshots at 375 px.
+
+### Built (2026-10-05): Phases 54–55
+
+Built as planned, one commit each, with `make verify` green (227 API + 341
+UI tests). The e2e suite (23 specs) passes, including the new
+`accounts.spec.js`: invite, forced change, reset, forced again. It reuses one
+throwaway account, `e2e-invitee@example.com`, since accounts can't be
+deleted. Screenshots `40`–`42`.
+
+**Details:**
+- The gate (`require_password_ok`, in `app/users.py`) is mounted on every
+  feature router in `main.py`. The photo router guards only its upload and
+  delete routes, because serving photos is login-free. Still reachable with a
+  temporary password: `/auth/*` (login, refresh, change-password) and
+  fastapi-users' `/users/me`.
+- The new password must be at least 8 characters, differ from the current
+  one, and not start with "changeme".
+- The UI handles 403 `PASSWORD_CHANGE_REQUIRED` in the API client: it turns
+  on the forced screen instead of showing an error toast. `ProtectedRoute`
+  and `AdminRoute` both show the forced screen.
+- `CopyField` (the copy box) is shared by the Share dialog, the invite and
+  the reset.
+- On the Admin page, the Password column sits next to Email, so Reset stays
+  beside the right person at 375 px (the table scrolls sideways).
+- Fixed along the way: a Currency test cleared the page by hand; it now uses
+  `cleanup()`.
+
+**Before relying on it (Julian):**
+- Deploy. Fly runs migration 0009 on start, and existing accounts aren't
+  affected.
+- Public sign-up is gone, so new accounts come from Invite someone. That
+  includes the Pi's backup account (README updated).
+- If `pripri@example.com` exists on Fly with the seed password, reset it
+  from the Admin page, or leave it, since it's only on the sample trip.
 
 ### Open questions (Run stage 11)
 

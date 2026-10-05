@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -99,7 +99,7 @@ describe("the Currency page", () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain("quotes=TWD,JPY");
     // A second visit within 12 hours: no request.
     fetchMock.mockClear();
-    document.body.innerHTML = "";
+    cleanup();
     renderPage();
     await screen.findByRole("region", { name: "Rate" });
     expect(fetchMock).not.toHaveBeenCalled();

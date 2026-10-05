@@ -1,35 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { Check, Copy, RefreshCw, UserMinus } from "lucide-react";
+import { RefreshCw, UserMinus } from "lucide-react";
+import { CopyField } from "@/shared/components/CopyField";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { apiClient } from "@/shared/services/apiClient";
-
-function CopyCode({ value, label }) {
-  const [copied, setCopied] = useState(false);
-  async function copy() {
-    try {
-      await navigator.clipboard?.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard can be blocked; the code is on screen to copy by hand.
-    }
-  }
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
-      <span className="min-w-0 flex-1 break-all font-mono text-sm">{value}</span>
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={label}
-        className="rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-      </button>
-    </div>
-  );
-}
 
 function CodeSection({ title, hint, children, action }) {
   return (
@@ -116,7 +91,7 @@ function ShareCode({ title, hint, word, share, online }) {
       ) : code === null ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <CopyCode value={code} label={`Copy ${word} code`} />
+        <CopyField value={code} label={`Copy ${word} code`} />
       )}
     </CodeSection>
   );

@@ -1,5 +1,6 @@
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
+import { ForcedPasswordChange } from "@/features/auth/ForcedPasswordChange";
 
 /**
  * Gates admin-only areas. Redirects to /login when unauthenticated and to /
@@ -17,6 +18,9 @@ export function AdminRoute({ children }) {
   // Wait for the user to hydrate before deciding (App dispatches fetchMe).
   if (!user) {
     return null;
+  }
+  if (user.must_change_password) {
+    return <ForcedPasswordChange />;
   }
   if (!user.is_superuser) {
     return <Navigate to="/" replace />;

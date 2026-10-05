@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { CloudSun, Coins, List, LogOut, Shield, X } from "lucide-react";
+import { CloudSun, Coins, KeyRound, List, LogOut, Shield, UserPlus, X } from "lucide-react";
+import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
+import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
 import { signOut } from "@/features/auth/authSlice";
 import { selectPendingMemories, selectWaitingPhotos } from "@/features/journal/journalSlice";
 import { Button } from "@/shared/components/ui/button";
@@ -38,6 +40,9 @@ function useOpenTripId() {
 export function NavDrawer({ open, onClose }) {
   const dispatch = useDispatch();
   const tripId = useOpenTripId();
+  const { pathname } = useLocation();
+  const [inviting, setInviting] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const user = useSelector((s) => s.auth.user);
   const unsynced = useSelector(selectPendingMemories);
   const { count: photos } = useSelector(selectWaitingPhotos);
@@ -110,6 +115,12 @@ export function NavDrawer({ open, onClose }) {
         )}
         <InstallAppButton variant="ghost" className="h-auto w-full justify-start gap-3 px-3 py-3 font-normal" />
         {/* Only rendered for admins; the server still enforces access. */}
+        {user?.is_superuser && pathname === "/trips" && (
+          <button type="button" onClick={() => setInviting(true)} className={ITEM}>
+            <UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            Invite someone
+          </button>
+        )}
         {user?.is_superuser && (
           <Link to="/admin" onClick={onClose} className={ITEM}>
             <Shield className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -117,12 +128,22 @@ export function NavDrawer({ open, onClose }) {
           </Link>
         )}
         <div className="mt-auto border-t border-border pt-2">
+          <button type="button" onClick={() => setChangingPassword(true)} className={ITEM}>
+            <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            Change password
+          </button>
           <button type="button" onClick={handleSignOut} className={ITEM}>
             <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Sign out
           </button>
         </div>
       </nav>
+      <InviteUserDialog open={inviting} onClose={() => setInviting(false)} />
+      <Dialog open={changingPassword} onClose={() => setChangingPassword(false)} title="Change password">
+        {changingPassword && (
+          <ChangePasswordForm onDone={() => setChangingPassword(false)} onCancel={() => setChangingPassword(false)} />
+        )}
+      </Dialog>
       <Dialog
         open={confirmSignOut}
         onClose={() => setConfirmSignOut(false)}
