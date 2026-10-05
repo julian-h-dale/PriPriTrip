@@ -17,6 +17,7 @@ import { Toaster } from "@/shared/components/Toaster";
 import { PwaUpdate } from "@/shared/pwa/PwaUpdate";
 import { useOutboxSync } from "@/shared/pwa/useOutboxSync";
 import { useTokenRefresh } from "@/shared/pwa/useTokenRefresh";
+import { useTripRefresh } from "@/shared/pwa/useTripRefresh";
 
 export function App() {
   const dispatch = useDispatch();
@@ -25,6 +26,7 @@ export function App() {
   useOutboxSync();
   // Stay signed in while the app is used (a sliding 60-day window).
   useTokenRefresh();
+  useTripRefresh();
 
   // Hydrate the user on load if a token survived a refresh.
   useEffect(() => {

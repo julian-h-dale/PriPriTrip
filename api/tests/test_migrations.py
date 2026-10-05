@@ -17,6 +17,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.migrate import BASELINE, alembic_config, migrate, reset
 from app.models import Base
 
+# The latest migration: bump it with each new one.
+HEAD = "0006"
+
 
 def _url(tmp_path: Path) -> str:
     return f"sqlite+aiosqlite:///{tmp_path / 'app.db'}"
@@ -57,7 +60,7 @@ def test_migrations_build_exactly_the_models_schema(tmp_path: Path) -> None:
     url = _url(tmp_path)
     migrate(url, quiet=True)
     assert _diffs(url) == []
-    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [("0004",)]
+    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [(HEAD,)]
 
 
 def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: Path) -> None:
@@ -78,17 +81,30 @@ def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: 
             " VALUES ('33333333333333333333333333333333', '22222222222222222222222222222222',"
             " '11111111111111111111111111111111', 'kept', 'Asia/Tokyo',"
             " '2026-10-30 12:00:00.000000', 0)",
+            # A day with an activity on it: a migration that rebuilt `days`
+            # would trip the activity's foreign key (0006 must not).
+            "INSERT INTO days (id, trip_id, date, is_deleted) VALUES"
+            " ('44444444444444444444444444444444', '22222222222222222222222222222222',"
+            " '2026-10-30', 0)",
+            "INSERT INTO items (id, day_id, position, title, is_deleted) VALUES"
+            " ('55555555555555555555555555555555', '44444444444444444444444444444444', 0,"
+            " 'Kokusai Street', 0)",
         ],
     )
 
     migrate(url, quiet=True)
 
-    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [("0004",)]
+    assert _run(url, ["SELECT version_num FROM alembic_version"]) == [(HEAD,)]
     assert _run(url, ["SELECT name FROM trips"]) == [("Okinawa",)]
     # Before Phase 29, created_at was the server's stamp: it becomes received_at.
     assert _run(url, ["SELECT text, received_at FROM memories"]) == [
         ("kept", "2026-10-30 12:00:00.000000")
     ]
+    # Existing entries start at version 1, with no editor yet.
+    assert _run(url, ["SELECT title, version, updated_by FROM items"]) == [
+        ("Kokusai Street", 1, None)
+    ]
+    assert _run(url, ["SELECT version FROM days"]) == [(1,)]
     assert _diffs(url) == []
 
 

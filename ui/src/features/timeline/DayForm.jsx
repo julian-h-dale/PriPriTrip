@@ -22,7 +22,7 @@ export function DayForm({ open, onClose, date, day, onSave }) {
     if (summary.trim()) payload.summary = summary;
     const result = await onSave(payload);
     setBusy(false);
-    if (result.ok) onClose();
+    if (result.ok || result.reloaded) onClose(); // reloaded: someone else changed it
     else setError(result.errors?.[0]?.message ?? result.detail);
   }
 

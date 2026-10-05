@@ -103,3 +103,16 @@ const SAVED_AT = { month: "short", day: "numeric", hour: "numeric", minute: "2-d
 export function formatSavedAt(iso) {
   return new Intl.DateTimeFormat(undefined, SAVED_AT).format(new Date(iso));
 }
+
+/**
+ * How long ago an instant (ISO with offset/Z) was, as a phrase that follows a
+ * verb: "just now", "2 minutes ago", "3 hours ago", else "on Oct 3, 2:14 PM".
+ */
+export function formatAgo(iso, now = Date.now()) {
+  const minutes = Math.floor((now - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return `on ${formatSavedAt(iso)}`;
+}

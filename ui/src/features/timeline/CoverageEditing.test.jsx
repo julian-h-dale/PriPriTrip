@@ -54,9 +54,9 @@ const fakeSearch = {
 function readTrip() {
   const trip = structuredClone(sampleTrip);
   trip.id = "trip-1";
-  trip.stays.forEach((s, i) => Object.assign(s, { id: `stay-${i}`, zone: "Europe/Zurich" }));
+  trip.stays.forEach((s, i) => Object.assign(s, { id: `stay-${i}`, zone: "Europe/Zurich", version: 1 }));
   trip.travels.forEach((t, i) =>
-    Object.assign(t, { id: `travel-${i}`, departZone: "Europe/Zurich", arriveZone: "Europe/Zurich" })
+    Object.assign(t, { id: `travel-${i}`, departZone: "Europe/Zurich", arriveZone: "Europe/Zurich", version: 1 })
   );
   Object.assign(trip.travels[0], { departZone: "America/Chicago" });
   Object.assign(trip.travels[3], { arriveZone: "America/Chicago" });
@@ -144,7 +144,7 @@ describe("adding travel from the travel coverage view", () => {
         from: { placeId: "zrh", name: "Zürich Airport", address: "8058 Zürich, Switzerland", lat: 47.4581, lng: 8.5555 },
         depart: "2026-05-13T16:05",
       },
-      { silent: true }
+      { silent: true, handles: [404, 409, 428] }
     );
   });
 
@@ -253,7 +253,7 @@ describe("adding a stay from the stays coverage view", () => {
         },
         roomType: "Junior suite",
       },
-      { silent: true }
+      { silent: true, handles: [404, 409, 428] }
     );
   });
 

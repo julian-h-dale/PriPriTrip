@@ -20,9 +20,10 @@ vi.mock("@/shared/services/apiClient", () => ({
 function readTrip() {
   const trip = structuredClone(sampleTrip);
   trip.id = "trip-1";
+  // As the server reads it back: ids and versions.
   trip.days.forEach((day, d) => {
-    day.id = `day-${d}`;
-    day.items.forEach((item, i) => (item.id = `item-${d}-${i}`));
+    Object.assign(day, { id: `day-${d}`, version: 1 });
+    day.items.forEach((item, i) => Object.assign(item, { id: `item-${d}-${i}`, version: 1 }));
   });
   return trip;
 }
@@ -108,7 +109,7 @@ describe("editing day activities", () => {
     expect(apiClient.post).toHaveBeenCalledWith(
       "/trips/trip-1/items",
       { date: "2026-05-11", title: "Gelato", start: "2026-05-11T20:30" },
-      { silent: true }
+      { silent: true, handles: [404, 409, 428] }
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(entries().at(-1)).toContain("Gelato");
@@ -187,7 +188,11 @@ describe("editing day activities", () => {
     const confirm = screen.getByRole("dialog", { name: "Delete activity?" });
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 
-    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/items/item-0-0", { silent: true });
+    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/items/item-0-0", {
+      silent: true,
+      handles: [404, 409, 428],
+      headers: { "If-Match": '"1"' },
+    });
     expect(screen.queryByText("Lunch at Altes Tramdepot")).not.toBeInTheDocument();
   });
 
@@ -205,7 +210,7 @@ describe("editing day activities", () => {
     expect(apiClient.post).toHaveBeenCalledWith(
       "/trips/trip-1/items/item-0-1/move",
       { direction: "up" },
-      { silent: true }
+      { silent: true, handles: [404, 409, 428] }
     );
     const order = entries();
     expect(order.findIndex((t) => t.includes("Old Town"))).toBeLessThan(
@@ -224,10 +229,11 @@ describe("editing day activities", () => {
     await user.type(screen.getByLabelText("Title"), "Fly out");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
+    // The 10th has no day row yet: version 0.
     expect(apiClient.put).toHaveBeenCalledWith(
       "/trips/trip-1/days/2026-05-10",
       { title: "Fly out" },
-      { silent: true }
+      { silent: true, handles: [404, 409, 428], headers: { "If-Match": '"0"' } }
     );
     // The title leads the line under the date.
     expect(await screen.findByText("Fly out")).toHaveProperty("tagName", "STRONG");

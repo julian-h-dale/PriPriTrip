@@ -50,7 +50,11 @@ export function BottomNavLayout({ tripId, actions, showTitle = true, children })
       {loaded && <TripSearch trip={loaded} open={searchOpen} onClose={() => setSearchOpen(false)} />}
       {isOwner && <ShareTripDialog trip={loaded} open={shareOpen} onClose={() => setShareOpen(false)} />}
       <OfflineBar online={online} stale={stale} savedAt={savedAt} />
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      {/* The page scrolls here, not the window; data-scroll-root lets a page
+          find it (the day swiper scrolls it to the top after a swipe). */}
+      <div data-scroll-root className="min-h-0 flex-1 overflow-y-auto">
+        {children}
+      </div>
       <BottomNav tripId={tripId} />
     </div>
   );

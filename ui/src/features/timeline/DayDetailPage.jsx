@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { DayForm } from "@/features/timeline/DayForm";
@@ -110,56 +111,9 @@ function deleteMessage({ kind, record }) {
   return `“${record.title}” will be removed from the timeline.`;
 }
 
-function AdjacentDayLink({ date, tripId, direction }) {
-  if (!date) return <span />;
-  const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
-  return (
-    <Link to={`/trips/${tripId}/days/${date}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-      {direction === "prev" && <Icon className="h-4 w-4" aria-hidden="true" />}
-      {formatDayHeading(date)}
-      {direction === "next" && <Icon className="h-4 w-4" aria-hidden="true" />}
-    </Link>
-  );
-}
-
-// A horizontal swipe at least this long (px), and clearly more sideways than
-// up/down, changes day — so scrolling the page never does.
-const SWIPE_MIN_PX = 60;
-
-/** Touch handlers: swipe left/right for the next/previous day. */
-function useDaySwipe({ prevUrl, nextUrl }) {
-  const navigate = useNavigate();
-  const start = useRef(null);
-  return {
-    onTouchStart(e) {
-      // React bubbles events from portals (the edit dialogs) through here
-      // too; a swipe inside a dialog must not change the day.
-      if (!e.currentTarget.contains(e.target)) {
-        start.current = null;
-        return;
-      }
-      const t = e.touches[0];
-      start.current = { x: t.clientX, y: t.clientY };
-    },
-    onTouchEnd(e) {
-      if (!start.current) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - start.current.x;
-      const dy = t.clientY - start.current.y;
-      start.current = null;
-      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
-      const url = dx < 0 ? nextUrl : prevUrl;
-      if (url) navigate(url);
-    },
-  };
-}
-
 /** One day's own timeline: its entries as points on an hour-ordered rail. */
-function DayDetail({ trip, date }) {
+function DayDetail({ trip, row }) {
   const dispatch = useDispatch();
-  const rows = useMemo(() => buildTimeline(trip), [trip]);
-  const index = rows.findIndex((r) => r.date === date);
-  const row = index === -1 ? null : rows[index];
 
   // `form` / `deleting`: null, or { kind: "activity" | "stay" | "travel", record }.
   // A null record in `form` means "add" — only ever true for an activity here;
@@ -183,20 +137,6 @@ function DayDetail({ trip, date }) {
       document.getElementById(`entry-${openKey}`)?.scrollIntoView?.({ block: "start" })
     );
   }, [openKey]);
-  const dayUrl = (d) => (d ? `/trips/${trip.id}/days/${d}` : null);
-  const swipe = useDaySwipe({ prevUrl: dayUrl(rows[index - 1]?.date), nextUrl: dayUrl(rows[index + 1]?.date) });
-
-  if (!row) {
-    return (
-      <Card className="flex flex-col items-center gap-3 p-8 text-center">
-        <p className="font-medium">No such day</p>
-        <p className="text-sm text-muted-foreground">It&rsquo;s outside this trip&rsquo;s dates.</p>
-        <Link to={`/trips/${trip.id}`} className={buttonVariants({ variant: "outline" })}>
-          Back to trip
-        </Link>
-      </Card>
-    );
-  }
 
   const day = trip.days.find((d) => d.date === row.date) ?? null;
   const editable = !row.afterTrip && !isViewer;
@@ -212,11 +152,11 @@ function DayDetail({ trip, date }) {
     const thunk =
       kind === "activity"
         ? record
-          ? replaceItem({ tripId, itemId: record.id, item: payload })
+          ? replaceItem({ tripId, itemId: record.id, item: payload, version: record.version })
           : createItem({ tripId, item: payload })
         : kind === "stay"
-          ? replaceStay({ tripId, stayId: record.id, stay: payload })
-          : replaceTravel({ tripId, travelId: record.id, travel: payload });
+          ? replaceStay({ tripId, stayId: record.id, stay: payload, version: record.version })
+          : replaceTravel({ tripId, travelId: record.id, travel: payload, version: record.version });
     return runEdit(dispatch, thunk);
   }
 
@@ -232,10 +172,10 @@ function DayDetail({ trip, date }) {
     setBusy(true);
     await dispatch(
       kind === "activity"
-        ? deleteItem({ tripId, itemId: record.id })
+        ? deleteItem({ tripId, itemId: record.id, version: record.version })
         : kind === "stay"
-          ? deleteStay({ tripId, stayId: record.id })
-          : deleteTravel({ tripId, travelId: record.id })
+          ? deleteStay({ tripId, stayId: record.id, version: record.version })
+          : deleteTravel({ tripId, travelId: record.id, version: record.version })
     );
     setBusy(false);
     setDeleting(null);
@@ -265,17 +205,9 @@ function DayDetail({ trip, date }) {
 
   const dayCount = daysBetween(trip.startDate, trip.endDate) + 1;
   const dayNumber = daysBetween(trip.startDate, row.date) + 1;
-  const adjacent = (
-    <div className="flex items-center justify-between gap-3">
-      <AdjacentDayLink date={rows[index - 1]?.date} tripId={trip.id} direction="prev" />
-      <AdjacentDayLink date={rows[index + 1]?.date} tripId={trip.id} direction="next" />
-    </div>
-  );
 
   return (
-    <div {...swipe}>
-      <div className="mb-4">{adjacent}</div>
-
+    <div>
       <header className="mb-4 flex flex-col gap-1">
         <h1 className="break-words text-xl font-semibold leading-snug">{heading}</h1>
         <p className="text-sm text-muted-foreground">
@@ -337,8 +269,6 @@ function DayDetail({ trip, date }) {
         </div>
       )}
 
-      <div className="mt-6">{adjacent}</div>
-
       {form?.kind === "activity" && (
         <ActivityForm
           key={form.record?.id ?? "new"}
@@ -379,7 +309,10 @@ function DayDetail({ trip, date }) {
           onClose={() => setDayFormOpen(false)}
           date={row.date}
           day={day}
-          onSave={(payload) => runEdit(dispatch, updateDay({ tripId: trip.id, date: row.date, day: payload }))}
+          onSave={(payload) =>
+            // A date with no day row yet is version 0.
+            runEdit(dispatch, updateDay({ tripId: trip.id, date: row.date, day: payload, version: day?.version ?? 0 }))
+          }
         />
       )}
 
@@ -398,6 +331,118 @@ function DayDetail({ trip, date }) {
           </Button>
         </DialogFooter>
       </Dialog>
+    </div>
+  );
+}
+
+/** Whether an arrow key should change the day: not while typing, not with a
+ * modifier, and not while a dialog is open. */
+function arrowChangesDay(e) {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return false;
+  if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
+  if (e.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return false;
+  return !document.querySelector('[role="dialog"]');
+}
+
+/**
+ * Every day of the trip as a slide: swipe (or drag, or the arrow keys) to
+ * the next or previous day. Only the current day and its neighbours render
+ * their timeline. The URL is the source of truth: settling on a day replaces
+ * the URL (so Back isn't a list of every day swiped past), and a URL change
+ * from elsewhere (the timeline, search) jumps straight to that day.
+ */
+function DaySwiper({ trip, date }) {
+  const navigate = useNavigate();
+  const rows = useMemo(() => buildTimeline(trip), [trip]);
+  const index = rows.findIndex((r) => r.date === date);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: Math.max(index, 0) });
+  // Read by the Embla listeners, which outlive a render.
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const dateRef = useRef(date);
+  dateRef.current = date;
+  const fromUrl = useRef(false); // the carousel is following the URL, not a swipe
+  const toTop = useRef(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!emblaApi) return undefined;
+    function onSelect() {
+      if (fromUrl.current) return;
+      const next = rowsRef.current[emblaApi.selectedScrollSnap()]?.date;
+      if (!next || next === dateRef.current) return;
+      toTop.current = true;
+      navigate(`/trips/${trip.id}/days/${next}`, { replace: true });
+    }
+    function onSettle() {
+      if (!toTop.current) return;
+      toTop.current = false;
+      const root = wrapRef.current?.closest("[data-scroll-root]");
+      if (root) root.scrollTop = 0;
+    }
+    emblaApi.on("select", onSelect).on("settle", onSettle);
+    return () => {
+      emblaApi.off("select", onSelect).off("settle", onSettle);
+    };
+  }, [emblaApi, navigate, trip.id]);
+
+  // A day picked elsewhere: jump there, no animation.
+  useEffect(() => {
+    if (!emblaApi || index < 0 || emblaApi.selectedScrollSnap() === index) return;
+    fromUrl.current = true;
+    emblaApi.scrollTo(index, true);
+    fromUrl.current = false;
+  }, [emblaApi, index]);
+
+  useEffect(() => {
+    if (!emblaApi) return undefined;
+    function onKeyDown(e) {
+      if (!arrowChangesDay(e)) return;
+      if (e.key === "ArrowLeft") emblaApi.scrollPrev();
+      else emblaApi.scrollNext();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [emblaApi]);
+
+  if (index === -1) {
+    return (
+      <Card className="mx-4 flex flex-col items-center gap-3 p-8 text-center">
+        <p className="font-medium">No such day</p>
+        <p className="text-sm text-muted-foreground">It&rsquo;s outside this trip&rsquo;s dates.</p>
+        <Link to={`/trips/${trip.id}`} className={buttonVariants({ variant: "outline" })}>
+          Back to trip
+        </Link>
+      </Card>
+    );
+  }
+
+  return (
+    <div ref={wrapRef}>
+      <div ref={emblaRef} className="overflow-hidden">
+        {/* items-start: each slide is only as tall as its own day, and the
+            carousel as tall as its tallest slide, so the day in view grows
+            as its entries expand. The neighbours are capped at one screen
+            (only their top shows mid-swipe), so a long day next door can't
+            leave empty space under a short one. pan-y keeps vertical
+            scrolling the browser's. */}
+        <div className="flex touch-pan-y touch-pinch-zoom items-start">
+          {rows.map((r, i) => {
+            const current = i === index;
+            return (
+              <div
+                key={r.date}
+                className={cn("min-w-0 shrink-0 grow-0 basis-full px-4", !current && "max-h-dvh overflow-hidden")}
+                aria-hidden={current ? undefined : "true"}
+                // Off-screen days can't be focused or read out.
+                inert={current ? undefined : ""}
+              >
+                {Math.abs(i - index) <= 1 && <DayDetail trip={trip} row={r} />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -428,11 +473,11 @@ export function DayDetailPage() {
 
   return (
     <BottomNavLayout tripId={tripId}>
-      <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mx-auto max-w-2xl py-6">
         {current ? (
-          <DayDetail key={`${current.id}:${date}`} trip={current} date={date} />
+          <DaySwiper key={current.id} trip={current} date={date} />
         ) : status === "notFound" ? (
-          <Card className="flex flex-col items-center gap-3 p-8 text-center">
+          <Card className="mx-4 flex flex-col items-center gap-3 p-8 text-center">
             <p className="font-medium">Trip not found</p>
             <p className="text-sm text-muted-foreground">It may have been deleted.</p>
             <Link to="/trips" className={buttonVariants({ variant: "outline" })}>
@@ -440,14 +485,16 @@ export function DayDetailPage() {
             </Link>
           </Card>
         ) : status === "failed" ? (
-          <Card className="flex flex-col items-center gap-3 p-8 text-center">
+          <Card className="mx-4 flex flex-col items-center gap-3 p-8 text-center">
             <p className="font-medium">Couldn’t load this trip</p>
             <Button variant="outline" onClick={() => dispatch(fetchTrip(tripId))}>
               Try again
             </Button>
           </Card>
         ) : (
-          <DetailSkeleton />
+          <div className="px-4">
+            <DetailSkeleton />
+          </div>
         )}
       </div>
     </BottomNavLayout>

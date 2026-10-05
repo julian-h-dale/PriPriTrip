@@ -26,36 +26,30 @@ describe("markerMatchesDate", () => {
 });
 
 describe("filterMarkers", () => {
-  const markers = [stay, activity, travelLeg];
+  const memory = { kind: "memory", day: "2026-05-12" };
+  const markers = [stay, activity, travelLeg, memory];
 
-  it("with no filters, keeps everything", () => {
-    expect(filterMarkers(markers)).toEqual(markers);
+  it("by default keeps the trip's places but not memories", () => {
+    expect(filterMarkers(markers)).toEqual([stay, activity, travelLeg]);
   });
 
-  it("stayOnly keeps only stays, any date", () => {
-    expect(filterMarkers(markers, { stayOnly: true })).toEqual([stay]);
+  it('"stays" keeps only stays, any date', () => {
+    expect(filterMarkers(markers, { only: "stays" })).toEqual([stay]);
   });
 
-  it("a date alone keeps whatever is relevant that day, any kind", () => {
+  it('"memories" keeps only memories', () => {
+    expect(filterMarkers(markers, { only: "memories" })).toEqual([memory]);
+  });
+
+  it("a date alone keeps the places relevant that day, any kind but memories", () => {
     expect(filterMarkers(markers, { date: "2026-05-12" })).toEqual([stay, activity]);
   });
 
-  it("combines: stays happening on that specific day", () => {
-    expect(filterMarkers(markers, { stayOnly: true, date: "2026-05-12" })).toEqual([stay]);
-    expect(filterMarkers(markers, { stayOnly: true, date: "2026-05-10" })).toEqual([]);
-  });
-});
-
-describe("the memories toggle", () => {
-  const memory = { id: "memory-1", kind: "memory", day: "2026-05-11" };
-  const stay = { id: "stay-1", kind: "stay", day: "2026-05-11", endDay: "2026-05-12" };
-  it("hides memory pins when off, and House (stays only) hides them too", () => {
-    expect(filterMarkers([memory, stay], { memories: false })).toEqual([stay]);
-    expect(filterMarkers([memory, stay], { stayOnly: true })).toEqual([stay]);
-    expect(filterMarkers([memory, stay], {})).toEqual([memory, stay]);
-  });
-  it("Calendar matches a memory by the day it was written", () => {
-    expect(filterMarkers([memory], { date: "2026-05-11" })).toEqual([memory]);
-    expect(filterMarkers([memory], { date: "2026-05-12" })).toEqual([]);
+  it("the date narrows either filter", () => {
+    expect(filterMarkers(markers, { only: "stays", date: "2026-05-12" })).toEqual([stay]);
+    expect(filterMarkers(markers, { only: "stays", date: "2026-05-10" })).toEqual([]);
+    // A memory matches the day it was written.
+    expect(filterMarkers(markers, { only: "memories", date: "2026-05-12" })).toEqual([memory]);
+    expect(filterMarkers(markers, { only: "memories", date: "2026-05-11" })).toEqual([]);
   });
 });

@@ -79,26 +79,37 @@ class UserUpdate(schemas.BaseUserUpdate):
 _READ_CONFIG = ConfigDict(from_attributes=True, populate_by_name=True, extra="ignore")
 
 
-class StayRead(StayDoc):
+class VersionRead(BaseModel):
+    """Which version an entry is at, and who last changed it (see
+    services/versions.py): the app sends `version` back in If-Match."""
+
+    version: int = 1
+    updated_at: datetime | None = None
+    # Read from the row to look up the name; never sent.
+    updated_by: uuid.UUID | None = Field(default=None, exclude=True)
+    updated_by_name: str | None = None
+
+
+class StayRead(StayDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     zone: str | None = None
 
 
-class TravelRead(TravelDoc):
+class TravelRead(TravelDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     depart_zone: str | None = None
     arrive_zone: str | None = None
 
 
-class ItemRead(ItemDoc):
+class ItemRead(ItemDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     zone: str | None = None
 
 
-class DayRead(DayDoc):
+class DayRead(DayDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     items: list[ItemRead] = Field(default_factory=list)  # type: ignore[assignment]
@@ -108,8 +119,9 @@ class TripRead(TripDocument):
     model_config = ConfigDict(title="TripRead", **_READ_CONFIG)
     id: uuid.UUID
     created_at: datetime
-    # The caller's footing on this trip: "owner" may edit, "viewer" may not.
-    role: Literal["owner", "viewer"] | None = None
+    # The caller's footing on this trip: "owner" and "editor" may edit,
+    # "viewer" may not.
+    role: Literal["owner", "editor", "viewer"] | None = None
     stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
     travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
     days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
@@ -124,18 +136,26 @@ class TripSummary(CamelModel):
     stay_count: int
     travel_count: int
     created_at: datetime
-    role: Literal["owner", "viewer"] = "owner"
+    role: Literal["owner", "editor", "viewer"] = "owner"
 
 
 class JoinTrip(CamelModel):
-    trip_id: uuid.UUID
+    """Join with the trip's id (as a viewer) or its edit code (as an editor).
+    `code` takes either; `tripId` is what older apps send."""
+
+    trip_id: uuid.UUID | None = None
+    code: str | None = Field(default=None, max_length=200)
 
 
 class MemberRead(CamelModel):
     user_id: uuid.UUID
     email: str
-    role: Literal["viewer"]
+    role: Literal["editor", "viewer"]
     joined_at: datetime
+
+
+class EditCode(CamelModel):
+    code: str
 
 
 MEMORY_MAX_CHARS = 2000

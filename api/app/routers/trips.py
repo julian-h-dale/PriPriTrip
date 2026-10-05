@@ -1,6 +1,8 @@
-"""Trips router. Thin handlers: reads via get_viewable_trip (owner or viewer),
-edits via get_owned_trip (owner only), logic in services/trips.py, document
-validation in app/trip_document.py."""
+"""Trips router. Thin handlers: reads via get_viewable_trip (any member),
+edits via get_editable_trip (owner or editor), deleting the trip via
+get_owned_trip (owner only), logic in services/trips.py, document validation
+in app/trip_document.py. Changing or deleting an entry needs the version it
+was made from (If-Match; services/versions.py)."""
 
 from __future__ import annotations
 
@@ -16,11 +18,13 @@ from starlette.datastructures import UploadFile
 from app.database import get_db
 from app.dependencies import (
     ViewableTrip,
-    get_owned_item,
-    get_owned_stay,
-    get_owned_travel,
+    get_editable_item,
+    get_editable_stay,
+    get_editable_travel,
+    get_editable_trip,
     get_owned_trip,
     get_viewable_trip,
+    if_match_version,
 )
 from app.models import Item, Stay, Travel, Trip, UserRecord
 from app.schemas import CamelModel, TripRead, TripSummary
@@ -175,41 +179,48 @@ JsonBody = Annotated[dict[str, Any], Body()]
 )
 async def create_item(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
 ) -> TripRead | JSONResponse:
     """Add an activity (an `ItemDoc` plus its `date`) at the end of that date."""
     try:
         write = validate_item_write(body, trip.start_date, trip.end_date)
     except TripDocumentError as exc:
         return _invalid(exc, "The activity")
-    return await trips_service.create_item(db, trip, write)
+    return await trips_service.create_item(db, trip, write, user.id)
 
 
 @router.put("/{trip_id}/items/{item_id}", response_model=TripRead, response_model_exclude_none=True)
 async def replace_item(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
-    item: Item = Depends(get_owned_item),
+    trip: Trip = Depends(get_editable_trip),
+    item: Item = Depends(get_editable_item),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead | JSONResponse:
     """Replace a whole activity. A different `date` moves it to that day."""
     try:
         write = validate_item_write(body, trip.start_date, trip.end_date)
     except TripDocumentError as exc:
         return _invalid(exc, "The activity")
-    return await trips_service.replace_item(db, trip, item, write)
+    return await trips_service.replace_item(
+        db, trip, item, write, expected=expected, user_id=user.id
+    )
 
 
 @router.delete(
     "/{trip_id}/items/{item_id}", response_model=TripRead, response_model_exclude_none=True
 )
 async def delete_item(
-    trip: Trip = Depends(get_owned_trip),
-    item: Item = Depends(get_owned_item),
+    trip: Trip = Depends(get_editable_trip),
+    item: Item = Depends(get_editable_item),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead:
-    return await trips_service.delete_item(db, trip, item)
+    return await trips_service.delete_item(db, trip, item, expected=expected, user_id=user.id)
 
 
 class MoveRequest(CamelModel):
@@ -221,8 +232,8 @@ class MoveRequest(CamelModel):
 )
 async def move_item(
     body: MoveRequest,
-    trip: Trip = Depends(get_owned_trip),
-    item: Item = Depends(get_owned_item),
+    trip: Trip = Depends(get_editable_trip),
+    item: Item = Depends(get_editable_item),
     db: AsyncSession = Depends(get_db),
 ) -> TripRead:
     """Swap an activity with its neighbour in the day."""
@@ -233,16 +244,21 @@ async def move_item(
 async def update_day(
     day_date: dt.date,
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead | JSONResponse:
-    """Set a date's title and summary (creates the day if the date has none)."""
+    """Set a date's title and summary (creates the day if the date has none:
+    its version is then 0)."""
     try:
         validate_day_date(day_date, trip.start_date, trip.end_date)
         write = parse_part(DayWrite, body)
     except TripDocumentError as exc:
         return _invalid(exc, "The day")
-    return await trips_service.update_day(db, trip, day_date, write)
+    return await trips_service.update_day(
+        db, trip, day_date, write, expected=expected, user_id=user.id
+    )
 
 
 # ---- Editing stays and travel ----
@@ -260,39 +276,44 @@ def _frame(trip: Trip) -> TripFrame:
 )
 async def create_stay(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
 ) -> TripRead | JSONResponse:
     try:
         doc = validate_stay_write(body, _frame(trip))
     except TripDocumentError as exc:
         return _invalid(exc, "The stay")
-    return await trips_service.create_stay(db, trip, doc)
+    return await trips_service.create_stay(db, trip, doc, user.id)
 
 
 @router.put("/{trip_id}/stays/{stay_id}", response_model=TripRead, response_model_exclude_none=True)
 async def replace_stay(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
-    stay: Stay = Depends(get_owned_stay),
+    trip: Trip = Depends(get_editable_trip),
+    stay: Stay = Depends(get_editable_stay),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead | JSONResponse:
     try:
         doc = validate_stay_write(body, _frame(trip))
     except TripDocumentError as exc:
         return _invalid(exc, "The stay")
-    return await trips_service.replace_stay(db, trip, stay, doc)
+    return await trips_service.replace_stay(db, trip, stay, doc, expected=expected, user_id=user.id)
 
 
 @router.delete(
     "/{trip_id}/stays/{stay_id}", response_model=TripRead, response_model_exclude_none=True
 )
 async def delete_stay(
-    trip: Trip = Depends(get_owned_trip),
-    stay: Stay = Depends(get_owned_stay),
+    trip: Trip = Depends(get_editable_trip),
+    stay: Stay = Depends(get_editable_stay),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead:
-    return await trips_service.delete_stay(db, trip, stay)
+    return await trips_service.delete_stay(db, trip, stay, expected=expected, user_id=user.id)
 
 
 @router.post(
@@ -303,14 +324,15 @@ async def delete_stay(
 )
 async def create_travel(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
 ) -> TripRead | JSONResponse:
     try:
         doc = validate_travel_write(body, _frame(trip))
     except TripDocumentError as exc:
         return _invalid(exc, "The travel leg")
-    return await trips_service.create_travel(db, trip, doc)
+    return await trips_service.create_travel(db, trip, doc, user.id)
 
 
 @router.put(
@@ -318,26 +340,32 @@ async def create_travel(
 )
 async def replace_travel(
     body: JsonBody,
-    trip: Trip = Depends(get_owned_trip),
-    travel: Travel = Depends(get_owned_travel),
+    trip: Trip = Depends(get_editable_trip),
+    travel: Travel = Depends(get_editable_travel),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead | JSONResponse:
     try:
         doc = validate_travel_write(body, _frame(trip))
     except TripDocumentError as exc:
         return _invalid(exc, "The travel leg")
-    return await trips_service.replace_travel(db, trip, travel, doc)
+    return await trips_service.replace_travel(
+        db, trip, travel, doc, expected=expected, user_id=user.id
+    )
 
 
 @router.delete(
     "/{trip_id}/travels/{travel_id}", response_model=TripRead, response_model_exclude_none=True
 )
 async def delete_travel(
-    trip: Trip = Depends(get_owned_trip),
-    travel: Travel = Depends(get_owned_travel),
+    trip: Trip = Depends(get_editable_trip),
+    travel: Travel = Depends(get_editable_travel),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
 ) -> TripRead:
-    return await trips_service.delete_travel(db, trip, travel)
+    return await trips_service.delete_travel(db, trip, travel, expected=expected, user_id=user.id)
 
 
 @schema_router.get("/trip")

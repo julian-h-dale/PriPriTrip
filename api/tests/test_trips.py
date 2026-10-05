@@ -18,13 +18,17 @@ from app.trip_document import trip_json_schema
 
 
 def strip_server_fields(value: Any) -> Any:
-    """Drop ids, audit fields, computed zones and the caller's role so a
-    read-back compares to the input."""
+    """Drop ids, audit fields, versions, computed zones and the caller's role
+    so a read-back compares to the input."""
     if isinstance(value, dict):
         return {
             k: strip_server_fields(v)
             for k, v in value.items()
-            if k not in {"id", "createdAt", "zone", "departZone", "arriveZone", "role"}
+            if k
+            not in {
+                *("id", "createdAt", "zone", "departZone", "arriveZone", "role"),
+                *("version", "updatedAt", "updatedByName"),
+            }
         }
     if isinstance(value, list):
         return [strip_server_fields(v) for v in value]

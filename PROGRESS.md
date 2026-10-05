@@ -6,7 +6,53 @@
 
 ## Status
 
-- **Current work (2026-10-03): Run stage 5** on branch **`run-stage-5`**
+- **Current work (2026-10-04): Run stages 6 and 7** on branch
+  **`run-stage-6`** (off `main` after PR #8). Plan: `implementation_plan.md`,
+  "Run stage 6" and "Run stage 7".
+  - **Phase 37 ✅ (places in the trip files):** `make backfill-photos` on
+    the dev database, then `placeId`/`imgRef` copied into
+    `example-trip.json`, `sample_trip.json` and `demo_trip.py`.
+    **Julian:** spot-check "Bern", "Wengen", "Syntagma" and "Athens
+    Airport" (matched by text search).
+  - **Phase 38 ✅ (map filters and pins):** Journal (memories only) and
+    House (stays only) are either-or, with memories hidden by default; the
+    Calendar narrows either. Pins use Lucide outline icons (vanilla
+    `lucide` package, SVG data URL as `glyphSrc`). **Julian:** look at the
+    pins at phone width.
+  - **Phase 39 ✅ (swipe between days):** Embla 8.6.0. (Fixed: the
+    auto-height plugin clipped expanded days and stopped scrolling; removed.) The
+    slide follows the finger; settling replaces the URL; the arrow keys
+    work on desktop; the prev/next links are gone. **Julian, on a real
+    phone:** swiping feels right, and vertical scrolling never changes day.
+  - **Phase 40 ✅ (editors):** an edit code (`trips.edit_code`, migration
+    **0005**) beside the view code (the trip id) in the Share dialog;
+    joining with it makes an editor. Editors pass `get_editable_trip`;
+    deleting the trip and managing members stay owner-only.
+    **Deploying:** start.sh migrates, so `fly deploy` applies 0005.
+  - **Phase 41 ✅ (versions, API):** every stay, travel, day and activity
+    has a `version`; PUT/DELETE need `If-Match` (409 when stale, 428 when
+    missing). Migration **0006** (plain ADD COLUMNs; `updated_by` has no FK,
+    see the plan). **Don't deploy without Phase 42**: today's app sends no
+    version.
+  - **Phase 42 ✅ (conflicts in the UI):** edits send `If-Match`. A
+    conflict is a warning saying who changed it and when, then a reload,
+    and the form closes. Details show "Edited by …". The trip reloads when
+    the app returns to the foreground.
+  - **Run stages 6 and 7 are done** (Phases 37–42), on `run-stage-6`, not
+    pushed or deployed. **Deploy 41 and 42 together** (migrations 0005 and
+    0006 run on start).
+  - **Waiting on Julian:** look at the phone-width UI (map pins, swiping,
+    the Share dialog), try two phones editing one activity, then push/PR
+    and deploy. Also still: `fly volumes extend`.
+  - **Run stage 7 (editors, versions, 409 conflicts):** planned, and the
+    open questions were answered 2026-10-04: an editor join code, editors
+    can delete, a conflict is an error and a reload (no merge), a missing
+    version is refused, and details show "Edited by …".
+- **Storage (2026-10-04):** SQLite and photos share the one 1 GB Fly volume.
+  Plan: `fly volumes extend` before the trip. After the trip, maybe move
+  photos to object storage (Tigris or R2; `photo_store.py` is ready for a
+  new class). Neon would only take the database; it has no object storage.
+- **Run stage 5 (2026-10-03)** on branch **`run-stage-5`**
   (off `main`, which has Run stage 4 merged (PR #7) and is deployed to Fly).
   Main checkout, ports 8000/3000. Plan: `implementation_plan.md`, "Run
   stage 5".

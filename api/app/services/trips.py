@@ -10,20 +10,18 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import active
-from app.models import Day, Item, Stay, Travel, Trip, TripMember
-from app.schemas import TripRead, TripSummary
+from app.dependencies import Role, active
+from app.models import Day, Item, Stay, Travel, Trip, TripMember, UserRecord
+from app.schemas import TripRead, TripSummary, VersionRead
+from app.services import versions
 from app.trip_document import DayWrite, ItemWrite, LocationDoc, StayDoc, TravelDoc, TripDocument
 from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
-
-# A user's footing on a trip: the owner edits, a viewer reads.
-Role = Literal["owner", "viewer"]
 
 
 def _location(loc: LocationDoc | None) -> dict[str, Any] | None:
@@ -134,10 +132,15 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
         .correlate(Trip)
         .scalar_subquery()
     )
-    joined = select(TripMember.trip_id).where(TripMember.user_id == user_id, active(TripMember))
+    member_role = (
+        select(TripMember.role)
+        .where(TripMember.trip_id == Trip.id, TripMember.user_id == user_id, active(TripMember))
+        .correlate(Trip)
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(Trip, stay_count, travel_count)
-        .where(or_(Trip.user_id == user_id, Trip.id.in_(joined)), active(Trip))
+        select(Trip, stay_count, travel_count, member_role)
+        .where(or_(Trip.user_id == user_id, member_role.is_not(None)), active(Trip))
         .order_by(Trip.start_date, Trip.created_at)
     )
     return [
@@ -145,9 +148,9 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
             trip,
             stay_count=sc,
             travel_count=tc,
-            role="owner" if trip.user_id == user_id else "viewer",
+            role="owner" if trip.user_id == user_id else "editor" if role == "editor" else "viewer",
         )
-        for trip, sc, tc in result.all()
+        for trip, sc, tc, role in result.all()
     ]
 
 
@@ -179,10 +182,54 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
         .execution_options(populate_existing=True)
     )
     trip = _with_zones(TripRead.model_validate(result.scalar_one()))
-    # Edits only ever come from the owner, so "owner" is the default; reads
-    # pass the caller's own role so the UI knows whether it may edit.
+    await _with_editor_names(db, trip)
+    # Edits return the trip as "owner" by default; reads pass the caller's
+    # own role so the UI knows whether it may edit.
     trip.role = role
     return trip
+
+
+def _entries(trip: TripRead) -> list[VersionRead]:
+    """Every versioned entry of a trip: stays, travel, days and activities."""
+    return [*trip.stays, *trip.travels, *trip.days, *(i for d in trip.days for i in d.items)]
+
+
+def _display_name(user: UserRecord) -> str:
+    return user.name or user.email.split("@")[0]
+
+
+async def _with_editor_names(db: AsyncSession, trip: TripRead) -> None:
+    """Fill in who last changed each entry, by name."""
+    ids = {e.updated_by for e in _entries(trip) if e.updated_by is not None}
+    if not ids:
+        return
+    users = (await db.scalars(select(UserRecord).where(UserRecord.__table__.c.id.in_(ids)))).all()
+    names = {u.id: _display_name(u) for u in users}
+    for entry in _entries(trip):
+        if entry.updated_by is not None:
+            entry.updated_by_name = names.get(entry.updated_by)
+
+
+async def _check_version(
+    db: AsyncSession,
+    trip: Trip,
+    entity: versions.Versioned | None,
+    expected: int,
+    entity_id: uuid.UUID | None,
+) -> None:
+    """Refuse a stale write with 409 (services/versions.py), sending back the
+    entry as the trip now reads it and who last changed it."""
+    if (entity.version if entity is not None else 0) == expected:
+        return
+    current = None
+    name = None
+    if entity is not None:
+        read = await get_trip(db, trip.id)
+        found = next((e for e in _entries(read) if getattr(e, "id", None) == entity_id), None)
+        if found is not None:
+            current = found.model_dump(mode="json", by_alias=True, exclude_none=True)
+            name = found.updated_by_name
+    versions.check(entity, expected, current=current, updated_by_name=name)
 
 
 def _with_zones(trip: TripRead) -> TripRead:
@@ -241,29 +288,41 @@ def _apply_item(item: Item, write: ItemWrite) -> None:
     item.notes = write.notes
 
 
-async def create_item(db: AsyncSession, trip: Trip, write: ItemWrite) -> TripRead:
+async def create_item(
+    db: AsyncSession, trip: Trip, write: ItemWrite, user_id: uuid.UUID
+) -> TripRead:
     """Add an activity at the end of its date."""
     day = await _day_for(db, trip, write.date)
     item = Item(day_id=day.id, position=await _next_position(db, day), title=write.title)
     _apply_item(item, write)
+    versions.stamp(item, user_id, new=True)
     db.add(item)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def replace_item(db: AsyncSession, trip: Trip, item: Item, write: ItemWrite) -> TripRead:
-    """Full replace. A new date moves the activity to the end of that day."""
+async def replace_item(
+    db: AsyncSession, trip: Trip, item: Item, write: ItemWrite, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    """Full replace, from version `expected`. A new date moves the activity to
+    the end of that day."""
+    await _check_version(db, trip, item, expected, item.id)
     current_day = await db.get(Day, item.day_id)
     if current_day is None or current_day.date != write.date:
         day = await _day_for(db, trip, write.date)
         item.day_id = day.id
         item.position = await _next_position(db, day)
     _apply_item(item, write)
+    versions.stamp(item, user_id)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def delete_item(db: AsyncSession, trip: Trip, item: Item) -> TripRead:
+async def delete_item(
+    db: AsyncSession, trip: Trip, item: Item, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    await _check_version(db, trip, item, expected, item.id)
+    versions.stamp(item, user_id)
     item.is_deleted = True
     item.deleted_at = datetime.now(UTC)
     await db.commit()
@@ -290,11 +349,25 @@ async def move_item(db: AsyncSession, trip: Trip, item: Item, direction: str) ->
     return await get_trip(db, trip.id)
 
 
-async def update_day(db: AsyncSession, trip: Trip, day_date: dt.date, write: DayWrite) -> TripRead:
-    """Set a date's title and summary, creating its day row if needed."""
-    day = await _day_for(db, trip, day_date)
+async def update_day(
+    db: AsyncSession,
+    trip: Trip,
+    day_date: dt.date,
+    write: DayWrite,
+    *,
+    expected: int,
+    user_id: uuid.UUID,
+) -> TripRead:
+    """Set a date's title and summary, from version `expected` (0: the date
+    has no day row yet), creating its day row if needed."""
+    existing = await db.scalar(
+        select(Day).where(Day.trip_id == trip.id, Day.date == day_date, active(Day))
+    )
+    await _check_version(db, trip, existing, expected, existing.id if existing else None)
+    day = existing or await _day_for(db, trip, day_date)
     day.title = write.title
     day.summary = write.summary
+    versions.stamp(day, user_id, new=existing is None)
     await db.commit()
     return await get_trip(db, trip.id)
 
@@ -342,42 +415,68 @@ async def _next_booking_position(
     return 0 if last is None else last + 1
 
 
-async def create_stay(db: AsyncSession, trip: Trip, doc: StayDoc) -> TripRead:
+async def create_stay(db: AsyncSession, trip: Trip, doc: StayDoc, user_id: uuid.UUID) -> TripRead:
     stay = Stay(trip_id=trip.id, position=await _next_booking_position(db, Stay, trip))
     _apply_stay(stay, doc)
+    versions.stamp(stay, user_id, new=True)
     db.add(stay)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def replace_stay(db: AsyncSession, trip: Trip, stay: Stay, doc: StayDoc) -> TripRead:
+async def replace_stay(
+    db: AsyncSession, trip: Trip, stay: Stay, doc: StayDoc, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    await _check_version(db, trip, stay, expected, stay.id)
     _apply_stay(stay, doc)
+    versions.stamp(stay, user_id)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def delete_stay(db: AsyncSession, trip: Trip, stay: Stay) -> TripRead:
+async def delete_stay(
+    db: AsyncSession, trip: Trip, stay: Stay, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    await _check_version(db, trip, stay, expected, stay.id)
+    versions.stamp(stay, user_id)
     stay.is_deleted = True
     stay.deleted_at = datetime.now(UTC)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def create_travel(db: AsyncSession, trip: Trip, doc: TravelDoc) -> TripRead:
+async def create_travel(
+    db: AsyncSession, trip: Trip, doc: TravelDoc, user_id: uuid.UUID
+) -> TripRead:
     travel = Travel(trip_id=trip.id, position=await _next_booking_position(db, Travel, trip))
     _apply_travel(travel, doc)
+    versions.stamp(travel, user_id, new=True)
     db.add(travel)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def replace_travel(db: AsyncSession, trip: Trip, travel: Travel, doc: TravelDoc) -> TripRead:
+async def replace_travel(
+    db: AsyncSession,
+    trip: Trip,
+    travel: Travel,
+    doc: TravelDoc,
+    *,
+    expected: int,
+    user_id: uuid.UUID,
+) -> TripRead:
+    await _check_version(db, trip, travel, expected, travel.id)
     _apply_travel(travel, doc)
+    versions.stamp(travel, user_id)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def delete_travel(db: AsyncSession, trip: Trip, travel: Travel) -> TripRead:
+async def delete_travel(
+    db: AsyncSession, trip: Trip, travel: Travel, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    await _check_version(db, trip, travel, expected, travel.id)
+    versions.stamp(travel, user_id)
     travel.is_deleted = True
     travel.deleted_at = datetime.now(UTC)
     await db.commit()

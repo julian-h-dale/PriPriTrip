@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { API_URL } from "../playwright.config.js";
-import { SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
+import { SEED_ADMIN, SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Practical smoke checks: page views and basic clicking against the seeded
@@ -78,6 +78,65 @@ test("day detail page", async ({ page }) => {
   await page.getByRole("list", { name: /^Plans for/ }).getByRole("button").first().click();
   await page.waitForTimeout(1000); // let the mini-map tile load
   await page.screenshot({ path: screenshotPath("04-day-detail-entry-expanded"), fullPage: true });
+});
+
+test("day detail: swipe between days", async ({ browser }) => {
+  // A phone: touch events, as well as the mouse.
+  const context = await browser.newContext({ hasTouch: true, viewport: { width: 375, height: 812 } });
+  const page = await context.newPage();
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  const tripPath = new URL(page.url()).pathname;
+  await page.getByRole("list", { name: "Trip days" }).getByRole("link", { name: /Tue, May 12/ }).click();
+  // The timeline has a "Tue, May 12" heading too: wait for the day's own page.
+  await expect(page).toHaveURL(/\/days\/2026-05-12$/);
+  await expect(page.getByText("Day 3 of 5")).toBeVisible();
+
+  // A mouse drag to the left: the next day, and the URL follows.
+  await page.mouse.move(320, 400);
+  await page.mouse.down();
+  await page.mouse.move(200, 405, { steps: 5 });
+  await page.screenshot({ path: screenshotPath("03a-day-swipe-mid-drag") });
+  await page.mouse.move(40, 410, { steps: 5 });
+  await page.mouse.up();
+  await expect(page).toHaveURL(/\/days\/2026-05-13$/);
+  await expect(page.getByRole("heading", { name: "Wed, May 13" })).toBeVisible();
+
+  // A mostly vertical drag scrolls; it doesn't change the day.
+  await page.mouse.move(200, 600);
+  await page.mouse.down();
+  await page.mouse.move(215, 250, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/\/days\/2026-05-13$/);
+
+  // A real touch swipe to the right: back a day.
+  const cdp = await context.newCDPSession(page);
+  const touch = (type, x, y) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+  await touch("touchStart", 40, 400);
+  for (let x = 80; x <= 340; x += 40) await touch("touchMove", x, 402);
+  await touch("touchEnd");
+  await expect(page).toHaveURL(/\/days\/2026-05-12$/);
+  await expect(page.getByRole("heading", { name: "Tue, May 12" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("03b-day-after-swipe") });
+
+  // Regression: the day grows as its entries open, and the page scrolls to
+  // the end of it (a fixed carousel height once clipped it).
+  const plans = page.getByRole("list", { name: "Plans for Tue, May 12" });
+  const closed = plans.locator(":scope > li button[aria-expanded='false']");
+  while ((await closed.count()) > 0) await closed.first().click();
+  const editDay = page.getByRole("button", { name: "Edit Tue, May 12 title and summary" });
+  await editDay.scrollIntoViewIfNeeded();
+  await expect(editDay).toBeInViewport();
+  const scroll = await page.locator("[data-scroll-root]").evaluate((el) => [el.scrollHeight, el.clientHeight]);
+  expect(scroll[0]).toBeGreaterThan(scroll[1]);
+  await page.screenshot({ path: screenshotPath("03c-day-expanded-scrolled") });
+
+  // Swiping replaced the URL, so Back goes to the timeline, not the last day.
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${tripPath}$`));
+  await context.close();
 });
 
 test("stays and travel coverage views", async ({ page }) => {
@@ -176,11 +235,15 @@ async function deleteAdded(page, tripId, { itemTitle, stayName }) {
   const trip = await (await page.request.get(`${api}/trips/${tripId}`, { headers })).json();
   for (const day of trip.days) {
     for (const item of day.items.filter((i) => i.title === itemTitle)) {
-      await page.request.delete(`${api}/trips/${tripId}/items/${item.id}`, { headers });
+      await page.request.delete(`${api}/trips/${tripId}/items/${item.id}`, {
+        headers: { ...headers, "If-Match": `"${item.version}"` },
+      });
     }
   }
   for (const stay of trip.stays.filter((s) => s.name === stayName)) {
-    await page.request.delete(`${api}/trips/${tripId}/stays/${stay.id}`, { headers });
+    await page.request.delete(`${api}/trips/${tripId}/stays/${stay.id}`, {
+      headers: { ...headers, "If-Match": `"${stay.version}"` },
+    });
   }
 }
 
@@ -269,6 +332,117 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
   } finally {
     await ownerContext.close();
     await viewerContext.close();
+  }
+});
+
+test("sharing: someone joins with the edit code and can edit", async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const editorContext = await browser.newContext();
+  const editor = await editorContext.newPage();
+  let tripId = null;
+  try {
+    const owner = await ownerContext.newPage();
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    tripId = new URL(owner.url()).pathname.split("/")[2];
+    await owner.getByRole("button", { name: "Share trip" }).click();
+    const canEdit = owner.getByRole("dialog", { name: "Share trip" }).getByRole("region", { name: "Can edit" });
+    const code = (await canEdit.locator(".font-mono").textContent()).trim();
+    expect(code).toHaveLength(20);
+    await owner.screenshot({ path: screenshotPath("21a-share-dialog-codes"), fullPage: true });
+
+    await login(editor, SEED_ADMIN);
+    await editor.getByRole("button", { name: "Join trip" }).click();
+    const join = editor.getByRole("dialog", { name: "Join a trip" });
+    await join.getByLabel("Trip code").fill(code);
+    await join.getByRole("button", { name: "Join", exact: true }).click();
+    await editor.waitForURL(new RegExp(`/trips/${tripId}/today$`));
+    await editor.goto(`/trips/${tripId}/days/2026-05-11`);
+    await expect(editor.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
+    await expect(editor.getByRole("button", { name: /Add activity/ })).toBeVisible();
+    await expect(editor.getByRole("button", { name: "Share trip" })).toHaveCount(0);
+  } finally {
+    // Leave again, so the dev trip is shared as before.
+    if (tripId) {
+      const token = await editor.evaluate(() => localStorage.getItem("auth_token")).catch(() => null);
+      if (token) {
+        await editor.request.delete(`${API_URL}/trips/${tripId}/membership`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    }
+    await ownerContext.close();
+    await editorContext.close();
+  }
+});
+
+test("editing: two people change the same activity; the second gets a warning", async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const editorContext = await browser.newContext();
+  const owner = await ownerContext.newPage();
+  const editor = await editorContext.newPage();
+  const DINNER = "Dinner at Kornhauskeller";
+  let tripId = null;
+  let original = null;
+  const api = async (page, method, path, { body, version } = {}) => {
+    const token = await page.evaluate(() => localStorage.getItem("auth_token"));
+    const headers = { Authorization: `Bearer ${token}` };
+    if (version !== undefined) headers["If-Match"] = `"${version}"`;
+    return page.request[method](`${API_URL}${path}`, { headers, data: body });
+  };
+  const dinnerOf = async (page) => {
+    const trip = await (await api(page, "get", `/trips/${tripId}`)).json();
+    const day = trip.days.find((d) => d.date === "2026-05-11");
+    return day.items.find((i) => i.id === original?.id) ?? day.items.find((i) => i.title === DINNER);
+  };
+  try {
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    tripId = new URL(owner.url()).pathname.split("/")[2];
+    original = await dinnerOf(owner);
+    const code = (await (await api(owner, "get", `/trips/${tripId}/edit-code`)).json()).code;
+    await login(editor, SEED_ADMIN);
+    expect((await api(editor, "post", "/trips/join", { body: { code } })).ok()).toBe(true);
+
+    // Both open the dinner's edit form.
+    const openEdit = async (page) => {
+      await page.goto(`/trips/${tripId}/days/2026-05-11`);
+      await page.getByRole("button", { name: new RegExp(DINNER) }).click();
+      await page.getByRole("button", { name: `Edit ${DINNER}` }).click();
+      return page.getByRole("dialog");
+    };
+    const ownerForm = await openEdit(owner);
+    const editorForm = await openEdit(editor);
+
+    // The editor saves first.
+    await editorForm.getByLabel("Title").fill("Dinner at 8 (editor)");
+    await editorForm.getByRole("button", { name: "Save" }).click();
+    await expect(editorForm).toBeHidden();
+
+    // The owner's save, made from the old version, is refused: a warning, the form closes,
+    // and the owner sees the editor's change.
+    await ownerForm.getByLabel("Title").fill("Dinner at 7 (owner)");
+    await ownerForm.getByRole("button", { name: "Save" }).click();
+    await expect(owner.getByText("Test Admin changed this just now. Showing the latest.")).toBeVisible();
+    await expect(ownerForm).toBeHidden();
+    await owner.screenshot({ path: screenshotPath("24-edit-conflict"), fullPage: true });
+    // The dinner is still open, now with the editor's title and who changed it.
+    await expect(owner.getByText("Dinner at 8 (editor)")).toBeVisible();
+    await expect(owner.getByText(/^Edited by Test Admin, /)).toBeVisible();
+  } finally {
+    // Put the dinner back and leave, so the dev trip is as it was.
+    if (tripId && original) {
+      const now = await dinnerOf(owner);
+      const keep = ["title", "start", "end", "timezone", "location", "confirmationNumber", "notes"];
+      const body = Object.fromEntries(keep.filter((k) => k in original).map((k) => [k, original[k]]));
+      await api(owner, "put", `/trips/${tripId}/items/${now.id}`, {
+        body: { ...body, date: "2026-05-11" },
+        version: now.version,
+      });
+      await api(editor, "delete", `/trips/${tripId}/membership`).catch(() => {});
+    }
+    await ownerContext.close();
+    await editorContext.close();
   }
 });
 

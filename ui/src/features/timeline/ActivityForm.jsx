@@ -53,7 +53,8 @@ export function ActivityForm({ open, onClose, trip, item, date, prefill, onSave 
     setBusy(true);
     const result = await onSave(toPayload(values, item));
     setBusy(false);
-    if (result.ok) {
+    // reloaded: someone else changed or removed it; a warning already said so.
+    if (result.ok || result.reloaded) {
       onClose();
       return;
     }

@@ -52,6 +52,7 @@ export function describeEntry(entry, trip) {
       locations: item.location ? [{ label: "Where", loc: item.location }] : [],
       photos: true,
       facts: [],
+      edited: editedBy(item),
     };
   }
 
@@ -81,6 +82,7 @@ export function describeEntry(entry, trip) {
         ["Check-out", fullTime(stay.checkOut, zone, tripZone)],
         ["Room", stay.roomType],
       ].filter(([, value]) => value),
+      edited: editedBy(stay),
     };
   }
 
@@ -119,7 +121,14 @@ export function describeEntry(entry, trip) {
       ["Arrives", travel.arrive ? fullTime(travel.arrive, arriveZone, tripZone) : "Not set yet"],
       ["Seat", travel.seat],
     ].filter(([, value]) => value),
+    edited: editedBy(travel),
   };
+}
+
+/** Who last changed a stay, leg or activity, and when (an instant), from the
+ * server's `updatedByName` / `updatedAt`; null until someone edits it. */
+function editedBy(record) {
+  return record.updatedByName && record.updatedAt ? { name: record.updatedByName, at: record.updatedAt } : null;
 }
 
 function fullTime(wallClock, zone, tripZone) {

@@ -20,7 +20,7 @@ function plural(n, word) {
 }
 
 function TripCard({ trip, onDelete, onLeave, readOnly }) {
-  const shared = trip.role === "viewer";
+  const shared = trip.role === "viewer" || trip.role === "editor";
   const nights = daysBetween(trip.startDate, trip.endDate);
   return (
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
@@ -32,7 +32,7 @@ function TripCard({ trip, onDelete, onLeave, readOnly }) {
         {shared && (
           <span className="inline-flex items-center gap-1 text-xs text-primary">
             <Users className="h-3.5 w-3.5" aria-hidden="true" />
-            Shared with you
+            {trip.role === "editor" ? "Shared with you · you can edit" : "Shared with you"}
           </span>
         )}
         <span className="text-sm text-muted-foreground">

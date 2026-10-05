@@ -7,9 +7,9 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Paste a trip's id (from its owner's Share screen) to join it as a viewer. */
+/** Paste a code from a trip owner's Share screen to join the trip: the view
+ * code (the trip's id) to see it, the edit code to change it too. */
 export function JoinTripDialog({ open, onClose }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -20,14 +20,10 @@ export function JoinTripDialog({ open, onClose }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const tripId = value.trim();
-    if (!UUID.test(tripId)) {
-      setError("That doesn’t look like a trip id. It’s the long code from the Share screen.");
-      return;
-    }
+    const code = value.trim();
     setBusy(true);
     setError(null);
-    const result = await dispatch(joinTrip(tripId));
+    const result = await dispatch(joinTrip(code));
     setBusy(false);
     if (result.meta.requestStatus === "fulfilled") {
       onClose();
@@ -42,16 +38,16 @@ export function JoinTripDialog({ open, onClose }) {
       open={open}
       onClose={() => !busy && onClose()}
       title="Join a trip"
-      description="Paste the trip id its owner shared with you. You’ll see the whole trip; only the owner can change it."
+      description="Paste the code the trip’s owner sent you. A view code lets you see the whole trip; an edit code lets you change it too."
     >
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${ids}-id`}>Trip id</Label>
+          <Label htmlFor={`${ids}-id`}>Trip code</Label>
           <Input
             id={`${ids}-id`}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="e.g. 3f2b8c1e-…"
+            placeholder="Paste the code"
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}

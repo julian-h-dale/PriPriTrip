@@ -51,8 +51,29 @@ function Row({ row, onPick }) {
   );
 }
 
+/** One of the either-or "what" filters: pressed when it's the active one. */
+function OnlyToggle({ value, only, onOnlyChange, label, icon: Icon }) {
+  const pressed = only === value;
+  return (
+    <Button
+      type="button"
+      variant={pressed ? "default" : "ghost"}
+      size="icon"
+      // bg-card only when off: it would otherwise hide the pressed fill.
+      className={cn("shrink-0", !pressed && "bg-card")}
+      aria-pressed={pressed}
+      aria-label={label}
+      onClick={() => onOnlyChange(pressed ? null : value)}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </Button>
+  );
+}
+
 /**
- * Search box + House/Calendar filters, overlaid on the map.
+ * Search box + Journal/House/Calendar filters, overlaid on the map. Journal
+ * (memories only) and House (stays only) are either-or: turning one on turns
+ * the other off. With neither, the trip's places show and memories don't.
  *
  * Suggestions come in two sections, never interleaved: the trip's own
  * (currently filtered-in) places first, then Google's places — marked "New",
@@ -74,10 +95,8 @@ export function MapControls({
   online = true,
   resultName = null,
   onClearResult,
-  stayOnly,
-  onToggleStayOnly,
-  showMemories = true,
-  onToggleMemories,
+  only = null,
+  onOnlyChange,
   onLocate,
   locating = false,
   date,
@@ -200,32 +219,8 @@ export function MapControls({
         )}
       </form>
 
-      {onToggleMemories && (
-        <Button
-          type="button"
-          variant={showMemories ? "default" : "ghost"}
-          size="icon"
-          // bg-card only when off: it would otherwise hide the pressed fill.
-          className={cn("shrink-0", !showMemories && "bg-card")}
-          aria-pressed={showMemories}
-          aria-label="Show memories"
-          onClick={onToggleMemories}
-        >
-          <NotebookPen className="h-4 w-4" aria-hidden="true" />
-        </Button>
-      )}
-
-      <Button
-        type="button"
-        variant={stayOnly ? "default" : "ghost"}
-        size="icon"
-        className={cn("shrink-0", !stayOnly && "bg-card")}
-        aria-pressed={stayOnly}
-        aria-label="Show only stays"
-        onClick={onToggleStayOnly}
-      >
-        <Home className="h-4 w-4" aria-hidden="true" />
-      </Button>
+      <OnlyToggle value="memories" only={only} onOnlyChange={onOnlyChange} label="Show only memories" icon={NotebookPen} />
+      <OnlyToggle value="stays" only={only} onOnlyChange={onOnlyChange} label="Show only stays" icon={Home} />
 
       {date ? (
         <Button
