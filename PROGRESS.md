@@ -6,6 +6,11 @@
 
 ## Status
 
+- **Phase 44 ✅ (2026-10-05): `make export-trip` / `make list-trips`**
+  (`scripts/trip-client.sh`; `TRIP_EMAIL`/`TRIP_PASSWORD`, `API_URL`, `OUT`;
+  README "Back up or move a trip"). Tried against a local API: list, export,
+  `OUT=-`, and the 404 / bad password / no id / unreachable errors. **Not yet
+  deployed** — `fly deploy` before using it on pripri-trip.fly.dev.
 - **Phase 45 ✅ (2026-10-05): one look for an entry's details.** Expanded
   rows get the dialog's hero fade (`HeroFade`, `useHeroImage`,
   `describeEntry().hero`); thumbnails removed. **Julian, on a phone:** the

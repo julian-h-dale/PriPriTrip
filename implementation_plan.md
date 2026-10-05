@@ -2726,7 +2726,7 @@ backups. Not complicated: a `make` task that calls an endpoint with a trip id.
   result equals the original (after validation); and the export is accepted by
   `validate_trip_document`.
 - **The make task is a script, not improvised work** (AGENTS hard rule):
-  `scripts/export-trip.sh`, called by `make export-trip`. It logs in, calls the
+  `scripts/trip-client.sh`, called by `make export-trip`. It logs in, calls the
   endpoint and writes the file. Nothing is saved but the JSON.
 - **Backups hold personal data** (confirmation numbers, ticket numbers), so
   the default output folder `exports/` is git-ignored.
@@ -2745,8 +2745,8 @@ backups. Not complicated: a `make` task that calls an endpoint with a trip id.
     stays/travels/days/items are not exported; a stranger gets 404 and a
     signed-out call 401; a joined viewer/editor can export (per question 2);
     the download headers are right.
-- **Phase 44 — `make export-trip` (and docs).**
-  - **Scope:** `scripts/export-trip.sh`; `make export-trip TRIP=<id>`
+- **Phase 44 — `make export-trip` (and docs).** ✅ (2026-10-05)
+  - **Scope:** `scripts/trip-client.sh`; `make export-trip TRIP=<id>`
     with `API_URL`, `OUT`, and `TRIP_EMAIL`/`TRIP_PASSWORD`; `make list-trips`
     (id, name and dates, from `GET /trips`) using the same login code; a line
     each in `make help`; a short "Moving a trip between environments" section in

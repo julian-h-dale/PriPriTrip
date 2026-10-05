@@ -25,6 +25,9 @@ ui/playwright-report/
 .DS_Store
 .vscode/
 
+# Trip exports (backups hold confirmation numbers)
+exports/
+
 # Personal material kept locally (old PDFs, notes, old .env backups)
 reference/private/
 .claude/settings.local.json
