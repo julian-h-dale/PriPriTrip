@@ -241,3 +241,54 @@ class MemoryRead(CamelModel):
     mine: bool
     # Viewers see only public memories; the owner and editors see all.
     is_public: bool = False
+
+
+# ---- backups (the Pi pulls these through /admin/backup) ----
+
+
+class BackupPhoto(CamelModel):
+    """One photo to back up: where it goes on the drive, and where to fetch it."""
+
+    id: uuid.UUID
+    trip_id: uuid.UUID
+    trip_name: str
+    memory_id: uuid.UUID
+    author: str
+    # The memory's moment, and the wall clock where it was written (for the
+    # drive's <date>/<time>_… layout).
+    taken_at: datetime
+    zone: str
+    local_date: date
+    local_time: str  # "HHMM"
+    format: str
+    bytes: int
+    uploaded_at: datetime
+    original_url: str
+
+
+class BackupPhotoPage(CamelModel):
+    photos: list[BackupPhoto]
+    # Pass as `after` for the next page; null on the last page.
+    next: str | None = None
+
+
+class BackupMemory(CamelModel):
+    id: uuid.UUID
+    author: str
+    created_at: datetime
+    zone: str
+    updated_at: datetime | None = None
+    text: str
+    is_public: bool
+    location: MemoryLocation | None = None
+    photo_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class BackupJournal(CamelModel):
+    """A trip's journal as it stands: every live memory, public or not."""
+
+    trip_id: uuid.UUID
+    trip_name: str
+    start_date: date
+    end_date: date
+    memories: list[BackupMemory]
