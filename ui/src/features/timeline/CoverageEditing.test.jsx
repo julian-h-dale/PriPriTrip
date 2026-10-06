@@ -8,6 +8,7 @@ import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
+import { EntryPage } from "@/features/entry/EntryPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { apiClient } from "@/shared/services/apiClient";
 import { createPlacesSearch } from "@/shared/services/googlePlaces";
@@ -80,6 +81,8 @@ function renderTrip() {
         <Routes>
           <Route path="/trips/:tripId" element={<TripTimelinePage />} />
           <Route path="/trips/:tripId/days/:date" element={<p>day page</p>} />
+          <Route path="/trips/:tripId/stays/:id" element={<EntryPage kind="stay" />} />
+          <Route path="/trips/:tripId/travel/:id" element={<EntryPage kind="travel" />} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -188,22 +191,13 @@ describe("adding travel from the travel coverage view", () => {
 });
 
 describe("opening a leg from the travel coverage view", () => {
-  it("shows a read-only quick look first, not the edit form", async () => {
+  it("opens the leg's own page, where it can be edited", async () => {
     const user = userEvent.setup();
     renderTrip();
     await user.click(await screen.findByRole("button", { name: "Travel" }));
     await user.click(within(day("2026-05-14")).getByRole("button"));
-    const dialog = screen.getByRole("dialog", { name: "Zürich → Chicago" });
-    expect(within(dialog).queryByLabelText("From")).not.toBeInTheDocument();
-    expect(within(dialog).getByText("Flight")).toBeInTheDocument();
-  });
-
-  it("opens the edit form from the quick look's Edit button", async () => {
-    const user = userEvent.setup();
-    renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Travel" }));
-    await user.click(within(day("2026-05-14")).getByRole("button"));
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByRole("article", { name: "Zürich → Chicago" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit travel" }));
     const dialog = screen.getByRole("dialog", { name: "Edit travel" });
     expect(within(dialog).getByLabelText("From")).toHaveValue("Zürich Airport (ZRH)");
   });
@@ -284,22 +278,13 @@ describe("adding a stay from the stays coverage view", () => {
 });
 
 describe("opening a stay from the stays coverage view", () => {
-  it("shows a read-only quick look first, not the edit form", async () => {
+  it("opens the stay's own page, where it can be edited", async () => {
     const user = userEvent.setup();
     renderTrip();
     await user.click(await screen.findByRole("button", { name: "Stays" }));
     await user.click(within(day("2026-05-11")).getByRole("button"));
-    const dialog = screen.getByRole("dialog", { name: "Hotel Goldener Schlüssel" });
-    expect(within(dialog).queryByLabelText("Name")).not.toBeInTheDocument();
-    expect(within(dialog).getByText("Check-in")).toBeInTheDocument();
-  });
-
-  it("opens the edit form from the quick look's Edit button", async () => {
-    const user = userEvent.setup();
-    renderTrip();
-    await user.click(await screen.findByRole("button", { name: "Stays" }));
-    await user.click(within(day("2026-05-11")).getByRole("button"));
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit stay" }));
     const dialog = screen.getByRole("dialog", { name: "Edit stay" });
     expect(within(dialog).getByLabelText("Name")).toHaveValue("Hotel Goldener Schlüssel");
   });

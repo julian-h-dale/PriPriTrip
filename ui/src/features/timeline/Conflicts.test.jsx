@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
-import { DayDetailPage } from "@/features/timeline/DayDetailPage";
+import { tripRoutes } from "@/test/tripRoutes";
 import { useTripRefresh } from "@/shared/pwa/useTripRefresh";
 import { apiClient } from "@/shared/services/apiClient";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
@@ -42,11 +42,7 @@ let trip;
 
 function App() {
   useTripRefresh();
-  return (
-    <Routes>
-      <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
-    </Routes>
-  );
+  return <Routes>{tripRoutes()}</Routes>;
 }
 
 function renderDay(date) {
@@ -86,8 +82,8 @@ function theirTrip() {
 }
 
 async function openDinnerEdit(user) {
-  await user.click(await screen.findByRole("button", { name: /Dinner at Kornhauskeller/ }));
-  await user.click(screen.getByRole("button", { name: "Edit Dinner at Kornhauskeller" }));
+  await user.click(await screen.findByRole("link", { name: /Dinner at Kornhauskeller/ }));
+  await user.click(await screen.findByRole("button", { name: "Edit activity" }));
   const dialog = screen.getByRole("dialog");
   const title = within(dialog).getByLabelText("Title");
   await user.clear(title);
@@ -156,8 +152,8 @@ describe("when someone else got there first", () => {
   it("a 404 says it was removed, and reloads", async () => {
     const user = userEvent.setup();
     const store = renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    await user.click(screen.getByRole("button", { name: "Delete Lunch at Altes Tramdepot" }));
+    await user.click(await screen.findByRole("link", { name: /Lunch at Altes Tramdepot/ }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
     apiClient.delete.mockRejectedValue({ response: { status: 404, data: { detail: "Not found" } } });
     const gone = readTrip();
     gone.days[0].items.splice(0, 1);
@@ -168,7 +164,8 @@ describe("when someone else got there first", () => {
     await waitFor(() =>
       expect(toasts(store)).toContainEqual(["warning", "That was removed by someone else. Showing the latest."])
     );
-    await waitFor(() => expect(screen.queryByText("Lunch at Altes Tramdepot")).not.toBeInTheDocument());
+    // Its page now says it's gone.
+    expect(await screen.findByText("This isn’t on the trip any more")).toBeInTheDocument();
   });
 
   it("a 428 (an app too old to send a version) keeps the form open and says to reopen", async () => {
@@ -188,11 +185,13 @@ describe("who changed it", () => {
     const user = userEvent.setup();
     apiClient.get.mockResolvedValue({ data: theirTrip() });
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: /Dinner at 8, not 7/ }));
-    expect(screen.getByText("Edited by PriPri, 2 minutes ago")).toBeInTheDocument();
+    await user.click(await screen.findByRole("link", { name: /Dinner at 8, not 7/ }));
+    expect(await screen.findByText("Edited by PriPri, 2 minutes ago")).toBeInTheDocument();
     // Never-edited (imported) entries say nothing.
-    await user.click(screen.getByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    expect(screen.getAllByText(/^Edited by/)).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(await screen.findByRole("link", { name: /Lunch at Altes Tramdepot/ }));
+    await screen.findByRole("article", { name: "Lunch at Altes Tramdepot" });
+    expect(screen.queryByText(/^Edited by/)).not.toBeInTheDocument();
   });
 });
 

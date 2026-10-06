@@ -90,19 +90,11 @@ describe("DayDetailPage", () => {
     expect(await screen.findByText("Nothing planned for this day.")).toBeInTheDocument();
   });
 
-  it("expands an entry to markdown notes, map link and confirmation", async () => {
-    const user = userEvent.setup();
+  it("a row is a link to its entry's page (the check-in opens its stay)", async () => {
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: /Check in · Hotel Goldener/ }));
-
-    const bold = screen.getByText("drop bags");
-    expect(bold.tagName).toBe("STRONG");
-    expect(screen.getByText("SAMPLE-1001")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open map" })).toHaveAttribute(
-      "href",
-      "https://www.google.com/maps/search/?api=1&query=46.9486227,7.4487269&query_place_id=ChIJjxe45cM5jkcRYwP0oTEWgmU"
-    );
-    await user.click(screen.getByRole("button", { name: /Check in · Hotel Goldener/ }));
+    const checkIn = await screen.findByRole("link", { name: /Check in · Hotel Goldener/ });
+    expect(checkIn).toHaveAttribute("href", expect.stringMatching(/^\/trips\/trip-1\/stays\//));
+    // Nothing expands in place any more.
     expect(screen.queryByText("SAMPLE-1001")).not.toBeInTheDocument();
   });
 

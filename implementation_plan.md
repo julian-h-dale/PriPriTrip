@@ -3939,7 +3939,7 @@ page.
 
 ### Phases
 
-- **Phase 62 — the details page (view).**
+- **Phase 62 — the details page (view).** ✅ (2026-10-06)
   - **Scope:** the three routes, `EntryPage` with the design above (no
     actions yet); looking an entry up by id; the "it's gone" state; offline
     from the saved copy.
@@ -3948,14 +3948,14 @@ page.
     nights; an arrival key resolves to its leg; a missing id shows "gone"; ←
     goes back, or to the day when opened directly; works from the saved copy
     offline.
-- **Phase 63 — actions on the page.**
+- **Phase 63 — actions on the page.** ✅ (2026-10-06)
   - **Scope:** Edit (the existing forms) and Delete (confirm, then back to the
     day) for editors; hidden for viewers; greyed offline; a conflict on save
     behaves as on the day page.
   - **Tests:** edit saves and the page shows the change; delete returns to the
     day and the entry is gone; viewers have no actions; offline greys them;
     409 shows the conflict notice.
-- **Phase 64 — every way in opens the page; expand/collapse goes.**
+- **Phase 64 — every way in opens the page; expand/collapse goes.** ✅ (2026-10-06)
   - **Scope:** day page and Today rows become links (Move up / down stays on
     the day page); Stays/Travel cards; search results; `?open=` redirect; the
     map's "Details"; remove `ExpandedDetails`, `BookingDetailsDialog` and the
@@ -3965,6 +3965,36 @@ page.
     an old `?open=` link redirects; the map's Details link.
   - **E2E:** day → entry page → back; screenshots of an activity, a stay and a
     flight at 375 px.
+
+### Built (2026-10-06): Phases 62–64
+
+Built as planned, one commit per phase, `make verify` green (246 API + 398
+UI tests). E2E: everything passes except the specs that sign in as
+`pripri@example.com`, whose password in the dev database was changed by hand
+(`make reset-db` fixes it). Screenshots `04` (a flight), `04a` (a stay) and
+`04b` (an activity).
+
+**Details:**
+- `features/entry/`: `entries.js` (the addresses, and finding an entry by id
+  in the loaded trip), `EntryPage.jsx` (the page; `EntryView` is the layout),
+  `EntryActions.jsx` (Edit and Delete).
+- The page leaves out facts it already shows above them: Check-in/out,
+  Departs/Arrives and Duration are in "When", and a leg's mode and carrier
+  are in its heading.
+- Each place shows its mini map on the page (`MiniMap`), as it did in the
+  place picker.
+- **Day page:** a row is a link. An activity's ⋯ has Move up / Move down
+  (only on a day with more than one activity). Add activity and Edit day
+  stay. Edit and Delete for stays and legs moved to their pages, so the
+  day page no longer has the stay and travel forms.
+- **Trip page:** a Stays/Travel card opens the page; the forms there only
+  add now.
+- **Today:** rows are links, and Next up and Tonight have "Details".
+- **Removed:** `BookingDetailsDialog`, `ExpandedDetails`, the `EntryDetails`
+  component (its pieces `ConfirmationNumber`, `PlaceRow` and `EditedBy`
+  stay), and the dialog's hero photo, which nothing else used.
+- Tests that opened a row now go through `src/test/tripRoutes.jsx`, the
+  trip's routes as App.jsx has them, so they tap from a row to its page.
 
 ### Open questions (Run stage 13)
 

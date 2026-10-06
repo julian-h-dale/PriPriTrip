@@ -10,6 +10,7 @@ import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { dayCities } from "@/features/timeline/dayCities";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { entryPath, entryPathFor } from "@/features/entry/entries";
 import { ConfirmationNumber } from "@/features/timeline/EntryDetails";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
@@ -69,6 +70,9 @@ function NextUp({ trip, next, active, now }) {
       {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
       <div className="flex flex-wrap gap-2">
         <DirectionsLink loc={placeOf(next.entry)} />
+        <Link to={entryPathFor(trip.id, next.entry)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}>
+          Details
+        </Link>
         <Link
           to={`/trips/${trip.id}/days/${next.date}`}
           className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}
@@ -117,6 +121,10 @@ function Tonight({ trip, night }) {
           {stay.confirmationNumber && <ConfirmationNumber value={stay.confirmationNumber} />}
           <div className="flex flex-wrap gap-2">
             <DirectionsLink loc={stay.location} />
+            <Link to={entryPath(trip.id, "stay", stay.id)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}>
+              Details
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
         </>
       ) : (
@@ -136,19 +144,10 @@ function TodayView({ trip }) {
   const index = rows.findIndex((r) => r.date === ref.date);
   const row = rows[index];
   const tomorrow = rows[index + 1] ?? null;
-  const [openEntries, setOpenEntries] = useState(() => new Set());
   const [writing, setWriting] = useState(false);
   const dayNumber = daysBetween(trip.startDate, ref.date) + 1;
   const dayCount = daysBetween(trip.startDate, trip.endDate) + 1;
 
-  function toggle(key) {
-    setOpenEntries((s) => {
-      const nextSet = new Set(s);
-      if (nextSet.has(key)) nextSet.delete(key);
-      else nextSet.add(key);
-      return nextSet;
-    });
-  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
@@ -184,13 +183,7 @@ function TodayView({ trip }) {
         {row && row.entries.length > 0 ? (
           <ol className="flex flex-col">
             {row.entries.map((entry) => (
-              <TimelineEntry
-                key={entry.key}
-                entry={entry}
-                trip={trip}
-                expanded={openEntries.has(entry.key)}
-                onToggle={() => toggle(entry.key)}
-              />
+              <TimelineEntry key={entry.key} entry={entry} trip={trip} />
             ))}
           </ol>
         ) : (

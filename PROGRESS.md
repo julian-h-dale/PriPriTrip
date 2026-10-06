@@ -13,6 +13,13 @@
     view only. `make verify` green (246 API + 401 UI tests).
   - **Phase 63 ✅:** Edit and Delete on the page (editors; greyed offline;
     Delete goes to the entry's day). `make verify` green (406 UI tests).
+  - **Phase 64 ✅:** every way in opens the page (day and Today rows, Stays/
+    Travel cards, search, map pins' Details, old `?open=` links);
+    expand/collapse and the booking dialog are gone; Move up/down is under
+    an activity's ⋯ on the day page. `make verify` green (246 API + 398 UI).
+  - **Run stage 13 is complete.** **Julian:** look at an entry's page on the
+    phone. The e2e specs signing in as `pripri@` fail only because that
+    dev password was changed (`make reset-db`).
 - **Run stage 12, in progress (2026-10-06)** on branch
   **`improvements-oct-5`**. Plan: `implementation_plan.md`, "Run stage 12".
   The seed rework was withdrawn (the seed is unchanged). The backup tool's

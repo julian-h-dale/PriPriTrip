@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
-import { DayDetailPage } from "@/features/timeline/DayDetailPage";
+import { tripRoutes } from "@/test/tripRoutes";
 import { apiClient } from "@/shared/services/apiClient";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
@@ -45,13 +45,17 @@ function renderDay(date) {
         initialEntries={[`/trips/trip-1/days/${date}`]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <Routes>
-          <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
-        </Routes>
+        <Routes>{tripRoutes()}</Routes>
       </MemoryRouter>
     </Provider>
   );
   return store;
+}
+
+/** Opens an entry's page from its row on the day. */
+async function openEntry(user, name) {
+  await user.click(await screen.findByRole("link", { name }));
+  return screen.findByRole("article");
 }
 
 /** Entry texts on the rendered day. */
@@ -68,29 +72,27 @@ beforeEach(() => {
 });
 
 describe("editing day activities", () => {
-  it("offers move only on activities; markers edit their booking", async () => {
-    const user = userEvent.setup();
+  it("every row opens its page; only activities get ⋯ to move them", async () => {
     renderDay("2026-05-11");
-    const checkIn = await screen.findByRole("button", { name: /Check in · Hotel Goldener/ });
-    await user.click(checkIn);
-    const row = checkIn.closest("li");
-    const labels = within(row)
-      .getAllByRole("button")
-      .map((b) => b.getAttribute("aria-label") ?? b.textContent);
-    expect(labels).toContain("Edit stay Hotel Goldener Schlüssel");
-    expect(labels).toContain("Delete stay Hotel Goldener Schlüssel");
-    expect(labels.some((l) => /^Move/.test(l))).toBe(false);
+    const checkIn = await screen.findByRole("link", { name: /Check in · Hotel Goldener/ });
+    expect(checkIn).toHaveAttribute("href", expect.stringMatching(/^\/trips\/trip-1\/stays\//));
+    expect(within(checkIn.closest("li")).queryByRole("button")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    expect(screen.getByRole("button", { name: "Edit Lunch at Altes Tramdepot" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Move Lunch at Altes Tramdepot up" })).toBeDisabled();
+    const lunch = screen.getByRole("link", { name: /Lunch at Altes Tramdepot/ });
+    expect(lunch).toHaveAttribute("href", "/trips/trip-1/activities/item-0-0");
+    const user = userEvent.setup();
+    await user.click(within(lunch.closest("li")).getByRole("button", { name: "More for Lunch at Altes Tramdepot" }));
+    expect(screen.getByRole("menuitem", { name: "Move up" })).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Move down" })).toBeEnabled();
   });
 
-  it("makes a bare activity expandable so it can be edited", async () => {
+  it("a bare activity opens its page too, where it can be edited", async () => {
     const user = userEvent.setup();
     renderDay("2026-05-12");
-    await user.click(await screen.findByRole("button", { name: /Stargazing from the balcony/ }));
-    expect(screen.getByRole("button", { name: "Delete Stargazing from the balcony" })).toBeInTheDocument();
+    const page = await openEntry(user, /Stargazing from the balcony/);
+    expect(page).toHaveAccessibleName("Stargazing from the balcony");
+    expect(screen.getByRole("button", { name: "Edit activity" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 
   it("adds an activity to the selected day", async () => {
@@ -132,8 +134,8 @@ describe("editing day activities", () => {
     apiClient.put.mockResolvedValue({ data: updated });
     renderDay("2026-05-11");
 
-    await user.click(await screen.findByRole("button", { name: /Dinner at Kornhauskeller/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Dinner at Kornhauskeller" }));
+    await openEntry(user, /Dinner at Kornhauskeller/);
+    await user.click(screen.getByRole("button", { name: "Edit activity" }));
     const title = within(screen.getByRole("dialog")).getByLabelText("Title");
     expect(title).toHaveValue("Dinner at Kornhauskeller");
     await user.clear(title);
@@ -150,7 +152,7 @@ describe("editing day activities", () => {
       location: sampleTrip.days[0].items[2].location, // coordinates kept: same place
       confirmationNumber: "Table for 2, 19:00",
     });
-    expect(await screen.findByText("Dinner at Kornhaus")).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "Dinner at Kornhaus" })).toBeInTheDocument();
   });
 
   it("shows server errors next to the field and keeps the form open", async () => {
@@ -165,8 +167,8 @@ describe("editing day activities", () => {
       },
     });
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Lunch at Altes Tramdepot" }));
+    await openEntry(user, /Lunch at Altes Tramdepot/);
+    await user.click(screen.getByRole("button", { name: "Edit activity" }));
     const dialog = screen.getByRole("dialog");
     await user.type(within(dialog).getByLabelText("Link"), "tramdepot.ch");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -180,11 +182,14 @@ describe("editing day activities", () => {
     const user = userEvent.setup();
     const updated = readTrip();
     updated.days[0].items.splice(0, 1);
-    apiClient.delete.mockResolvedValue({ data: updated });
+    apiClient.delete.mockImplementation(async () => {
+      apiClient.get.mockResolvedValue({ data: updated }); // the server has it gone now
+      return { data: updated };
+    });
     renderDay("2026-05-11");
 
-    await user.click(await screen.findByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    await user.click(screen.getByRole("button", { name: "Delete Lunch at Altes Tramdepot" }));
+    await openEntry(user, /Lunch at Altes Tramdepot/);
+    await user.click(screen.getByRole("button", { name: "Delete" }));
     const confirm = screen.getByRole("dialog", { name: "Delete activity?" });
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
 
@@ -193,6 +198,8 @@ describe("editing day activities", () => {
       handles: [404, 409, 428],
       headers: { "If-Match": '"1"' },
     });
+    // Back on its day, without it.
+    expect(await screen.findByRole("heading", { name: "Mon, May 11" })).toBeInTheDocument();
     expect(screen.queryByText("Lunch at Altes Tramdepot")).not.toBeInTheDocument();
   });
 
@@ -204,8 +211,8 @@ describe("editing day activities", () => {
     apiClient.post.mockResolvedValue({ data: updated });
     renderDay("2026-05-11");
 
-    await user.click(await screen.findByRole("button", { name: /Old Town & Zytglogge walk/ }));
-    await user.click(screen.getByRole("button", { name: "Move Old Town & Zytglogge walk up" }));
+    await user.click(await screen.findByRole("button", { name: "More for Old Town & Zytglogge walk" }));
+    await user.click(screen.getByRole("menuitem", { name: "Move up" }));
 
     expect(apiClient.post).toHaveBeenCalledWith(
       "/trips/trip-1/items/item-0-1/move",

@@ -80,6 +80,19 @@ describe("Today tab", () => {
 
     const plan = screen.getByRole("region", { name: "Today’s plan" });
     expect(within(plan).getByText("Dinner at Kornhauskeller")).toBeInTheDocument();
+    // Every row, and Next up and Tonight, open the entry's own page.
+    expect(within(plan).getByRole("link", { name: /Dinner at Kornhauskeller/ })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/trips\/trip-1\/activities\//)
+    );
+    expect(within(next).getByRole("link", { name: "Details" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/trips\/trip-1\/activities\//)
+    );
+    expect(within(tonight).getByRole("link", { name: "Details" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/trips\/trip-1\/stays\//)
+    );
     expect(within(screen.getByRole("region", { name: "Tomorrow" })).getByRole("link")).toHaveAttribute(
       "href",
       "/trips/trip-1/days/2026-05-12"

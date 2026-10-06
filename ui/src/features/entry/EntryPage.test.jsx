@@ -197,7 +197,7 @@ describe("Edit and Delete on an entry's page", () => {
     const store = renderAt("/trips/trip-1/travel/travel-0");
     await screen.findByRole("article", { name: "Chicago → Zürich" });
     apiClient.get.mockResolvedValue({ data: theirs });
-    await user.click(screen.getByRole("button", { name: "Edit trip leg" }));
+    await user.click(screen.getByRole("button", { name: "Edit travel" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(await screen.findByText("1A")).toBeInTheDocument();

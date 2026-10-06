@@ -11,6 +11,7 @@ import timelineReducer from "@/features/timeline/timelineSlice";
 import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
+import { EntryPage } from "@/features/entry/EntryPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripsPage } from "@/features/trips/TripsPage";
 import { MapPage } from "@/features/map/MapPage";
@@ -25,6 +26,7 @@ vi.mock("@/shared/services/apiClient", () => ({
 
 const USER = "user-1";
 const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z" };
+TRIP.days.forEach((d, i) => d.items.forEach((item, j) => (item.id = `item-${i}-${j}`)));
 const SUMMARY = {
   id: "trip-1",
   name: TRIP.name,
@@ -58,6 +60,7 @@ function renderAt(path, online = false) {
         <Routes>
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
+          <Route path="/trips/:tripId/activities/:id" element={<EntryPage kind="activity" />} />
           <Route path="/trips/:tripId/map" element={<MapPage />} />
         </Routes>
       </MemoryRouter>
@@ -93,9 +96,11 @@ describe("offline, from the phone's saved copy", () => {
     expect(screen.getByRole("button", { name: /Add activity/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /title and summary/ })).toBeDisabled();
 
-    await userEvent.click(screen.getByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    expect(screen.getByRole("button", { name: "Edit Lunch at Altes Tramdepot" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Delete Lunch at Altes Tramdepot" })).toBeDisabled();
+    // The activity's page opens from the saved copy, its actions greyed.
+    await userEvent.click(screen.getByRole("link", { name: /Lunch at Altes Tramdepot/ }));
+    await screen.findByRole("article", { name: "Lunch at Altes Tramdepot" });
+    expect(screen.getByRole("button", { name: "Edit activity" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
   });
 
   it("the map tab lists the trip's places with directions instead of a map", async () => {

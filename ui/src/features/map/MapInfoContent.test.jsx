@@ -29,9 +29,10 @@ describe("MapInfoContent", () => {
     expect(screen.getByRole("button", { name: "Add stay" })).toBeDisabled();
   });
 
-  it("a trip marker links to its day (in-app) and to directions", () => {
-    const marker = { id: "stay-1", kind: "stay", title: "Hotel Goldener Schlüssel", day: "2026-05-11", lat: 46.9, lng: 7.4 };
+  it("a trip marker links to its own page and its day (in-app), and to directions", () => {
+    const marker = { id: "stay-s1", entryId: "s1", kind: "stay", title: "Hotel Goldener Schlüssel", day: "2026-05-11", lat: 46.9, lng: 7.4 };
     renderInfo({ info: { kind: "trip", marker } });
+    expect(screen.getByRole("link", { name: "Details" })).toHaveAttribute("href", "/trips/trip-1/stays/s1");
     expect(screen.getByRole("link", { name: "View day" })).toHaveAttribute("href", "/trips/trip-1/days/2026-05-11");
     expect(screen.getByRole("link", { name: "Directions" })).toHaveAttribute(
       "href",

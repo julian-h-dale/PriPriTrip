@@ -10,7 +10,7 @@ import { deleteItem, deleteStay, deleteTravel, replaceItem, replaceStay, replace
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 
-const NOUN = { activity: "activity", stay: "stay", travel: "trip leg" };
+const NOUN = { activity: "activity", stay: "stay", travel: "travel" };
 
 function deleteMessage({ kind, record }) {
   if (kind === "activity") return `“${record.title}” will be removed from its day.`;

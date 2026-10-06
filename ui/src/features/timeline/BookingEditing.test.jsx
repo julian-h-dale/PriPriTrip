@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
-import { DayDetailPage } from "@/features/timeline/DayDetailPage";
+import { tripRoutes } from "@/test/tripRoutes";
 import { apiClient } from "@/shared/services/apiClient";
 import { createPlacesSearch } from "@/shared/services/googlePlaces";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
@@ -72,9 +72,7 @@ function renderDay(date) {
         initialEntries={[`/trips/trip-1/days/${date}`]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
-        <Routes>
-          <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
-        </Routes>
+        <Routes>{tripRoutes()}</Routes>
       </MemoryRouter>
     </Provider>
   );
@@ -93,15 +91,15 @@ beforeEach(() => {
 });
 
 describe("editing travel", () => {
-  it("edits a leg from its marker, sending the whole leg back", async () => {
+  it("edits a leg from its page, opened from its marker, sending the whole leg back", async () => {
     const user = userEvent.setup();
     apiClient.put.mockResolvedValue({ data: readTrip() });
     renderDay("2026-05-10");
 
     await screen.findByRole("heading", { name: "Sun, May 10" });
     const plans = screen.getByRole("list", { name: /^Plans for/ });
-    await user.click(within(plans).getByRole("button", { name: /Chicago → Zürich/ }));
-    await user.click(screen.getByRole("button", { name: "Edit travel Chicago → Zürich" }));
+    await user.click(within(plans).getByRole("link", { name: /Chicago → Zürich/ }));
+    await user.click(await screen.findByRole("button", { name: "Edit travel" }));
     const dialog = screen.getByRole("dialog", { name: "Edit travel" });
     expect(within(dialog).getByLabelText("From")).toHaveValue("Chicago O'Hare (ORD)");
     expect(within(dialog).getByLabelText("Seat")).toHaveValue("23A");
@@ -119,21 +117,24 @@ describe("editing travel", () => {
     delete trip.travels[3].arrive;
     renderDay("2026-05-14");
     const plans = await screen.findByRole("list", { name: "Plans for Thu, May 14" });
-    const card = within(plans).getByRole("button", { name: /Zürich → Chicago/ });
+    const card = within(plans).getByRole("link", { name: /Zürich → Chicago/ });
     expect(card).toHaveTextContent("No arrival yet");
   });
 });
 
 describe("stays", () => {
-  it("deletes a stay from any of its markers", async () => {
+  it("deletes a stay from its page, opened from any of its markers", async () => {
     const user = userEvent.setup();
     const updated = readTrip();
     updated.stays.splice(1, 1);
-    apiClient.delete.mockResolvedValue({ data: updated });
+    apiClient.delete.mockImplementation(async () => {
+      trip = updated; // the server has it gone now
+      return { data: updated };
+    });
     renderDay("2026-05-13");
 
-    await user.click(await screen.findByRole("button", { name: /Staying at Beausite Park Hotel/ }));
-    await user.click(screen.getByRole("button", { name: "Delete stay Beausite Park Hotel" }));
+    await user.click(await screen.findByRole("link", { name: /Staying at Beausite Park Hotel/ }));
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
     const confirm = screen.getByRole("dialog", { name: "Delete stay?" });
     expect(confirm).toHaveTextContent("removed from every day it covers");
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
@@ -143,7 +144,9 @@ describe("stays", () => {
       handles: [404, 409, 428],
       headers: { "If-Match": '"1"' },
     });
-    expect(screen.queryByText(/Staying at Beausite/)).not.toBeInTheDocument();
+    // Back on its first day (check-in), without it.
+    expect(await screen.findByRole("heading", { name: "Tue, May 12" })).toBeInTheDocument();
+    expect(screen.queryByText(/Beausite/)).not.toBeInTheDocument();
   });
 });
 

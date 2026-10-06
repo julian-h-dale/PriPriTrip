@@ -7,7 +7,7 @@ import { datePart } from "@/shared/utils/time";
  * the map widget itself.
  */
 
-function markerFromLocation(loc, { id, kind, mode, day, endDay, legDays, title }) {
+function markerFromLocation(loc, { id, kind, mode, day, endDay, legDays, entryId, title }) {
   if (loc?.lat == null || loc?.lng == null) return null;
   return {
     id,
@@ -28,6 +28,8 @@ function markerFromLocation(loc, { id, kind, mode, day, endDay, legDays, title }
     // A travel endpoint's leg: [departure date, arrival date]. Both ends match
     // every day the leg travels on. Null for stays and activities.
     legDays: legDays ?? null,
+    // The stay's, leg's or activity's own id, for a link to its page.
+    entryId: entryId ?? null,
   };
 }
 
@@ -38,6 +40,7 @@ export function buildMapMarkers(trip) {
     const marker = markerFromLocation(stay.location, {
       id: `stay-${stay.id}`,
       kind: "stay",
+      entryId: stay.id,
       day: datePart(stay.checkIn),
       endDay: datePart(stay.checkOut),
       title: stay.name,
@@ -51,6 +54,7 @@ export function buildMapMarkers(trip) {
     const from = markerFromLocation(travel.from, {
       id: `travel-${travel.id}-from`,
       kind: "travel",
+      entryId: travel.id,
       mode: travel.mode,
       day: datePart(travel.depart),
       legDays,
@@ -61,6 +65,7 @@ export function buildMapMarkers(trip) {
     const to = markerFromLocation(travel.to, {
       id: `travel-${travel.id}-to`,
       kind: "travel",
+      entryId: travel.id,
       mode: travel.mode,
       day: datePart(travel.arrive ?? travel.depart),
       legDays,
@@ -74,6 +79,7 @@ export function buildMapMarkers(trip) {
       const marker = markerFromLocation(item.location, {
         id: `item-${item.id}`,
         kind: "activity",
+        entryId: item.id,
         day: day.date,
         title: item.title,
       });

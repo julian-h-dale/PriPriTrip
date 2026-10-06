@@ -47,7 +47,7 @@ test("today tab (day 1 preview outside the trip)", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("19-today"), fullPage: true });
 });
 
-test("trip search opens a result on its day", async ({ page }) => {
+test("trip search opens a result's own page", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();
   await page.getByRole("button", { name: "Search this trip" }).click();
@@ -56,7 +56,7 @@ test("trip search opens a result on its day", async ({ page }) => {
   await expect(search.getByRole("link", { name: /Chicago → Zürich/ })).toBeVisible();
   await page.screenshot({ path: screenshotPath("20-trip-search"), fullPage: true });
   await search.getByRole("link", { name: /Chicago → Zürich/ }).click();
-  await expect(page.getByRole("button", { name: /Chicago → Zürich/, expanded: true })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Chicago → Zürich" })).toBeVisible();
 });
 
 test("trip timeline", async ({ page }) => {
@@ -74,16 +74,44 @@ test("day detail page", async ({ page }) => {
   await expect(page.getByRole("list", { name: /^Plans for/ })).toBeVisible();
   await page.screenshot({ path: screenshotPath("03-day-detail"), fullPage: true });
 
-  // Expand the first entry to show its details, including the mini-map preview.
-  await page.getByRole("list", { name: /^Plans for/ }).getByRole("button").first().click();
-  await page.waitForTimeout(1000); // let the mini-map tile load
-  await page.screenshot({ path: screenshotPath("04-day-detail-entry-expanded"), fullPage: true });
-
   // ← at the top right goes back up to the whole timeline.
   const timelineUrl = page.url().replace(/\/days\/.*$/, "");
   await page.getByRole("link", { name: "Back to the timeline" }).click();
   await expect(page).toHaveURL(timelineUrl);
   await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
+});
+
+test("an entry's own page: a flight, a stay, an activity, and back to the day", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("list", { name: "Trip days" }).getByRole("link", { name: /Mon, May 11/ }).click();
+  await expect(page).toHaveURL(/\/days\/2026-05-11$/);
+  const plans = page.getByRole("list", { name: "Plans for Mon, May 11" });
+
+  // The overnight flight's arrival opens the flight.
+  await plans.getByRole("link", { name: /Arrive · Zürich Airport/ }).click();
+  const flight = page.getByRole("article", { name: "Chicago → Zürich" });
+  await expect(flight).toBeVisible();
+  await expect(flight.getByRole("region", { name: "When" })).toContainText("8h 45m");
+  await page.waitForTimeout(1500); // the photo and the mini maps
+  await page.screenshot({ path: screenshotPath("04-entry-flight"), fullPage: true });
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL(/\/days\/2026-05-11$/);
+
+  await plans.getByRole("link", { name: /Check in · Hotel Goldener/ }).click();
+  await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: screenshotPath("04a-entry-stay"), fullPage: true });
+  await page.getByRole("button", { name: "Back" }).click();
+
+  await plans.getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
+  const dinner = page.getByRole("article", { name: "Dinner at Kornhauskeller" });
+  await expect(dinner).toBeVisible();
+  await expect(dinner.getByRole("button", { name: "Edit activity" })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: screenshotPath("04b-entry-activity"), fullPage: true });
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
 });
 
 test("day detail: swipe between days", async ({ browser }) => {
@@ -127,17 +155,11 @@ test("day detail: swipe between days", async ({ browser }) => {
   await expect(page.getByRole("heading", { name: "Tue, May 12" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("03b-day-after-swipe") });
 
-  // Regression: the day grows as its entries open, and the page scrolls to
-  // the end of it (a fixed carousel height once clipped it).
-  const plans = page.getByRole("list", { name: "Plans for Tue, May 12" });
-  const closed = plans.locator(":scope > li button[aria-expanded='false']");
-  while ((await closed.count()) > 0) await closed.first().click();
+  // Regression: the page scrolls to the end of the day (a fixed carousel
+  // height once clipped it).
   const editDay = page.getByRole("button", { name: "Edit Tue, May 12 title and summary" });
   await editDay.scrollIntoViewIfNeeded();
   await expect(editDay).toBeInViewport();
-  const scroll = await page.locator("[data-scroll-root]").evaluate((el) => [el.scrollHeight, el.clientHeight]);
-  expect(scroll[0]).toBeGreaterThan(scroll[1]);
-  await page.screenshot({ path: screenshotPath("03c-day-expanded-scrolled") });
 
   // Swiping replaced the URL, so Back goes to the timeline, not the last day.
   await page.goBack();
@@ -153,17 +175,15 @@ test("stays and travel coverage views", async ({ page }) => {
   await page.getByRole("button", { name: "Stays" }).click();
   await page.screenshot({ path: screenshotPath("05-stays-view"), fullPage: true });
 
-  // A covered night opens a quick read-only look first, not the edit form.
+  // A covered night opens the stay's own page, where Edit is.
   await page.locator("#day-2026-05-11").getByRole("button").click();
-  const details = page.getByRole("dialog", { name: "Hotel Goldener Schlüssel" });
-  await expect(details).toBeVisible();
-  await page.waitForTimeout(1000); // let the mini-map tile load
-  await page.screenshot({ path: screenshotPath("05a-stays-view-details"), fullPage: true });
-
-  await details.getByRole("button", { name: "Edit" }).click();
+  await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit stay" }).click();
   await expect(page.getByRole("dialog", { name: "Edit stay" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("05a1-stays-view-edit-stay"), fullPage: true });
   await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Stays" }).click();
 
   // An uncovered night opens the add form instead.
   await page.locator("#day-2026-05-10").getByRole("button").click();
@@ -197,6 +217,9 @@ test("bottom nav and map page", async ({ page }) => {
   await expect(infoWindow.getByRole("link", { name: "View day" })).toBeVisible();
   await expect(infoWindow.getByRole("link", { name: "Directions" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("07a-map-info-window"), fullPage: true });
+  // Details opens that place's entry page.
+  await infoWindow.getByRole("link", { name: "Details" }).click();
+  await expect(page.getByRole("article")).toBeVisible();
 });
 
 test("map search and filters", async ({ page }) => {
@@ -424,8 +447,8 @@ test("editing: two people change the same activity; the second gets a warning", 
     // Both open the dinner's edit form.
     const openEdit = async (page) => {
       await page.goto(`/trips/${tripId}/days/2026-05-11`);
-      await page.getByRole("button", { name: new RegExp(DINNER) }).click();
-      await page.getByRole("button", { name: `Edit ${DINNER}` }).click();
+      await page.getByRole("link", { name: new RegExp(DINNER) }).click();
+      await page.getByRole("button", { name: "Edit activity" }).click();
       return page.getByRole("dialog");
     };
     const ownerForm = await openEdit(owner);
@@ -443,8 +466,8 @@ test("editing: two people change the same activity; the second gets a warning", 
     await expect(owner.getByText("Test Admin changed this just now. Showing the latest.")).toBeVisible();
     await expect(ownerForm).toBeHidden();
     await owner.screenshot({ path: screenshotPath("24-edit-conflict"), fullPage: true });
-    // The dinner is still open, now with the editor's title and who changed it.
-    await expect(owner.getByText("Dinner at 8 (editor)")).toBeVisible();
+    // The dinner's page is still open, now with the editor's title and who changed it.
+    await expect(owner.getByRole("article", { name: "Dinner at 8 (editor)" })).toBeVisible();
     await expect(owner.getByText(/^Edited by Test Admin, /)).toBeVisible();
   } finally {
     // Put the dinner back and leave, so the dev trip is as it was.
