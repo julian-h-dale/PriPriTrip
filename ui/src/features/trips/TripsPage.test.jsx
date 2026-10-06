@@ -172,6 +172,27 @@ describe("TripsPage", () => {
     expect(names.findIndex((n) => n.includes("Later"))).toBeLessThan(names.findIndex((n) => n.includes("Old")));
   });
 
+  it("counts down to an upcoming trip's first day, one unit at a time", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 5, 12, 0)); // noon Oct 5, on this machine's clock
+    try {
+      const trips = [
+        { ...TRIP, id: "okinawa", name: "Okinawa trip", startDate: "2026-10-29", endDate: "2026-11-13", timezone: "Asia/Tokyo" },
+        { ...TRIP, id: "soon", name: "Tomorrow trip", startDate: "2026-10-06", endDate: "2026-10-08", timezone: "UTC" },
+        { ...TRIP, id: "now", name: "Current trip", startDate: "2026-10-01", endDate: "2026-10-09", timezone: "UTC" },
+      ];
+      apiClient.get.mockResolvedValue({ data: trips });
+      renderPage();
+      const upcoming = await screen.findByRole("region", { name: "Upcoming" });
+      const card = (name) => within(upcoming).getByText(name).closest("li");
+      expect(card("Okinawa trip")).toHaveTextContent("23 days to go");
+      expect(card("Tomorrow trip")).toHaveTextContent("12 hours to go");
+      expect(screen.getByRole("region", { name: "Active" })).not.toHaveTextContent("to go");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("hides the Active group when nothing is under way", async () => {
     apiClient.get.mockResolvedValue({ data: [TRIP] });
     renderPage();

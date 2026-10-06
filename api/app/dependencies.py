@@ -174,8 +174,8 @@ async def get_own_memory(
     user: UserRecord = Depends(current_active_user),
 ) -> Memory:
     """A live memory on a trip the user can see, written by them. Someone
-    else's memory on the same trip is 403 (they can see it exists); anything
-    else is 404."""
+    else's memory they can see is 403 (they know it exists); anything else —
+    including another person's private memory, to a viewer — is 404."""
     memory = await db.scalar(
         select(Memory).where(
             Memory.id == memory_id, Memory.trip_id == viewable.trip.id, active(Memory)
@@ -184,10 +184,24 @@ async def get_own_memory(
     if memory is None:
         raise _not_found()
     if memory.user_id != user.id:
+        if viewable.role == "viewer" and not memory.is_public:
+            raise _not_found()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Only its author can change a memory"
         )
     return memory
+
+
+async def get_journal_trip(
+    viewable: ViewableTrip = Depends(get_viewable_trip),
+) -> ViewableTrip:
+    """A trip the current user may write memories on: the owner and editors.
+    Viewers follow along (public memories only) and get 403."""
+    if viewable.role == "viewer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Viewers can't add memories"
+        )
+    return viewable
 
 
 async def if_match_version(if_match: str | None = Header(default=None)) -> int:

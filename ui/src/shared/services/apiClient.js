@@ -2,7 +2,7 @@ import axios from "axios";
 import { appConfig } from "@/shared/config/appConfig";
 import { notify } from "@/shared/notificationSlice";
 import { setError } from "@/shared/errorSlice";
-import { clearAuth } from "@/features/auth/authSlice";
+import { clearAuth, passwordChangeRequired } from "@/features/auth/authSlice";
 
 // The store is injected in main.jsx to avoid a circular import.
 let store;
@@ -39,6 +39,10 @@ apiClient.interceptors.response.use(
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         window.location.assign("/login");
       }
+    } else if (status === 403 && error.response?.data?.detail === "PASSWORD_CHANGE_REQUIRED") {
+      // A temporary password (an invite or a reset): the app shows the
+      // "choose a new password" screen instead of an error toast.
+      store?.dispatch(passwordChangeRequired());
     } else if (!error.response && error.config?.offlineOk) {
       // A request the offline cache backs, failing for want of a network:
       // the offline bar says so — an error toast on every load would be noise.

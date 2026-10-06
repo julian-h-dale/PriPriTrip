@@ -9,13 +9,23 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import admin, auth_refresh, config, memories, photos, sharing, trips
-from app.schemas import UserCreate, UserRead, UserUpdate
+from app.routers import (
+    account,
+    admin,
+    auth_refresh,
+    config,
+    memories,
+    photos,
+    sharing,
+    trips,
+    weather,
+)
+from app.schemas import UserRead, UserUpdate
 from app.settings import get_app_settings
-from app.users import auth_backend, fastapi_users
+from app.users import auth_backend, fastapi_users, require_password_ok
 
 
 @asynccontextmanager
@@ -35,27 +45,31 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Auth + register routers first.
+    # Auth routers first. No register router: accounts are made by admins
+    # (POST /admin/users), never by sign-up.
     application.include_router(
         fastapi_users.get_auth_router(auth_backend), prefix="/auth", tags=["auth"]
     )
-    application.include_router(
-        fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"]
-    )
     application.include_router(auth_refresh.router)
+    application.include_router(account.router)
     application.include_router(
         fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"]
     )
 
     # Then feature routers.
     # Before trips.router: its POST /trips/join must not be read as a trip id.
-    application.include_router(sharing.router)
-    application.include_router(trips.router)
-    application.include_router(memories.router)
+    # Every feature router is behind require_password_ok: someone with an
+    # admin-issued temporary password must change it first. (Photos guard
+    # their upload/delete routes themselves: serving is login-free.)
+    password_ok = [Depends(require_password_ok)]
+    application.include_router(sharing.router, dependencies=password_ok)
+    application.include_router(trips.router, dependencies=password_ok)
+    application.include_router(memories.router, dependencies=password_ok)
     application.include_router(photos.router)
+    application.include_router(weather.router, dependencies=password_ok)
     application.include_router(trips.schema_router)
-    application.include_router(config.router)
-    application.include_router(admin.router)
+    application.include_router(config.router, dependencies=password_ok)
+    application.include_router(admin.router, dependencies=password_ok)
 
     @application.get("/health", tags=["health"])
     async def health() -> dict[str, str]:

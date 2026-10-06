@@ -1,5 +1,6 @@
-"""The trip journal. Anyone on a trip (owner or viewer) reads and adds
-memories; only a memory's author edits or deletes it. Thin handlers — logic
+"""The trip journal. The owner and editors read every memory and add their
+own; viewers read only public ones and add none. Only a memory's author
+edits or deletes it. Thin handlers — logic
 in services/memories.py, access in app/dependencies.py."""
 
 from __future__ import annotations
@@ -8,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import ViewableTrip, get_own_memory, get_viewable_trip
+from app.dependencies import ViewableTrip, get_journal_trip, get_own_memory, get_viewable_trip
 from app.models import Memory, UserRecord
 from app.schemas import MemoryCreate, MemoryRead, MemoryUpdate
 from app.services import memories as memories_service
@@ -23,15 +24,16 @@ async def list_memories(
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> list[MemoryRead]:
-    """Everyone's memories on the trip, oldest first (server UTC time)."""
-    return await memories_service.list_memories(db, viewable.trip.id, user.id)
+    """The trip's memories the caller may see, oldest first (server UTC time):
+    all of them for the owner and editors, public ones for viewers."""
+    return await memories_service.list_memories(db, viewable.trip.id, user.id, viewable.role)
 
 
 @router.post("", response_model=MemoryRead, status_code=status.HTTP_201_CREATED)
 async def create_memory(
     body: MemoryCreate,
     response: Response,
-    viewable: ViewableTrip = Depends(get_viewable_trip),
+    viewable: ViewableTrip = Depends(get_journal_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> MemoryRead:
@@ -47,6 +49,7 @@ async def create_memory(
             memory_id=body.id,
             created_at=body.created_at,
             location=body.location,
+            is_public=body.is_public,
         )
     except memories_service.MemoryIdTaken:
         raise HTTPException(status.HTTP_409_CONFLICT, "That memory id is already taken") from None
@@ -65,7 +68,9 @@ async def update_memory(
     # `location: null` removes it; leaving the field out keeps it. A new
     # location can't be set on an edit (it's where the memory was written).
     clear = "location" in body.model_fields_set and body.location is None
-    return await memories_service.update_memory(db, memory, user, body.text, clear_location=clear)
+    return await memories_service.update_memory(
+        db, memory, user, body.text, clear_location=clear, is_public=body.is_public
+    )
 
 
 @router.delete("/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -18,7 +18,7 @@ from app.models import Memory, UserRecord
 from app.photo_store import PhotoStore, Variant, get_photo_store
 from app.schemas import PhotoRead
 from app.services import photos as photos_service
-from app.users import current_active_user
+from app.users import current_active_user, require_password_ok
 
 router = APIRouter(tags=["journal"])
 
@@ -31,6 +31,7 @@ _CACHE = "private, max-age=31536000, immutable"
     "/trips/{trip_id}/memories/{memory_id}/photos",
     response_model=PhotoRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_password_ok)],
 )
 async def upload_photo(
     response: Response,
@@ -62,6 +63,7 @@ async def upload_photo(
 @router.delete(
     "/trips/{trip_id}/memories/{memory_id}/photos/{photo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_password_ok)],
 )
 async def delete_photo(
     photo_id: uuid.UUID,

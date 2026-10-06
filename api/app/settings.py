@@ -42,6 +42,9 @@ class AppSettings(BaseSettings):
     # Markers on the map view. Not secret; same public-by-design handling as
     # the key above.
     google_maps_map_id: str = ""
+    # OpenWeatherMap key (One Call 3.0), used only by the server for the trip
+    # weather page. Optional: without it the weather page says it isn't set up.
+    openweather_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

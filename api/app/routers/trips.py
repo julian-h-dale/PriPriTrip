@@ -165,7 +165,7 @@ async def export_trip(
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
     """The trip as a downloadable trip document, ready to import elsewhere."""
-    doc = await trips_service.export_trip(db, viewable.trip.id)
+    doc = await trips_service.export_trip(db, viewable.trip.id, viewable.role)
     slug = re.sub(r"[^a-z0-9]+", "-", doc.name.lower()).strip("-") or "trip"
     return JSONResponse(
         doc.model_dump(mode="json", by_alias=True, exclude_none=True),

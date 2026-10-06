@@ -63,6 +63,29 @@ export const refreshToken = createAsyncThunk(
   { condition: (_, { getState }) => tokenNeedsRefresh(getState().auth.token) }
 );
 
+/**
+ * Choose a new password (required while holding an admin-issued temporary
+ * one). Answers with a fresh token. A wrong current password (400) or a weak
+ * new one (422) comes back as `{ message }` for the form to show.
+ */
+export const changePassword = createAsyncThunk(
+  "auth/changePassword",
+  async ({ currentPassword, newPassword }, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.post(
+        "/auth/change-password",
+        { currentPassword, newPassword },
+        { silent: true, handles: [400, 422] }
+      );
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+      return data.access_token;
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      return rejectWithValue({ message: typeof detail === "string" ? detail : "Couldn’t change the password" });
+    }
+  }
+);
+
 export const fetchMe =createAsyncThunk("auth/fetchMe", async () => {
   const { data } = await apiClient.get("/users/me", { silent: true, offlineOk: true });
   return data;
@@ -80,6 +103,10 @@ const authSlice = createSlice({
       state.token = null;
       state.user = null;
       localStorage.removeItem(TOKEN_KEY);
+    },
+    /** The server said this account must change its password first (403 PASSWORD_CHANGE_REQUIRED). */
+    passwordChangeRequired(state) {
+      state.user = { ...(state.user ?? {}), must_change_password: true };
     },
   },
   extraReducers: (builder) => {
@@ -104,9 +131,16 @@ const authSlice = createSlice({
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.user = action.payload;
+      })
+      .addCase(changePassword.fulfilled, (state, action) => {
+        state.token = action.payload;
+        if (state.user) state.user.must_change_password = false;
       });
   },
 });
 
-export const { clearAuth } = authSlice.actions;
+export const { clearAuth, passwordChangeRequired } = authSlice.actions;
+
+/** True while the signed-in account still has a temporary password. */
+export const selectMustChangePassword = (state) => Boolean(state.auth.user?.must_change_password);
 export default authSlice.reducer;

@@ -147,7 +147,7 @@ describe("editing a memory's location", () => {
     expect(screen.getByText("Location will be removed")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(apiClient.put).toHaveBeenCalled());
-    expect(apiClient.put.mock.calls[0][1]).toEqual({ text: "Breakfast", location: null });
+    expect(apiClient.put.mock.calls[0][1]).toEqual({ text: "Breakfast", isPublic: false, location: null });
     expect(permissionState).not.toHaveBeenCalled();
   });
 
@@ -157,6 +157,6 @@ describe("editing a memory's location", () => {
     await user.type(screen.getByLabelText("What happened?"), "!");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(apiClient.put).toHaveBeenCalled());
-    expect(apiClient.put.mock.calls[0][1]).toEqual({ text: "Breakfast!" });
+    expect(apiClient.put.mock.calls[0][1]).toEqual({ text: "Breakfast!", isPublic: false });
   });
 });

@@ -6,6 +6,24 @@
 
 ## Status
 
+- **Run stage 11 ✅ (2026-10-05): Phases 54–55**: admin invites, password
+  resets, the forced password change, public sign-up closed. Details in
+  `implementation_plan.md`, "Run stage 11 / Built". Weather is checked live
+  with the real key (one fix: `day_summary` sends decimals). **Waiting on
+  Julian:** deploy (with Run stage 10), and a look at 375 px. Not pushed.
+- **Run stage 10 ✅ (2026-10-05): Phases 46–53** on branch
+  **`image-downloader`**: public/private memories and view codes, the Pi
+  photo backup, weather, currency, countdown. One commit per phase, `make
+  verify` green, e2e passing. Details and deviations:
+  `implementation_plan.md`, "Run stage 10 / Built".
+  - **Waiting on Julian:**
+    - deploy 46–53 together;
+    - PriPri rejoins with the edit code if they're a viewer today;
+    - set `OPENWEATHER_API_KEY` (locally and as a Fly secret), then check
+      the weather page live (the API spike couldn't run without a key);
+    - set up the Pi (README, "Photo backup to the Pi");
+    - check the new screens at 375 px.
+  - Not pushed.
 - **Phase 44 ✅ (2026-10-05): `make export-trip` / `make list-trips`**
   (`scripts/trip-client.sh`; `TRIP_EMAIL`/`TRIP_PASSWORD`, `API_URL`, `OUT`;
   README "Back up or move a trip"). Tried against a local API: list, export,

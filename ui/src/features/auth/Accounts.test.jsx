@@ -1,0 +1,213 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { configureStore } from "@reduxjs/toolkit";
+import adminReducer from "@/features/admin/adminSlice";
+import authReducer, { passwordChangeRequired } from "@/features/auth/authSlice";
+import journalReducer from "@/features/journal/journalSlice";
+import errorReducer from "@/shared/errorSlice";
+import networkReducer from "@/shared/networkSlice";
+import notificationReducer from "@/shared/notificationSlice";
+import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
+import { AdminRoute } from "@/shared/components/AdminRoute";
+import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
+import { TopBar } from "@/shared/components/TopBar";
+import { apiClient } from "@/shared/services/apiClient";
+
+vi.mock("@/shared/services/apiClient", () => ({
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}));
+
+const ADMIN = { id: "a1", email: "admin@example.com", is_superuser: true, is_active: true, must_change_password: false };
+const USER = { id: "u1", email: "user@example.com", is_superuser: false, is_active: true, must_change_password: false };
+
+function renderAt(path, user, routes) {
+  const store = configureStore({
+    reducer: {
+      auth: authReducer,
+      admin: adminReducer,
+      journal: journalReducer,
+      network: networkReducer,
+      error: errorReducer,
+      notification: notificationReducer,
+    },
+    preloadedState: { auth: { token: "t", user, status: "idle" } },
+  });
+  render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>{routes}</Routes>
+      </MemoryRouter>
+    </Provider>
+  );
+  return store;
+}
+
+const withBar = (path, user) =>
+  renderAt(path, user, [
+    <Route key="t" path="/trips" element={<TopBar title="Trips" />} />,
+    <Route key="d" path="/trips/:id" element={<TopBar title="A trip" />} />,
+  ]);
+
+async function openMenu() {
+  await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+  return screen.getByRole("navigation", { name: "Menu" });
+}
+
+beforeEach(() => vi.clearAllMocks());
+
+describe("the drawer", () => {
+  it("offers Invite someone to admins on the trips screen only", async () => {
+    withBar("/trips", ADMIN);
+    expect(within(await openMenu()).getByRole("button", { name: "Invite someone" })).toBeInTheDocument();
+  });
+
+  it("has no Invite inside a trip", async () => {
+    withBar("/trips/t1", ADMIN);
+    expect(within(await openMenu()).queryByRole("button", { name: "Invite someone" })).not.toBeInTheDocument();
+  });
+
+  it("has no Invite for non-admins", async () => {
+    withBar("/trips", USER);
+    expect(within(await openMenu()).queryByRole("button", { name: "Invite someone" })).not.toBeInTheDocument();
+  });
+
+  it("invites someone and shows the temporary password once", async () => {
+    const user = userEvent.setup();
+    apiClient.post.mockResolvedValue({
+      data: { user: { ...USER, id: "n1", email: "inlaw@example.com", must_change_password: true }, temporaryPassword: "k7mq-x2pd-9rhw" },
+    });
+    withBar("/trips", ADMIN);
+    await user.click(within(await openMenu()).getByRole("button", { name: "Invite someone" }));
+    const dialog = screen.getByRole("dialog", { name: "Invite someone" });
+    await user.type(within(dialog).getByLabelText("Email"), "inlaw@example.com");
+    await user.type(within(dialog).getByLabelText("Name (optional)"), "Grandma");
+    await user.click(within(dialog).getByRole("button", { name: "Create account" }));
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/admin/users",
+      { email: "inlaw@example.com", name: "Grandma" },
+      expect.objectContaining({ handles: [409, 422] })
+    );
+    const sent = await screen.findByRole("dialog", { name: "Send them this" });
+    expect(within(sent).getByText("k7mq-x2pd-9rhw")).toBeInTheDocument();
+    expect(within(sent).getByRole("button", { name: "Copy temporary password" })).toBeInTheDocument();
+  });
+
+  it("shows why an invite was refused", async () => {
+    const user = userEvent.setup();
+    apiClient.post.mockRejectedValue({ response: { status: 409, data: { detail: "Someone already has that email" } } });
+    withBar("/trips", ADMIN);
+    await user.click(within(await openMenu()).getByRole("button", { name: "Invite someone" }));
+    const dialog = screen.getByRole("dialog", { name: "Invite someone" });
+    await user.type(within(dialog).getByLabelText("Email"), "user@example.com");
+    await user.click(within(dialog).getByRole("button", { name: "Create account" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Someone already has that email");
+  });
+
+  it("lets anyone change their password, checking it first", async () => {
+    const user = userEvent.setup();
+    apiClient.post.mockResolvedValue({ data: { access_token: "new-token" } });
+    const store = withBar("/trips/t1", USER);
+    await user.click(within(await openMenu()).getByRole("button", { name: "Change password" }));
+    const dialog = screen.getByRole("dialog", { name: "Change password" });
+    await user.type(within(dialog).getByLabelText("Current password"), "old password");
+    await user.type(within(dialog).getByLabelText("New password"), "short");
+    await user.type(within(dialog).getByLabelText("New password again"), "short");
+    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("at least 8");
+    await user.clear(within(dialog).getByLabelText("New password"));
+    await user.type(within(dialog).getByLabelText("New password"), "a longer one");
+    await user.clear(within(dialog).getByLabelText("New password again"));
+    await user.type(within(dialog).getByLabelText("New password again"), "a longer one!");
+    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("don’t match");
+    await user.clear(within(dialog).getByLabelText("New password again"));
+    await user.type(within(dialog).getByLabelText("New password again"), "a longer one");
+    await user.click(within(dialog).getByRole("button", { name: "Change password" }));
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/auth/change-password",
+      { currentPassword: "old password", newPassword: "a longer one" },
+      expect.anything()
+    );
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(store.getState().auth.token).toBe("new-token");
+    expect(store.getState().notification.items.map((n) => n.message)).toContain("Password changed");
+  });
+});
+
+describe("the forced password change", () => {
+  const app = (user) =>
+    renderAt("/trips", user, [
+      <Route
+        key="t"
+        path="/trips"
+        element={
+          <ProtectedRoute>
+            <p>The trips list</p>
+          </ProtectedRoute>
+        }
+      />,
+    ]);
+
+  it("replaces the app until a new password is chosen", async () => {
+    const user = userEvent.setup();
+    apiClient.post.mockResolvedValue({ data: { access_token: "fresh" } });
+    app({ ...USER, must_change_password: true });
+    expect(screen.getByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
+    expect(screen.queryByText("The trips list")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Temporary password"), "k7mq-x2pd-9rhw");
+    await user.type(screen.getByLabelText("New password"), "my own password");
+    await user.type(screen.getByLabelText("New password again"), "my own password");
+    await user.click(screen.getByRole("button", { name: "Save password" }));
+    expect(await screen.findByText("The trips list")).toBeInTheDocument();
+  });
+
+  it("shows the server's reason, and stays put", async () => {
+    const user = userEvent.setup();
+    apiClient.post.mockRejectedValue({ response: { status: 400, data: { detail: "Your current password isn't right" } } });
+    app({ ...USER, must_change_password: true });
+    await user.type(screen.getByLabelText("Temporary password"), "wrong");
+    await user.type(screen.getByLabelText("New password"), "my own password");
+    await user.type(screen.getByLabelText("New password again"), "my own password");
+    await user.click(screen.getByRole("button", { name: "Save password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("current password isn't right");
+    expect(screen.queryByText("The trips list")).not.toBeInTheDocument();
+  });
+
+  it("a 403 PASSWORD_CHANGE_REQUIRED from the server turns it on", () => {
+    const state = authReducer({ token: "t", user: USER, status: "idle" }, passwordChangeRequired());
+    expect(state.user.must_change_password).toBe(true);
+  });
+
+  it("also guards the admin pages", () => {
+    renderAt("/admin", { ...ADMIN, must_change_password: true }, [
+      <Route key="a" path="/admin" element={<AdminRoute><p>Admin stuff</p></AdminRoute>} />,
+    ]);
+    expect(screen.getByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
+    expect(screen.queryByText("Admin stuff")).not.toBeInTheDocument();
+  });
+});
+
+describe("resetting a password on the Admin page", () => {
+  it("needs a second tap, then shows the new temporary password; not for yourself", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({ data: [ADMIN, { ...USER, must_change_password: false }] });
+    apiClient.post.mockResolvedValue({ data: { temporaryPassword: "abcd-efgh-2345" } });
+    renderAt("/admin", ADMIN, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
+    const userRow = (await screen.findByText("user@example.com")).closest("tr");
+    const adminRow = screen.getAllByText("admin@example.com")[0].closest("tr");
+    expect(within(adminRow).queryByRole("button", { name: /Reset/ })).not.toBeInTheDocument();
+
+    await user.click(within(userRow).getByRole("button", { name: "Reset user@example.com’s password" }));
+    expect(apiClient.post).not.toHaveBeenCalled();
+    await user.click(within(userRow).getByRole("button", { name: "Confirm resetting user@example.com’s password" }));
+    expect(apiClient.post).toHaveBeenCalledWith("/admin/users/u1/reset-password", null, { silent: true });
+    const dialog = await screen.findByRole("dialog", { name: "Password reset" });
+    expect(within(dialog).getByText("abcd-efgh-2345")).toBeInTheDocument();
+    expect(within(userRow).getByText("Must change")).toBeInTheDocument();
+  });
+});

@@ -5,6 +5,7 @@ import { BedDouble, ChevronRight, DoorOpen, Info, Navigation } from "lucide-reac
 import { nextUp, referenceDay, tonight, untilLabel } from "@/features/today/todayView";
 import { MemoryDialog } from "@/features/journal/MemoryDialog";
 import { NewMemoryButton } from "@/features/journal/JournalPage";
+import { canWriteMemories } from "@/features/journal/journalSlice";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { dayCities } from "@/features/timeline/dayCities";
 import { describeEntry } from "@/features/timeline/describeEntry";
@@ -155,7 +156,7 @@ function TodayView({ trip }) {
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">{ref.active ? "Today" : "Day 1 preview"}</h1>
           {/* Spur of the moment: one tap to write it down. */}
-          <NewMemoryButton onClick={() => setWriting(true)} />
+          {canWriteMemories(trip) && <NewMemoryButton onClick={() => setWriting(true)} />}
         </div>
         <p className="text-sm text-muted-foreground">
           {formatDayHeading(ref.date)} · Day {dayNumber} of {dayCount}

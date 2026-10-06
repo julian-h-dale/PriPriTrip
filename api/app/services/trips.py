@@ -195,7 +195,21 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
     # Edits return the trip as "owner" by default; reads pass the caller's
     # own role so the UI knows whether it may edit.
     trip.role = role
+    if role == "viewer":
+        _without_booking_refs(trip)
     return trip
+
+
+def _without_booking_refs(trip: TripRead) -> None:
+    """Viewers follow along; they don't need (and a forwarded link shouldn't
+    carry) the confirmation numbers that are enough to change a booking."""
+    entries: list[StayDoc | TravelDoc | ItemDoc] = [
+        *trip.stays,
+        *trip.travels,
+        *(item for day in trip.days for item in day.items),
+    ]
+    for entry in entries:
+        entry.confirmation_number = None
 
 
 def _doc_part(model: type[Any], read: Any) -> Any:
@@ -203,15 +217,15 @@ def _doc_part(model: type[Any], read: Any) -> Any:
     return model.model_validate(read.model_dump(include=set(model.model_fields), by_alias=True))
 
 
-async def export_trip(db: AsyncSession, trip_id: uuid.UUID) -> TripDocument:
+async def export_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -> TripDocument:
     """The trip as a clean trip document: what import takes, nothing more.
 
     Built from the same read as the app, then narrowed to the document models'
     own fields, so a field added to the format is exported without a second
     list to keep in step. Plans only: memories, photos and members aren't in
-    the document.
+    the document. A viewer's export has no confirmation numbers, as their read.
     """
-    trip = await get_trip(db, trip_id)
+    trip = await get_trip(db, trip_id, role)
     days = [
         DayDoc.model_validate(
             {

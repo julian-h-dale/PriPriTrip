@@ -446,48 +446,57 @@ test("editing: two people change the same activity; the second gets a warning", 
   }
 });
 
-test("journal: a viewer writes a memory on Today, the owner reads it", async ({ browser }) => {
+test("journal: a public memory reaches the viewer, a private one doesn't", async ({ browser }) => {
   const ownerContext = await browser.newContext();
   const viewerContext = await browser.newContext();
-  const text = `E2E memory ${Date.now()}`;
+  const stamp = Date.now();
+  const privateText = `E2E private ${stamp}`;
+  const publicText = `E2E public ${stamp}`;
+  const owner = await ownerContext.newPage();
   const viewer = await viewerContext.newPage();
+  const written = [];
+  let tripId = null;
+  owner.on("response", async (r) => {
+    if (r.request().method() === "POST" && /\/memories$/.test(r.url()) && r.ok()) written.push(await r.json());
+  });
   try {
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    tripId = new URL(owner.url()).pathname.split("/")[2];
+    await owner.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Today" }).click();
+    for (const [text, shared] of [
+      [privateText, false],
+      [publicText, true],
+    ]) {
+      await owner.getByRole("button", { name: "New memory" }).click();
+      await owner.getByLabel("What happened?").fill(text);
+      if (shared) await owner.getByRole("switch", { name: "Visible to viewers" }).click();
+      if (shared) {
+        await owner.waitForTimeout(300); // let the switch finish sliding
+        await owner.screenshot({ path: screenshotPath("25-memory-public-switch") });
+      }
+      await owner.getByRole("button", { name: "Save" }).click();
+      await expect(owner.getByRole("dialog")).toHaveCount(0);
+    }
+    await expect.poll(() => written.length).toBe(2);
+
     await login(viewer, SEED_VIEWER);
     await (await tripLink(viewer, SAMPLE_TRIP)).click();
     const nav = viewer.getByRole("navigation", { name: "Trip" });
     await nav.getByRole("link", { name: "Today" }).click();
-    await viewer.getByRole("button", { name: "New memory" }).click();
-    await viewer.getByLabel("What happened?").fill(text);
-    await viewer.getByRole("button", { name: "Save" }).click();
-    await expect(viewer.getByRole("dialog")).toHaveCount(0);
-
-    const owner = await ownerContext.newPage();
-    await login(owner);
-    await (await tripLink(owner, SAMPLE_TRIP)).click();
-    await owner.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Journal" }).click();
-    const card = owner.getByRole("listitem").filter({ hasText: text });
-    await expect(card).toContainText(SEED_VIEWER.email);
-    // Someone else's memory: the owner can't edit or delete it.
-    await expect(card.getByRole("button", { name: "Memory options" })).toHaveCount(0);
-    await owner.screenshot({ path: screenshotPath("24-journal"), fullPage: true });
+    await viewer.getByRole("heading", { level: 1 }).waitFor();
+    await expect(viewer.getByRole("button", { name: "New memory" })).toHaveCount(0);
+    await nav.getByRole("link", { name: "Journal" }).click();
+    await expect(viewer.getByText("What the travelers have shared")).toBeVisible();
+    await expect(viewer.getByRole("listitem").filter({ hasText: publicText })).toBeVisible();
+    await expect(viewer.getByRole("listitem").filter({ hasText: privateText })).toHaveCount(0);
+    await viewer.screenshot({ path: screenshotPath("24-journal-viewer"), fullPage: true });
   } finally {
-    // Clean up through the UI as its author.
-    await viewer.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Journal" }).click();
-    await viewer.getByRole("heading", { name: "Journal" }).waitFor();
-    const mine = viewer.getByRole("listitem").filter({ hasText: text });
-    // Wait for the list to load before deciding there's nothing to clean up.
-    await mine.first().waitFor({ timeout: 5000 }).catch(() => {});
-    if (await mine.count()) {
-      await mine.getByRole("button", { name: "Memory options" }).click();
-      await viewer.getByRole("menuitem", { name: "Delete" }).click();
-      // Deleting goes through the outbox: wait for the server to confirm before
-      // the browser closes (a real phone would just send it next time).
-      const deleted = viewer.waitForResponse(
-        (r) => r.request().method() === "DELETE" && r.url().includes("/memories/")
-      );
-      await viewer.getByRole("dialog", { name: "Delete memory?" }).getByRole("button", { name: "Delete" }).click();
-      await expect(viewer.getByRole("listitem").filter({ hasText: text })).toHaveCount(0);
-      expect((await deleted).status()).toBe(204);
+    const token = await owner.evaluate(() => localStorage.getItem("auth_token")).catch(() => null);
+    for (const m of token && tripId ? written : []) {
+      await owner.request.delete(`${API_URL}/trips/${tripId}/memories/${m.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }
     await ownerContext.close();
     await viewerContext.close();

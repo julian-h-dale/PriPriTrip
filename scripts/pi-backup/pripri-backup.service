@@ -1,0 +1,17 @@
+# Installed by scripts/pi-backup/install.sh (@USER@ and @BACKUP_DIR@ filled in).
+[Unit]
+Description=Back up PriPriTrip photos and journals to the backup drive
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@USER@
+EnvironmentFile=/etc/pripri-backup.env
+ExecStart=/usr/bin/python3 /opt/pripri-backup/pripri_backup.py
+# Read-only everywhere except the drive.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths=@BACKUP_DIR@

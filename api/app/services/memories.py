@@ -14,7 +14,7 @@ import datetime as dt
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import active
@@ -46,17 +46,32 @@ def _read(
         photos=photos or [],
         author_email=author.email,
         mine=memory.user_id == viewer_id,
+        is_public=memory.is_public,
     )
 
 
+def visible_to(role: str, user_id: uuid.UUID) -> ColumnElement[bool]:
+    """Which memories a person on the trip may see: the owner and editors see
+    every one; a viewer sees public ones (and any they wrote themselves, from
+    before viewers stopped writing). The one place this rule lives."""
+    if role == "viewer":
+        return or_(Memory.is_public.is_(True), Memory.user_id == user_id)
+    return true()
+
+
+def can_see(memory: Memory, role: str, user_id: uuid.UUID) -> bool:
+    """`visible_to` for one loaded memory."""
+    return role != "viewer" or memory.is_public or memory.user_id == user_id
+
+
 async def list_memories(
-    db: AsyncSession, trip_id: uuid.UUID, viewer_id: uuid.UUID
+    db: AsyncSession, trip_id: uuid.UUID, viewer_id: uuid.UUID, role: str = "owner"
 ) -> list[MemoryRead]:
-    """Every live memory on the trip, everyone's, oldest first."""
+    """Every live memory on the trip the caller may see, oldest first."""
     result = await db.execute(
         select(Memory, UserRecord)
         .join(UserRecord, Memory.user_id == UserRecord.id)
-        .where(Memory.trip_id == trip_id, active(Memory))
+        .where(Memory.trip_id == trip_id, active(Memory), visible_to(role, viewer_id))
         .order_by(Memory.created_at, Memory.id)
     )
     rows = result.tuples().all()
@@ -94,6 +109,7 @@ async def create_memory(
     memory_id: uuid.UUID | None = None,
     created_at: dt.datetime | None = None,
     location: MemoryLocation | None = None,
+    is_public: bool = False,
 ) -> Created:
     if memory_id is not None:
         existing = await db.get(Memory, memory_id)
@@ -121,6 +137,7 @@ async def create_memory(
         lat=location.lat if location else None,
         lng=location.lng if location else None,
         accuracy=location.accuracy if location else None,
+        is_public=is_public,
     )
     db.add(memory)
     await db.commit()
@@ -135,6 +152,7 @@ async def update_memory(
     text: str,
     *,
     clear_location: bool = False,
+    is_public: bool | None = None,
 ) -> MemoryRead:
     """New words (and optionally no location); `created_at` (and so its place
     in the journal) is unchanged. A location can be removed, never added
@@ -142,6 +160,8 @@ async def update_memory(
     memory.text = text
     if clear_location:
         memory.lat = memory.lng = memory.accuracy = None
+    if is_public is not None:
+        memory.is_public = is_public
     memory.updated_at = dt.datetime.now(dt.UTC)
     await db.commit()
     await db.refresh(memory)

@@ -13,10 +13,14 @@ from app.sample_data import load_sample_trip
 from tests.conftest import if_match
 
 
+async def view_code(owner: AsyncClient, trip_id: str) -> str:
+    return str((await owner.get(f"/trips/{trip_id}/view-code")).json()["code"])
+
+
 async def shared_trip(owner: AsyncClient, viewer: AsyncClient) -> dict[str, Any]:
-    """Import the sample as `owner` and have `viewer` join it."""
+    """Import the sample as `owner` and have `viewer` join it with the view code."""
     trip = (await owner.post("/trips/import", json=load_sample_trip())).json()
-    resp = await viewer.post("/trips/join", json={"tripId": trip["id"]})
+    resp = await viewer.post("/trips/join", json={"code": await view_code(owner, trip["id"])})
     assert resp.status_code == 200, resp.text
     return trip
 
@@ -24,9 +28,13 @@ async def shared_trip(owner: AsyncClient, viewer: AsyncClient) -> dict[str, Any]
 # ---- joining ----
 
 
-async def test_joining_by_trip_id_makes_a_viewer(client: AsyncClient, viewer: AsyncClient) -> None:
+async def test_the_view_code_makes_a_viewer(client: AsyncClient, viewer: AsyncClient) -> None:
     trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    resp = await viewer.post("/trips/join", json={"tripId": trip["id"]})
+    code = await view_code(client, trip["id"])
+    assert len(code) == 20 and code != trip["id"]
+    # Made once: asking again gives the same code.
+    assert await view_code(client, trip["id"]) == code
+    resp = await viewer.post("/trips/join", json={"code": f" {code} "})
     assert resp.status_code == 200
     assert resp.json()["role"] == "viewer"
     assert resp.json()["stayCount"] == trip["stayCount"]
@@ -41,7 +49,12 @@ async def test_joining_by_trip_id_makes_a_viewer(client: AsyncClient, viewer: As
 
 async def test_joining_twice_changes_nothing(client: AsyncClient, viewer: AsyncClient) -> None:
     trip = await shared_trip(client, viewer)
-    assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).status_code == 200
+    code = await view_code(client, trip["id"])
+    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 200
+    # The trip's id works for someone already on the trip, and changes nothing.
+    assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).json()[
+        "role"
+    ] == "viewer"
     assert len((await client.get(f"/trips/{trip['id']}/members")).json()) == 1
 
 
@@ -50,13 +63,44 @@ async def test_joining_an_unknown_or_deleted_trip_is_a_404(
 ) -> None:
     assert (await viewer.post("/trips/join", json={"tripId": str(uuid.uuid4())})).status_code == 404
     trip = (await client.post("/trips/import", json=load_sample_trip())).json()
+    code = await view_code(client, trip["id"])
     await client.delete(f"/trips/{trip['id']}")
     assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).status_code == 404
+    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 404
+
+
+async def test_the_trip_id_no_longer_lets_a_new_person_in(
+    client: AsyncClient, viewer: AsyncClient
+) -> None:
+    """It's in every URL, so it can't be revoked: only the codes let people in."""
+    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
+    assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).status_code == 404
+    assert (await viewer.post("/trips/join", json={"code": trip["id"]})).status_code == 404
+    assert (await viewer.get("/trips")).json() == []
+
+
+async def test_a_renewed_view_code_replaces_the_old_one(
+    client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient
+) -> None:
+    trip = await shared_trip(client, viewer)
+    tid = trip["id"]
+    old = await view_code(client, tid)
+    new = (await client.post(f"/trips/{tid}/view-code")).json()["code"]
+    assert new != old and await view_code(client, tid) == new
+    assert (await stranger.post("/trips/join", json={"code": old})).status_code == 404
+    assert (await stranger.post("/trips/join", json={"code": new})).json()["role"] == "viewer"
+    # Whoever already joined stays.
+    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "viewer"
+    # Members can't see or renew it.
+    assert (await viewer.get(f"/trips/{tid}/view-code")).status_code == 403
+    assert (await viewer.post(f"/trips/{tid}/view-code")).status_code == 403
 
 
 async def test_the_owner_cannot_join_their_own_trip(client: AsyncClient) -> None:
     trip = (await client.post("/trips/import", json=load_sample_trip())).json()
     assert (await client.post("/trips/join", json={"tripId": trip["id"]})).status_code == 409
+    code = await view_code(client, trip["id"])
+    assert (await client.post("/trips/join", json={"code": code})).status_code == 409
 
 
 async def test_a_malformed_id_is_rejected(viewer: AsyncClient) -> None:
@@ -134,15 +178,6 @@ async def test_the_edit_code_makes_an_editor(
     assert [(m["userId"], m["role"]) for m in members] == [(str(viewer_user.id), "editor")]
 
 
-async def test_the_trip_id_in_code_still_makes_a_viewer(
-    client: AsyncClient, viewer: AsyncClient
-) -> None:
-    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    resp = await viewer.post("/trips/join", json={"code": trip["id"]})
-    assert resp.status_code == 200
-    assert resp.json()["role"] == "viewer"
-
-
 async def test_joining_with_the_other_code_switches_role(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
@@ -150,7 +185,8 @@ async def test_joining_with_the_other_code_switches_role(
     tid = trip["id"]
     code = (await client.get(f"/trips/{tid}/edit-code")).json()["code"]
     assert (await viewer.post("/trips/join", json={"code": code})).json()["role"] == "editor"
-    assert (await viewer.post("/trips/join", json={"tripId": tid})).json()["role"] == "viewer"
+    vcode = await view_code(client, tid)
+    assert (await viewer.post("/trips/join", json={"code": vcode})).json()["role"] == "viewer"
     assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "viewer"
     # Still one membership, not one per code.
     assert len((await client.get(f"/trips/{tid}/members")).json()) == 1
@@ -310,8 +346,11 @@ async def test_a_viewer_can_leave_and_rejoin(client: AsyncClient, viewer: AsyncC
     tid = trip["id"]
     assert (await viewer.delete(f"/trips/{tid}/membership")).status_code == 204
     assert (await viewer.get(f"/trips/{tid}")).status_code == 404
-    # Leaving soft-deletes the membership, so joining again works.
-    assert (await viewer.post("/trips/join", json={"tripId": tid})).status_code == 200
+    # Leaving soft-deletes the membership, so joining again works (with the
+    # code: after leaving, the trip's id is a stranger's again).
+    assert (await viewer.post("/trips/join", json={"tripId": tid})).status_code == 404
+    code = await view_code(client, tid)
+    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 200
     assert (await viewer.get(f"/trips/{tid}")).status_code == 200
 
 

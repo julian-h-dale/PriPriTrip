@@ -71,6 +71,11 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     # server clock. UTC is the right template default; a real product detects
     # the browser zone at registration or asks.
     timezone: Mapped[str] = mapped_column(default="UTC")
+    # Set when an admin invites someone or resets their password (they have a
+    # temporary password); cleared when they choose their own. While set, the
+    # API answers only sign-in, /users/me and change-password
+    # (app.users.require_password_ok).
+    must_change_password: Mapped[bool] = mapped_column(default=False, server_default="0")
 
 
 # A wall-clock column: naive on purpose (see module docstring).
@@ -94,8 +99,15 @@ class Trip(SoftDeleteMixin, Base):
     # first ask, renewable by the owner (services/sharing.py). The trip's id
     # is the viewer code, so this must never be shown to a member.
     edit_code: Mapped[str | None] = mapped_column(default=None)
+    # The secret code that makes whoever joins with it a viewer, made and
+    # renewed like the edit code. (The trip's id used to be the viewer code;
+    # it's in every URL, so it now only works for people already on the trip.)
+    view_code: Mapped[str | None] = mapped_column(default=None)
 
-    __table_args__ = (Index("uq_trips_edit_code", "edit_code", unique=True),)
+    __table_args__ = (
+        Index("uq_trips_edit_code", "edit_code", unique=True),
+        Index("uq_trips_view_code", "view_code", unique=True),
+    )
 
     stays: Mapped[list[Stay]] = relationship(order_by="Stay.position", lazy="raise")
     travels: Mapped[list[Travel]] = relationship(order_by="Travel.position", lazy="raise")
@@ -247,6 +259,9 @@ class Memory(SoftDeleteMixin, Base):
     lat: Mapped[float | None] = mapped_column(default=None)
     lng: Mapped[float | None] = mapped_column(default=None)
     accuracy: Mapped[float | None] = mapped_column(default=None)
+    # Viewers (people following along) see only public memories; the owner
+    # and editors see every one. Private unless its author says otherwise.
+    is_public: Mapped[bool] = mapped_column(default=False, server_default="0")
 
     __table_args__ = (Index("ix_memories_trip_created", "trip_id", "created_at"),)
 
@@ -269,3 +284,18 @@ class Photo(SoftDeleteMixin, Base):
     width: Mapped[int]
     height: Mapped[int]
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+
+
+class WeatherCache(Base):
+    """OpenWeatherMap answers, cached by place (services/weather.py). A cache
+    of public data keyed by coordinates — not anyone's data — so, unlike the
+    domain tables, it has no owner and no soft delete: rows are overwritten
+    when refreshed."""
+
+    __tablename__ = "weather_cache"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    # e.g. "onecall:26.22,127.69" or "day:26.22,127.69:2026-11-02".
+    key: Mapped[str] = mapped_column(unique=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    fetched_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)

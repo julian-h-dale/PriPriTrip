@@ -18,7 +18,7 @@ from app.migrate import BASELINE, alembic_config, migrate, reset
 from app.models import Base
 
 # The latest migration: bump it with each new one.
-HEAD = "0006"
+HEAD = "0009"
 
 
 def _url(tmp_path: Path) -> str:
@@ -100,6 +100,11 @@ def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: 
     assert _run(url, ["SELECT text, received_at FROM memories"]) == [
         ("kept", "2026-10-30 12:00:00.000000")
     ]
+    # Every memory written before Phase 46 is private.
+    assert _run(url, ["SELECT is_public FROM memories"]) == [(0,)]
+    assert _run(url, ["SELECT view_code FROM trips"]) == [(None,)]
+    # Existing accounts don't have to change their password (Phase 54).
+    assert _run(url, ["SELECT must_change_password FROM users"]) == [(0,)]
     # Existing entries start at version 1, with no editor yet.
     assert _run(url, ["SELECT title, version, updated_by FROM items"]) == [
         ("Kokusai Street", 1, None)

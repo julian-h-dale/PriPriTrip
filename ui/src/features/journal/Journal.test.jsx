@@ -26,7 +26,7 @@ vi.mock("@/shared/services/apiClient", () => ({
 }));
 
 const USER = "user-1";
-const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z", role: "viewer" };
+const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z", role: "editor" };
 const memory = (id, createdAt, zone, extra = {}) => ({
   id,
   text: `memory ${id}`,
@@ -115,7 +115,11 @@ describe("Journal tab", () => {
     await user.type(box, "memory m1, better");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await vi.waitFor(() =>
-      expect(apiClient.put).toHaveBeenCalledWith("/trips/trip-1/memories/m1", { text: "memory m1, better" }, expect.anything())
+      expect(apiClient.put).toHaveBeenCalledWith(
+        "/trips/trip-1/memories/m1",
+        { text: "memory m1, better", isPublic: false },
+        expect.anything()
+      )
     );
     const items = within(screen.getByRole("region", { name: "Mon, May 11" })).getAllByRole("listitem");
     expect(items[0]).toHaveTextContent("memory m1, better");
@@ -170,6 +174,7 @@ describe("Journal tab", () => {
       text: "Written in the mountains",
       zone: queued.body.zone,
       location: null, // no location here (no GPS in this test)
+      isPublic: false,
     });
     expect(await pending(USER)).toEqual([]);
     await vi.waitFor(() => expect(within(card).queryByText("Waiting to sync")).not.toBeInTheDocument());
@@ -211,6 +216,86 @@ describe("New memory on the Today tab", () => {
     expect(body.createdAt).toMatch(/Z$/);
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(store.getState().notification.items.map((n) => n.message)).toContain("Memory saved");
+  });
+});
+
+describe("public memories", () => {
+  it("a new memory is private unless the switch is on, and the switch reaches the server", async () => {
+    const user = userEvent.setup();
+    apiClient.post.mockImplementation(async (url, body) => ({ data: { ...body, mine: true } }));
+    renderAt("/trips/trip-1/journal");
+    await user.click(await screen.findByRole("button", { name: "New memory" }));
+    const dialog = screen.getByRole("dialog", { name: "New memory" });
+    const toggle = within(dialog).getByRole("switch", { name: "Visible to viewers" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    await user.type(within(dialog).getByLabelText("What happened?"), "For the family");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(apiClient.post).toHaveBeenCalled());
+    expect(apiClient.post.mock.calls[0][1]).toMatchObject({ text: "For the family", isPublic: true });
+  });
+
+  it("editing a public memory starts with the switch on, and turning it off is sent", async () => {
+    const user = userEvent.setup();
+    const shared = [memory("p1", "2026-05-11T18:30:00Z", "Europe/Zurich", { isPublic: true, text: "for the family" })];
+    apiClient.get.mockImplementation(async (url) =>
+      url.endsWith("/memories") ? { data: structuredClone(shared) } : { data: TRIP }
+    );
+    apiClient.put.mockResolvedValue({ data: { ...shared[0], isPublic: false } });
+    renderAt("/trips/trip-1/journal");
+    // Wait for the fetched journal: a cached copy from another test can render first.
+    const card = (await screen.findByText("for the family")).closest("li");
+    expect(within(card).getByText("Public")).toBeInTheDocument();
+    await user.click(within(card).getByRole("button", { name: "Memory options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit memory" });
+    const toggle = within(dialog).getByRole("switch", { name: "Visible to viewers" });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    await user.click(toggle);
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(apiClient.put).toHaveBeenCalledWith(
+        "/trips/trip-1/memories/p1",
+        { text: "for the family", isPublic: false },
+        expect.anything()
+      )
+    );
+  });
+
+  it("a viewer reads what's shared, with no New memory, no badge and no upload bar", async () => {
+    const asViewer = { ...TRIP, role: "viewer" };
+    const shared = [
+      memory("p2", "2026-05-11T19:00:00Z", "Europe/Zurich", { mine: false, isPublic: true, text: "shared with you" }),
+    ];
+    apiClient.get.mockImplementation(async (url) =>
+      url.endsWith("/memories") ? { data: structuredClone(shared) } : { data: asViewer }
+    );
+    renderAt("/trips/trip-1/journal");
+    // Wait for the fetched journal (a cached copy can render first).
+    expect(await screen.findByText("shared with you")).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByText("memory m1")).not.toBeInTheDocument());
+    expect(screen.getByText("What the travelers have shared")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New memory" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Public")).not.toBeInTheDocument();
+  });
+
+  it("a viewer with nothing shared yet sees an empty state", async () => {
+    const asViewer = { ...TRIP, role: "viewer" };
+    apiClient.get.mockImplementation(async (url) =>
+      url.endsWith("/memories") ? { data: [] } : { data: asViewer }
+    );
+    renderAt("/trips/trip-1/journal");
+    expect(await screen.findByText("Nothing shared yet")).toBeInTheDocument();
+  });
+
+  it("a viewer's Today tab has no New memory", async () => {
+    apiClient.get.mockImplementation(async (url) =>
+      url.endsWith("/memories") ? { data: [] } : { data: { ...TRIP, role: "viewer" } }
+    );
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("button", { name: "New memory" })).not.toBeInTheDocument();
   });
 });
 

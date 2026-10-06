@@ -1,7 +1,7 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed migrate reset-db seed-remote list-trips export-trip schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed migrate reset-db seed-remote list-trips export-trip pi-backup-install pi-backup-run schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
@@ -11,6 +11,8 @@ help:
 	@echo "  seed-remote   Seed the Fly app (FLY_APP=pripri-trip); never automatic. Replants demo trips"
 	@echo "  list-trips    List your trips (id, dates, name); TRIP_EMAIL/TRIP_PASSWORD, API_URL"
 	@echo "  export-trip   TRIP=<id>  Save a trip as a trip document (JSON) in exports/; OUT=- for stdout"
+	@echo "  pi-backup-install  (on the Pi) Install the 30-minute photo backup (sudo; see README)"
+	@echo "  pi-backup-run      (on the Pi) Run the backup now and show its log"
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
@@ -64,6 +66,12 @@ export-trip:
 
 # Deletes the database DATABASE_URL names (a worktree's own, too — this used
 # to hardcode api/data/app.db), migrates a fresh one, and re-seeds.
+pi-backup-install:
+	sudo scripts/pi-backup/install.sh
+
+pi-backup-run:
+	sudo systemctl start pripri-backup; journalctl -u pripri-backup -n 5 --no-pager
+
 reset-db:
 	cd api && . .venv/bin/activate && python -m app.migrate --reset && python -m app.seed
 
@@ -111,7 +119,7 @@ test-ui:
 test: test-api test-ui
 
 lint-api:
-	cd api && . .venv/bin/activate && ruff check . && ruff format --check . && mypy
+	cd api && . .venv/bin/activate && ruff check . ../scripts/pi-backup && ruff format --check . ../scripts/pi-backup && mypy
 
 lint-ui:
 	cd ui && npm run lint
