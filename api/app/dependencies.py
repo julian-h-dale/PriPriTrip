@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Day, Item, Memory, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import Day, Item, Memory, PackingItem, Stay, Travel, Trip, TripMember, UserRecord
 from app.services.versions import parse_if_match
 from app.users import current_active_user
 
@@ -202,6 +202,28 @@ async def get_journal_trip(
             status_code=status.HTTP_403_FORBIDDEN, detail="Viewers can't add memories"
         )
     return viewable
+
+
+async def get_own_packing_item(
+    item_id: uuid.UUID,
+    viewable: ViewableTrip = Depends(get_viewable_trip),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+) -> PackingItem:
+    """One of the caller's own live packing lines on a trip they can see.
+    Packing lists are personal, so anyone else's line is 404, as is a
+    deleted one."""
+    item = await db.scalar(
+        select(PackingItem).where(
+            PackingItem.id == item_id,
+            PackingItem.trip_id == viewable.trip.id,
+            PackingItem.user_id == user.id,
+            active(PackingItem),
+        )
+    )
+    if item is None:
+        raise _not_found()
+    return item
 
 
 async def if_match_version(if_match: str | None = Header(default=None)) -> int:

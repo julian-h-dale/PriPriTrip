@@ -3576,7 +3576,11 @@ Asked 2026-10-05 (Julian):
 
 **Decisions (answered 2026-10-06):** the seed doesn't change; every other
 recommendation taken (Q-B1, Q-B4–Q-B7). The backup tool's simplification is
-still open (Q-B8).
+answered: keep it as it is (Q-B8).
+
+**Change (2026-10-06, Julian): documents aren't versioned.** Upload a file,
+and upload again to replace it. They're uploaded before a trip and only
+downloaded during it. Item 8 below is the unversioned design.
 
 ### Where we are
 
@@ -3659,33 +3663,34 @@ change.
   rename/delete. Checks are optimistic, with a toast on failure. A "Hide
   packed" switch. Online only for now (packing happens at home).
 
-**8. Documents (Q-B5).**
-- **Data:** `documents` (UUID, `trip_id`, `name`, `created_by`, soft delete,
-  `VersionedMixin` for rename/delete conflicts) and `document_versions`
-  (UUID, `document_id`, `number`, `filename`, `content_type`, `size`,
-  `sha256`, `uploaded_by`, `uploaded_at`). Migration 0011.
+**8. Documents (Q-B5, no versions).**
+- **Data:** `trip_documents` (UUID, `trip_id`, `name`, `filename`,
+  `content_type`, `size`, `uploaded_by`, `created_at`, `updated_at`, soft
+  delete). Migration 0011.
 - **Files:** a `DocumentStore` like `PhotoStore`, at `DOCUMENT_DIR`
-  (`/data/documents` on Fly): `<trip>/<document>/<version>/<filename>`.
-  Never served without login.
-- **Who:** the owner and editors. Viewers get 404 and no drawer item.
+  (`/data/documents` on Fly), one file per document:
+  `<trip>/<document>`. Replacing writes a temp file and renames it over the
+  old one. Never served without sign-in.
+- **Who:** the owner and editors (`get_editable_trip`: a viewer gets 403, as
+  on every other editor-only route, and no drawer item).
 - **API:**
-  - `GET /trips/{id}/documents`: each with its latest version and the count.
-  - `POST /trips/{id}/documents` (multipart: file, optional name) → version 1.
-  - `POST /trips/{id}/documents/{doc}/versions` (file) → the next version.
-  - `GET …/{doc}/versions`; `GET …/versions/{n}/file` downloads one.
-  - `PATCH …/{doc}` (rename) and `DELETE …/{doc}` (soft) with If-Match.
-  - `GET /trips/{id}/documents.zip`: the latest version of each live
-    document, named `<document name>.<ext>` (deduplicated), written to a temp
-    file in chunks (`ZIP_STORED`, since PDFs and photos don't compress), then
-    streamed, so 512 MB isn't at risk.
-  - Limit 25 MB per file (under nginx's 26 MB). PDFs, images, and plain
-    office files; anything else is 415.
-- **UI:** "Documents" in Trip tools for editors. A list (name, version,
-  date, size). Upload (file picker, camera on the phone), "Upload new
-  version", Versions (download any), Rename, Delete (two-tap). "Download all
-  (zip)" fetches through `apiClient` (so the token goes with it) and saves
-  the blob as `<trip name> documents.zip`. Nothing is cached offline.
-- **Pi backup:** not in this stage (Q-B5e).
+  - `GET /trips/{id}/documents`: the list, A to Z.
+  - `POST /trips/{id}/documents` (multipart: file, optional name) adds one.
+  - `PUT /trips/{id}/documents/{doc}/file` (file) replaces its file.
+  - `PATCH /trips/{id}/documents/{doc}` renames it; `DELETE` soft-deletes it.
+  - `GET /trips/{id}/documents/{doc}/file` downloads one.
+  - `GET /trips/{id}/documents.zip`: every live document, named
+    `<name>.<ext>` (duplicates numbered), built in a temp file
+    (`ZIP_STORED`) and streamed.
+  - 25 MB per file. PDFs, images, Word/Excel/PowerPoint, text and CSV;
+    anything else is 415.
+  - Last write wins (no If-Match): two people rarely replace the same
+    passport scan at once.
+- **UI:** "Documents" in Trip tools for the owner and editors. A list (name,
+  type, size, when and by whom). Add (file picker), and per document ⋯:
+  Download, Replace, Rename, Delete (confirm). "Download all (zip)" fetches
+  through `apiClient` and saves the blob as `<trip name> documents.zip`.
+  Nothing is cached offline.
 
 ### Phases
 
@@ -3716,14 +3721,20 @@ change.
 - **Phase 59 — packing lists (UI).** Slice, page, drawer item. **Tests:**
   check/uncheck (optimistic, rolled back on failure), add, rename, delete,
   Hide packed, suggestions; 375 px by eye.
-- **Phase 60 — documents (API).** Migration 0011, models, store, router,
-  zip. **Tests:** upload; new version bumps the number and keeps the old
-  file; latest-only zip with duplicate names handled; viewers 404 on every
-  route, anonymous 401; 25 MB and type limits; rename/delete with If-Match
-  (409 stale); a deleted document is left out of the zip.
+  - ✅ Phases 58–59 (2026-10-06), as planned. A viewer keeps their own list
+    too (the routes use `get_viewable_trip`; the line itself is checked by
+    `get_own_packing_item` in `dependencies.py`). Writes are silent (no
+    "Saved" toast per tick); a failed tick flips back and shows the error.
+    The page heads "Packing" with "n of m packed" and Hide packed; lists not
+    started show as buttons under "More lists". E2E `packing.spec.js`;
+    screenshots `50`–`51`.
+- **Phase 60 — documents (API).** Migration 0011, model, store, router,
+  zip. **Tests:** upload; replace swaps the file; the zip holds every live
+  document with duplicate names numbered; viewers 403 on every route,
+  strangers 404, anonymous 401; 25 MB and type limits; rename; a deleted
+  document is left out of the list and zip.
 - **Phase 61 — documents (UI).** Slice, page, drawer item for editors.
-  **Tests:** hidden for viewers; upload / new version / versions / rename /
-  delete; Download all calls the zip endpoint and saves a blob. **E2E +
+  **Tests:** hidden for viewers; upload / replace / rename / delete; Download all calls the zip endpoint and saves a blob. **E2E +
   by hand:** download the zip on a real iPhone and open it in Files.
 
 ### Open questions (Run stage 12)
@@ -3804,7 +3815,7 @@ change.
     check stays.
   - Recommendation: **(b)** for a two-person setup, unless it's already
     installed on the Pi and working, in which case (a).
-  - **Answer:**
+  - **Answer:** (a), keep it as it is (2026-10-06).
 
 ## After Phase 4 — First real trip
 

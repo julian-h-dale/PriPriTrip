@@ -17,7 +17,12 @@
     API + 350 UI tests). In e2e, `accounts.spec.js` passes; the sharing spec
     fails only because the dev database's `pripri@example.com` no longer has
     `changeme-viewer` (`make reset-db` fixes it).
-  - **Next:** Phase 57 (the map follows the filters), once Julian confirms.
+  - **Phases 58–59 ✅ (2026-10-06): packing lists** (migration 0010), each
+    person's own per trip, in Trip tools → Packing. `make verify` green (235
+    API + 359 UI tests); e2e `packing.spec.js` passes. Run `make migrate`
+    (or deploy) to get the table.
+  - **Next:** Phases 60–61 (documents, unversioned: upload replaces). Phase
+    57 (the map follows the filters) is still to do.
 - **Run stage 11 ✅ (2026-10-05): Phases 54–55**: admin invites, password
   resets, the forced password change, public sign-up closed. Details in
   `implementation_plan.md`, "Run stage 11 / Built". Weather is checked live

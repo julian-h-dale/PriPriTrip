@@ -389,3 +389,45 @@ class InvitedUser(TemporaryPassword):
 class ChangePassword(CamelModel):
     current_password: str = Field(max_length=200)
     new_password: str = Field(max_length=200)
+
+
+# ---- packing lists ----
+
+PackingCategory = Literal[
+    "clothes", "toiletries", "electronics", "documents", "health", "outdoors", "carry_on", "other"
+]
+
+
+def _packing_text(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("say what to pack")
+    if len(value) > 200:
+        raise ValueError("keep it under 200 characters")
+    return value
+
+
+PackingText = Annotated[str, AfterValidator(_packing_text)]
+
+
+class PackingItemCreate(CamelModel):
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    category: PackingCategory
+    text: PackingText
+
+
+class PackingItemUpdate(CamelModel):
+    """Any of: new words, ticked or not, another list. Left out = unchanged."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    text: PackingText | None = None
+    checked: bool | None = None
+    category: PackingCategory | None = None
+
+
+class PackingItemRead(CamelModel):
+    id: uuid.UUID
+    category: PackingCategory
+    text: str
+    checked: bool
+    position: int
