@@ -90,6 +90,18 @@ export function formatDateRange(start, end) {
 }
 
 /** "America/Chicago" -> "Chicago", "America/Argentina/Buenos_Aires" -> "Buenos Aires". */
+/** A leg's length from the server's `durationMinutes`: "45m", "2h 5m",
+ * "13h 50m"; days only past 24 hours ("1d 2h"). Null when unknown. */
+export function formatDuration(minutes) {
+  if (minutes == null || minutes < 0) return null;
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  if (days) return hours ? `${days}d ${hours}h` : `${days}d`;
+  if (!hours) return `${mins}m`;
+  return mins ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
 export function zoneLabel(timezone) {
   return timezone.split("/").pop().replaceAll("_", " ");
 }

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Trash2, Upload, UserPlus, Users } from "lucide-react";
 import { JoinTripDialog } from "@/features/sharing/JoinTripDialog";
-import { countdownLabel } from "@/features/trips/countdown";
+import { countdownParts } from "@/features/trips/countdown";
 import { deleteTrip, fetchTrips, leaveTrip } from "@/features/trips/tripsSlice";
 import { ImportTripDialog } from "@/features/trips/ImportTripDialog";
 import { Button } from "@/shared/components/ui/button";
@@ -35,39 +35,45 @@ function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
   const nights = daysBetween(trip.startDate, trip.endDate);
   // Until the first day begins on this phone's clock (so it can still show
   // on an "Active" trip whose own zone is already past midnight).
-  const countdown = now == null ? null : countdownLabel(trip.startDate, now);
+  const countdown = now == null ? null : countdownParts(trip.startDate, now);
   return (
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
       <Link
         to={`/trips/${trip.id}`}
-        className="flex min-w-0 flex-1 flex-col gap-1 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 items-start gap-3 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <span className="break-words font-semibold leading-snug">{trip.name}</span>
-        {shared && (
-          <span className="inline-flex items-center gap-1 text-xs text-primary">
-            <Users className="h-3.5 w-3.5" aria-hidden="true" />
-            {trip.role === "editor" ? "Shared with you · you can edit" : "Shared with you"}
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="break-words font-semibold leading-snug">{trip.name}</span>
+          {shared && (
+            <span className="inline-flex items-center gap-1 text-xs text-primary">
+              <Users className="h-3.5 w-3.5" aria-hidden="true" />
+              {trip.role === "editor" ? "Shared with you · you can edit" : "Shared with you"}
+            </span>
+          )}
+          <span className="text-sm text-muted-foreground">
+            {formatDateRange(trip.startDate, trip.endDate)} · {plural(nights, "night")}
           </span>
-        )}
-        <span className="text-sm text-muted-foreground">
-          {formatDateRange(trip.startDate, trip.endDate)} · {plural(nights, "night")}
+          <span className="flex gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <BedDouble className="h-3.5 w-3.5" aria-hidden="true" />
+              {plural(trip.stayCount, "stay")}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Plane className="h-3.5 w-3.5" aria-hidden="true" />
+              {plural(trip.travelCount, "leg")}
+            </span>
+          </span>
         </span>
+        {/* The countdown stands apart, on the right, so it reads at a glance. */}
         {countdown && (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-            <Hourglass className="h-3.5 w-3.5" aria-hidden="true" />
-            {countdown}
+          <span className="flex shrink-0 flex-col items-end text-right text-primary">
+            {countdown.value != null && <span className="text-2xl font-semibold leading-none tabular-nums">{countdown.value}</span>}{" "}
+            <span className="mt-1 inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium">
+              <Hourglass className="h-3 w-3" aria-hidden="true" />
+              {countdown.unit}
+            </span>
           </span>
         )}
-        <span className="flex gap-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <BedDouble className="h-3.5 w-3.5" aria-hidden="true" />
-            {plural(trip.stayCount, "stay")}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Plane className="h-3.5 w-3.5" aria-hidden="true" />
-            {plural(trip.travelCount, "leg")}
-          </span>
-        </span>
       </Link>
       {/* Delete (or Leave, for a shared trip) lives behind ⋯, away from the
           card's main tap target. */}

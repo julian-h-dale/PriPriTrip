@@ -68,6 +68,27 @@ def arrive_zone(travel: Any, trip_zone: str) -> str:
     return place_zone(travel.to_location) or travel.arrive_timezone or trip_zone
 
 
+def leg_minutes(
+    depart: dt.datetime, arrive: dt.datetime | None, depart_tz: str, arrive_tz: str
+) -> int | None:
+    """How long a leg takes, in minutes: each wall-clock time read on its own
+    clock, so Chicago 12:30 → Tokyo 16:05 the next day counts the real
+    13h 35m. None without an arrival, or when the times don't add up
+    (arriving before leaving)."""
+    if arrive is None:
+        return None
+    try:
+        leaves = depart.replace(tzinfo=ZoneInfo(depart_tz))
+        lands = arrive.replace(tzinfo=ZoneInfo(arrive_tz))
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+    # Via UTC: Python subtracts two times on the same zone as wall clocks,
+    # which would miss a daylight-saving change mid-leg.
+    elapsed = lands.astimezone(dt.UTC) - leaves.astimezone(dt.UTC)
+    minutes = int(elapsed.total_seconds() // 60)
+    return minutes if minutes >= 0 else None
+
+
 def night_stay(stays: Iterable[Any], day: dt.date) -> Any | None:
     """The stay you sleep in on `day`'s night, else the one you leave that morning."""
     stays = list(stays)

@@ -19,13 +19,25 @@ export function startOfDay(date) {
   return new Date(y, m - 1, d).getTime();
 }
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"} to go`;
+const parts = (n, word) => ({ value: n, unit: `${word}${n === 1 ? "" : "s"} to go` });
 
-export function countdownLabel(startDate, now = Date.now()) {
+/**
+ * The countdown in two parts, for the card's large number over a small
+ * unit: `{ value: 23, unit: "days to go" }`, or `{ value: null, unit:
+ * "Starting now" }` in the last minute. Null once it has begun.
+ */
+export function countdownParts(startDate, now = Date.now()) {
   const left = startOfDay(startDate) - now;
   if (left <= 0) return null;
-  if (left < MINUTE) return "Starting now";
-  if (left < HOUR) return plural(Math.floor(left / MINUTE), "minute");
-  if (left < DAY) return plural(Math.floor(left / HOUR), "hour");
-  return plural(Math.floor(left / DAY), "day");
+  if (left < MINUTE) return { value: null, unit: "Starting now" };
+  if (left < HOUR) return parts(Math.floor(left / MINUTE), "minute");
+  if (left < DAY) return parts(Math.floor(left / HOUR), "hour");
+  return parts(Math.floor(left / DAY), "day");
+}
+
+/** The countdown as one line ("23 days to go"). */
+export function countdownLabel(startDate, now = Date.now()) {
+  const p = countdownParts(startDate, now);
+  if (!p) return null;
+  return p.value == null ? p.unit : `${p.value} ${p.unit}`;
 }

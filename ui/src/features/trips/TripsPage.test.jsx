@@ -186,6 +186,9 @@ describe("TripsPage", () => {
       const upcoming = await screen.findByRole("region", { name: "Upcoming" });
       const card = (name) => within(upcoming).getByText(name).closest("li");
       expect(card("Okinawa trip")).toHaveTextContent("23 days to go");
+      // On the right, apart from the name and dates column.
+      const number = within(card("Okinawa trip")).getByText("23");
+      expect(number.closest("span.flex-col")).not.toContainElement(within(card("Okinawa trip")).getByText("Okinawa trip"));
       expect(card("Tomorrow trip")).toHaveTextContent("12 hours to go");
       expect(screen.getByRole("region", { name: "Active" })).not.toHaveTextContent("to go");
     } finally {

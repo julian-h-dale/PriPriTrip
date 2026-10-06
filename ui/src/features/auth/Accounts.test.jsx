@@ -5,7 +5,14 @@ import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import adminReducer from "@/features/admin/adminSlice";
-import authReducer, { passwordChangeRequired } from "@/features/auth/authSlice";
+import authReducer, {
+  fetchMe,
+  forgetSignInPassword,
+  heldSignInPassword,
+  login,
+  passwordChangeRequired,
+  signOut,
+} from "@/features/auth/authSlice";
 import journalReducer from "@/features/journal/journalSlice";
 import errorReducer from "@/shared/errorSlice";
 import networkReducer from "@/shared/networkSlice";
@@ -164,6 +171,54 @@ describe("the forced password change", () => {
     await user.type(screen.getByLabelText("New password again"), "my own password");
     await user.click(screen.getByRole("button", { name: "Save password" }));
     expect(await screen.findByText("The trips list")).toBeInTheDocument();
+  });
+
+  describe("straight after signing in", () => {
+    const signIn = async (password) => {
+      apiClient.post.mockResolvedValueOnce({ data: { access_token: "t" } });
+      await configureStore({ reducer: { auth: authReducer } }).dispatch(
+        login({ email: "user@example.com", password })
+      );
+    };
+    beforeEach(() => forgetSignInPassword());
+
+    it("doesn't ask for the temporary password again", async () => {
+      const user = userEvent.setup();
+      await signIn("k7mq-x2pd-9rhw");
+      apiClient.post.mockResolvedValue({ data: { access_token: "fresh" } });
+      app({ ...USER, must_change_password: true });
+      expect(screen.queryByLabelText("Temporary password")).not.toBeInTheDocument();
+
+      await user.type(screen.getByLabelText("New password"), "my own password");
+      await user.type(screen.getByLabelText("New password again"), "my own password");
+      await user.click(screen.getByRole("button", { name: "Save password" }));
+      expect(await screen.findByText("The trips list")).toBeInTheDocument();
+      expect(apiClient.post).toHaveBeenLastCalledWith(
+        "/auth/change-password",
+        { currentPassword: "k7mq-x2pd-9rhw", newPassword: "my own password" },
+        expect.anything()
+      );
+      expect(heldSignInPassword()).toBeNull();
+    });
+
+    it("keeps the password out of storage and the store", async () => {
+      await signIn("k7mq-x2pd-9rhw");
+      expect(JSON.stringify({ ...localStorage })).not.toContain("k7mq");
+      const store = app({ ...USER, must_change_password: true });
+      expect(JSON.stringify(store.getState())).not.toContain("k7mq");
+    });
+
+    it("forgets it when no change is needed, or on sign-out", async () => {
+      await signIn("secret-one");
+      apiClient.get.mockResolvedValueOnce({ data: USER });
+      await configureStore({ reducer: { auth: authReducer } }).dispatch(fetchMe());
+      expect(heldSignInPassword()).toBeNull();
+
+      await signIn("secret-two");
+      expect(heldSignInPassword()).toBe("secret-two");
+      await configureStore({ reducer: { auth: authReducer }, preloadedState: { auth: { token: null, user: null, status: "idle" } } }).dispatch(signOut());
+      expect(heldSignInPassword()).toBeNull();
+    });
   });
 
   it("shows the server's reason, and stays put", async () => {
