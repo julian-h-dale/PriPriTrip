@@ -3866,6 +3866,9 @@ Asked 2026-10-06 (Julian), on branch `details-page`: instead of expanding a
 row in place, tapping an activity, stay or travel leg opens a full screen
 with its details.
 
+**Decisions (answered 2026-10-06):** every recommendation, and the
+confirmation number moves to the top of the page (Q-D2).
+
 ### Where we are
 
 - **Four ways in, three ways of showing details:**
@@ -3907,11 +3910,13 @@ removed it), it says so, with a link to the trip.
   (Q-D4).
 - **Hero:** the place photo, large, fading into the page (the existing
   `HeroFade`), with the icon, title and the day under it.
-- **When:** big and first. An activity: its time or span. A stay: check-in and
+- **Confirmation number** next (Q-D2), large, with copy: it's what a desk
+  asks for.
+- **When:** big, after the confirmation. An activity: its time or span. A stay: check-in and
   check-out with the number of nights. A leg: Departs and Arrives as two
   blocks, each with its place's zone when it differs from the trip's, and the
   duration between them.
-- **Then, as now:** the facts, the confirmation number with copy, notes, each
+- **Then, as now:** the facts, notes, each
   place with its mini map and "Open in Maps", and "Edited by".
 - **Actions** (editors; Q-D5): Edit and Delete in the page. Edit opens the same
   form as today (a dialog over the page); Delete asks, then returns to the
@@ -3969,34 +3974,34 @@ page.
   - (b) A full-screen sheet over the day: no URL, so back-swipe and reloads
     leave it.
   - Recommendation: **(a)**.
-  - **Answer:**
+  - **Answer:** as recommended, (a) (2026-10-06).
 - **Q-D2. One page for all three kinds**, laid out per kind as above (when
   first, then facts, confirmation, notes, places)? Anything you want added or
   moved up, e.g. the confirmation number above the times while travelling?
-  - **Answer:**
+  - **Answer:** yes, and move the confirmation number to the top (2026-10-06).
 - **Q-D3. Where's the back arrow?** The tool pages have ← in ☰'s place (top
   left); the day page has ☰ on the left and ← top right.
   - (a) Top left, in ☰'s place, like the tool pages: this is a drill-in.
   - (b) Top right, like the day page, keeping ☰.
   - Recommendation: **(a)**.
-  - **Answer:**
+  - **Answer:** as recommended, (a) (2026-10-06).
 - **Q-D4. Keep the bottom tab bar** (Today / Timeline / Journal / Map) on the
   details page? Recommendation: **yes**, so the rest of the trip is one tap
   away; a full-screen page without it is the alternative.
-  - **Answer:**
+  - **Answer:** as recommended: yes (2026-10-06).
 - **Q-D5. Which actions on the page?** Recommendation: **Edit and Delete** on
   the page, with **Move up / down left on the day page** (moving only makes
   sense when you can see the order). Do you also want Move on the details
   page, or the day page's rows to keep their own Edit/Delete?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-D6. Every way in opens the page** (day, Today, Stays/Travel views,
   search, map)? Including bare activities with nothing but a title?
   Recommendation: **yes to all**.
-  - **Answer:**
+  - **Answer:** as recommended: yes to all (2026-10-06).
 - **Q-D7. Swiping left/right on the details page** to the day's previous or
   next entry: now, later, or never? Recommendation: **later** (the day page
   already swipes between days, and two swipes stacked is easy to get wrong).
-  - **Answer:**
+  - **Answer:** as recommended: later (2026-10-06).
 
 ## After Phase 4 — First real trip
 

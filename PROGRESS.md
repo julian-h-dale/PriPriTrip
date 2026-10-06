@@ -6,6 +6,11 @@
 
 ## Status
 
+- **Run stage 13, in progress (2026-10-06)** on branch **`details-page`**
+  (off `enhance-trip`). Plan: `implementation_plan.md`, "Run stage 13". All
+  recommendations taken; the confirmation number moves to the top.
+  - **Phase 62 ✅:** an entry's own page (`/trips/:id/activities|stays|travel/:id`),
+    view only. `make verify` green (246 API + 401 UI tests).
 - **Run stage 12, in progress (2026-10-06)** on branch
   **`improvements-oct-5`**. Plan: `implementation_plan.md`, "Run stage 12".
   The seed rework was withdrawn (the seed is unchanged). The backup tool's

@@ -4,8 +4,9 @@ import { Markdown } from "@/shared/components/Markdown";
 import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { formatAgo } from "@/shared/utils/time";
 
-/** A confirmation number, with a copy button. */
-export function ConfirmationNumber({ value }) {
+/** A confirmation number, with a copy button. `large` on an entry's page,
+ * where it's the first thing shown (it's what a desk asks for). */
+export function ConfirmationNumber({ value, large = false }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -20,7 +21,9 @@ export function ConfirmationNumber({ value }) {
     <div className="flex flex-col gap-0.5">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">Confirmation</span>
       <span className="flex items-center gap-2">
-        <span className="break-all font-mono text-sm">{value}</span>
+        <span className={large ? "break-all font-mono text-2xl font-semibold tracking-wide" : "break-all font-mono text-sm"}>
+          {value}
+        </span>
         <button
           type="button"
           onClick={copy}
@@ -112,7 +115,7 @@ export function EntryDetails({ d }) {
 
 /** "Edited by PriPri, 2 minutes ago". Its own component so it's easy to hide
  * later (Julian may, before the trip). */
-function EditedBy({ edited }) {
+export function EditedBy({ edited }) {
   return (
     <p className="text-xs text-muted-foreground">
       Edited by {edited.name}, {formatAgo(edited.at)}

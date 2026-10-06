@@ -13,6 +13,7 @@ import { CurrencyPage } from "@/features/currency/CurrencyPage";
 import { PackingPage } from "@/features/packing/PackingPage";
 import { DocumentsPage } from "@/features/documents/DocumentsPage";
 import { ClocksPage } from "@/features/clocks/ClocksPage";
+import { EntryPage } from "@/features/entry/EntryPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
@@ -89,6 +90,30 @@ export function App() {
           element={
             <ProtectedRoute>
               <DayDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/activities/:id"
+          element={
+            <ProtectedRoute>
+              <EntryPage kind="activity" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/stays/:id"
+          element={
+            <ProtectedRoute>
+              <EntryPage kind="stay" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/travel/:id"
+          element={
+            <ProtectedRoute>
+              <EntryPage kind="travel" />
             </ProtectedRoute>
           }
         />

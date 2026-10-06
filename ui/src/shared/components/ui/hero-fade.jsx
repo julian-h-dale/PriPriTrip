@@ -10,9 +10,14 @@ import { cn } from "@/shared/utils/cn";
  * design_doc.md's "no gradients" — see ui_review.md.
  */
 
+const FADE = {
+  card: "from-card/0 via-card/70 to-card",
+  background: "from-background/0 via-background/70 to-background",
+};
+
 /** Absolutely positioned at the top of a `relative` parent; clear at the top,
- * solid card by the bottom. */
-export function HeroFade({ src, onError, className }) {
+ * solid by the bottom: the card's colour, or `fadeTo="background"` on a page. */
+export function HeroFade({ src, onError, className, fadeTo = "card" }) {
   return (
     <div className={cn("pointer-events-none absolute inset-x-0 top-0", className)} aria-hidden="true">
       <img
@@ -22,7 +27,7 @@ export function HeroFade({ src, onError, className }) {
         className="h-full w-full object-cover"
         onError={onError}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-card/0 via-card/70 to-card" />
+      <div className={cn("absolute inset-0 bg-gradient-to-b", FADE[fadeTo])} />
     </div>
   );
 }
