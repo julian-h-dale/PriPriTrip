@@ -3571,10 +3571,12 @@ Asked 2026-10-05 (Julian):
 - **Documents:** a drawer feature, editors only. Upload files to Fly, versioned;
   before the trip, download the latest version of each as one zip, as a hard
   copy fallback. Not cached in the app.
-- **Seed data:** `julian.h.dale@gmail.com` (admin, `changeme-julian`) owning the
-  Okinawa trip (`example-trip-story.json`); `gabrom@umich.edu`
-  (`changeme-gabrom`) an editor on it; `viewer@example.com` the view-only test
-  account. Julian sees both Okinawa and the Greece (Athens) sample trip.
+- **Seed data:** new accounts and the Okinawa trip in the seed. Withdrawn
+  2026-10-06: the seed stays as it is.
+
+**Decisions (answered 2026-10-06):** the seed doesn't change; every other
+recommendation taken (Q-B1, Q-B4–Q-B7). The backup tool's simplification is
+still open (Q-B8).
 
 ### Where we are
 
@@ -3619,34 +3621,9 @@ countdown stacked: the number large (`23`), the unit small (`days to go`), in
 "Starting now" fits the same slot. At 375 px the name still wraps in the
 left column.
 
-**3. Local backup testing.** `make pi-backup-local` runs the script against
-the local API (port from `api/.env`) as the seed admin, into
-`api/data/backup-test/`, with `BACKUP_REQUIRE_MOUNT=0`. The README gets
-"Try it locally": `make dev`, add a memory with a photo, `make
-pi-backup-local`, look in the folder, run it again (nothing new), delete the
-photo in the app, run again (still on disk).
+**3. The backup tool (Q-B8).** Open: see the question.
 
-**4. Seed rework (Q-B2, Q-B3).**
-
-| Account | Password | Admin | Trips |
-|---|---|---|---|
-| `julian.h.dale@gmail.com` (Julian) | `changeme-julian` | yes | owns Okinawa & Taipei, owns an Athens Getaway |
-| `gabrom@umich.edu` | `changeme-gabrom` | no | editor on Okinawa |
-| `viewer@example.com` (Test Viewer) | `changeme-viewer` | no | viewer on Okinawa, Athens (Julian's), Bern |
-| `user@example.com`, `admin@example.com` | as today | as today | as today: test fixtures, untouched |
-
-- `pripri@example.com` is replaced by `viewer@example.com` (settings default,
-  e2e helper, tests). PriPri gets a real invite instead.
-- Okinawa comes from `example-trip-story.json`, moved to
-  `api/app/sample_data/okinawa_trip.json` so it ships in the image.
-- **Okinawa is imported only if Julian has no live trip with that name, and
-  never replanted**, so `make seed-remote` can't wipe the real trip's
-  memories and photos. Memberships are added only if missing. Athens (demo)
-  keeps replanting, as today.
-- Accounts are created only if missing (as today), so an existing Fly account
-  keeps its password.
-- The credentials live in `settings.py` defaults (overridable in `api/.env`).
-  It's a private repo and they're temporary.
+**4. Seed.** Unchanged (withdrawn).
 
 **5. Travel duration (Q-B6).** The travel read schema gains
 `durationMinutes` (null without an arrival), computed in the service from
@@ -3712,16 +3689,7 @@ change.
 
 ### Phases
 
-- **Phase 56 — seed rework and local backup testing.**
-  - **Scope:** the accounts and trips above; `okinawa_trip.json`;
-    import-if-missing for Okinawa; `viewer@` replaces `pripri@` (settings,
-    `.env.example`, e2e helper, tests); `make pi-backup-local`; README "Try
-    the backup locally".
-  - **Tests:** seeding twice gives one Okinawa trip and keeps a memory added
-    between runs; gabrom is an editor and viewer@ a viewer; Athens replants;
-    existing accounts keep their password; the user@ fixtures are unchanged.
-    By hand: `make pi-backup-local` copies a photo.
-- **Phase 57 — forced change without re-typing, countdown on the right,
+- **Phase 56 — forced change without re-typing, countdown on the right,
   travel duration.**
   - **Scope:** items 1, 2 and 5 (API: `durationMinutes`; UI: three changes).
   - **Tests:** the forced form after login has no current-password field and
@@ -3731,24 +3699,24 @@ change.
     arrival (null), and overnight; formatting (`45m`, `2h 5m`, `1d 2h`).
   - **E2E:** forced change in `accounts.spec.js` without the current
     password. Screenshots at 375 px: trips list, travel row.
-- **Phase 58 — the map follows the filters.**
+- **Phase 57 — the map follows the filters.**
   - **Scope:** item 6.
   - **Tests:** `boundsFor` (none, one, many; travel counted only with a day;
     no filter = the initial fit); MapPage calls `fitBounds`/`setZoom` on
     filter change and not on a re-render.
-  - **E2E:** pick a day on the Okinawa trip, then a Taipei day; screenshots.
-- **Phase 59 — packing lists (API).** Migration 0010, model, service,
+  - **E2E:** on the seeded Athens trip, pick the Chicago → Athens travel day, then an Athens day; screenshots.
+- **Phase 58 — packing lists (API).** Migration 0010, model, service,
   router, suggestions. **Tests:** CRUD; someone else's list is 404; a viewer
   can keep their own list; suggestions only fill an empty list; soft delete.
-- **Phase 60 — packing lists (UI).** Slice, page, drawer item. **Tests:**
+- **Phase 59 — packing lists (UI).** Slice, page, drawer item. **Tests:**
   check/uncheck (optimistic, rolled back on failure), add, rename, delete,
   Hide packed, suggestions; 375 px by eye.
-- **Phase 61 — documents (API).** Migration 0011, models, store, router,
+- **Phase 60 — documents (API).** Migration 0011, models, store, router,
   zip. **Tests:** upload; new version bumps the number and keeps the old
   file; latest-only zip with duplicate names handled; viewers 404 on every
   route, anonymous 401; 25 MB and type limits; rename/delete with If-Match
   (409 stale); a deleted document is left out of the zip.
-- **Phase 62 — documents (UI).** Slice, page, drawer item for editors.
+- **Phase 61 — documents (UI).** Slice, page, drawer item for editors.
   **Tests:** hidden for viewers; upload / new version / versions / rename /
   delete; Download all calls the zip endpoint and saves a blob. **E2E +
   by hand:** download the zip on a real iPhone and open it in Files.
@@ -3763,7 +3731,7 @@ change.
     session (the lost phone that prompted the reset) could set the password
     without knowing the temporary one, and take the account.
   - Recommendation: **(a)**.
-  - **Answer:**
+  - **Answer:** as recommended, (a) (2026-10-06).
 - **Q-B2. The seed accounts.**
   - (a) Keep `user@`/`admin@` and the Bern trip as test fixtures (the API
     tests and e2e suite depend on them), as in the table. Replace `pripri@`
@@ -3773,7 +3741,7 @@ change.
   - Recommendation: **(a)**. Also: gabrom's display name? (I'll use
     "Gabrom" unless you say otherwise.) Should viewer@ also see Bern? (yes,
     so the e2e viewer specs keep working.)
-  - **Answer:**
+  - **Answer:** withdrawn: no seed changes (2026-10-06).
 - **Q-B3. Seeding Fly, and forcing a change.**
   - Okinawa on Fly: import only if missing, never replant (recommended), or
     leave Okinawa out of `seed-remote` entirely?
@@ -3785,7 +3753,7 @@ change.
     the seed leaves its password alone; if your existing Okinawa trip there
     has a different name, the seed would add a second copy, so it might be
     better to skip `seed-remote` for this.
-  - **Answer:**
+  - **Answer:** withdrawn: no seed changes (2026-10-06).
 - **Q-B4. Packing lists.**
   - (a) Per person per trip (recommended), (b) one shared list per trip,
     (c) both: your own lists plus a "Shared" list everyone ticks.
@@ -3793,7 +3761,7 @@ change.
     Gifts)? Can you add your own lists?
   - Starter suggestions: yes (recommended), or always start empty?
   - Carry over: copy last trip's list (later), or not needed?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-B5. Documents.**
   - a. Editors and the owner only; viewers don't see it at all? (recommended)
   - b. 25 MB per file; PDFs, images, Word/Excel/text. Enough?
@@ -3806,14 +3774,31 @@ change.
   - f. These may be passports and tickets. Fly volumes are encrypted at rest
     and every route needs sign-in and editor; anything more (e.g. a
     separate passphrase) is out of scope unless you want it.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-B6. Travel duration.** Computed, not stored or editable;
   shown on the timeline row and in the details. OK? (Flights with no
   arrival time just show none.)
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-B7. Map.** Fit to the filtered markers on every filter change,
   including travel endpoints when a day is picked; clearing goes back to the
   trip fit. OK?
+  - **Answer:** as recommended (2026-10-06).
+
+- **Q-B8. The backup tool, simpler.** Today it's five files: the Python
+  script, `install.sh`, a systemd `.service` and `.timer`, and an
+  `.env.example`. The script is the only one that does the backup; the rest
+  install it to run every 30 minutes as a sandboxed system service.
+  - (a) Keep it as it is, and only add `make pi-backup-local` and a README
+    "Try it locally".
+  - (b) Shrink it: the script reads its settings from a file next to itself
+    (`scripts/pi-backup/backup.env`, gitignored), so it's just `python3
+    pripri_backup.py` anywhere, and one `crontab -e` line runs it every 30
+    minutes, logging to a file. `install.sh`, the `.service` and the `.timer`
+    go. You lose the systemd sandbox (read-only except the drive), the
+    catch-up run after the Pi was off, and `journalctl`; the drive-mounted
+    check stays.
+  - Recommendation: **(b)** for a two-person setup, unless it's already
+    installed on the Pi and working, in which case (a).
   - **Answer:**
 
 ## After Phase 4 — First real trip
