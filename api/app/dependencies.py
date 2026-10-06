@@ -22,7 +22,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Day, Item, Memory, PackingItem, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import (
+    Day,
+    Item,
+    Memory,
+    PackingItem,
+    Stay,
+    Travel,
+    Trip,
+    TripDocument,
+    TripMember,
+    UserRecord,
+)
 from app.services.versions import parse_if_match
 from app.users import current_active_user
 
@@ -224,6 +235,23 @@ async def get_own_packing_item(
     if item is None:
         raise _not_found()
     return item
+
+
+async def get_editable_document(
+    document_id: uuid.UUID,
+    trip: Trip = Depends(get_editable_trip),
+    db: AsyncSession = Depends(get_db),
+) -> TripDocument:
+    """A live document on a trip the caller may change (owner or editor).
+    Documents are editors' only: a viewer is refused by get_editable_trip."""
+    doc = await db.scalar(
+        select(TripDocument).where(
+            TripDocument.id == document_id, TripDocument.trip_id == trip.id, active(TripDocument)
+        )
+    )
+    if doc is None:
+        raise _not_found()
+    return doc
 
 
 async def if_match_version(if_match: str | None = Header(default=None)) -> int:

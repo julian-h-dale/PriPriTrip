@@ -304,6 +304,28 @@ class PackingItem(SoftDeleteMixin, Base):
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
 
 
+class TripDocument(SoftDeleteMixin, Base):
+    """A file kept with a trip (a ticket, a passport scan) as a hard-copy
+    fallback: uploaded before the trip, downloaded to the phone (one zip)
+    before leaving. The owner and editors only. Not versioned: uploading
+    again replaces the file. The file itself lives in the DocumentStore."""
+
+    __tablename__ = "trip_documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    # What it's called in the app and the zip (without the extension).
+    name: Mapped[str]
+    # The uploaded file's own name, for its extension and type.
+    filename: Mapped[str]
+    content_type: Mapped[str]
+    size: Mapped[int]
+    # Whoever uploaded the current file.
+    uploaded_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+    updated_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)
+
+
 class WeatherCache(Base):
     """OpenWeatherMap answers, cached by place (services/weather.py). A cache
     of public data keyed by coordinates — not anyone's data — so, unlike the

@@ -11,6 +11,7 @@ import { JournalPage } from "@/features/journal/JournalPage";
 import { WeatherPage } from "@/features/weather/WeatherPage";
 import { CurrencyPage } from "@/features/currency/CurrencyPage";
 import { PackingPage } from "@/features/packing/PackingPage";
+import { DocumentsPage } from "@/features/documents/DocumentsPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
@@ -119,6 +120,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <PackingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/documents"
+          element={
+            <ProtectedRoute>
+              <DocumentsPage />
             </ProtectedRoute>
           }
         />

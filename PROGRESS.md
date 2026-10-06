@@ -21,8 +21,12 @@
     person's own per trip, in Trip tools → Packing. `make verify` green (235
     API + 359 UI tests); e2e `packing.spec.js` passes. Run `make migrate`
     (or deploy) to get the table.
-  - **Next:** Phases 60–61 (documents, unversioned: upload replaces). Phase
-    57 (the map follows the filters) is still to do.
+  - **Phases 60–61 ✅ (2026-10-06): documents** (migration 0011), Trip
+    tools → Documents for the owner and editors: add, replace, rename,
+    delete, download one or all as a zip. Unversioned (Julian, 2026-10-06).
+    `make verify` green (244 API + 369 UI tests); e2e `documents.spec.js`
+    passes. **Julian:** deploy, then try the zip on the iPhone.
+  - **Next:** Phase 57 (the map follows the filters), still to do.
 - **Run stage 11 ✅ (2026-10-05): Phases 54–55**: admin invites, password
   resets, the forced password change, public sign-up closed. Details in
   `implementation_plan.md`, "Run stage 11 / Built". Weather is checked live

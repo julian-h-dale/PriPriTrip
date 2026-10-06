@@ -21,6 +21,8 @@ class AppSettings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
     # Where journal photos are stored (a Fly volume in production).
     photo_dir: str = "./data/photos"
+    # Where trip documents (tickets, passport scans) are stored; same volume.
+    document_dir: str = "./data/documents"
     # Comma-separated list of allowed CORS origins.
     cors_origins: str = "http://localhost:3000"
 

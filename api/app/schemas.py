@@ -431,3 +431,33 @@ class PackingItemRead(CamelModel):
     text: str
     checked: bool
     position: int
+
+
+# ---- trip documents ----
+
+
+def _document_name(value: str) -> str:
+    value = " ".join(value.split())
+    if not value:
+        raise ValueError("give it a name")
+    if len(value) > 120:
+        raise ValueError("keep the name under 120 characters")
+    return value
+
+
+DocumentName = Annotated[str, AfterValidator(_document_name)]
+
+
+class DocumentRename(CamelModel):
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    name: DocumentName
+
+
+class DocumentRead(CamelModel):
+    id: uuid.UUID
+    name: str
+    filename: str
+    content_type: str
+    size: int
+    updated_at: datetime
+    uploaded_by_name: str | None = None

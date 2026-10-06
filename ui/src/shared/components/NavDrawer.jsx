@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { CloudSun, Coins, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
+import { CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
 import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
 import { signOut } from "@/features/auth/authSlice";
@@ -44,6 +44,8 @@ export function NavDrawer({ open, onClose }) {
   const [inviting, setInviting] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const user = useSelector((s) => s.auth.user);
+  // Documents are for the owner and editors (the server refuses viewers).
+  const canEditTrip = useSelector((s) => s.timeline?.trip?.id === tripId && s.timeline.trip.role !== "viewer");
   const unsynced = useSelector(selectPendingMemories);
   const { count: photos } = useSelector(selectWaitingPhotos);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
@@ -115,6 +117,12 @@ export function NavDrawer({ open, onClose }) {
               <Luggage className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Packing
             </Link>
+            {canEditTrip && (
+              <Link to={`/trips/${tripId}/documents`} onClick={onClose} className={ITEM}>
+                <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                Documents
+              </Link>
+            )}
           </section>
         )}
         <InstallAppButton variant="ghost" className="h-auto w-full justify-start gap-3 px-3 py-3 font-normal" />

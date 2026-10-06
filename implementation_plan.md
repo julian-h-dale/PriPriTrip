@@ -3737,6 +3737,18 @@ change.
   **Tests:** hidden for viewers; upload / replace / rename / delete; Download all calls the zip endpoint and saves a blob. **E2E +
   by hand:** download the zip on a real iPhone and open it in Files.
 
+  - ✅ Phases 60–61 (2026-10-06), as planned (unversioned). Viewers get
+    403 on every route, like any other editing route, and no drawer item
+    (the drawer reads the open trip's role). Downloads go through
+    `apiClient` (so the sign-in header is sent) and then `saveToPhone`: the
+    share sheet where the phone has one (iOS: Save to Files), else a plain
+    download. Files are sent as `filename*=utf-8''…`. A deleted document's
+    file stays on disk. E2E `documents.spec.js` (adds a PDF, checks it's in
+    the zip, deletes it); screenshot `52`.
+  - **Before relying on it (Julian):** deploy. Fly runs migrations 0010 and
+    0011 on start; `DOCUMENT_DIR=/data/documents` is in `fly.toml`. Then
+    download the zip once on the iPhone and open it in Files.
+
 ### Open questions (Run stage 12)
 
 - **Q-B1. Skipping the temporary password: how?**
