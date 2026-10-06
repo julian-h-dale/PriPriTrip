@@ -88,6 +88,13 @@ test("an entry's own page: a flight, a stay, an activity, and back to the day", 
   await expect(page).toHaveURL(/\/days\/2026-05-11$/);
   const plans = page.getByRole("list", { name: "Plans for Mon, May 11" });
 
+  // ⋯ on the day's last activity: the menu floats over the page, not clipped by its row.
+  await plans.getByRole("button", { name: "More for Dinner at Kornhauskeller" }).click();
+  await expect(page.getByRole("menuitem", { name: "Move up" })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("menuitem", { name: "Move down" })).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: screenshotPath("03d-day-move-menu") });
+  await page.keyboard.press("Escape");
+
   // The overnight flight's arrival opens the flight.
   await plans.getByRole("link", { name: /Arrive · Zürich Airport/ }).click();
   const flight = page.getByRole("article", { name: "Chicago → Zürich" });

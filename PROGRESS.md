@@ -17,6 +17,9 @@
     Travel cards, search, map pins' Details, old `?open=` links);
     expand/collapse and the booking dialog are gone; Move up/down is under
     an activity's ⋯ on the day page. `make verify` green (246 API + 398 UI).
+  - **Fix (2026-10-06):** the ⋯ menu (Move up/down, and every other ⋯) was
+    clipped inside its row; `RowMenu` now floats over the page (portaled,
+    opens upward near the bottom). Screenshot `03d`.
   - **Run stage 13 is complete.** **Julian:** look at an entry's page on the
     phone. The e2e specs signing in as `pripri@` fail only because that
     dev password was changed (`make reset-db`).
