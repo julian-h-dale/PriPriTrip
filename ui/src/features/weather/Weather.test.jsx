@@ -187,6 +187,7 @@ describe("the drawer's Trip tools", () => {
     const tools = within(menu).getByRole("region", { name: "Trip tools" });
     expect(within(tools).getByRole("link", { name: "Weather" })).toHaveAttribute("href", "/trips/trip-1/weather");
     expect(within(tools).getByRole("link", { name: "Currency" })).toHaveAttribute("href", "/trips/trip-1/currency");
+    expect(within(tools).getByRole("link", { name: "Time zones" })).toHaveAttribute("href", "/trips/trip-1/time");
   });
 
   it("has no Trip tools outside a trip", async () => {

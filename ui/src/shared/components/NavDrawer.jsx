@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
+import { Clock, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
 import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
 import { signOut } from "@/features/auth/authSlice";
@@ -112,6 +112,10 @@ export function NavDrawer({ open, onClose }) {
             <Link to={`/trips/${tripId}/currency`} onClick={onClose} className={ITEM}>
               <Coins className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Currency
+            </Link>
+            <Link to={`/trips/${tripId}/time`} onClick={onClose} className={ITEM}>
+              <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              Time zones
             </Link>
             <Link to={`/trips/${tripId}/packing`} onClick={onClose} className={ITEM}>
               <Luggage className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

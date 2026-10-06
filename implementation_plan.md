@@ -3770,6 +3770,16 @@ change.
     you came from, or to the trip when opened directly. The old ← on the
     right is gone.
 
+- **Time zones (2026-10-06, Julian) ✅:** a trip tool with a live digital
+  clock (to the second) for every zone the trip passes through, in the
+  order the trip reaches it, each named by up to two of its places ("Naha ·
+  Onna · +1"). Built on the phone from the zones the read model already
+  gives every time (travel ends, stays, activities), so it agrees with the
+  timeline and works offline. Each clock shows the date there, day or night,
+  its UTC offset, and how far ahead or behind the phone it is. The zone the
+  phone is in says "You're here"; away from all of them, the phone gets its
+  own clock first. 12-hour, like the rest of the app. Screenshot `35`.
+
 ### Open questions (Run stage 12)
 
 - **Q-B1. Skipping the temporary password: how?**
