@@ -3715,6 +3715,15 @@ change.
     no filter = the initial fit); MapPage calls `fitBounds`/`setZoom` on
     filter change and not on a re-render.
   - **E2E:** on the seeded Athens trip, pick the Chicago → Athens travel day, then an Athens day; screenshots.
+  - ✅ (2026-10-06). `viewFor` (in `mapFilters.js`) sets the first view
+    and every filter change: fit with 48 px padding, or centre at zoom 14
+    for one place; nothing left leaves the view alone; panning, pins and
+    trip reloads never re-fit. **One change to the day filter:** both ends
+    of a travel leg now match every day it travels on (`legDays`), so an
+    overnight flight shows whole on either day; before, the arrival airport
+    belonged only to the arrival day. The e2e runs on the Bern sample (the
+    Athens trip moves with today's date): the May 10 overnight flight shows
+    Chicago and Zürich; screenshots `09a`, `09b`.
 - **Phase 58 — packing lists (API).** Migration 0010, model, service,
   router, suggestions. **Tests:** CRUD; someone else's list is 404; a viewer
   can keep their own list; suggestions only fill an empty list; soft delete.

@@ -8,7 +8,7 @@ import { buildMapMarkers } from "@/features/map/buildMapMarkers";
 import { memoryMarkers } from "@/features/map/memoryMarkers";
 import { MapControls } from "@/features/map/MapControls";
 import { MapInfoContent } from "@/features/map/MapInfoContent";
-import { filterMarkers } from "@/features/map/mapFilters";
+import { filterMarkers, viewFor } from "@/features/map/mapFilters";
 import { colorFor, directionsUrl, glyphSrcFor, iconFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import { isArea } from "@/features/map/placeActions";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
@@ -107,6 +107,23 @@ const ACTION_FORM = {
  * activity, plus — after a Google search — one temporary "search result"
  * marker for a place not on the trip, whose info window offers to add it.
  */
+/**
+ * Point the map at a view from viewFor: fit the places (with some room
+ * round the edge for the pins), or centre on the only one. Nothing to show
+ * leaves the view where it is.
+ */
+function showView(map, view, { singleZoom = 14, padding = 48 } = {}) {
+  if (!view) return;
+  if (view.kind === "point") {
+    map.panTo(view.point);
+    map.setZoom(singleZoom);
+    return;
+  }
+  const bounds = new window.google.maps.LatLngBounds();
+  view.points.forEach((point) => bounds.extend(point));
+  map.fitBounds(bounds, padding);
+}
+
 function TripMap({ trip }) {
   const dispatch = useDispatch();
   const online = useSelector((s) => s.network?.online ?? true);
@@ -114,6 +131,8 @@ function TripMap({ trip }) {
   const isViewer = useSelector(selectIsViewer);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  // The filters the map was last pointed at ("only|date"); null until it loads.
+  const viewKeyRef = useRef(null);
   const infoWindowRef = useRef(null);
   const entriesRef = useRef([]); // [{ element, data }]
   const resultMarkerRef = useRef(null); // the search result's AdvancedMarkerElement
@@ -167,26 +186,15 @@ function TripMap({ trip }) {
         const { Circle } = await loadGoogleMapsLibrary("maps");
         if (!live || !containerRef.current) return;
 
-        // Fit the initial view to stays/activities — the trip's actual
-        // destinations — not travel's endpoints, which are often a
-        // continent away (an international flight's departure airport
-        // would otherwise zoom the map out to show the whole ocean).
-        const anchorMarkers = markers.filter((m) => m.kind !== "travel");
-        const forBounds = anchorMarkers.length ? anchorMarkers : markers;
-
-        const map = new Map(containerRef.current, {
-          mapId: config.googleMapsMapId,
-          center: forBounds[0] ? { lat: forBounds[0].lat, lng: forBounds[0].lng } : { lat: 0, lng: 0 },
-          zoom: forBounds.length ? 12 : 2,
-        });
+        // The initial view: the trip's destinations (viewFor with no
+        // filters), not travel's endpoints, which are often a continent away.
+        const map = new Map(containerRef.current, { mapId: config.googleMapsMapId, center: { lat: 0, lng: 0 }, zoom: 2 });
         mapRef.current = map;
+        viewKeyRef.current = null;
         const infoWindow = new InfoWindow();
         infoWindow.addListener("closeclick", () => setInfo(null));
         infoWindowRef.current = infoWindow;
-
-        const bounds = new window.google.maps.LatLngBounds();
-        forBounds.forEach((marker) => bounds.extend({ lat: marker.lat, lng: marker.lng }));
-        if (forBounds.length > 1) map.fitBounds(bounds);
+        showView(map, viewFor(markers), { singleZoom: 12, padding: 0 });
 
         libsRef.current = { AdvancedMarkerElement, PinElement, Circle };
         if (live) setReady(true);
@@ -245,6 +253,22 @@ function TripMap({ trip }) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openInfoWindow closes over refs/setters only
   }, [ready, markers, only, date]);
+
+  // Changing a filter (a day, Stays, Journal) moves the map to what's left.
+  // Only a change of filter does: the first view is set when the map loads,
+  // and a trip reload or panning by hand never re-fits.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const key = `${only ?? ""}|${date}`;
+    if (viewKeyRef.current === null) {
+      viewKeyRef.current = key; // the view the map opened with
+      return;
+    }
+    if (viewKeyRef.current === key) return;
+    viewKeyRef.current = key;
+    showView(mapRef.current, viewFor(markers, { only, date: date || null }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- markers only matter at the moment a filter changes
+  }, [ready, only, date]);
 
   const visibleMarkers = useMemo(
     () => filterMarkers(markers, { only, date: date || null }),

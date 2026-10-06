@@ -225,6 +225,17 @@ test("map search and filters", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("09-map-date-filter"), fullPage: true });
   await page.getByRole("button", { name: "Show only stays" }).click();
   await expect(pins).toHaveCount(1); // Beausite Park Hotel covers that night
+  await page.screenshot({ path: screenshotPath("09a-map-day-and-stays"), fullPage: true });
+
+  // The overnight flight's day: both airports, an ocean apart, and the map
+  // zooms out to show them.
+  await page.getByRole("button", { name: "Show only stays" }).click();
+  await page.getByRole("button", { name: /Showing Tue, May 12/ }).click();
+  await page.getByRole("button", { name: "Show one day" }).click();
+  await page.getByRole("textbox", { name: "Pick a day" }).fill("2026-05-10");
+  await expect(pins).toHaveCount(2);
+  await page.waitForTimeout(1000); // let the map settle on its new view
+  await page.screenshot({ path: screenshotPath("09b-map-flight-day"), fullPage: true });
 });
 
 /** Delete what a test added through the UI, so the dev trip is left as it was. */

@@ -29,7 +29,12 @@
   - **Follow-ups ✅ (2026-10-06):** packing quantities (migration 0012),
     Delete list, and ← in ☰'s place on the tool pages. `make verify` green
     (246 API + 373 UI tests).
-  - **Next:** Phase 57 (the map follows the filters).
+  - **Phase 57 ✅ (2026-10-06): the map follows the filters** (a day,
+    Stays, Journal), fitting what's left; a day shows both ends of a leg
+    travelling on it. `make verify` green (246 API + 383 UI tests).
+  - **Run stage 12 is complete.** Not pushed. **Julian:** deploy
+    (migrations 0010–0012), try the documents zip on the iPhone, and look at
+    the map's day filter on the Okinawa trip.
 - **Run stage 11 ✅ (2026-10-05): Phases 54–55**: admin invites, password
   resets, the forced password change, public sign-up closed. Details in
   `implementation_plan.md`, "Run stage 11 / Built". Weather is checked live
