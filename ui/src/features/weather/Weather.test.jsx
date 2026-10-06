@@ -194,3 +194,44 @@ describe("the drawer's Trip tools", () => {
     expect(within(menu).queryByRole("region", { name: "Trip tools" })).not.toBeInTheDocument();
   });
 });
+
+describe("a tool page's top bar", () => {
+  /** Opens at `entry`; the day page has a button that moves to the tool, as the drawer does. */
+  async function renderTool(entry) {
+    const { ToolLayout } = await import("@/shared/components/ToolLayout");
+    const { useNavigate } = await import("react-router-dom");
+    function DayPage() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate("/trips/trip-1/weather")}>The day page: open the tool</button>;
+    }
+    const store = configureStore({
+      reducer: { auth: authReducer, journal: journalReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
+      preloadedState: { auth: { token: fakeToken(USER), user: null, status: "idle" } },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={[entry]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Routes>
+            <Route path="/trips/:tripId/weather" element={<ToolLayout tripId="trip-1" title="Okinawa">Tool</ToolLayout>} />
+            <Route path="/trips/:tripId/days/:date" element={<DayPage />} />
+            <Route path="/trips/:tripId/today" element={<p>The Today page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+  }
+
+  it("has ← instead of ☰, back to where you came from", async () => {
+    await renderTool("/trips/trip-1/days/2026-10-30");
+    await userEvent.click(screen.getByRole("button", { name: /open the tool/ }));
+    expect(screen.queryByRole("button", { name: "Open menu" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("button", { name: /The day page/ })).toBeInTheDocument();
+  });
+
+  it("opened directly, ← goes to the trip", async () => {
+    await renderTool("/trips/trip-1/weather");
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("The Today page")).toBeInTheDocument();
+  });
+});

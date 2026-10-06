@@ -26,7 +26,10 @@
     delete, download one or all as a zip. Unversioned (Julian, 2026-10-06).
     `make verify` green (244 API + 369 UI tests); e2e `documents.spec.js`
     passes. **Julian:** deploy, then try the zip on the iPhone.
-  - **Next:** Phase 57 (the map follows the filters), still to do.
+  - **Follow-ups ✅ (2026-10-06):** packing quantities (migration 0012),
+    Delete list, and ← in ☰'s place on the tool pages. `make verify` green
+    (246 API + 373 UI tests).
+  - **Next:** Phase 57 (the map follows the filters).
 - **Run stage 11 ✅ (2026-10-05): Phases 54–55**: admin invites, password
   resets, the forced password change, public sign-up closed. Details in
   `implementation_plan.md`, "Run stage 11 / Built". Weather is checked live

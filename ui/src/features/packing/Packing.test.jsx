@@ -23,9 +23,9 @@ vi.mock("@/shared/services/apiClient", () => ({
 }));
 
 const TRIP = { id: "trip-1", name: "Okinawa & Taipei", role: "viewer", days: [], stays: [], travels: [] };
-const item = (id, category, text, position, checked = false) => ({ id, category, text, position, checked });
+const item = (id, category, text, position, checked = false, quantity = 1) => ({ id, category, text, position, checked, quantity });
 const LIST = [
-  item("a", "clothes", "Socks", 0),
+  item("a", "clothes", "Socks", 0, false, 7),
   item("b", "clothes", "Swim shorts", 1, true),
   item("c", "electronics", "Plug adapter", 0),
 ];
@@ -79,6 +79,8 @@ describe("the Packing page", () => {
     const clothes = await screen.findByRole("region", { name: "Clothes" });
     expect(within(clothes).getByText("1/2")).toBeInTheDocument();
     expect(within(clothes).getByRole("checkbox", { name: "Swim shorts" })).toBeChecked();
+    // A quantity shows when it's more than one.
+    expect(within(clothes).getByRole("checkbox", { name: "Socks ×7" })).not.toBeChecked();
     expect(screen.getByRole("region", { name: "Electronics" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Toiletries" })).not.toBeInTheDocument();
     expect(screen.getByText(/of 3 packed/)).toHaveTextContent("1 of 3 packed");
@@ -92,7 +94,7 @@ describe("the Packing page", () => {
     let refuse;
     apiClient.patch.mockReturnValue(new Promise((_, reject) => (refuse = reject)));
     renderPage();
-    const socks = await screen.findByRole("checkbox", { name: "Socks" });
+    const socks = await screen.findByRole("checkbox", { name: "Socks ×7" });
     await user.click(socks);
     expect(socks).toBeChecked();
     expect(apiClient.patch).toHaveBeenCalledWith("/trips/trip-1/packing/a", { checked: true }, { silent: true });
@@ -100,20 +102,25 @@ describe("the Packing page", () => {
     await waitFor(() => expect(socks).not.toBeChecked());
   });
 
-  it("adds to a list", async () => {
+  it("adds to a list, with how many", async () => {
     const user = userEvent.setup();
     serve(LIST);
-    apiClient.post.mockResolvedValue({ data: item("d", "electronics", "Power bank", 1) });
+    apiClient.post.mockResolvedValue({ data: item("d", "electronics", "Cables", 1, false, 3) });
     renderPage();
     const electronics = await screen.findByRole("region", { name: "Electronics" });
-    await user.type(within(electronics).getByRole("textbox", { name: "Add to Electronics" }), "Power bank{Enter}");
+    const howMany = within(electronics).getByRole("spinbutton", { name: "How many, for Electronics" });
+    expect(howMany).toHaveValue(1);
+    await user.clear(howMany);
+    await user.type(howMany, "3");
+    await user.type(within(electronics).getByRole("textbox", { name: "Add to Electronics" }), "Cables{Enter}");
     expect(apiClient.post).toHaveBeenCalledWith(
       "/trips/trip-1/packing",
-      { category: "electronics", text: "Power bank" },
+      { category: "electronics", text: "Cables", quantity: 3 },
       { silent: true }
     );
-    expect(await within(electronics).findByRole("checkbox", { name: "Power bank" })).toBeInTheDocument();
+    expect(await within(electronics).findByRole("checkbox", { name: "Cables ×3" })).toBeInTheDocument();
     expect(within(electronics).getByRole("textbox", { name: "Add to Electronics" })).toHaveValue("");
+    expect(howMany).toHaveValue(1);
   });
 
   it("starts a new list from its button", async () => {
@@ -125,25 +132,60 @@ describe("the Packing page", () => {
     expect(within(toiletries).getByRole("textbox", { name: "Add to Toiletries" })).toHaveFocus();
   });
 
-  it("renames and deletes from ⋯", async () => {
+  it("edits (name and how many) and deletes from ⋯", async () => {
     const user = userEvent.setup();
     serve(LIST);
-    apiClient.patch.mockResolvedValue({ data: item("a", "clothes", "Wool socks", 0) });
+    apiClient.patch.mockResolvedValue({ data: item("a", "clothes", "Wool socks", 0, false, 4) });
     apiClient.delete.mockResolvedValue({});
     renderPage();
     await user.click(await screen.findByRole("button", { name: "More for Socks" }));
-    await user.click(screen.getByRole("menuitem", { name: "Rename" }));
-    const dialog = screen.getByRole("dialog", { name: "Rename" });
+    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit" });
     const field = within(dialog).getByLabelText("What to pack");
+    expect(within(dialog).getByLabelText("How many")).toHaveValue(7);
     await user.clear(field);
     await user.type(field, "Wool socks");
+    await user.clear(within(dialog).getByLabelText("How many"));
+    await user.type(within(dialog).getByLabelText("How many"), "4");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await screen.findByRole("checkbox", { name: "Wool socks" })).toBeInTheDocument();
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      "/trips/trip-1/packing/a",
+      { text: "Wool socks", quantity: 4 },
+      { silent: true }
+    );
+    expect(await screen.findByRole("checkbox", { name: "Wool socks ×4" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "More for Plug adapter" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     await waitFor(() => expect(screen.queryByRole("checkbox", { name: "Plug adapter" })).not.toBeInTheDocument());
     expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/packing/c", { silent: true });
+  });
+
+  it("deletes a whole list after asking; it can be started again", async () => {
+    const user = userEvent.setup();
+    serve(LIST);
+    apiClient.delete.mockResolvedValue({});
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "More for the Clothes list" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete list" }));
+    const confirm = screen.getByRole("dialog", { name: "Delete the Clothes list?" });
+    expect(confirm).toHaveTextContent("Its 2 things go too");
+    await user.click(within(confirm).getByRole("button", { name: "Delete list" }));
+    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/packing/lists/clothes", { silent: true });
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Clothes" })).not.toBeInTheDocument());
+    expect(within(screen.getByRole("region", { name: "More lists" })).getByRole("button", { name: "Clothes" })).toBeInTheDocument();
+  });
+
+  it("an empty list just closes", async () => {
+    const user = userEvent.setup();
+    serve(LIST);
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Toiletries" }));
+    await user.click(screen.getByRole("button", { name: "More for the Toiletries list" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete list" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Toiletries" })).not.toBeInTheDocument();
+    expect(apiClient.delete).not.toHaveBeenCalled();
   });
 
   it("hides packed things on request", async () => {
@@ -153,7 +195,7 @@ describe("the Packing page", () => {
     await screen.findByRole("checkbox", { name: "Swim shorts" });
     await user.click(screen.getByRole("button", { name: "Hide packed" }));
     expect(screen.queryByRole("checkbox", { name: "Swim shorts" })).not.toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Socks" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Socks ×7" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show packed" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -172,7 +214,7 @@ describe("the Packing page", () => {
   it("offline, shows the list but can't change it", async () => {
     serve(LIST);
     renderPage({ online: false });
-    expect(await screen.findByRole("checkbox", { name: "Socks" })).toBeDisabled();
+    expect(await screen.findByRole("checkbox", { name: "Socks ×7" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent("You’re offline");
   });
 });

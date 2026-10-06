@@ -27,8 +27,16 @@ CATEGORIES = (
     "other",
 )
 
-SUGGESTIONS: dict[str, tuple[str, ...]] = {
-    "clothes": ("Tops", "Trousers / shorts", "Underwear", "Socks", "Sleepwear", "Light jacket"),
+# (what, how many). Clothes counts are a starting point for about a week.
+SUGGESTIONS: dict[str, tuple[str | tuple[str, int], ...]] = {
+    "clothes": (
+        ("Tops", 5),
+        ("Trousers / shorts", 3),
+        ("Underwear", 7),
+        ("Socks", 7),
+        "Sleepwear",
+        "Light jacket",
+    ),
     "toiletries": ("Toothbrush & toothpaste", "Deodorant", "Shampoo", "Razor", "Sunscreen"),
     "electronics": ("Phone charger", "Plug adapter", "Power bank", "Headphones"),
     "documents": ("Passport", "Credit cards", "Some cash", "Travel insurance details"),
@@ -69,7 +77,12 @@ async def _next_position(
 
 
 async def add_item(
-    db: AsyncSession, trip_id: uuid.UUID, user_id: uuid.UUID, category: str, text: str
+    db: AsyncSession,
+    trip_id: uuid.UUID,
+    user_id: uuid.UUID,
+    category: str,
+    text: str,
+    quantity: int = 1,
 ) -> PackingItem:
     """Add a line to the end of a list."""
     item = PackingItem(
@@ -77,6 +90,7 @@ async def add_item(
         user_id=user_id,
         category=category,
         text=text,
+        quantity=quantity,
         position=await _next_position(db, trip_id, user_id, category),
     )
     db.add(item)
@@ -87,6 +101,8 @@ async def add_item(
 async def update_item(db: AsyncSession, item: PackingItem, body: PackingItemUpdate) -> PackingItem:
     if body.text is not None:
         item.text = body.text
+    if body.quantity is not None:
+        item.quantity = body.quantity
     if body.checked is not None:
         item.checked = body.checked
     if body.category is not None and body.category != item.category:
@@ -102,6 +118,17 @@ async def delete_item(db: AsyncSession, item: PackingItem) -> None:
     await db.commit()
 
 
+async def delete_list(
+    db: AsyncSession, trip_id: uuid.UUID, user_id: uuid.UUID, category: str
+) -> None:
+    """Delete every line on one of the caller's lists (soft, like a line)."""
+    now = dt.datetime.now(dt.UTC)
+    for item in await db.scalars(_live(trip_id, user_id).where(PackingItem.category == category)):
+        item.is_deleted = True
+        item.deleted_at = now
+    await db.commit()
+
+
 async def add_suggestions(
     db: AsyncSession, trip_id: uuid.UUID, user_id: uuid.UUID
 ) -> list[PackingItem]:
@@ -109,13 +136,15 @@ async def add_suggestions(
     second tap, or a tap from another phone, never doubles it). Returns the list."""
     if not await list_items(db, trip_id, user_id):
         for category in CATEGORIES:
-            for position, text in enumerate(SUGGESTIONS[category]):
+            for position, suggestion in enumerate(SUGGESTIONS[category]):
+                text, quantity = suggestion if isinstance(suggestion, tuple) else (suggestion, 1)
                 db.add(
                     PackingItem(
                         trip_id=trip_id,
                         user_id=user_id,
                         category=category,
                         text=text,
+                        quantity=quantity,
                         position=position,
                     )
                 )

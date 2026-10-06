@@ -3749,6 +3749,18 @@ change.
     0011 on start; `DOCUMENT_DIR=/data/documents` is in `fly.toml`. Then
     download the zip once on the iPhone and open it in Files.
 
+- **Follow-ups (2026-10-06, Julian) ✅:**
+  - **Packing quantities** (migration 0012, default 1, 1–99): set when
+    adding (a "how many" box beside the text) or with ⋯ → Edit, and shown as
+    "×3". Suggestions come with clothes counts for about a week.
+  - **Deleting a whole list:** ⋯ on a list's header → Delete list (asks
+    first, `DELETE /trips/{id}/packing/lists/{category}`, only your lines).
+    An empty list just closes. Deleting one line was already under the
+    line's ⋯.
+  - **Tool pages get ← in ☰'s place** (`TopBar back=…`): back to the screen
+    you came from, or to the trip when opened directly. The old ← on the
+    right is gone.
+
 ### Open questions (Run stage 12)
 
 - **Q-B1. Skipping the temporary password: how?**

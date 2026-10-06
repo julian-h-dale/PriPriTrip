@@ -408,19 +408,23 @@ def _packing_text(value: str) -> str:
 
 
 PackingText = Annotated[str, AfterValidator(_packing_text)]
+PackingQuantity = Annotated[int, Field(ge=1, le=99)]
 
 
 class PackingItemCreate(CamelModel):
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
     category: PackingCategory
     text: PackingText
+    quantity: PackingQuantity = 1
 
 
 class PackingItemUpdate(CamelModel):
-    """Any of: new words, ticked or not, another list. Left out = unchanged."""
+    """Any of: new words, how many, ticked or not, another list. Left out =
+    unchanged."""
 
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
     text: PackingText | None = None
+    quantity: PackingQuantity | None = None
     checked: bool | None = None
     category: PackingCategory | None = None
 
@@ -429,6 +433,7 @@ class PackingItemRead(CamelModel):
     id: uuid.UUID
     category: PackingCategory
     text: str
+    quantity: int
     checked: bool
     position: int
 

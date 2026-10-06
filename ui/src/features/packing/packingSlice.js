@@ -11,12 +11,12 @@ export const fetchPacking = createAsyncThunk("packing/fetch", async (tripId) => 
   return { tripId, items: data };
 });
 
-export const addPackingItem = createAsyncThunk("packing/add", async ({ tripId, category, text }) => {
-  const { data } = await apiClient.post(`/trips/${tripId}/packing`, { category, text }, { silent: true });
+export const addPackingItem = createAsyncThunk("packing/add", async ({ tripId, category, text, quantity = 1 }) => {
+  const { data } = await apiClient.post(`/trips/${tripId}/packing`, { category, text, quantity }, { silent: true });
   return data;
 });
 
-/** `changes`: any of { text, checked, category }. */
+/** `changes`: any of { text, quantity, checked, category }. */
 export const updatePackingItem = createAsyncThunk("packing/update", async ({ tripId, id, changes }) => {
   const { data } = await apiClient.patch(`/trips/${tripId}/packing/${id}`, changes, { silent: true });
   return data;
@@ -25,6 +25,12 @@ export const updatePackingItem = createAsyncThunk("packing/update", async ({ tri
 export const deletePackingItem = createAsyncThunk("packing/delete", async ({ tripId, id }) => {
   await apiClient.delete(`/trips/${tripId}/packing/${id}`, { silent: true });
   return id;
+});
+
+/** Delete one of your lists: every line on it. */
+export const deletePackingList = createAsyncThunk("packing/deleteList", async ({ tripId, category }) => {
+  await apiClient.delete(`/trips/${tripId}/packing/lists/${category}`, { silent: true });
+  return category;
 });
 
 export const addPackingSuggestions = createAsyncThunk("packing/suggestions", async (tripId) => {
@@ -62,7 +68,8 @@ const packingSlice = createSlice({
         // Optimistic, with the previous values kept on the item for a rollback.
         const item = state.items.find((i) => i.id === action.meta.arg.id);
         if (!item) return;
-        item.before = { text: item.text, checked: item.checked, category: item.category, position: item.position };
+        const { text, quantity, checked, category, position } = item;
+        item.before = { text, quantity, checked, category, position };
         Object.assign(item, action.meta.arg.changes);
       })
       .addCase(updatePackingItem.fulfilled, (state, action) => {
@@ -76,6 +83,10 @@ const packingSlice = createSlice({
       })
       .addCase(deletePackingItem.fulfilled, (state, action) => {
         state.items = state.items.filter((i) => i.id !== action.payload);
+      })
+      .addCase(deletePackingList.fulfilled, (state, action) => {
+        if (state.tripId !== action.meta.arg.tripId) return;
+        state.items = state.items.filter((i) => i.category !== action.payload);
       });
   },
 });

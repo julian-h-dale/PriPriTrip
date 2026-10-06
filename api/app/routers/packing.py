@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import ViewableTrip, get_own_packing_item, get_viewable_trip
 from app.models import PackingItem, UserRecord
-from app.schemas import PackingItemCreate, PackingItemRead, PackingItemUpdate
+from app.schemas import PackingCategory, PackingItemCreate, PackingItemRead, PackingItemUpdate
 from app.services import packing as packing_service
 from app.users import current_active_user
 
@@ -34,7 +34,9 @@ async def add_packing_item(
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> PackingItem:
-    return await packing_service.add_item(db, viewable.trip.id, user.id, body.category, body.text)
+    return await packing_service.add_item(
+        db, viewable.trip.id, user.id, body.category, body.text, body.quantity
+    )
 
 
 @router.post("/suggestions", response_model=list[PackingItemRead])
@@ -46,6 +48,18 @@ async def add_packing_suggestions(
     """Fill an empty list with common things to pack. A list that already has
     lines is left as it is. Returns the whole list."""
     return await packing_service.add_suggestions(db, viewable.trip.id, user.id)
+
+
+@router.delete("/lists/{category}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_packing_list(
+    category: PackingCategory,
+    viewable: ViewableTrip = Depends(get_viewable_trip),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+) -> Response:
+    """Delete one of your lists: every line on it. (Only yours.)"""
+    await packing_service.delete_list(db, viewable.trip.id, user.id, category)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/{item_id}", response_model=PackingItemRead)

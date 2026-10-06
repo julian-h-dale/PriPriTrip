@@ -299,6 +299,8 @@ class PackingItem(SoftDeleteMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     category: Mapped[str]
     text: Mapped[str]
+    # How many to pack (the app shows it when more than one).
+    quantity: Mapped[int] = mapped_column(default=1, server_default="1")
     checked: Mapped[bool] = mapped_column(default=False)
     position: Mapped[int]
     created_at: Mapped[dt.datetime] = mapped_column(UtcDateTime, default=_utc_now)

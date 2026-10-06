@@ -7,6 +7,7 @@ import {
   addPackingItem,
   addPackingSuggestions,
   deletePackingItem,
+  deletePackingList,
   fetchPacking,
   updatePackingItem,
 } from "@/features/packing/packingSlice";
@@ -20,7 +21,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 
-function ItemRow({ item, tripId, disabled, onRename }) {
+function ItemRow({ item, tripId, disabled, onEdit }) {
   const dispatch = useDispatch();
   const id = useId();
   return (
@@ -35,11 +36,16 @@ function ItemRow({ item, tripId, disabled, onRename }) {
           className="h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
         />
         <span className={cn("break-words text-sm", item.checked && "text-muted-foreground line-through")}>{item.text}</span>
+        {item.quantity > 1 && (
+          <span className="ml-auto shrink-0 rounded-sm bg-secondary px-1.5 text-xs font-medium tabular-nums text-secondary-foreground">
+            ×{item.quantity}
+          </span>
+        )}
       </label>
       <RowMenu
         label={`More for ${item.text}`}
         items={[
-          { label: "Rename", icon: <Pencil className="h-4 w-4" aria-hidden="true" />, disabled, onSelect: () => onRename(item) },
+          { label: "Edit", icon: <Pencil className="h-4 w-4" aria-hidden="true" />, disabled, onSelect: () => onEdit(item) },
           {
             label: "Delete",
             icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
@@ -53,17 +59,45 @@ function ItemRow({ item, tripId, disabled, onRename }) {
   );
 }
 
+/** 1–99 from what was typed (blank or nonsense is 1). */
+function toQuantity(value) {
+  const n = Number.parseInt(value, 10);
+  return Number.isFinite(n) ? Math.min(99, Math.max(1, n)) : 1;
+}
+
+function QuantityInput({ label, value, onChange, disabled, id }) {
+  return (
+    <Input
+      id={id}
+      aria-label={id ? undefined : label}
+      type="number"
+      inputMode="numeric"
+      min={1}
+      max={99}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={(e) => e.target.select()}
+      disabled={disabled}
+      className="w-16 shrink-0 text-center tabular-nums"
+    />
+  );
+}
+
 function AddItem({ tripId, category, label, disabled, autoFocus }) {
   const dispatch = useDispatch();
   const [text, setText] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
   async function handleSubmit(e) {
     e.preventDefault();
     if (!text.trim()) return;
     setBusy(true);
-    const result = await dispatch(addPackingItem({ tripId, category, text: text.trim() }));
+    const result = await dispatch(addPackingItem({ tripId, category, text: text.trim(), quantity: toQuantity(quantity) }));
     setBusy(false);
-    if (addPackingItem.fulfilled.match(result)) setText("");
+    if (addPackingItem.fulfilled.match(result)) {
+      setText("");
+      setQuantity("1");
+    }
   }
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 px-2 pt-1">
@@ -76,6 +110,7 @@ function AddItem({ tripId, category, label, disabled, autoFocus }) {
         autoFocus={autoFocus}
         maxLength={200}
       />
+      <QuantityInput label={`How many, for ${label}`} value={quantity} onChange={setQuantity} disabled={disabled} />
       <Button type="submit" variant="outline" size="icon" aria-label={`Add to ${label}`} disabled={disabled || busy || !text.trim()}>
         <Plus className="h-4 w-4" aria-hidden="true" />
       </Button>
@@ -83,27 +118,41 @@ function AddItem({ tripId, category, label, disabled, autoFocus }) {
   );
 }
 
-function PackingList({ category, items, tripId, hidePacked, disabled, onRename, justOpened }) {
+function PackingList({ category, items, tripId, hidePacked, disabled, onEdit, onDeleteList, justOpened }) {
   const Icon = category.icon;
   const packed = items.filter((i) => i.checked).length;
   const shown = hidePacked ? items.filter((i) => !i.checked) : items;
   return (
     <Card role="region" aria-label={category.label} className="flex flex-col gap-1 p-3">
-      <div className="flex items-center justify-between gap-2 px-2 pb-1">
+      <div className="flex items-center justify-between gap-2 pl-2">
         <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
           <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
           {category.label}
         </h2>
-        {items.length > 0 && (
-          <span className={cn("text-xs tabular-nums", packed === items.length ? "text-success" : "text-muted-foreground")}>
-            {packed}/{items.length}
-          </span>
-        )}
+        <span className="flex items-center gap-1">
+          {items.length > 0 && (
+            <span className={cn("text-xs tabular-nums", packed === items.length ? "text-success" : "text-muted-foreground")}>
+              {packed}/{items.length}
+            </span>
+          )}
+          <RowMenu
+            label={`More for the ${category.label} list`}
+            items={[
+              {
+                label: "Delete list",
+                icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+                destructive: true,
+                disabled,
+                onSelect: () => onDeleteList(category, items.length),
+              },
+            ]}
+          />
+        </span>
       </div>
       {shown.length > 0 && (
         <ul className="flex flex-col">
           {shown.map((item) => (
-            <ItemRow key={item.id} item={item} tripId={tripId} disabled={disabled} onRename={onRename} />
+            <ItemRow key={item.id} item={item} tripId={tripId} disabled={disabled} onEdit={onEdit} />
           ))}
         </ul>
       )}
@@ -113,22 +162,33 @@ function PackingList({ category, items, tripId, hidePacked, disabled, onRename, 
   );
 }
 
-function RenameDialog({ item, tripId, onClose }) {
+function EditDialog({ item, tripId, onClose }) {
   const dispatch = useDispatch();
-  const [text, setText] = useState(item?.text ?? "");
-  useEffect(() => setText(item?.text ?? ""), [item]);
+  const [text, setText] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  useEffect(() => {
+    setText(item?.text ?? "");
+    setQuantity(String(item?.quantity ?? 1));
+  }, [item]);
   async function handleSubmit(e) {
     e.preventDefault();
     if (!text.trim()) return;
-    const result = await dispatch(updatePackingItem({ tripId, id: item.id, changes: { text: text.trim() } }));
+    const changes = { text: text.trim(), quantity: toQuantity(quantity) };
+    const result = await dispatch(updatePackingItem({ tripId, id: item.id, changes }));
     if (updatePackingItem.fulfilled.match(result)) onClose();
   }
   return (
-    <Dialog open={Boolean(item)} onClose={onClose} title="Rename">
+    <Dialog open={Boolean(item)} onClose={onClose} title="Edit">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="packing-rename">What to pack</Label>
-          <Input id="packing-rename" value={text} onChange={(e) => setText(e.target.value)} maxLength={200} autoFocus />
+        <div className="flex gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="packing-text">What to pack</Label>
+            <Input id="packing-text" value={text} onChange={(e) => setText(e.target.value)} maxLength={200} autoFocus />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="packing-quantity">How many</Label>
+            <QuantityInput id="packing-quantity" value={quantity} onChange={setQuantity} />
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
@@ -139,6 +199,31 @@ function RenameDialog({ item, tripId, onClose }) {
           </Button>
         </DialogFooter>
       </form>
+    </Dialog>
+  );
+}
+
+function DeleteListDialog({ target, tripId, onClose, onDeleted }) {
+  const dispatch = useDispatch();
+  async function handleDelete() {
+    const result = await dispatch(deletePackingList({ tripId, category: target.category.key }));
+    if (deletePackingList.fulfilled.match(result)) onDeleted(target.category.key);
+  }
+  return (
+    <Dialog
+      open={Boolean(target)}
+      onClose={onClose}
+      title={`Delete the ${target?.category.label ?? ""} list?`}
+      description={target ? `Its ${target.count === 1 ? "1 thing goes" : `${target.count} things go`} too. You can start it again from More lists.` : undefined}
+    >
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="button" variant="destructive" onClick={handleDelete}>
+          Delete list
+        </Button>
+      </DialogFooter>
     </Dialog>
   );
 }
@@ -176,7 +261,8 @@ export function PackingPage() {
   const tripName = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip.name : null));
   const [hidePacked, setHidePacked] = useState(false);
   const [opened, setOpened] = useState([]);
-  const [renaming, setRenaming] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [deletingList, setDeletingList] = useState(null);
   const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
@@ -191,6 +277,12 @@ export function PackingPage() {
   const packed = mine.filter((i) => i.checked).length;
   const disabled = !online;
   const open = (key) => setOpened((keys) => [...keys, key]);
+  const close = (key) => setOpened((keys) => keys.filter((k) => k !== key));
+  // An empty list just closes; one with things on it asks first.
+  function deleteList(category, count) {
+    if (count === 0) close(category.key);
+    else setDeletingList({ category, count });
+  }
 
   async function suggest() {
     setSuggesting(true);
@@ -252,14 +344,24 @@ export function PackingPage() {
               tripId={tripId}
               hidePacked={hidePacked}
               disabled={disabled}
-              onRename={setRenaming}
+              onEdit={setEditing}
+              onDeleteList={deleteList}
               justOpened={opened.includes(c.key) && groups[c.key].length === 0}
             />
           ))}
           <StartAList categories={notStarted} onOpen={open} title={mine.length ? "More lists" : "Or start a list"} />
         </>
       )}
-      <RenameDialog item={renaming} tripId={tripId} onClose={() => setRenaming(null)} />
+      <EditDialog item={editing} tripId={tripId} onClose={() => setEditing(null)} />
+      <DeleteListDialog
+        target={deletingList}
+        tripId={tripId}
+        onClose={() => setDeletingList(null)}
+        onDeleted={(key) => {
+          close(key);
+          setDeletingList(null);
+        }}
+      />
     </ToolLayout>
   );
 }

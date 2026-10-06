@@ -22,6 +22,12 @@ test("trip tools: Weather and Currency from the drawer", async ({ page }) => {
   await expect(page.getByText(/Weather isn’t set up|Trip days|Couldn’t load the weather/).first()).toBeVisible();
   await page.screenshot({ path: screenshotPath("32-weather"), fullPage: true });
 
+  // A tool page has ← in place of ☰: back to the trip, then the drawer again.
+  await expect(page.getByRole("button", { name: "Open menu" })).toHaveCount(0);
+  const tripUrl = page.url().replace(/\/weather$/, "");
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).not.toHaveURL(/\/weather$/);
+  expect(page.url().startsWith(tripUrl)).toBe(true);
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Currency" }).click();
   await expect(page.getByRole("heading", { name: "Currency" })).toBeVisible();
