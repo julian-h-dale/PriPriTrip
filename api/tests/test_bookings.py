@@ -49,6 +49,8 @@ async def test_read_model_shows_each_times_clock(trip: Json) -> None:
     assert (flight["departZone"], flight["arriveZone"]) == ("America/Chicago", "Europe/Zurich")
     train = travel_titled(trip, "Zürich Airport → Bern")  # names only: trip zone
     assert (train["departZone"], train["arriveZone"]) == ("Europe/Zurich", "Europe/Zurich")
+    # Durations come from the times on their own clocks: 17:40 Chicago → 9:25 Zürich.
+    assert (flight["durationMinutes"], train["durationMinutes"]) == (525, 60)
     assert stay_named(trip, "Beausite Park Hotel")["zone"] == "Europe/Zurich"
     walk = trip["days"][0]["items"][1]
     assert walk["title"] == "Old Town & Zytglogge walk" and walk["zone"] == "Europe/Zurich"

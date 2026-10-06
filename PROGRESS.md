@@ -6,6 +6,18 @@
 
 ## Status
 
+- **Run stage 12, in progress (2026-10-06)** on branch
+  **`improvements-oct-5`**. Plan: `implementation_plan.md`, "Run stage 12".
+  The seed rework was withdrawn (the seed is unchanged). The backup tool's
+  simplification is still open (Q-B8).
+  - **Phase 56 ✅ (2026-10-06):** the forced password change no longer asks
+    for the temporary password straight after sign-in (held in memory only),
+    the countdown sits on the right of the trip card, and travel legs show
+    their duration (`durationMinutes`, DST-safe). `make verify` green (229
+    API + 350 UI tests). In e2e, `accounts.spec.js` passes; the sharing spec
+    fails only because the dev database's `pripri@example.com` no longer has
+    `changeme-viewer` (`make reset-db` fixes it).
+  - **Next:** Phase 57 (the map follows the filters), once Julian confirms.
 - **Run stage 11 ✅ (2026-10-05): Phases 54–55**: admin invites, password
   resets, the forced password change, public sign-up closed. Details in
   `implementation_plan.md`, "Run stage 11 / Built". Weather is checked live

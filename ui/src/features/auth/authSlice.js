@@ -6,6 +6,24 @@ import { tokenExpiry, userIdFromToken } from "@/shared/utils/authToken";
 
 const TOKEN_KEY = "auth_token";
 
+/**
+ * The password just typed at sign-in, kept in this module only (never in
+ * Redux or storage), so the forced change after an invite or reset needn't
+ * ask for the temporary password again. Dropped once the account turns out
+ * not to need a change, after the change, and on sign-out. After a reload
+ * it's gone, and the form asks for it.
+ */
+let signInPassword = null;
+
+/** The password typed at this sign-in, if it's still held. */
+export function heldSignInPassword() {
+  return signInPassword;
+}
+
+export function forgetSignInPassword() {
+  signInPassword = null;
+}
+
 // fastapi-users login expects form-encoded username/password.
 export const login = createAsyncThunk(
   "auth/login",
@@ -18,6 +36,7 @@ export const login = createAsyncThunk(
       silent: true,
     });
     localStorage.setItem(TOKEN_KEY, data.access_token);
+    signInPassword = password;
     return data.access_token;
   }
 );
@@ -29,6 +48,7 @@ export const login = createAsyncThunk(
  * signing back in shows the trips at once and sends the waiting memories.
  */
 export const signOut = createAsyncThunk("auth/signOut", async (_, { dispatch, getState }) => {
+  forgetSignInPassword();
   const userId = userIdFromToken(getState().auth.token);
   await clearUser(userId);
   await clearOutbox(userId);
@@ -78,6 +98,7 @@ export const changePassword = createAsyncThunk(
         { silent: true, handles: [400, 422] }
       );
       localStorage.setItem(TOKEN_KEY, data.access_token);
+      forgetSignInPassword();
       return data.access_token;
     } catch (err) {
       const detail = err?.response?.data?.detail;
@@ -86,8 +107,9 @@ export const changePassword = createAsyncThunk(
   }
 );
 
-export const fetchMe =createAsyncThunk("auth/fetchMe", async () => {
+export const fetchMe = createAsyncThunk("auth/fetchMe", async () => {
   const { data } = await apiClient.get("/users/me", { silent: true, offlineOk: true });
+  if (!data?.must_change_password) forgetSignInPassword();
   return data;
 });
 

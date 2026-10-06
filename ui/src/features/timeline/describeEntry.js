@@ -12,7 +12,7 @@ import {
   Ship,
   TrainFront,
 } from "lucide-react";
-import { formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
+import { formatDayHeading, formatDuration, formatTime, zoneLabel } from "@/shared/utils/time";
 
 /**
  * Presentation for one timeline entry: icon, title, times, and the details
@@ -91,10 +91,11 @@ export function describeEntry(entry, trip) {
   const arriveZone = travel.arriveZone ?? travel.arriveTimezone ?? tripZone;
   const carrier = carrierLine(travel);
   const arriving = phase === "arrive";
-  let subtitle = carrier;
-  if (!arriving && overnight) {
-    subtitle = [carrier, `arrives ${formatDayHeading(travel.arrive)}`].filter(Boolean).join(" · ");
-  }
+  const duration = formatDuration(travel.durationMinutes);
+  // The departure row carries the leg's length; the arrival row doesn't repeat it.
+  const subtitle = [carrier, overnight && `arrives ${formatDayHeading(travel.arrive)}`, duration]
+    .filter(Boolean)
+    .join(" · ");
   return {
     icon: arriving ? (travel.mode === "flight" ? PlaneLanding : MODE_ICON[travel.mode]) : MODE_ICON[travel.mode] ?? Route,
     title: arriving ? `Arrive · ${travel.to?.name ?? travel.title}` : travel.title,
@@ -119,6 +120,7 @@ export function describeEntry(entry, trip) {
       [MODE_LABEL[travel.mode] ?? "Travel", carrier],
       ["Departs", fullTime(travel.depart, departZone, tripZone)],
       ["Arrives", travel.arrive ? fullTime(travel.arrive, arriveZone, tripZone) : "Not set yet"],
+      ["Duration", duration],
       ["Seat", travel.seat],
     ].filter(([, value]) => value),
     edited: editedBy(travel),

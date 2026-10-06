@@ -26,7 +26,7 @@ def strip_server_fields(value: Any) -> Any:
             for k, v in value.items()
             if k
             not in {
-                *("id", "createdAt", "zone", "departZone", "arriveZone", "role"),
+                *("id", "createdAt", "zone", "departZone", "arriveZone", "durationMinutes", "role"),
                 *("version", "updatedAt", "updatedByName"),
             }
         }

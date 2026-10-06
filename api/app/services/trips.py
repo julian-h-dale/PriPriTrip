@@ -30,7 +30,7 @@ from app.trip_document import (
     TravelDoc,
     TripDocument,
 )
-from app.zones import arrive_zone, depart_zone, item_zone, stay_zone
+from app.zones import arrive_zone, depart_zone, item_zone, leg_minutes, stay_zone
 
 
 def _location(loc: LocationDoc | None) -> dict[str, Any] | None:
@@ -301,6 +301,9 @@ def _with_zones(trip: TripRead) -> TripRead:
     for travel in trip.travels:
         travel.depart_zone = depart_zone(travel, tz)
         travel.arrive_zone = arrive_zone(travel, tz)
+        travel.duration_minutes = leg_minutes(
+            travel.depart, travel.arrive, travel.depart_zone, travel.arrive_zone
+        )
     for day in trip.days:
         for item in day.items:
             item.zone = item_zone(item, day.date, trip.stays, tz)

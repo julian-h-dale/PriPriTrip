@@ -1,11 +1,20 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { countdownLabel, startOfDay } from "@/features/trips/countdown";
+import { countdownLabel, countdownParts, startOfDay } from "@/features/trips/countdown";
 
 const start = "2026-10-29";
 const at = (ms) => startOfDay(start) - ms;
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
+
+describe("countdownParts", () => {
+  it("splits the number from the unit, for the card's big number", () => {
+    expect(countdownParts(start, at(23 * DAY + HOUR))).toEqual({ value: 23, unit: "days to go" });
+    expect(countdownParts(start, at(HOUR))).toEqual({ value: 1, unit: "hour to go" });
+    expect(countdownParts(start, at(59_000))).toEqual({ value: null, unit: "Starting now" });
+    expect(countdownParts(start, at(0))).toBeNull();
+  });
+});
 
 describe("countdownLabel", () => {
   it("shows one unit at a time, rounded down", () => {

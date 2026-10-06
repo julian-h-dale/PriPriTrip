@@ -15,8 +15,10 @@ async function signInExpectingForcedChange(page, password) {
   await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
 }
 
+/** `temporary`: null straight after signing in, when the app doesn't ask for it again. */
 async function chooseNewPassword(page, temporary, mine) {
-  await page.getByLabel("Temporary password").fill(temporary);
+  if (temporary == null) await expect(page.getByLabel("Temporary password")).toHaveCount(0);
+  else await page.getByLabel("Temporary password").fill(temporary);
   await page.getByLabel("New password", { exact: true }).fill(mine);
   await page.getByLabel("New password again").fill(mine);
   await page.getByRole("button", { name: "Save password" }).click();
@@ -65,11 +67,12 @@ test("accounts: invite, forced change, reset, forced again", async ({ browser })
     const invitee = await inviteeContext.newPage();
     await signInExpectingForcedChange(invitee, temporary);
     await invitee.screenshot({ path: screenshotPath("42-forced-password-change") });
-    await chooseNewPassword(invitee, temporary, `e2e own ${Date.now()}`);
+    await chooseNewPassword(invitee, null, `e2e own ${Date.now()}`);
     await invitee.goto("/trips");
     await expect(invitee.getByRole("heading", { name: "Trips" })).toBeVisible();
 
-    // Reset again: the invitee's open session is locked on its next request.
+    // Reset again: the invitee's open session is locked on its next request,
+    // and (not having just signed in) has to give the new temporary password.
     const again = await resetOnAdminPage(admin);
     await invitee.reload();
     await expect(invitee.getByRole("heading", { name: "Choose a new password" })).toBeVisible();

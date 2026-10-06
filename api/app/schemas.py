@@ -103,6 +103,8 @@ class TravelRead(TravelDoc, VersionRead):
     id: uuid.UUID
     depart_zone: str | None = None
     arrive_zone: str | None = None
+    # Computed on read (zones.leg_minutes), never stored or imported.
+    duration_minutes: int | None = None
 
 
 class ItemRead(ItemDoc, VersionRead):

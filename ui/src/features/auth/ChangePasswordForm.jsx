@@ -12,11 +12,20 @@ const MIN = 8;
  * Current password, new password, and the new one again. Used for the forced
  * change (after an invite or a reset) and from the drawer. The server has the
  * final say (wrong current password, a default-looking new one).
+ *
+ * `knownCurrent`: the current password when the app already has it (typed at
+ * this sign-in), so the field is left out and it's sent as is.
  */
-export function ChangePasswordForm({ onDone, onCancel, currentLabel = "Current password", submitLabel = "Change password" }) {
+export function ChangePasswordForm({
+  onDone,
+  onCancel,
+  knownCurrent = null,
+  currentLabel = "Current password",
+  submitLabel = "Change password",
+}) {
   const dispatch = useDispatch();
   const ids = useId();
-  const [current, setCurrent] = useState("");
+  const [current, setCurrent] = useState(knownCurrent ?? "");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState(null);
@@ -40,19 +49,27 @@ export function ChangePasswordForm({ onDone, onCancel, currentLabel = "Current p
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${ids}-current`}>{currentLabel}</Label>
-        <PasswordInput
-          id={`${ids}-current`}
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-          autoFocus
-        />
-      </div>
+      {knownCurrent == null && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${ids}-current`}>{currentLabel}</Label>
+          <PasswordInput
+            id={`${ids}-current`}
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            autoFocus
+          />
+        </div>
+      )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${ids}-new`}>New password</Label>
-        <PasswordInput id={`${ids}-new`} autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+        <PasswordInput
+          id={`${ids}-new`}
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          autoFocus={knownCurrent != null}
+        />
         <p className="text-xs text-muted-foreground">At least {MIN} characters.</p>
       </div>
       <div className="flex flex-col gap-1.5">

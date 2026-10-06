@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   addDays,
+  formatDuration,
   datesInRange,
   daysBetween,
   formatDateRange,
@@ -62,5 +63,21 @@ describe("time helpers", () => {
   it("labels zones by city", () => {
     expect(zoneLabel("America/Chicago")).toBe("Chicago");
     expect(zoneLabel("America/Argentina/Buenos_Aires")).toBe("Buenos Aires");
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows hours and minutes, and days only past 24 hours", () => {
+    expect(formatDuration(45)).toBe("45m");
+    expect(formatDuration(60)).toBe("1h");
+    expect(formatDuration(125)).toBe("2h 5m");
+    expect(formatDuration(830)).toBe("13h 50m");
+    expect(formatDuration(1440)).toBe("1d");
+    expect(formatDuration(1560)).toBe("1d 2h");
+  });
+
+  it("is nothing when unknown", () => {
+    expect(formatDuration(null)).toBeNull();
+    expect(formatDuration(undefined)).toBeNull();
   });
 });

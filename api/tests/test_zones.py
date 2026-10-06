@@ -6,7 +6,15 @@ import datetime as dt
 
 from app.sample_data import load_sample_trip
 from app.trip_document import TripDocumentError, validate_trip_document
-from app.zones import arrive_zone, depart_zone, item_zone, night_stay, stay_zone, zone_at
+from app.zones import (
+    arrive_zone,
+    depart_zone,
+    item_zone,
+    leg_minutes,
+    night_stay,
+    stay_zone,
+    zone_at,
+)
 
 ZURICH = {"name": "Zürich Airport", "lat": 47.4581, "lng": 8.5555}
 OHARE = {"name": "O'Hare", "lat": 41.9786, "lng": -87.9048}
@@ -117,3 +125,33 @@ def test_travel_from_is_required() -> None:
         assert [e.path for e in exc.errors] == ["travels[1].from"]
     else:
         raise AssertionError("expected a missing from to be rejected")
+
+
+def test_leg_minutes_reads_each_end_on_its_own_clock() -> None:
+    at = dt.datetime.fromisoformat
+    # Chicago 12:30 AM → Tokyo 4:05 AM the next day: 13h 35m in the air.
+    assert (
+        leg_minutes(at("2026-10-29T00:30"), at("2026-10-30T04:05"), "America/Chicago", "Asia/Tokyo")
+        == 815
+    )
+    # Same zone, overnight train.
+    assert (
+        leg_minutes(
+            at("2026-05-10T22:15"), at("2026-05-11T07:00"), "Europe/Zurich", "Europe/Zurich"
+        )
+        == 525
+    )
+    # Across a DST change (Chicago falls back 2026-11-01): the real elapsed time.
+    assert (
+        leg_minutes(
+            at("2026-11-01T00:30"), at("2026-11-01T02:30"), "America/Chicago", "America/Chicago"
+        )
+        == 180
+    )
+
+
+def test_leg_minutes_without_a_sensible_answer() -> None:
+    at = dt.datetime.fromisoformat
+    assert leg_minutes(at("2026-05-10T10:00"), None, "UTC", "UTC") is None
+    assert leg_minutes(at("2026-05-10T10:00"), at("2026-05-10T09:00"), "UTC", "UTC") is None
+    assert leg_minutes(at("2026-05-10T10:00"), at("2026-05-10T11:00"), "Not/AZone", "UTC") is None

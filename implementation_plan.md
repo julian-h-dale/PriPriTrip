@@ -3699,6 +3699,11 @@ change.
     arrival (null), and overnight; formatting (`45m`, `2h 5m`, `1d 2h`).
   - **E2E:** forced change in `accounts.spec.js` without the current
     password. Screenshots at 375 px: trips list, travel row.
+  - ✅ (2026-10-06). Built as planned. The password is held in a module
+    variable in `authSlice.js`, never in Redux or storage, and dropped when
+    `/users/me` says no change is needed, after the change, and on sign-out.
+    The duration is converted through UTC (a same-zone subtraction in Python
+    ignores a DST change, which a test caught). Screenshots `01`, `03` and `42`.
 - **Phase 57 — the map follows the filters.**
   - **Scope:** item 6.
   - **Tests:** `boundsFor` (none, one, many; travel counted only with a day;

@@ -95,7 +95,16 @@ async def test_stays_and_travel_are_versioned_too(client: AsyncClient) -> None:
     trip = (await client.get(f"/trips/{trip_id}")).json()
     stay = trip["stays"][0]
     travel = trip["travels"][0]
-    read_only = {"id", "zone", "departZone", "arriveZone", "version", "updatedAt", "updatedByName"}
+    read_only = {
+        "id",
+        "zone",
+        "departZone",
+        "arriveZone",
+        "durationMinutes",
+        "version",
+        "updatedAt",
+        "updatedByName",
+    }
     stay_doc = {k: v for k, v in stay.items() if k not in read_only}
     travel_doc = {k: v for k, v in travel.items() if k not in read_only}
     for url, doc in [
