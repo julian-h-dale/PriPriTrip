@@ -32,6 +32,8 @@
   - **Phase 57 ✅ (2026-10-06): the map follows the filters** (a day,
     Stays, Journal), fitting what's left; a day shows both ends of a leg
     travelling on it. `make verify` green (246 API + 383 UI tests).
+  - **Day page ← (2026-10-06):** a back arrow at the top right of a day's
+    page goes to the whole timeline (☰ stays on the left).
   - **Run stage 12 is complete.** Not pushed. **Julian:** deploy
     (migrations 0010–0012), try the documents zip on the iPhone, and look at
     the map's day filter on the Okinawa trip.

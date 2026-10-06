@@ -78,6 +78,12 @@ test("day detail page", async ({ page }) => {
   await page.getByRole("list", { name: /^Plans for/ }).getByRole("button").first().click();
   await page.waitForTimeout(1000); // let the mini-map tile load
   await page.screenshot({ path: screenshotPath("04-day-detail-entry-expanded"), fullPage: true });
+
+  // ← at the top right goes back up to the whole timeline.
+  const timelineUrl = page.url().replace(/\/days\/.*$/, "");
+  await page.getByRole("link", { name: "Back to the timeline" }).click();
+  await expect(page).toHaveURL(timelineUrl);
+  await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
 });
 
 test("day detail: swipe between days", async ({ browser }) => {

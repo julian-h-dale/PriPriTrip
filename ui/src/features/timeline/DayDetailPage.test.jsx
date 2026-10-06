@@ -62,6 +62,17 @@ beforeEach(() => {
 });
 
 describe("DayDetailPage", () => {
+  it("has ← at the top right, back to the whole timeline", async () => {
+    renderDay("2026-05-11");
+    await screen.findByRole("heading", { name: "Mon, May 11" });
+    const back = screen.getByRole("link", { name: "Back to the timeline" });
+    expect(back).toHaveAttribute("href", "/trips/trip-1");
+    // The last control in the top bar; ☰ stays on the left.
+    const bar = back.closest("header");
+    expect(within(bar).getAllByRole("link").at(-1)).toBe(back);
+    expect(within(bar).getAllByRole("button")[0]).toHaveAccessibleName("Open menu");
+  });
+
   it("shows a day's entries, merged by time", async () => {
     renderDay("2026-05-11");
     await screen.findByRole("heading", { name: "Mon, May 11" });

@@ -472,7 +472,7 @@ export function DayDetailPage() {
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 
   return (
-    <BottomNavLayout tripId={tripId}>
+    <BottomNavLayout tripId={tripId} backTo={`/trips/${tripId}`}>
       <div className="mx-auto max-w-2xl py-6">
         {current ? (
           <DaySwiper key={current.id} trip={current} date={date} />

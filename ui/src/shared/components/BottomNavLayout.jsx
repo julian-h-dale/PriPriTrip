@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSelector } from "react-redux";
-import { Search, UserPlus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Search, UserPlus } from "lucide-react";
 import { TripSearch } from "@/features/search/TripSearch";
 import { ShareTripDialog } from "@/features/sharing/ShareTripDialog";
 import { BottomNav } from "@/shared/components/BottomNav";
@@ -13,8 +14,11 @@ import { TopBar } from "@/shared/components/TopBar";
  * guesswork) — used by the timeline, a day's page, and the map page. A top
  * bar (☰, the trip's name, search, plus any `actions`) sits above, then the
  * offline bar when the trip is the phone's saved copy.
+ *
+ * `backTo` (a path): a ← at the far right of the top bar, back up to that
+ * page (a day's page goes back to the whole timeline).
  */
-export function BottomNavLayout({ tripId, actions, showTitle = true, children }) {
+export function BottomNavLayout({ tripId, actions, showTitle = true, backTo, children }) {
   const online = useSelector((s) => s.network?.online ?? true);
   const { stale, savedAt, trip } = useSelector((s) => s.timeline ?? {});
   const loaded = trip?.id === tripId ? trip : null;
@@ -45,6 +49,15 @@ export function BottomNavLayout({ tripId, actions, showTitle = true, children })
           >
             <Search className="h-5 w-5" aria-hidden="true" />
           </button>
+        )}
+        {backTo && (
+          <Link
+            to={backTo}
+            aria-label="Back to the timeline"
+            className="rounded-md p-2.5 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+          </Link>
         )}
       </TopBar>
       {loaded && <TripSearch trip={loaded} open={searchOpen} onClose={() => setSearchOpen(false)} />}
