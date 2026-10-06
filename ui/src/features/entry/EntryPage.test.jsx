@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
@@ -32,10 +32,10 @@ export const TRIP = (() => {
   return t;
 })();
 
-function renderAt(path, { from } = {}) {
+function renderAt(path, { from, online = true } = {}) {
   const store = configureStore({
     reducer: { auth: authReducer, journal: journalReducer, timeline: timelineReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
-    preloadedState: { auth: { token: fakeToken("user-1"), user: null, status: "idle" } },
+    preloadedState: { auth: { token: fakeToken("user-1"), user: null, status: "idle" }, network: { online } },
   });
   function From() {
     const navigate = useNavigate();
@@ -149,5 +149,73 @@ describe("an entry's page", () => {
     apiClient.get.mockRejectedValue(new Error("Network Error"));
     renderAt("/trips/trip-1/stays/stay-0");
     expect(await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeInTheDocument();
+  });
+});
+
+describe("Edit and Delete on an entry's page", () => {
+  it("edits with the usual form, and the page shows the change", async () => {
+    const user = userEvent.setup();
+    const changed = structuredClone(TRIP);
+    changed.days[0].items[2] = { ...changed.days[0].items[2], title: "Dinner at 8", version: 2 };
+    apiClient.put.mockResolvedValue({ data: changed });
+    renderAt("/trips/trip-1/activities/2026-05-11-2");
+    await screen.findByRole("article", { name: "Dinner at Kornhauskeller" });
+    await user.click(screen.getByRole("button", { name: "Edit activity" }));
+    const dialog = screen.getByRole("dialog");
+    await user.clear(within(dialog).getByLabelText("Title"));
+    await user.type(within(dialog).getByLabelText("Title"), "Dinner at 8");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("article", { name: "Dinner at 8" })).toBeInTheDocument();
+    const [url, body, config] = apiClient.put.mock.calls[0];
+    expect(url).toBe("/trips/trip-1/items/2026-05-11-2");
+    expect(body.title).toBe("Dinner at 8");
+    expect(config.headers["If-Match"]).toBe('"1"');
+  });
+
+  it("deletes after asking, then goes to the entry's day", async () => {
+    const user = userEvent.setup();
+    const without = structuredClone(TRIP);
+    without.stays = without.stays.slice(1);
+    apiClient.delete.mockResolvedValue({ data: without });
+    renderAt("/trips/trip-1/stays/stay-0");
+    await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const confirm = screen.getByRole("dialog", { name: "Delete stay?" });
+    expect(confirm).toHaveTextContent("removed from every day it covers");
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("The day page")).toBeInTheDocument();
+    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/stays/stay-0", expect.objectContaining({ headers: { "If-Match": '"1"' } }));
+  });
+
+  it("someone else's change (409) closes the form and shows theirs", async () => {
+    const user = userEvent.setup();
+    const theirs = structuredClone(TRIP);
+    theirs.travels[0] = { ...theirs.travels[0], seat: "1A", version: 2 };
+    apiClient.put.mockRejectedValue({
+      response: { status: 409, data: { detail: { message: "Changed", version: 2, updatedByName: "PriPri", current: theirs.travels[0] } } },
+    });
+    const store = renderAt("/trips/trip-1/travel/travel-0");
+    await screen.findByRole("article", { name: "Chicago → Zürich" });
+    apiClient.get.mockResolvedValue({ data: theirs });
+    await user.click(screen.getByRole("button", { name: "Edit trip leg" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByText("1A")).toBeInTheDocument();
+    expect(JSON.stringify(store.getState().notification)).toContain("PriPri changed this");
+  });
+
+  it("a viewer gets no actions", async () => {
+    apiClient.get.mockResolvedValue({ data: { ...TRIP, role: "viewer" } });
+    renderAt("/trips/trip-1/stays/stay-0");
+    await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
+    expect(screen.queryByRole("button", { name: /Edit/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+  });
+
+  it("offline, the actions are there but greyed", async () => {
+    renderAt("/trips/trip-1/stays/stay-0", { online: false });
+    await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
+    expect(screen.getByRole("button", { name: "Edit stay" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
   });
 });

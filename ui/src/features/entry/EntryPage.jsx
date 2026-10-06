@@ -2,10 +2,11 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { ArrowDown, BedDouble } from "lucide-react";
+import { EntryActions } from "@/features/entry/EntryActions";
 import { findEntry } from "@/features/entry/entries";
 import { MODE_ICON, MODE_LABEL, describeEntry } from "@/features/timeline/describeEntry";
 import { ConfirmationNumber, EditedBy, PlaceRow } from "@/features/timeline/EntryDetails";
-import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { fetchTrip, selectIsViewer, selectReadOnly } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Markdown } from "@/shared/components/Markdown";
 import { MiniMap } from "@/shared/components/MiniMap";
@@ -216,6 +217,9 @@ export function EntryPage({ kind }) {
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
   const online = useSelector((s) => s.network?.online ?? true);
+  const readOnly = useSelector(selectReadOnly);
+  // A viewer never edits, so gets no actions at all (offline only greys them).
+  const isViewer = useSelector(selectIsViewer);
 
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {
@@ -227,7 +231,12 @@ export function EntryPage({ kind }) {
   const back = found ? `/trips/${tripId}/days/${found.date}` : `/trips/${tripId}`;
 
   let body;
-  if (found) body = <EntryView trip={current} found={found} />;
+  if (found)
+    body = (
+      <EntryView trip={current} found={found}>
+        {!isViewer && <EntryActions trip={current} found={found} readOnly={readOnly} />}
+      </EntryView>
+    );
   else if (current) body = <Gone tripId={tripId} />;
   else if (status === "notFound") body = <Gone tripId={tripId} />;
   else if (status === "failed")
