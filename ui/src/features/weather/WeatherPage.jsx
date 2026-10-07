@@ -10,6 +10,7 @@ import { ToolLayout } from "@/shared/components/ToolLayout";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { formatAgo, formatDayHeading } from "@/shared/utils/time";
+import { useTrackOnce } from "@/shared/analytics/useAnalytics";
 
 function Temp({ c, className }) {
   if (c == null) return null;
@@ -150,6 +151,7 @@ export function WeatherPage() {
   const { data, savedAt, status, stale, tripId: loadedId } = useSelector((s) => s.weather);
   const tripName = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip.name : null));
   const weather = loadedId === tripId ? data : null;
+  useTrackOnce("weather-view", Boolean(weather)); // a forecast on screen, once a visit
 
   useEffect(() => {
     dispatch(fetchTrip(tripId)); // for its name in the top bar

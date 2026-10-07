@@ -13,6 +13,7 @@ import {
 } from "@/features/documents/documentsSlice";
 import { extension, formatSize } from "@/features/documents/files";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { useTrack } from "@/shared/analytics/useAnalytics";
 import { RowMenu } from "@/shared/components/RowMenu";
 import { ToolLayout } from "@/shared/components/ToolLayout";
 import { Button } from "@/shared/components/ui/button";
@@ -52,18 +53,24 @@ function useFilePicker(onPick, testId = "document-file") {
 
 function DocumentRow({ doc, tripId, disabled, onRename, onDelete }) {
   const dispatch = useDispatch();
+  const track = useTrack();
   const [busy, setBusy] = useState(false);
   const picker = useFilePicker(async (file) => {
     setBusy(true);
-    await dispatch(replaceDocument({ tripId, id: doc.id, file }));
+    const result = await dispatch(replaceDocument({ tripId, id: doc.id, file }));
     setBusy(false);
+    if (replaceDocument.fulfilled.match(result)) track("document-upload", { replacing: true });
   }, `document-file-${doc.id}`);
+  function open() {
+    dispatch(downloadDocument({ tripId, doc }));
+    track("document-open");
+  }
   const Icon = doc.contentType.startsWith("image/") ? FileImage : FileText;
   return (
     <li className="flex items-center gap-1">
       <button
         type="button"
-        onClick={() => dispatch(downloadDocument({ tripId, doc }))}
+        onClick={open}
         disabled={disabled || busy}
         className="flex min-w-0 flex-1 items-start gap-3 rounded-md p-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
       >
@@ -81,7 +88,7 @@ function DocumentRow({ doc, tripId, disabled, onRename, onDelete }) {
       <RowMenu
         label={`More for ${doc.name}`}
         items={[
-          { label: "Download", icon: <Download className="h-4 w-4" aria-hidden="true" />, disabled, onSelect: () => dispatch(downloadDocument({ tripId, doc })) },
+          { label: "Download", icon: <Download className="h-4 w-4" aria-hidden="true" />, disabled, onSelect: open },
           { label: "Replace file", icon: <RefreshCw className="h-4 w-4" aria-hidden="true" />, disabled, onSelect: picker.open },
           { label: "Rename", icon: <Pencil className="h-4 w-4" aria-hidden="true" />, disabled, onSelect: () => onRename(doc) },
           { label: "Delete", icon: <Trash2 className="h-4 w-4" aria-hidden="true" />, destructive: true, disabled, onSelect: () => onDelete(doc) },
@@ -156,10 +163,12 @@ export function DocumentsPage() {
   const [zipping, setZipping] = useState(false);
   const [renaming, setRenaming] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const track = useTrack();
   const picker = useFilePicker(async (file) => {
     setUploading(true);
-    await dispatch(uploadDocument({ tripId, file }));
+    const result = await dispatch(uploadDocument({ tripId, file }));
     setUploading(false);
+    if (uploadDocument.fulfilled.match(result)) track("document-upload", { replacing: false });
   });
 
   useEffect(() => {
@@ -176,6 +185,7 @@ export function DocumentsPage() {
     setZipping(true);
     await dispatch(downloadAllDocuments({ tripId, tripName: trip?.name }));
     setZipping(false);
+    track("document-open", { all: true });
   }
 
   return (

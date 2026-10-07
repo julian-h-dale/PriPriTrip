@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useSelector, useStore } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { getClientConfig } from "@/shared/services/clientConfig";
@@ -95,4 +95,22 @@ export function useTrackView() {
     },
     [current],
   );
+}
+
+/**
+ * `name` once per visit to the page, as soon as `ready` (a tool showing
+ * what it's for: a forecast, the clocks, a converted amount).
+ */
+export function useTrackOnce(name, ready, data = {}) {
+  const { pathname } = useLocation();
+  const page = pageFor(pathname);
+  const url = page?.url;
+  const role = useSelector((s) => roleOn(s, page?.tripId ?? null));
+  const done = useRef(false);
+  const details = JSON.stringify(data);
+  useEffect(() => {
+    if (!ready || !role || done.current) return;
+    done.current = true;
+    trackEvent(name, { url, role, ...JSON.parse(details) });
+  }, [ready, role, name, url, details]);
 }

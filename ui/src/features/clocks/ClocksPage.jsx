@@ -9,6 +9,7 @@ import { ToolLayout } from "@/shared/components/ToolLayout";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { zoneLabel } from "@/shared/utils/time";
+import { useTrackOnce } from "@/shared/analytics/useAnalytics";
 
 /** Now, moving on every second while the page is open. */
 function useNow() {
@@ -66,6 +67,7 @@ export function ClocksPage() {
 
   const mine = phoneZone();
   const zones = trip ? tripZones(trip) : [];
+  useTrackOnce("timezones-view", zones.length > 0); // the clocks on screen, once a visit
   const phoneOffset = offsetMinutes(mine, now);
   // On the trip already? Then that zone's clock says so, and there's no separate "this phone" one.
   const hereIndex = zones.findIndex((z) => z.zone === mine);

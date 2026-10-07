@@ -12,6 +12,7 @@ import {
   updatePackingItem,
 } from "@/features/packing/packingSlice";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { useTrack } from "@/shared/analytics/useAnalytics";
 import { RowMenu } from "@/shared/components/RowMenu";
 import { ToolLayout } from "@/shared/components/ToolLayout";
 import { Button } from "@/shared/components/ui/button";
@@ -23,7 +24,12 @@ import { cn } from "@/shared/utils/cn";
 
 function ItemRow({ item, tripId, disabled, onEdit }) {
   const dispatch = useDispatch();
+  const track = useTrack();
   const id = useId();
+  function check(checked) {
+    dispatch(updatePackingItem({ tripId, id: item.id, changes: { checked } }));
+    if (checked) track("packing-check");
+  }
   return (
     <li className="flex items-center gap-1">
       <label htmlFor={id} className="flex min-h-11 flex-1 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-accent">
@@ -32,7 +38,7 @@ function ItemRow({ item, tripId, disabled, onEdit }) {
           type="checkbox"
           checked={item.checked}
           disabled={disabled}
-          onChange={(e) => dispatch(updatePackingItem({ tripId, id: item.id, changes: { checked: e.target.checked } }))}
+          onChange={(e) => check(e.target.checked)}
           className="h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
         />
         <span className={cn("break-words text-sm", item.checked && "text-muted-foreground line-through")}>{item.text}</span>
@@ -85,6 +91,7 @@ function QuantityInput({ label, value, onChange, disabled, id }) {
 
 function AddItem({ tripId, category, label, disabled, autoFocus }) {
   const dispatch = useDispatch();
+  const track = useTrack();
   const [text, setText] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
@@ -95,6 +102,7 @@ function AddItem({ tripId, category, label, disabled, autoFocus }) {
     const result = await dispatch(addPackingItem({ tripId, category, text: text.trim(), quantity: toQuantity(quantity) }));
     setBusy(false);
     if (addPackingItem.fulfilled.match(result)) {
+      track("packing-add", { from: "typed" });
       setText("");
       setQuantity("1");
     }
@@ -260,6 +268,7 @@ export function PackingPage() {
   const online = useSelector((s) => s.network?.online ?? true);
   const { items, status, tripId: loadedId } = useSelector((s) => s.packing);
   const tripName = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip.name : null));
+  const track = useTrack();
   const [hidePacked, setHidePacked] = useState(false);
   const [opened, setOpened] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -288,8 +297,9 @@ export function PackingPage() {
 
   async function suggest() {
     setSuggesting(true);
-    await dispatch(addPackingSuggestions(tripId));
+    const result = await dispatch(addPackingSuggestions(tripId));
     setSuggesting(false);
+    if (addPackingSuggestions.fulfilled.match(result)) track("packing-add", { from: "suggestions" });
   }
 
   return (

@@ -121,11 +121,11 @@ named event when a tool is actually *used*, each with `{ role }`:
 | Event | When |
 |---|---|
 | `tool-open` `{ tool }` | A tool is opened from the drawer (vs. a link or Back) |
-| `currency-convert` | An amount is typed and converted (once per visit, not per keystroke) |
-| `weather-view` `{ day }` | A day's forecast is opened (`day`: today / later) |
-| `timezones-view` | The Time zones page shows clocks |
-| `packing-check` / `packing-add` | An item is ticked / added |
-| `document-upload` / `document-open` | A document is added / opened |
+| `currency-convert` `{ currency }` | An amount is typed and converted (once per visit, not per keystroke) |
+| `weather-view` | A forecast is shown (once per visit). *Built:* the page has no day to tap open, so this is "the forecast loaded", not "a day opened" |
+| `timezones-view` | The Time zones page shows clocks (once per visit) |
+| `packing-check` / `packing-add` `{ from: typed \| suggestions }` | An item is ticked (not unticked) / added |
+| `document-upload` `{ replacing }` / `document-open` `{ all? }` | A document is added or replaced / opened, or all downloaded |
 | `share-open` | The Share dialog is opened (not the inviting itself) |
 
 Viewers never fire these (no Trip tools), so for tools the split is

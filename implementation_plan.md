@@ -21,11 +21,11 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **76**.
+project; the next one is **79**.
 
 ## Stages
 
-All complete unless marked. Current branch: `analytics` (Run 18, planned; open questions waiting).
+All complete unless marked. Current branch: `analytics` (Run 18).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -51,7 +51,7 @@ All complete unless marked. Current branch: `analytics` (Run 18, planned; open q
 | Run 15 | 67 | New memory in the top bar, Share in the drawer, temperature on Today | [run-15-new-memory-top-bar.md](docs/plan/run-15-new-memory-top-bar.md) |
 | Run 16 | 68–71 | Points of interest, one Filter button, the map's List button | [run-16-points-of-interest.md](docs/plan/run-16-points-of-interest.md) |
 | Run 17 | 72–75 | Quiet offline, making someone an admin, what viewers see (and their map) | [run-17-offline-toasts-roles-viewers.md](docs/plan/run-17-offline-toasts-roles-viewers.md) |
-| Run 18 | 76–78 | Usage analytics (Umami): a per-user switch, page views and Trip tools by role — **planned** | [run-18-analytics.md](docs/plan/run-18-analytics.md) |
+| Run 18 | 76–78 | Usage analytics (Umami): a per-user switch, page views and Trip tools by role | [run-18-analytics.md](docs/plan/run-18-analytics.md) |
 
 ## Architecture Decisions
 

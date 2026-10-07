@@ -47,6 +47,7 @@ async function go(page, to) {
 test("an owner's page views: page names with the role, never an id", async ({ page }) => {
   const umami = await fakeUmami(page);
   await login(page);
+  await page.waitForTimeout(800); // a page counts once it has been on screen a moment
   await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
   await page.waitForTimeout(1000);
   const trip = new URL(page.url()).pathname.replace(/\/today$/, "");
@@ -95,4 +96,31 @@ test("an admin (off by default) loads no tracker and sends nothing", async ({ pa
   expect(umami.scriptLoads()).toBe(0);
   expect(umami.sent).toHaveLength(0);
   await page.screenshot({ path: screenshotPath("18c-admin-analytics-column"), fullPage: true });
+});
+
+test("Trip tools: opened from the drawer, and used", async ({ page }) => {
+  const umami = await fakeUmami(page);
+  await login(page);
+  await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
+  await page.waitForTimeout(1000);
+  const trip = new URL(page.url()).pathname.replace(/\/today$/, "");
+  await go(page, trip);
+
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Currency" }).click();
+  await page.getByLabel(/^Amount in /).fill("100");
+  await page.waitForTimeout(800);
+  await go(page, `${trip}/time`);
+  await page.screenshot({ path: screenshotPath("18d-analytics-tools") });
+
+  const events = umami.sent.filter((s) => s.payload.name).map((s) => s.payload);
+  expect(events).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ name: "tool-open", tag: "owner", data: { role: "owner", tool: "currency" } }),
+      expect.objectContaining({ name: "currency-convert", url: "/trip/currency", tag: "owner" }),
+      expect.objectContaining({ name: "timezones-view", url: "/trip/timezones", tag: "owner" }),
+    ]),
+  );
+  expect(events.filter((e) => e.name === "currency-convert")).toHaveLength(1); // not per keystroke
+  expect(JSON.stringify(umami.sent)).not.toMatch(UUID);
 });

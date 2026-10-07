@@ -14,6 +14,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { PackingPage } from "@/features/packing/PackingPage";
 import { groupByCategory } from "@/features/packing/categories";
+import { trackEvent } from "@/shared/analytics/umami";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
@@ -21,6 +22,7 @@ import { fakeToken } from "@/test/fakeToken";
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 
 const TRIP = { id: "trip-1", name: "Okinawa & Taipei", role: "editor", days: [], stays: [], travels: [] };
 const item = (id, category, text, position, checked = false, quantity = 1) => ({ id, category, text, position, checked, quantity });
@@ -107,6 +109,7 @@ describe("the Packing page", () => {
     await user.click(socks);
     expect(socks).toBeChecked();
     expect(apiClient.patch).toHaveBeenCalledWith("/trips/trip-1/packing/a", { checked: true }, { silent: true });
+    expect(trackEvent).toHaveBeenCalledWith("packing-check", { url: "/trip/packing", role: "editor" });
     refuse(new Error("offline"));
     await waitFor(() => expect(socks).not.toBeChecked());
   });
@@ -130,6 +133,7 @@ describe("the Packing page", () => {
     expect(await within(electronics).findByRole("checkbox", { name: "Cables ×3" })).toBeInTheDocument();
     expect(within(electronics).getByRole("textbox", { name: "Add to Electronics" })).toHaveValue("");
     expect(howMany).toHaveValue(1);
+    expect(trackEvent).toHaveBeenCalledWith("packing-add", { url: "/trip/packing", role: "editor", from: "typed" });
   });
 
   it("starts a new list from its button", async () => {
@@ -225,5 +229,16 @@ describe("the Packing page", () => {
     renderPage({ online: false });
     expect(await screen.findByRole("checkbox", { name: "Socks ×7" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent("You’re offline");
+  });
+});
+
+describe("Packing's analytics", () => {
+  it("counts ticking something, not unticking it", async () => {
+    const user = userEvent.setup();
+    serve(LIST);
+    apiClient.patch.mockResolvedValue({ data: {} });
+    renderPage();
+    await user.click(await screen.findByRole("checkbox", { name: "Swim shorts" })); // already packed
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });

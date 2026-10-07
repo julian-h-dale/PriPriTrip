@@ -11,6 +11,7 @@ import { selectPendingMemories, selectWaitingPhotos } from "@/features/journal/j
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { InstallAppButton } from "@/shared/pwa/InstallAppButton";
+import { useTrack } from "@/shared/analytics/useAnalytics";
 
 const ITEM =
   "flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -55,6 +56,12 @@ export function NavDrawer({ open, onClose }) {
   const unsynced = useSelector(selectPendingMemories);
   const { count: photos } = useSelector(selectWaitingPhotos);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const track = useTrack();
+  // A Trip tool opened from here (its page view says it was opened at all).
+  const openTool = (tool) => () => {
+    track("tool-open", { tool });
+    onClose();
+  };
 
   function handleSignOut() {
     // Signing out forgets memories and photos still waiting in the outbox: say so first.
@@ -112,30 +119,37 @@ export function NavDrawer({ open, onClose }) {
         {tripId && !isViewer && (
           <section aria-label="Trip tools" className="mt-2 flex flex-col gap-1 border-t border-border pt-2">
             <h2 className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Trip tools</h2>
-            <Link to={`/trips/${tripId}/currency`} onClick={onClose} className={ITEM}>
+            <Link to={`/trips/${tripId}/currency`} onClick={openTool("currency")} className={ITEM}>
               <Coins className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Currency
             </Link>
-            <Link to={`/trips/${tripId}/weather`} onClick={onClose} className={ITEM}>
+            <Link to={`/trips/${tripId}/weather`} onClick={openTool("weather")} className={ITEM}>
               <CloudSun className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Weather
             </Link>
-            <Link to={`/trips/${tripId}/time`} onClick={onClose} className={ITEM}>
+            <Link to={`/trips/${tripId}/time`} onClick={openTool("timezones")} className={ITEM}>
               <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Time zones
             </Link>
-            <Link to={`/trips/${tripId}/packing`} onClick={onClose} className={ITEM}>
+            <Link to={`/trips/${tripId}/packing`} onClick={openTool("packing")} className={ITEM}>
               <Luggage className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Packing
             </Link>
             {canEditTrip && (
-              <Link to={`/trips/${tripId}/documents`} onClick={onClose} className={ITEM}>
+              <Link to={`/trips/${tripId}/documents`} onClick={openTool("documents")} className={ITEM}>
                 <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Documents
               </Link>
             )}
             {isOwner && (
-              <button type="button" onClick={() => setSharing(true)} className={ITEM}>
+              <button
+                type="button"
+                onClick={() => {
+                  track("share-open");
+                  setSharing(true);
+                }}
+                className={ITEM}
+              >
                 <UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Share trip
               </button>

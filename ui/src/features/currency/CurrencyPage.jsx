@@ -17,6 +17,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Select } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
 import { formatAgo } from "@/shared/utils/time";
+import { useTrackOnce } from "@/shared/analytics/useAnalytics";
 
 function OtherCurrency({ open, onClose, onPick, exclude }) {
   const ids = useId();
@@ -83,6 +84,8 @@ function Converter({ code, rate }) {
   const amount = parseAmount(text);
   const result = amount == null ? null : toLocal ? amount * rate.rate : amount / rate.rate;
   const ref = referenceAmount(rate.rate);
+  // Used, not just opened: once a visit, not per keystroke.
+  useTrackOnce("currency-convert", amount != null, { currency: code });
 
   return (
     <>

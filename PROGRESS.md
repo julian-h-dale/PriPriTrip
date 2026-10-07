@@ -26,6 +26,15 @@
     (277 API + 496 UI); e2e `analytics.spec.js` (a pretend Umami serving
     a copy of the real tracker) passes. Run e2e with `set -a; . api/.env`
     for this machine's seed passwords.
+  - **Phase 78 ✅:** Trip tools events (`tool-open`, `currency-convert`,
+    `weather-view`, `timezones-view`, `packing-check` / `packing-add`,
+    `document-upload` / `document-open`, `share-open`), each with the
+    role. Weather has no day to tap, so `weather-view` is "a forecast
+    shown". `make verify` green (277 API + 499 UI); e2e
+    `analytics.spec.js` (4 tests) passes.
+  - **Run stage 18 is complete.** Not pushed or deployed. Deploying runs
+    migration 0014; set the Fly secrets `UMAMI_URL` and
+    `UMAMI_WEBSITE_ID` first. Next (Julian): plan offline analytics.
 - **Run stage 17 ✅ (2026-10-07)** on branch
   **`roles-and-viewers`**, stacked on `points-of-interest` (Julian: stack
   them). Quiet offline (no "Network Error" toasts for reads), making
