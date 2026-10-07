@@ -1,8 +1,9 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import journalReducer from "@/features/journal/journalSlice";
@@ -54,15 +55,25 @@ describe("which way a pull goes", () => {
   });
 });
 
-function renderAt(path) {
+function Day() {
+  return <p>The day page: {useParams().date}</p>;
+}
+
+function renderAt(path, { from } = {}) {
   const store = configureStore({
     reducer: { auth: authReducer, journal: journalReducer, timeline: timelineReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
     preloadedState: { auth: { token: fakeToken("user-1"), user: null, status: "idle" }, network: { online: true } },
   });
+  function From() {
+    const navigate = useNavigate();
+    return <button onClick={() => navigate(path, { state: { atKey: null } })}>The previous screen: open the entry</button>;
+  }
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter initialEntries={[from ?? path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
+          <Route path="/trips/:tripId/days/:date" element={<Day />} />
+          <Route path="/somewhere" element={<From />} />
           <Route path="/trips/:tripId/activities/:id" element={<EntryPage kind="activity" />} />
           <Route path="/trips/:tripId/stays/:id" element={<EntryPage kind="stay" />} />
           <Route path="/trips/:tripId/travel/:id" element={<EntryPage kind="travel" />} />
@@ -110,15 +121,15 @@ describe("pulling past the end of an entry's page", () => {
     renderAt("/trips/trip-1/activities/2026-05-11-2");
     await screen.findByRole("article", { name: "Dinner at Kornhauskeller" });
     drag(scrollRoot(), 500, 460, { lift: false });
-    expect(screen.getByText("Pull for next")).toBeInTheDocument();
+    expect(screen.getByText(/^Pull for next/)).toBeInTheDocument();
     act(() => {
       fireEvent.touchMove(scrollRoot(), { touches: [{ clientX: 100, clientY: 380 }] });
     });
-    expect(screen.getByText("Release for next")).toBeInTheDocument();
+    expect(screen.getByText(/^Release for next/)).toBeInTheDocument();
     // Back under the line before letting go: stays put.
     fireEvent.touchMove(scrollRoot(), { touches: [{ clientX: 100, clientY: 450 }] });
     fireEvent.touchEnd(scrollRoot(), { touches: [] });
-    expect(screen.queryByText(/for next$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/for next/)).not.toBeInTheDocument();
     expect(screen.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeInTheDocument();
   });
 
@@ -132,6 +143,27 @@ describe("pulling past the end of an entry's page", () => {
     drag(root, 500, 300);
     drag(root, 300, 500);
     expect(screen.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeInTheDocument();
+  });
+
+  it("a scroll that reaches the end stops there; a fresh touch pulls on", async () => {
+    renderAt("/trips/trip-1/activities/2026-05-11-2");
+    await screen.findByRole("article", { name: "Dinner at Kornhauskeller" });
+    const root = scrollRoot();
+    Object.defineProperty(root, "scrollHeight", { configurable: true, value: 850 });
+    Object.defineProperty(root, "clientHeight", { configurable: true, value: 700 });
+    root.scrollTop = 0;
+    // The browser scrolls the first 150 px of the drag (jsdom doesn't, so by hand).
+    fireEvent.touchStart(root, { touches: [{ clientX: 100, clientY: 600 }] });
+    for (let y = 580; y >= 200; y -= 20) {
+      root.scrollTop = Math.min(150, 600 - y);
+      fireEvent.touchMove(root, { touches: [{ clientX: 100, clientY: y }] });
+    }
+    expect(screen.queryByText(/for next/)).not.toBeInTheDocument();
+    fireEvent.touchEnd(root, { touches: [] });
+    expect(screen.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeInTheDocument();
+
+    drag(root, 600, 450);
+    expect(await screen.findByRole("article", { name: "Morning at the Rose Garden" })).toBeInTheDocument();
   });
 
   it("sideways isn't a pull, nor is a pull past the last entry", async () => {
@@ -152,5 +184,64 @@ describe("pulling past the end of an entry's page", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     drag(scrollRoot(), 500, 300);
     expect(screen.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeInTheDocument();
+  });
+});
+
+describe("where a pull goes", () => {
+  it("the hint names the entry, with its day when that's another one", async () => {
+    renderAt("/trips/trip-1/activities/2026-05-11-2");
+    await screen.findByRole("article", { name: "Dinner at Kornhauskeller" });
+    drag(scrollRoot(), 500, 460, { lift: false });
+    expect(screen.getByText(/Pull for next · Tue, May 12/)).toBeInTheDocument();
+    expect(screen.getByText("Morning at the Rose Garden")).toBeInTheDocument();
+    fireEvent.touchEnd(scrollRoot(), { touches: [] });
+    drag(scrollRoot(), 200, 240, { lift: false });
+    expect(screen.getByText(/^Pull for previous$/)).toBeInTheDocument();
+    expect(screen.getByText("Check in · Hotel Goldener Schlüssel")).toBeInTheDocument();
+    fireEvent.touchEnd(scrollRoot(), { touches: [] });
+  });
+
+  it("not before the first entry", async () => {
+    renderAt("/trips/trip-1/travel/travel-0");
+    await screen.findByRole("article", { name: "Chicago → Zürich" });
+    drag(scrollRoot(), 200, 400);
+    expect(screen.queryByText(/for previous/)).not.toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Chicago → Zürich" })).toBeInTheDocument();
+  });
+
+  it("back onto a stay's check-out, it steps on from there", async () => {
+    renderAt("/trips/trip-1/travel/travel-3");
+    await screen.findByRole("article", { name: "Zürich → Chicago" });
+    drag(scrollRoot(), 200, 400);
+    await screen.findByRole("article", { name: "Beausite Park Hotel" });
+    drag(scrollRoot(), 500, 460, { lift: false });
+    expect(screen.getByText("Zürich → Chicago")).toBeInTheDocument();
+    fireEvent.touchEnd(scrollRoot(), { touches: [] });
+    drag(scrollRoot(), 200, 240, { lift: false });
+    expect(screen.getByText("Fondue night")).toBeInTheDocument();
+    fireEvent.touchEnd(scrollRoot(), { touches: [] });
+  });
+
+  it("moving replaces the address: ← goes back where you came from, past every entry", async () => {
+    const user = userEvent.setup();
+    renderAt("/trips/trip-1/stays/stay-1", { from: "/somewhere" });
+    await user.click(screen.getByRole("button", { name: /open the entry/ }));
+    await screen.findByRole("article", { name: "Beausite Park Hotel" });
+    drag(scrollRoot(), 500, 300);
+    await screen.findByRole("article", { name: "Dinner at the hotel" });
+    drag(scrollRoot(), 500, 300);
+    await screen.findByRole("article", { name: "Stargazing from the balcony" });
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("button", { name: /open the entry/ })).toBeInTheDocument();
+  });
+
+  it("opened directly, ← goes to the day of the entry you moved to", async () => {
+    const user = userEvent.setup();
+    renderAt("/trips/trip-1/activities/2026-05-11-2");
+    await screen.findByRole("article", { name: "Dinner at Kornhauskeller" });
+    drag(scrollRoot(), 500, 300);
+    await screen.findByRole("article", { name: "Morning at the Rose Garden" });
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("The day page: 2026-05-12")).toBeInTheDocument();
   });
 });

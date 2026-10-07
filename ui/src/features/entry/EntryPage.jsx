@@ -16,6 +16,7 @@ import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { HeroFade } from "@/shared/components/ui/hero-fade";
 import { cn } from "@/shared/utils/cn";
+import { keepFirstEntry } from "@/shared/utils/firstEntry";
 import { useHeroImage } from "@/shared/utils/useHeroImage";
 import { datePart, daysBetween, formatDayHeading, formatDuration, formatTime, zoneLabel } from "@/shared/utils/time";
 
@@ -187,53 +188,28 @@ export function EntryView({ trip, found, children }) {
 }
 
 /**
- * "↑ Previous" or "Next ↓" (Run stage 14): the entry before or after this
- * one on the trip's timeline, with its day when that's another one. Moving
- * replaces the address, like swiping between days, so Back isn't a list of
- * every entry passed; `atKey` says which of a stay's or leg's rows it is,
- * `came` which way the new page slides in from.
+ * What letting go will do, in the room the pull opens above or below the
+ * page: the entry it goes to, with its day when that's another one.
  */
-function StepLink({ trip, step, direction, fromDate }) {
-  const d = describeEntry(step.entry, trip);
-  const Arrow = direction === "prev" ? ArrowUp : ArrowDown;
-  const label = direction === "prev" ? "Previous" : "Next";
-  const when = [step.date !== fromDate && formatDayHeading(step.date), d.start && formatTime(d.start)].filter(Boolean).join(" · ");
-  return (
-    <Link
-      to={entryPath(trip.id, step.kind, step.id)}
-      replace
-      state={{ atKey: step.key, came: direction }}
-      aria-label={`${label}: ${d.title}`}
-      className="mx-4 flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <Arrow className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className={SECTION_LABEL}>
-          {label}
-          {when && ` · ${when}`}
-        </span>
-        <span className="truncate text-sm font-medium">{d.title}</span>
-      </span>
-    </Link>
-  );
-}
-
-/** What letting go will do, in the room the pull opens above or below the page. */
-function PullHint({ dir, distance }) {
+function PullHint({ trip, dir, distance, step, fromDate }) {
   const ready = distance >= PULL_THRESHOLD_PX;
   const Arrow = dir === "prev" ? ArrowUp : ArrowDown;
   const label = dir === "prev" ? "previous" : "next";
+  const title = describeEntry(step.entry, trip).title;
   return (
     <div
       aria-hidden="true"
       className={cn(
-        "absolute inset-x-0 flex items-center justify-center gap-2 py-3 text-sm",
-        dir === "prev" ? "bottom-full" : "top-full",
-        ready ? "font-medium text-primary" : "text-muted-foreground"
+        "absolute inset-x-0 flex flex-col items-center gap-0.5 px-4 py-3 text-center",
+        dir === "prev" ? "bottom-full" : "top-full"
       )}
     >
-      <Arrow className="h-4 w-4" />
-      {ready ? `Release for ${label}` : `Pull for ${label}`}
+      <span className={cn("inline-flex items-center gap-1.5 text-sm", ready ? "font-medium text-primary" : "text-muted-foreground")}>
+        <Arrow className="h-4 w-4" />
+        {ready ? `Release for ${label}` : `Pull for ${label}`}
+        {step.date !== fromDate && ` · ${formatDayHeading(step.date)}`}
+      </span>
+      <span className="max-w-full truncate text-sm">{title}</span>
     </div>
   );
 }
@@ -263,14 +239,16 @@ function EntrySkeleton() {
 /**
  * An activity's, stay's or leg's own page (`kind`), by id: Run stage 13.
  * Reads the loaded trip (or the phone's saved copy), so it works offline.
- * ← (in ☰'s place) goes to the trip's timeline. Previous / Next step through
- * the timeline's entries, across days (Run stage 14).
+ * ← (in ☰'s place) goes back where you came from, else to its day. Pulling
+ * past the top or bottom moves through the timeline's entries, across days
+ * (Run stage 14).
  */
 export function EntryPage({ kind }) {
   const { tripId, id } = useParams();
   // The timeline row this was opened from, telling a stay's check-in from
   // its check-out (absent after a reload: then it's the record's first row).
-  const { atKey = null, came = null } = useLocation().state ?? {};
+  const location = useLocation();
+  const { atKey = null, came = null } = location.state ?? {};
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
@@ -288,6 +266,8 @@ export function EntryPage({ kind }) {
   const found = current ? findEntry(current, kind, id) : null;
   const steps = useMemo(() => (current ? entrySequence(current) : []), [current]);
   const { at, prev, next } = neighbours(steps, kind, id, atKey);
+  // ← goes back where you came from; opened directly, to the entry's day.
+  const back = found ? `/trips/${tripId}/days/${at?.date ?? found.date}` : `/trips/${tripId}`;
 
   // Moving to another entry keeps this page mounted: start it at the top.
   const wrapRef = useRef(null);
@@ -296,10 +276,14 @@ export function EntryPage({ kind }) {
     if (root) root.scrollTop = 0;
   }, [kind, id]);
 
-  // Pull past the top or bottom to move (Run stage 14), the same as the
-  // Previous / Next rows.
+  // Pull past the top or bottom to move (Run stage 14). Moving replaces the
+  // address, like swiping between days, so Back isn't a list of every entry
+  // passed; `atKey` says which of a stay's or leg's rows it is.
   const go = (step, direction) =>
-    navigate(entryPath(tripId, step.kind, step.id), { replace: true, state: { atKey: step.key, came: direction } });
+    navigate(entryPath(tripId, step.kind, step.id), {
+      replace: true,
+      state: keepFirstEntry(location, { atKey: step.key, came: direction }),
+    });
   const pull = useEdgePull(wrapRef, {
     hasPrev: Boolean(found && prev),
     hasNext: Boolean(found && next),
@@ -322,19 +306,9 @@ export function EntryPage({ kind }) {
           came === "prev" && "slide-in-from-top-8"
         )}
       >
-        {prev && (
-          <div className="pt-3">
-            <StepLink trip={current} step={prev} direction="prev" fromDate={at?.date} />
-          </div>
-        )}
         <EntryView trip={current} found={found}>
           {!isViewer && <EntryActions trip={current} found={found} readOnly={readOnly} />}
         </EntryView>
-        {next && (
-          <div className="pb-6">
-            <StepLink trip={current} step={next} direction="next" fromDate={at?.date} />
-          </div>
-        )}
       </div>
     );
   else if (current) body = <Gone tripId={tripId} />;
@@ -351,14 +325,22 @@ export function EntryPage({ kind }) {
   else body = <EntrySkeleton />;
 
   return (
-    <BottomNavLayout tripId={tripId} back={`/trips/${tripId}`} backHistory={false}>
+    <BottomNavLayout tripId={tripId} back={back}>
       {/* Follows the finger while pulling; springs back when let go. */}
       <div
         ref={wrapRef}
         className={cn("relative mx-auto max-w-2xl", !pull.dir && "transition-transform duration-200 motion-reduce:transition-none")}
         style={offset ? { transform: `translateY(${offset}px)` } : undefined}
       >
-        {pull.dir && <PullHint dir={pull.dir} distance={pull.distance} />}
+        {pull.dir && (
+          <PullHint
+            trip={current}
+            dir={pull.dir}
+            distance={pull.distance}
+            step={pull.dir === "prev" ? prev : next}
+            fromDate={at?.date}
+          />
+        )}
         {body}
       </div>
     </BottomNavLayout>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import { ArrowDown, ArrowUp, Pencil, Plus } from "lucide-react";
 import { entryPathFor } from "@/features/entry/entries";
@@ -17,6 +17,7 @@ import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { keepFirstEntry } from "@/shared/utils/firstEntry";
 import { daysBetween, formatDayHeading } from "@/shared/utils/time";
 
 /** ⋯ on an activity's row (editors): move it up or down the day. Edit and
@@ -52,6 +53,7 @@ function MoveMenu({ entry, busy, readOnly, onMove }) {
 function DayDetail({ trip, row }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [adding, setAdding] = useState(false);
   const readOnly = useSelector(selectReadOnly);
   // A viewer never edits, so they get no edit controls at all (offline only greys them).
@@ -64,8 +66,8 @@ function DayDetail({ trip, row }) {
   const openKey = searchParams.get("open");
   useEffect(() => {
     const entry = openKey && row.entries.find((e) => e.key === openKey);
-    if (entry) navigate(entryPathFor(trip.id, entry), { replace: true, state: { atKey: entry.key } });
-  }, [openKey, row.entries, navigate, trip.id]);
+    if (entry) navigate(entryPathFor(trip.id, entry), { replace: true, state: keepFirstEntry(location, { atKey: entry.key }) });
+  }, [openKey, row.entries, navigate, trip.id, location]);
 
   const day = trip.days.find((d) => d.date === row.date) ?? null;
   const editable = !row.afterTrip && !isViewer;
@@ -185,6 +187,9 @@ function arrowChangesDay(e) {
  */
 function DaySwiper({ trip, date }) {
   const navigate = useNavigate();
+  // Read by the Embla listeners, like rowsRef below.
+  const locationRef = useRef(null);
+  locationRef.current = useLocation();
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const index = rows.findIndex((r) => r.date === date);
   const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: Math.max(index, 0) });
@@ -204,7 +209,7 @@ function DaySwiper({ trip, date }) {
       const next = rowsRef.current[emblaApi.selectedScrollSnap()]?.date;
       if (!next || next === dateRef.current) return;
       toTop.current = true;
-      navigate(`/trips/${trip.id}/days/${next}`, { replace: true });
+      navigate(`/trips/${trip.id}/days/${next}`, { replace: true, state: keepFirstEntry(locationRef.current) });
     }
     function onSettle() {
       if (!toTop.current) return;
@@ -304,7 +309,7 @@ export function DayDetailPage() {
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 
   return (
-    <BottomNavLayout tripId={tripId} backTo={`/trips/${tripId}`}>
+    <BottomNavLayout tripId={tripId} back={`/trips/${tripId}`}>
       <div className="mx-auto max-w-2xl py-6">
         {current ? (
           <DaySwiper key={current.id} trip={current} date={date} />

@@ -23,12 +23,6 @@ vi.mock("@/shared/services/apiClient", () => ({
 }));
 
 
-/** The phone's own back gesture: one step back in history. */
-function HistoryBack() {
-  const navigate = useNavigate();
-  return <button onClick={() => navigate(-1)}>History back</button>;
-}
-
 function renderAt(path, { from, online = true } = {}) {
   const store = configureStore({
     reducer: { auth: authReducer, journal: journalReducer, timeline: timelineReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
@@ -46,10 +40,8 @@ function renderAt(path, { from, online = true } = {}) {
           <Route path="/trips/:tripId/stays/:id" element={<EntryPage kind="stay" />} />
           <Route path="/trips/:tripId/travel/:id" element={<EntryPage kind="travel" />} />
           <Route path="/trips/:tripId/days/:date" element={<p>The day page</p>} />
-          <Route path="/trips/:tripId" element={<p>The trip timeline</p>} />
           <Route path="/somewhere" element={<From />} />
         </Routes>
-        <HistoryBack />
       </MemoryRouter>
     </Provider>
   );
@@ -123,22 +115,22 @@ describe("an entry's page", () => {
     expect(screen.getByRole("link", { name: "Back to the trip" })).toHaveAttribute("href", "/trips/trip-1");
   });
 
-  it("← is in ☰'s place and goes to the trip's timeline, wherever you came from", async () => {
+  it("← is in ☰'s place and goes back where you came from", async () => {
     const user = userEvent.setup();
     renderAt("/trips/trip-1/stays/stay-0", { from: "/somewhere" });
     await user.click(screen.getByRole("button", { name: /open the entry/ }));
     await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
     expect(screen.queryByRole("button", { name: "Open menu" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByText("The trip timeline")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /open the entry/ })).toBeInTheDocument();
   });
 
-  it("opened directly, ← goes to the trip's timeline", async () => {
+  it("opened directly, ← goes to its day", async () => {
     const user = userEvent.setup();
     renderAt("/trips/trip-1/activities/2026-05-12-0");
     await screen.findByRole("article", { name: "Morning at the Rose Garden" });
     await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByText("The trip timeline")).toBeInTheDocument();
+    expect(await screen.findByText("The day page")).toBeInTheDocument();
   });
 
   it("works from the phone's saved copy when offline", async () => {
@@ -151,7 +143,7 @@ describe("an entry's page", () => {
   });
 });
 
-describe("Previous and Next between entries", () => {
+describe("the order entries are pulled through", () => {
   const ids = (steps) => steps.map((s) => `${s.id}${s.key.endsWith("-out") ? " out" : ""}`);
 
   it("go through the timeline across days, without 'Staying at' rows or a leg's same-day arrival", () => {
@@ -183,44 +175,6 @@ describe("Previous and Next between entries", () => {
     // Without the row (a reload), it's the stay's first: check-in.
     const first = neighbours(steps, "stay", "stay-1", null);
     expect([first.prev.id, first.next.id]).toEqual(["travel-2", "2026-05-12-1"]);
-  });
-
-  it("the first entry has no Previous, the last no Next", async () => {
-    renderAt("/trips/trip-1/travel/travel-0");
-    await screen.findByRole("article", { name: "Chicago → Zürich" });
-    expect(screen.queryByRole("link", { name: /^Previous/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Next: Zürich Airport → Bern" })).toBeInTheDocument();
-  });
-
-  it("shows the day when the next entry is on another one", async () => {
-    renderAt("/trips/trip-1/activities/2026-05-11-2");
-    await screen.findByRole("article", { name: "Dinner at Kornhauskeller" });
-    expect(screen.getByRole("link", { name: "Next: Morning at the Rose Garden" })).toHaveTextContent("Next · Tue, May 12 · 8:30 AM");
-    expect(screen.getByRole("link", { name: /^Previous: Check in/ })).toHaveTextContent(/^Previous · 2:00 PM/);
-  });
-
-  it("moving replaces the address, so Back skips the entries passed", async () => {
-    const user = userEvent.setup();
-    renderAt("/trips/trip-1/stays/stay-1", { from: "/somewhere" });
-    await user.click(screen.getByRole("button", { name: /open the entry/ }));
-    await screen.findByRole("article", { name: "Beausite Park Hotel" });
-    await user.click(screen.getByRole("link", { name: "Next: Dinner at the hotel" }));
-    await screen.findByRole("article", { name: "Dinner at the hotel" });
-    await user.click(screen.getByRole("link", { name: "Next: Stargazing from the balcony" }));
-    await screen.findByRole("article", { name: "Stargazing from the balcony" });
-    await user.click(screen.getByRole("button", { name: "History back" }));
-    expect(await screen.findByRole("button", { name: /open the entry/ })).toBeInTheDocument();
-  });
-
-  it("Previous back onto a stay's check-out keeps its place", async () => {
-    const user = userEvent.setup();
-    renderAt("/trips/trip-1/travel/travel-3");
-    await screen.findByRole("article", { name: "Zürich → Chicago" });
-    expect(screen.queryByRole("link", { name: /^Next/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: /^Previous: Check out · Beausite/ }));
-    await screen.findByRole("article", { name: "Beausite Park Hotel" });
-    expect(screen.getByRole("link", { name: "Next: Zürich → Chicago" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Previous: Fondue night" })).toBeInTheDocument();
   });
 });
 

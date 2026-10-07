@@ -74,14 +74,14 @@ test("day detail page", async ({ page }) => {
   await expect(page.getByRole("list", { name: /^Plans for/ })).toBeVisible();
   await page.screenshot({ path: screenshotPath("03-day-detail"), fullPage: true });
 
-  // ← at the top right goes back up to the whole timeline.
+  // ← (in ☰'s place) goes back to the timeline it came from.
   const timelineUrl = page.url().replace(/\/days\/.*$/, "");
-  await page.getByRole("link", { name: "Back to the timeline" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
   await expect(page).toHaveURL(timelineUrl);
   await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
 });
 
-test("an entry's own page: a flight, a stay, an activity; Previous / Next; back", async ({ page }) => {
+test("an entry's own page: a flight, a stay, an activity, and back to the day", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();
   await page.getByRole("list", { name: "Trip days" }).getByRole("link", { name: /Mon, May 11/ }).click();
@@ -102,14 +102,14 @@ test("an entry's own page: a flight, a stay, an activity; Previous / Next; back"
   await expect(flight.getByRole("region", { name: "When" })).toContainText("8h 45m");
   await page.waitForTimeout(1500); // the photo and the mini maps
   await page.screenshot({ path: screenshotPath("04-entry-flight"), fullPage: true });
-  await page.goBack(); // the phone's back gesture: to where you came from
+  await page.getByRole("button", { name: "Back" }).click();
   await expect(page).toHaveURL(/\/days\/2026-05-11$/);
 
   await plans.getByRole("link", { name: /Check in · Hotel Goldener/ }).click();
   await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: screenshotPath("04a-entry-stay"), fullPage: true });
-  await page.goBack();
+  await page.goBack(); // the phone's back gesture does the same
 
   await plans.getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
   const dinner = page.getByRole("article", { name: "Dinner at Kornhauskeller" });
@@ -118,23 +118,10 @@ test("an entry's own page: a flight, a stay, an activity; Previous / Next; back"
   await page.waitForTimeout(1500);
   await page.screenshot({ path: screenshotPath("04b-entry-activity"), fullPage: true });
 
-  // Next, at the bottom: the next entry is on the next day, so it says which.
-  const next = page.getByRole("link", { name: "Next: Morning at the Rose Garden" });
-  await next.scrollIntoViewIfNeeded();
-  await expect(next).toContainText("Tue, May 12");
-  await page.screenshot({ path: screenshotPath("04c-entry-next") });
-  await next.click();
-  await expect(page.getByRole("article", { name: "Morning at the Rose Garden" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Previous: Dinner at Kornhauskeller/ })).toBeInViewport();
-  await page.waitForTimeout(1500); // its own photo
-  await page.screenshot({ path: screenshotPath("04d-entry-previous") });
-
-  // Moving replaced the address: the back gesture skips Dinner, to the day.
-  await page.goBack();
+  await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
 
-  // ← goes to the trip's timeline.
-  await plans.getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
+  // The day's ← goes on back to the timeline.
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
 });
@@ -190,6 +177,13 @@ test("an entry's page: pull past the bottom for the next entry, past the top for
   await page.screenshot({ path: screenshotPath("04f-entry-pull-previous") });
   await touch("touchEnd");
   await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
+
+  // Moving replaced the address: ← goes back to the day, past both entries.
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
+  await page.getByRole("list", { name: "Plans for Mon, May 11" }).getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
+  await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
+  await page.waitForTimeout(1500);
 
   // A short pull springs back.
   await page.evaluate(() => {

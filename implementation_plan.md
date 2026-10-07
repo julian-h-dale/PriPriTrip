@@ -4122,6 +4122,26 @@ previous, a short pull springs back.
   opens; the Previous / Next rows from Phase 65 stay.
 - Not yet tried on a real phone (Julian away from his desk).
 
+### Changed after trying it (2026-10-06, Julian)
+
+- **The Previous / Next rows are gone** (Q-S4 revised): only the pull. With
+  them gone, the pull's hint names the entry it goes to ("Release for next ·
+  Tue, May 12" over "Morning at the Rose Garden").
+- **← goes back where you came from** (Q-S2 revised), across the app: an
+  entry's page back to the day (or search, Today, the map), else to the
+  entry's day; the day page back to the timeline (or wherever), else to the
+  timeline. The day page's ← moved from the top right into ☰'s place, like
+  the tool pages; the drawer is a step back, on the timeline.
+- **Swiping keeps "first page opened"** (`shared/utils/firstEntry.js`):
+  React Router gives a replaced address a new key, so after swiping between
+  days or entries on a page opened directly, ← thought there was history
+  and went nowhere. A replace now carries `firstEntry` in its state.
+- **A pull only starts from a touch that began at that end.** Before, one
+  long scroll that reached the bottom carried straight on into the next
+  entry (the e2e caught it once the rows were gone and Dinner's page was
+  only 140 px taller than the screen). Now the scroll stops at the end and
+  a fresh touch pulls on.
+
 ### Open questions (Run stage 14)
 
 - **Q-S1. Across days, or stop at the ends of a day?** Recommendation:
@@ -4129,11 +4149,14 @@ previous, a short pull springs back.
   - **Answer:** across days; swiping past a day's last entry goes to the
     next day (2026-10-06).
 - **Q-S2. Where does ← go?** The entry's day, or where you started?
-  - **Answer:** the trip timeline (2026-10-06).
+  - **Answer:** the trip timeline (2026-10-06). **Revised:** back where you
+    came from, else the entry's day; the day page likewise back to the
+    timeline (2026-10-06).
 - **Q-S3. How far to pull?** Recommendation: about 80 px.
   - **Answer:** 80 px is fine (2026-10-06).
 - **Q-S4. Visible Previous / Next rows too, or the gesture only?**
-  - **Answer:** add them; may remove them later (2026-10-06).
+  - **Answer:** add them; may remove them later (2026-10-06). **Revised:**
+    removed (2026-10-06).
 
 ## After Phase 4 — First real trip
 

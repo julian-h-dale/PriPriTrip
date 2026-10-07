@@ -14,8 +14,7 @@
     timeline's rows across days, no "Staying at" rows, no same-day leg
     arrival); rows pass `atKey` in router state so a stay's check-out steps
     on from check-out; "↑ Previous" / "Next ↓" rows on the page (replace the
-    URL); ← goes to the trip timeline (`TopBar backHistory={false}`); the
-    entry view is keyed so a move doesn't show the old photo. `make verify`
+    URL); the entry view is keyed so a move doesn't show the old photo. `make verify`
     green (246 API + 407 UI). E2E screenshots `04c`, `04d`.
   - **Phase 66 ✅:** the pull. `useEdgePull` (`features/entry/`) watches the
     scroll root's touches and only takes over at an end, pulling outward
@@ -26,10 +25,15 @@
     sideways, or with two fingers. The test trip moved to
     `src/test/sampleTrip.js`. `make verify` green (246 API + 418 UI); e2e
     with real touches (CDP) at 375 px, screenshots `04e`, `04f`.
-  - Julian said to go ahead with 66 without checking 65 (away from his
-    desk). **Julian: try both on the phone**, iOS especially (the
-    rubber-band inside a scroll area is what Chromium can't show).
-  - **Run stage 14 is complete** apart from that check.
+  - **Changes (2026-10-06, Julian):** Previous / Next rows removed (the
+    pull's hint now names the entry); ← goes back where you came from
+    (entry → day, day → timeline; else the entry's day / the timeline); the
+    day page's ← moved into ☰'s place. Fixed with it: after swiping on a
+    page opened directly, ← went nowhere (`shared/utils/firstEntry.js`);
+    a long scroll no longer runs on into a pull (a pull needs a touch that
+    starts at the end). `make verify` green (246 API + 422 UI); e2e green.
+  - **Julian: try it on the phone**, iOS especially (the rubber-band inside
+    a scroll area is what Chromium can't show).
 - **Run stage 13, in progress (2026-10-06)** on branch **`details-page`**
   (off `enhance-trip`). Plan: `implementation_plan.md`, "Run stage 13". All
   recommendations taken; the confirmation number moves to the top.

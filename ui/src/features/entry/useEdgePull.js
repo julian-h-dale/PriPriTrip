@@ -26,8 +26,9 @@ export function pullOffset(distance) {
 /**
  * Pull past the top or bottom of the page to go to the previous or next
  * entry (Run stage 14). Watches touches on `rootRef`'s scroll root
- * (`[data-scroll-root]`), and only takes over once it's already at an end
- * and the finger keeps going: until then the browser scrolls as usual.
+ * (`[data-scroll-root]`), and only takes over when a touch starts at an end
+ * and pulls on past it: otherwise the browser scrolls as usual, and a scroll
+ * that reaches an end stops there.
  * Letting go past PULL_THRESHOLD_PX calls `onPrev` / `onNext`; short of it,
  * the page springs back.
  *
@@ -49,7 +50,8 @@ export function useEdgePull(rootRef, { hasPrev, hasNext, onPrev, onNext }) {
     const before = root.style.overscrollBehaviorY;
     root.style.overscrollBehaviorY = "contain";
 
-    let touch = null; // { startX, startY, lastY, state: "undecided" | "scroll" | "pull", dir, originY }
+    // { startX, startY, lastY, state: "undecided" | "scroll" | "sideways" | "pull", dir, originY, edges }
+    let touch = null;
 
     function reset() {
       touch = null;
@@ -62,7 +64,14 @@ export function useEdgePull(rootRef, { hasPrev, hasNext, onPrev, onNext }) {
         return;
       }
       const { clientX, clientY } = e.touches[0];
-      touch = { startX: clientX, startY: clientY, lastY: clientY, state: "undecided", dir: null, originY: 0 };
+      // Which ends the page is at as the finger lands: a pull only starts
+      // from those, so a long scroll that reaches the end stops there, and
+      // it takes a fresh touch to pull on.
+      const edges = {
+        prev: root.scrollTop <= 0,
+        next: root.scrollTop + root.clientHeight >= root.scrollHeight - 1,
+      };
+      touch = { startX: clientX, startY: clientY, lastY: clientY, state: "undecided", dir: null, originY: 0, edges };
     }
 
     function onMove(e) {
@@ -85,10 +94,10 @@ export function useEdgePull(rootRef, { hasPrev, hasNext, onPrev, onNext }) {
       if (touch.state === "sideways") return;
 
       if (touch.state === "scroll") {
-        // Scrolled to an end and still going: the pull starts from here.
+        // At an end it started at, and going on past it: the pull starts here.
         const { hasPrev: p, hasNext: n } = latest.current;
         const dir = pullDirection({ dy: step, scrollTop: root.scrollTop, scrollHeight: root.scrollHeight, clientHeight: root.clientHeight, hasPrev: p, hasNext: n });
-        if (!dir) return;
+        if (!dir || !touch.edges[dir]) return;
         touch.state = "pull";
         touch.dir = dir;
         touch.originY = clientY - step;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { runEdit } from "@/features/timeline/runEdit";
@@ -9,6 +9,7 @@ import { TravelForm } from "@/features/timeline/TravelForm";
 import { deleteItem, deleteStay, deleteTravel, replaceItem, replaceStay, replaceTravel } from "@/features/timeline/timelineSlice";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
+import { keepFirstEntry } from "@/shared/utils/firstEntry";
 
 const NOUN = { activity: "activity", stay: "stay", travel: "travel" };
 
@@ -28,6 +29,7 @@ function deleteMessage({ kind, record }) {
 export function EntryActions({ trip, found, readOnly }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,7 +57,7 @@ export function EntryActions({ trip, found, readOnly }) {
     );
     setBusy(false);
     setDeleting(false);
-    if (result.meta.requestStatus === "fulfilled") navigate(`/trips/${tripId}/days/${date}`, { replace: true });
+    if (result.meta.requestStatus === "fulfilled") navigate(`/trips/${tripId}/days/${date}`, { replace: true, state: keepFirstEntry(location) });
   }
 
   const offline = readOnly ? "You’re offline" : undefined;
