@@ -8,6 +8,7 @@ import { buildMapMarkers } from "@/features/map/buildMapMarkers";
 import { memoryMarkers } from "@/features/map/memoryMarkers";
 import { MapControls } from "@/features/map/MapControls";
 import { MapInfoContent } from "@/features/map/MapInfoContent";
+import { MarkerList } from "@/features/map/MarkerList";
 import { filterMarkers, viewFor } from "@/features/map/mapFilters";
 import { colorFor, directionsUrl, glyphSrcFor, iconFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import { isArea } from "@/features/map/placeActions";
@@ -526,6 +527,7 @@ function TripMap({ trip }) {
           onDateChange={setDate}
         />
       )}
+      {ready && <MarkerList markers={visibleMarkers} onSelect={selectMarker} />}
       {info &&
         createPortal(
           <MapInfoContent

@@ -6,7 +6,7 @@
 
 ## Status
 
-- **Run stage 16, planned (2026-10-06)** on branch **`points-of-interest`**
+- **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.
   Answers: all as recommended (2026-10-06).
@@ -22,6 +22,11 @@
   - **Phase 70 ✅:** one Filter button (Everything, Stays, Points of
     interest, Journal) in place of the Journal and Stays toggles. `make
     verify` green (260 API + 453 UI).
+  - **Phase 71 ✅:** the map's List button (bottom left, above Google's
+    logo): what's on the map, grouped with icons; a row jumps to its pin.
+    `make verify` green (260 API + 459 UI); map e2e specs pass.
+  - **Run stage 16 is complete.** Not pushed. **Julian:** try it on the
+    phone; deploying runs migration 0013 (start.sh).
 - **Run stage 15 ✅ (2026-10-06)** on `details-page`: New memory (blue
   icon) in the top bar in Share's place; Share trip in the drawer after
   Documents; Currency first in Trip tools; Journal's and Today's New memory

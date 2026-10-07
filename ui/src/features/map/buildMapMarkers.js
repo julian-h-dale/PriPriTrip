@@ -8,7 +8,7 @@ import { datePart } from "@/shared/utils/time";
  * the map widget itself.
  */
 
-function markerFromLocation(loc, { id, kind, mode, category, notes, day, endDay, legDays, entryId, title }) {
+function markerFromLocation(loc, { id, kind, mode, end, category, notes, day, endDay, legDays, entryId, title }) {
   if (loc?.lat == null || loc?.lng == null) return null;
   return {
     id,
@@ -20,6 +20,11 @@ function markerFromLocation(loc, { id, kind, mode, category, notes, day, endDay,
     lat: loc.lat,
     lng: loc.lng,
     title,
+    // The location's own name: a leg's two ends share its title, so this
+    // tells them apart (the map's List).
+    placeName: loc.name ?? null,
+    // A travel endpoint's end of the leg: "from" | "to"; null otherwise.
+    end: end ?? null,
     city: loc.city ?? null,
     imgRef: loc.imgRef ?? null,
     placeId: loc.placeId ?? null,
@@ -58,6 +63,7 @@ export function buildMapMarkers(trip) {
     const from = markerFromLocation(travel.from, {
       id: `travel-${travel.id}-from`,
       kind: "travel",
+      end: "from",
       entryId: travel.id,
       mode: travel.mode,
       day: datePart(travel.depart),
@@ -69,6 +75,7 @@ export function buildMapMarkers(trip) {
     const to = markerFromLocation(travel.to, {
       id: `travel-${travel.id}-to`,
       kind: "travel",
+      end: "to",
       entryId: travel.id,
       mode: travel.mode,
       day: datePart(travel.arrive ?? travel.depart),

@@ -562,3 +562,68 @@ describe("points of interest on the map", () => {
     expect(rows.at(-1)).toHaveTextContent("Point of interest · Market");
   });
 });
+
+describe("the map's List button", () => {
+  const openList = async (user) => {
+    await user.click(await screen.findByRole("button", { name: "List what's on the map" }));
+    return screen.getByRole("dialog", { name: "On the map" });
+  };
+
+  it("lists what the map shows, grouped, with icons; choosing one closes it and opens that pin", async () => {
+    const user = userEvent.setup();
+    renderMap();
+    const dialog = await openList(user);
+    const groups = within(dialog).getAllByRole("region").map((r) => r.getAttribute("aria-label"));
+    expect(groups).toEqual(["Stays", "Activities", "Travel"]);
+    // Every pin on the map is a row (the search result and "you are here" never are).
+    const pins = fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc);
+    expect(within(dialog).getAllByRole("button").filter((b) => b.textContent !== "Close")).toHaveLength(pins.length);
+    expect(within(within(dialog).getByRole("region", { name: "Travel" })).getAllByText("From Chicago O'Hare (ORD)")).toHaveLength(1);
+
+    const hotel = within(within(dialog).getByRole("region", { name: "Stays" })).getByRole("button", { name: /Beausite Park Hotel/ });
+    expect(hotel.querySelector("svg")).not.toBeNull(); // its kind's icon
+    await user.click(hotel);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fake.map.setZoom).toHaveBeenLastCalledWith(15);
+    expect(fake.map.setCenter).toHaveBeenLastCalledWith({ lat: expect.any(Number), lng: expect.any(Number) });
+    // Its info window: its name and its Details link (nothing to add from here).
+    const card = fake.infoWindow.node;
+    expect(within(card).getByText("Beausite Park Hotel")).toBeInTheDocument();
+    expect(within(card).queryByText("Not in this trip")).not.toBeInTheDocument();
+  });
+
+  it("follows the Filter and the day; with nothing shown, it says so", async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await user.click(await screen.findByRole("button", { name: "Filter the map" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Stays" }));
+    let dialog = await openList(user);
+    expect(within(dialog).getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Stays"]);
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+
+    // Stays on the morning of the last day: none covers that night.
+    fireEvent.change(screen.getByLabelText("Pick a day"), { target: { value: TRIP.endDate } });
+    dialog = await openList(user);
+    expect(within(dialog).getByText("Nothing on the map with these filters.")).toBeInTheDocument();
+  });
+
+  it("points of interest have their own group, A–Z", async () => {
+    const user = userEvent.setup();
+    const pois = [
+      { id: "p2", name: "Zytglogge clock shop", category: "shop", location: { name: "Zytglogge", lat: 46.948, lng: 7.448 }, version: 1 },
+      { id: "p1", name: "Bundesplatz market", category: "market", location: { name: "Bundesplatz", lat: 46.946, lng: 7.444 }, version: 1 },
+    ];
+    const base = apiClient.get.getMockImplementation();
+    apiClient.get.mockImplementation(async (url) =>
+      url === "/trips/trip-1" ? { data: { ...structuredClone(TRIP), pointsOfInterest: pois } } : base(url)
+    );
+    renderMap();
+    await waitFor(() => expect(fake.markers.some((m) => m.title === "Bundesplatz market" && m.map !== null)).toBe(true));
+    const dialog = await openList(user);
+    const group = within(dialog).getByRole("region", { name: "Points of interest" });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      expect.stringContaining("Bundesplatz market"),
+      expect.stringContaining("Zytglogge clock shop"),
+    ]);
+  });
+});

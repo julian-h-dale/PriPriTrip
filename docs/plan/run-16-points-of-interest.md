@@ -217,6 +217,26 @@ filters` and the journal's location spec go through the Filter menu
   interest, not memories, as before.
 - e2e `filterMap(page, label)` in `helpers.js`.
 
+### Phase 71 (2026-10-06): the List button
+
+`make verify` green (260 API + 459 UI tests). E2E: the button sits above
+Google's logo, the list opens, and a row jumps to its pin (screenshots
+`08c`, `08d`, `08e`). The map, entry and journal-location e2e specs all
+pass.
+- `MarkerList.jsx`: a round list button at the bottom left (`bottom-8`,
+  clear of Google's logo and attribution), opening "On the map": the
+  markers the map shows now, after the Filter and the day.
+- `markerList.js`: grouped Stays, Activities, Travel, Points of interest,
+  Journal; by day within a group, keeping the trip's own order within a
+  day; points of interest A–Z. Under each name, where it is: the address,
+  a leg's end ("From Chicago O'Hare (ORD)"), or a memory's day and time.
+- Markers now carry their location's own name (`placeName`) and a leg end
+  (`end`), so a leg's two ends can be told apart.
+- Choosing a row closes the list and runs `selectMarker` (zoom in, open its
+  info window). A Close button too, since the dialog has no ×.
+
+**Run stage 16 is complete.**
+
 ## Open questions (Run stage 16)
 
 - **Q-P1. Categories for points of interest?** Recommendation: **yes, a

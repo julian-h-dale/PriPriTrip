@@ -423,6 +423,33 @@ async function deleteAdded(page, tripId, { itemTitle, stayName, poiName }) {
   }
 }
 
+test("map: the List button lists what's shown and jumps to it", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+  await expect(page.locator("gmp-advanced-marker")).toHaveCount(10);
+
+  // Bottom left, just above Google's logo, which stays in full view.
+  const button = page.getByRole("button", { name: "List what's on the map" });
+  const logo = page.locator('a[href*="maps.google.com/maps"]').first();
+  await expect(logo).toBeVisible();
+  const [b, l] = [await button.boundingBox(), await logo.boundingBox()];
+  expect(b.y + b.height).toBeLessThanOrEqual(l.y);
+  expect(b.x).toBeLessThan(l.x + l.width); // on the left, above it
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: screenshotPath("08c-map-list-button") });
+
+  await button.click();
+  const list = page.getByRole("dialog", { name: "On the map" });
+  await expect(list.getByRole("region", { name: "Stays" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("08d-map-list") });
+  await list.getByRole("button", { name: /Dinner at Kornhauskeller/ }).click();
+  await expect(list).toBeHidden();
+  await expect(page.locator(".gm-style-iw")).toContainText("Dinner at Kornhauskeller");
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: screenshotPath("08e-map-list-picked") });
+});
+
 test("map: add a Google place to the trip (activity and stay)", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();
