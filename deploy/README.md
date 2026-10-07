@@ -45,6 +45,37 @@ fly secrets set UMAMI_URL=https://your-umami-host UMAMI_WEBSITE_ID=your-website-
 fly deploy
 ```
 
+### Settings in production
+
+Plain settings are in `fly.toml` (`[env]`: `DATABASE_URL`, `PHOTO_DIR`,
+`DOCUMENT_DIR`). Everything else is a **secret** (`fly secrets set NAME=…`;
+setting one restarts the machine):
+
+| Secret | Needed for |
+|---|---|
+| `JWT_SECRET` | Signing in (required) |
+| `CORS_ORIGINS` | Only if the UI is served from another origin (same-origin by default) |
+| `GOOGLE_MAPS_API_KEY`, `GOOGLE_MAPS_MAP_ID` | The map, place search and place photos. Add `https://<app>.fly.dev/*` to the key's allowed referrers in the Google console |
+| `OPENWEATHER_API_KEY` | The Weather tool |
+| `UMAMI_URL`, `UMAMI_WEBSITE_ID` | Usage analytics (who is counted is set per person on the Admin page) |
+| `SEED_*_EMAIL`, `SEED_*_PASSWORD` | Only if you run `make seed-remote`: the accounts it creates |
+
+`fly secrets list` shows which are set (not their values).
+
+### Each deploy
+
+1. `make verify` locally.
+2. `fly deploy`. The machine runs `python -m app.migrate` before serving, so
+   new migrations apply on start (and a deploy with a migration is a
+   one-way step: back up `/data` first if it matters,
+   `fly ssh sftp get /data/app.db`).
+3. Open the app on the phone: an installed app shows "Update available ·
+   Reload".
+
+`make seed-remote` seeds the deployed app. It's never automatic: run it once
+on a fresh volume, or on purpose to replant the sample trips (deleting their
+journals).
+
 ## Installable app (PWA) and offline
 
 The UI is a PWA: it can be installed on a phone, and trips work offline (the

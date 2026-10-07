@@ -1,23 +1,39 @@
 # E2E (Playwright)
 
-Practical, screenshot-first checks against a real running app: page views and
-basic clicking, nothing more. No visual-diff baselines — the UI is still
-changing a lot, so these stay light on purpose. Not part of `make verify`;
-run them yourself when you want to see the app without being at a screen.
+Practical, screenshot-first checks against a real running app, in Chromium
+at phone width (375 × 812): page views and basic clicking, nothing more. No
+visual-diff baselines (the UI is still changing a lot), so these stay light
+on purpose. Not part of `make verify`; run them when a phase changes a page,
+and look at the screenshots.
 
 ```bash
-make dev              # if not already running
-cd ui && npm run test:e2e
+make seed                     # once: the specs use the sample trips
+make dev                      # optional: Playwright starts the API and UI itself if they aren't running
+cd ui
+set -a; . ../api/.env; set +a # this machine's seed passwords (SEED_*_EMAIL / _PASSWORD)
+npm run test:e2e              # everything
+npx playwright test e2e/analytics.spec.js   # one spec
 ```
 
-Screenshots land in `e2e/screenshots/` (gitignored), overwritten each run:
-`01-trips-list.png`, `02-trip-timeline.png`, `03-day-detail.png`,
-`04-day-detail-entry-expanded.png`.
+The specs sign in as the seed accounts, reading `SEED_USER_EMAIL` /
+`SEED_USER_PASSWORD` (and the viewer's and admin's) from the environment,
+with the `.env.example` defaults otherwise. If you've changed a seed
+password locally, source `api/.env` as above or sign-in fails. The ports
+come from `api/.env` and `ui/.env`, so a worktree's own are used.
 
-Runs against the seeded sample trip ("Bern & Wengen Long Weekend"), so
-`make seed` must have run at least once. Logs in as the seed dev user
-(`SEED_USER_EMAIL`/`SEED_USER_PASSWORD` env vars, defaulting to the same
-values `api/.env` ships with).
+Screenshots land in `e2e/screenshots/` (git-ignored), overwritten each run,
+named by spec (`01-trips-list.png`, `18a-analytics-owner.png`, …).
+
+| Spec | Checks |
+|---|---|
+| `trip.spec.js` | Trips list, landing, Today, search, timeline, day pages and swiping, entry pages, coverage views, the map (search, filters, List, adding places), sharing, viewers, two editors |
+| `accounts.spec.js` | Invites, temporary passwords, resets, making someone an admin |
+| `tools.spec.js` | Currency, Weather and Time zones from the drawer |
+| `packing.spec.js`, `documents.spec.js` | Packing lists; documents upload and download |
+| `journal-*.spec.js` | Memories, location, photos, writing offline |
+| `offline-toasts.spec.js` | Offline in the browser: no error toasts anywhere |
+| `analytics.spec.js` | What goes to Umami (a pretend Umami host, so nothing is counted for real), by role, and offline |
+| `offline.spec.js` | The installed app offline: needs a build (below) |
 
 ## Offline / installable app (`offline.spec.js`)
 

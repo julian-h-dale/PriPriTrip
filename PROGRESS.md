@@ -6,6 +6,18 @@
 
 ## Status
 
+- **Field review and docs (2026-10-07)** on **`analytics`**:
+  - Usability review at 375 px, online and offline:
+    `docs/ui-review-2026-10-07.md` (unscheduled; in the backlog).
+  - Julian's data-saver idea planned as **Run stage 20**
+    (`docs/plan/run-20-data-saver.md`): **open questions Q-D1–Q-D5 wait
+    for answers** before Phase 80.
+  - READMEs: the root one is now a map of the parts and how to run each;
+    new `api/README.md`, `ui/README.md`, `scripts/pi-backup/README.md`
+    (moved from the root); `deploy/README.md` lists every production
+    secret and the deploy steps; `ui/e2e/README.md` lists the specs and
+    how to source `api/.env` for local seed passwords.
+    `api/.env.example` gained `DOCUMENT_DIR`.
 - **Run stage 19 ✅ (2026-10-07)** on **`analytics`**: analytics that
   survive being offline. Plan: `docs/plan/run-19-offline-analytics.md`
   (Julian took the recommendation; Umami is 3.4.0, whose `/api/send`

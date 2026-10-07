@@ -53,6 +53,7 @@ All complete unless marked. Current branch: `analytics` (Runs 18–19).
 | Run 17 | 72–75 | Quiet offline, making someone an admin, what viewers see (and their map) | [run-17-offline-toasts-roles-viewers.md](docs/plan/run-17-offline-toasts-roles-viewers.md) |
 | Run 18 | 76–78 | Usage analytics (Umami): a per-user switch, page views and Trip tools by role | [run-18-analytics.md](docs/plan/run-18-analytics.md) |
 | Run 19 | 79 | Analytics that survive being offline (our own sender, a queue) | [run-19-offline-analytics.md](docs/plan/run-19-offline-analytics.md) |
+| Run 20 | 80–81 | A "saved copies only" switch (data saver) — **planned, open questions** | [run-20-data-saver.md](docs/plan/run-20-data-saver.md) |
 
 ## Architecture Decisions
 
@@ -170,5 +171,8 @@ All complete unless marked. Current branch: `analytics` (Runs 18–19).
 - Before any real deploy: Alembic and pinned Python dependencies.
 - **Next follow-up (Julian, 2026-10-03):** a text-size preference that also
   scales the timeline rails and dots.
+- **Field review (2026-10-07):** [docs/ui-review-2026-10-07.md](docs/ui-review-2026-10-07.md),
+  unscheduled: documents offline, Tonight showing check-out, phone
+  numbers, packing offline, sunlight readability, and smaller polish.
 - Today tab: show it only while a trip is active (a switch on the whole
   view), once it has been tested.
