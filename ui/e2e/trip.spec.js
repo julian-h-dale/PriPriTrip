@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { API_URL } from "../playwright.config.js";
-import { SEED_ADMIN, SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
+import { SEED_ADMIN, SEED_VIEWER, filterMap, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Practical smoke checks: page views and basic clicking against the seeded
@@ -361,28 +361,35 @@ test("map search and filters", async ({ page }) => {
   await suggestion.click();
   await expect(page.locator(".gm-style-iw")).toContainText("Dinner at Kornhauskeller");
 
-  // House filter: only the sample trip's 2 stays.
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  // The Filter menu: Stays shows only the sample trip's 2 stays.
+  await page.getByRole("button", { name: "Filter the map" }).click();
+  await expect(page.getByRole("menu", { name: "Show on the map" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("08a-map-filter-menu") });
+  await page.getByRole("menuitemradio", { name: "Stays" }).click();
   await expect(pins).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Filter the map: Stays" })).toBeVisible();
+  await page.mouse.move(0, 400); // off the button, so it isn't drawn hovered
+  await page.waitForTimeout(800); // the map's new view, and the button's colour transition
+  await page.screenshot({ path: screenshotPath("08b-map-filtered-to-stays") });
   // Round-tripping the filter off shouldn't lose any markers (regression:
   // Google Maps silently dropped one of two co-located markers — e.g.
   // Chicago appearing on both the outbound and return flight — when
   // detaching/reattaching instead of rebuilding them).
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  await filterMap(page, "Everything");
   await expect(pins).toHaveCount(10);
 
-  // Calendar filter: one day, combined with House.
+  // Calendar filter: one day, combined with Stays.
   await page.getByRole("button", { name: "Show one day" }).click();
   await page.getByRole("textbox", { name: "Pick a day" }).fill("2026-05-12");
   await expect(page.getByRole("button", { name: /Showing Tue, May 12/ })).toBeVisible();
   await page.screenshot({ path: screenshotPath("09-map-date-filter"), fullPage: true });
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  await filterMap(page, "Stays");
   await expect(pins).toHaveCount(1); // Beausite Park Hotel covers that night
   await page.screenshot({ path: screenshotPath("09a-map-day-and-stays"), fullPage: true });
 
   // The overnight flight's day: both airports, an ocean apart, and the map
   // zooms out to show them.
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  await filterMap(page, "Everything");
   await page.getByRole("button", { name: /Showing Tue, May 12/ }).click();
   await page.getByRole("button", { name: "Show one day" }).click();
   await page.getByRole("textbox", { name: "Pick a day" }).fill("2026-05-10");

@@ -48,3 +48,9 @@ export async function tripLink(page, name) {
   }
   return link;
 }
+
+/** Pick what the map shows from its Filter menu ("Everything", "Stays", "Points of interest", "Journal"). */
+export async function filterMap(page, label) {
+  await page.getByRole("button", { name: /^Filter the map/ }).click();
+  await page.getByRole("menuitemradio", { name: label }).click();
+}

@@ -203,6 +203,20 @@ as a point of interest, then edited and deleted (screenshots `16a`, `16b`).
 - The sample trip has no points of interest; the e2e adds one and removes
   it.
 
+### Phase 70 (2026-10-06): the Filter button
+
+`make verify` green (260 API + 453 UI tests). E2E: `map search and
+filters` and the journal's location spec go through the Filter menu
+(screenshots `08a` the open menu, `08b` filtered to Stays).
+- `FilterMenu` in `MapControls.jsx`: a funnel button, then a menu of
+  Everything, Stays, Points of interest, Journal (`menuitemradio`, the
+  current one ticked). A choice closes it; so do Escape and a tap elsewhere.
+- While filtered, the button is filled blue with the filter's icon and is
+  named for it ("Filter the map: Stays").
+- `only` gains `"pois"`. Everything shows the trip's places and points of
+  interest, not memories, as before.
+- e2e `filterMap(page, label)` in `helpers.js`.
+
 ## Open questions (Run stage 16)
 
 - **Q-P1. Categories for points of interest?** Recommendation: **yes, a

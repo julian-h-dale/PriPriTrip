@@ -279,15 +279,22 @@ describe("memories and the blue dot on the map", () => {
   const shown = () => fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc);
   const glyphs = () => shown().map((m) => m.content.glyphSrc);
 
-  it("hides memories by default; Journal shows only memories", async () => {
+  /** Pick a choice from the Filter menu. */
+  async function filterTo(user, label) {
+    await user.click(await screen.findByRole("button", { name: /^Filter the map/ }));
+    await user.click(screen.getByRole("menuitemradio", { name: label }));
+  }
+
+  it("hides memories by default; the Filter's Journal shows only memories", async () => {
     const user = userEvent.setup();
     renderMap();
-    const journal = await screen.findByRole("button", { name: "Show only memories" });
+    const filter = await screen.findByRole("button", { name: "Filter the map" });
     await waitFor(() => expect(glyphs()).toContain(STAY));
-    expect(journal).toHaveAttribute("aria-pressed", "false");
     expect(glyphs()).not.toContain(MEMORY);
+    // Journal and Stays are in the Filter's menu now, not buttons of their own.
+    expect(screen.queryByRole("button", { name: "Show only memories" })).not.toBeInTheDocument();
 
-    await user.click(journal);
+    await filterTo(user, "Journal");
     await waitFor(() => expect(glyphs()).toContain(MEMORY));
     expect(glyphs()).toEqual([MEMORY]); // only the one memory with a location
     const pin = shown()[0];
@@ -295,27 +302,37 @@ describe("memories and the blue dot on the map", () => {
     expect(await screen.findByText("Fondue was huge")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open journal" })).toHaveAttribute("href", "/trips/trip-1/journal");
 
-    await user.click(journal);
+    await filterTo(user, "Everything");
     await waitFor(() => expect(glyphs()).not.toContain(MEMORY));
     expect(glyphs()).toContain(STAY);
+    expect(filter).toHaveAccessibleName("Filter the map");
   });
 
-  it("Journal and House are either-or", async () => {
+  it("the Filter menu: one choice at a time, ticked; while on, the button is filled with its icon", async () => {
     const user = userEvent.setup();
     renderMap();
-    const journal = await screen.findByRole("button", { name: "Show only memories" });
-    const house = screen.getByRole("button", { name: "Show only stays" });
+    await waitFor(() => expect(glyphs()).toContain(STAY));
+    await user.click(screen.getByRole("button", { name: "Filter the map" }));
+    const menu = screen.getByRole("menu", { name: "Show on the map" });
+    const items = within(menu).getAllByRole("menuitemradio");
+    expect(items.map((i) => i.textContent)).toEqual(["Everything", "Stays", "Points of interest", "Journal"]);
+    expect(items.map((i) => i.getAttribute("aria-checked"))).toEqual(["true", "false", "false", "false"]);
 
-    await user.click(journal);
-    await user.click(house);
-    expect(house).toHaveAttribute("aria-pressed", "true");
-    expect(journal).toHaveAttribute("aria-pressed", "false");
+    await user.click(within(menu).getByRole("menuitemradio", { name: "Stays" }));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(); // closes on a choice
+    const filter = screen.getByRole("button", { name: "Filter the map: Stays" });
+    expect(filter.className).toMatch(/bg-primary/);
     await waitFor(() => expect(new Set(glyphs())).toEqual(new Set([STAY])));
 
-    await user.click(journal);
-    expect(journal).toHaveAttribute("aria-pressed", "true");
-    expect(house).toHaveAttribute("aria-pressed", "false");
+    await filterTo(user, "Journal");
+    expect(screen.getByRole("button", { name: "Filter the map: Journal" })).toBeInTheDocument();
     await waitFor(() => expect(glyphs()).toEqual([MEMORY]));
+
+    // Escape or a tap elsewhere closes it without changing anything.
+    await user.click(screen.getByRole("button", { name: /^Filter the map/ }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter the map: Journal" })).toBeInTheDocument();
   });
 
   it("follows the filters: a day fits that day's places, travel included; clearing goes back", async () => {
@@ -340,7 +357,7 @@ describe("memories and the blue dot on the map", () => {
 
     // Journal: the one memory with a place, so centre on it.
     fake.map.setZoom.mockClear();
-    await user.click(screen.getByRole("button", { name: "Show only memories" }));
+    await filterTo(user, "Journal");
     await waitFor(() => expect(fake.map.setZoom).toHaveBeenCalledWith(14));
     expect(fake.map.panTo).toHaveBeenLastCalledWith({ lat: 46.948, lng: 7.447 });
   });
@@ -509,6 +526,19 @@ describe("points of interest on the map", () => {
     expect(await within(list).findByText("On this trip")).toBeInTheDocument();
     await user.click(within(within(list).getByRole("option", { name: /Bundesplatz market/ })).getByRole("button"));
     expect(await screen.findByText("Point of interest · Market")).toBeInTheDocument();
+  });
+
+  it("the Filter's Points of interest shows only them", async () => {
+    const user = userEvent.setup();
+    serveTrip(withPoi());
+    renderMap();
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+    await user.click(screen.getByRole("button", { name: "Filter the map" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Points of interest" }));
+    await waitFor(() =>
+      expect(fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc).map((m) => m.content.glyphSrc)).toEqual([MARKET_GLYPH])
+    );
+    expect(screen.getByRole("button", { name: "Filter the map: Points of interest" })).toBeInTheDocument();
   });
 
   it("on no day: picking a day hides it", async () => {

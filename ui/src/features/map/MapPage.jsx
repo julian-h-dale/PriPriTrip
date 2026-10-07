@@ -151,7 +151,7 @@ function TripMap({ trip }) {
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
-  // The "what" filter: null (the trip's places), "stays" or "memories".
+  // The "what" filter (the Filter menu): null (everything), "stays", "pois" or "memories".
   const [only, setOnly] = useState(null);
   const [date, setDate] = useState("");
   // null | { kind: "trip", marker } | { kind: "place", place, types }
