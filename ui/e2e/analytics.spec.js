@@ -1,16 +1,10 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import { SEED_ADMIN, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
- * Usage analytics (Run stage 18) with Umami's real tracker (a copy of
- * script.js from Julian's instance), served from a pretend Umami host, so
- * what the app sends is checked without counting anything for real.
+ * Usage analytics (Run stages 18–19), sent to a pretend Umami host, so what
+ * the app sends is checked without counting anything for real.
  */
-const here = path.dirname(fileURLToPath(import.meta.url));
-const TRACKER = fs.readFileSync(path.join(here, "fixtures", "umami-script.js"), "utf8");
 const UMAMI = "https://umami.test";
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
@@ -18,22 +12,17 @@ const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers
 /** Point the app at the pretend Umami; returns what it sends, as it arrives. */
 async function fakeUmami(page) {
   const sent = [];
-  let scriptLoads = 0;
   await page.route(/\/config$/, async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     await route.fulfill({ response, json: { ...body, umamiUrl: UMAMI, umamiWebsiteId: "site-id" } });
-  });
-  await page.route(`${UMAMI}/script.js`, (route) => {
-    scriptLoads += 1;
-    return route.fulfill({ body: TRACKER, contentType: "text/javascript", headers: CORS });
   });
   await page.route(`${UMAMI}/api/send`, (route) => {
     if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     sent.push(route.request().postDataJSON());
     return route.fulfill({ json: {}, headers: CORS });
   });
-  return { sent, scriptLoads: () => scriptLoads };
+  return { sent };
 }
 
 async function go(page, to) {
@@ -87,13 +76,12 @@ test("a viewer's page views say viewer", async ({ page }) => {
   await page.screenshot({ path: screenshotPath("18b-analytics-viewer") });
 });
 
-test("an admin (off by default) loads no tracker and sends nothing", async ({ page }) => {
+test("an admin (off by default) sends nothing", async ({ page }) => {
   const umami = await fakeUmami(page);
   await login(page, SEED_ADMIN);
   await page.goto("/admin");
   await expect(page.getByRole("combobox", { name: `Analytics for ${SEED_ADMIN.email}` })).toHaveValue("off");
   await page.waitForTimeout(800);
-  expect(umami.scriptLoads()).toBe(0);
   expect(umami.sent).toHaveLength(0);
   await page.screenshot({ path: screenshotPath("18c-admin-analytics-column"), fullPage: true });
 });
@@ -123,4 +111,29 @@ test("Trip tools: opened from the drawer, and used", async ({ page }) => {
   );
   expect(events.filter((e) => e.name === "currency-convert")).toHaveLength(1); // not per keystroke
   expect(JSON.stringify(umami.sent)).not.toMatch(UUID);
+});
+
+test("offline: what's done is kept on the phone and sent, with its own time, when back", async ({ page, context }) => {
+  const umami = await fakeUmami(page);
+  await login(page);
+  await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
+  await page.waitForTimeout(1500); // the trip saved on the phone
+  const trip = new URL(page.url()).pathname.replace(/\/today$/, "");
+
+  await context.setOffline(true);
+  const before = umami.sent.length;
+  const wentOffline = Date.now() / 1000;
+  await go(page, `${trip}/map`);
+  await go(page, `${trip}/journal`);
+  await page.waitForTimeout(8000); // long enough that a send-time stamp would show
+  expect(umami.sent).toHaveLength(before); // nothing got out
+
+  await context.setOffline(false);
+  await expect.poll(() => umami.sent.slice(before).map((s) => s.payload.url)).toEqual(["/trip/map", "/trip/journal"]);
+  for (const { payload } of umami.sent.slice(before)) {
+    expect(payload.tag).toBe("owner");
+    // Stamped when it happened (offline), not when it was sent.
+    expect(payload.timestamp).toBeGreaterThanOrEqual(Math.floor(wentOffline));
+    expect(payload.timestamp).toBeLessThan(Math.floor(wentOffline) + 6);
+  }
 });

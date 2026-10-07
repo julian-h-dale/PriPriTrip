@@ -6,6 +6,18 @@
 
 ## Status
 
+- **Run stage 19 ✅ (2026-10-07)** on **`analytics`**: analytics that
+  survive being offline. Plan: `docs/plan/run-19-offline-analytics.md`
+  (Julian took the recommendation; Umami is 3.4.0, whose `/api/send`
+  takes `timestamp`).
+  - **Phase 79 ✅:** no Umami script; `shared/analytics/umami.js` posts
+    to `/api/send` through a queue in IndexedDB (per user, oldest first,
+    500 events / 30 days), sent at once, when back online and when the app
+    returns to the front, each with the time it happened. The switch and
+    Umami address are remembered on the phone, so an app opened offline
+    counts. A switch turned off or signing out drops the queue. `make
+    verify` green (277 API + 505 UI); e2e `analytics.spec.js` (5) passes.
+  - Not pushed or deployed (nor is Run 18).
 - **Run stage 18 (2026-10-07)** on branch **`analytics`** (off `main`
   after PR #16): usage analytics to Julian's Umami. Plan:
   `docs/plan/run-18-analytics.md`; answers in (Q-A3 (b): the switch is set

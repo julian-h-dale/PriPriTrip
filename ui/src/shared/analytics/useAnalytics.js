@@ -3,7 +3,15 @@ import { useSelector, useStore } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { getClientConfig } from "@/shared/services/clientConfig";
 import { pageFor } from "@/shared/analytics/pages";
-import { setAnalytics, trackEvent, trackPageView } from "@/shared/analytics/umami";
+import {
+  awaitAnalytics,
+  forgetAnalytics,
+  rememberedSettings,
+  setAnalytics,
+  trackEvent,
+  trackPageView,
+} from "@/shared/analytics/umami";
+import { userIdFromToken } from "@/shared/utils/authToken";
 
 // Like Umami's own tracker: a page counts once it has been on screen this
 // long, so a redirect (a viewer sent from Today to the timeline) counts
@@ -18,46 +26,67 @@ function roleOn(state, tripId) {
 }
 
 /**
- * Turns analytics on while the signed-in person's switch is on and the
- * server has an Umami address, and off otherwise (signed out included).
+ * Decides whether the signed-in person is counted, and where to: their
+ * switch (`analytics_enabled` on /users/me) and the Umami address
+ * (/config). Opened offline, neither loads, so the last answer remembered
+ * on the phone stands in. A switch turned off forgets theirs, queue and all.
  */
 export function useAnalyticsSetup() {
-  const on = useSelector((s) => Boolean(s.auth.token && s.auth.user?.analytics_enabled));
+  const userId = useSelector((s) => userIdFromToken(s.auth.token));
+  const user = useSelector((s) => s.auth.user);
+  const known = user && user.id === userId ? Boolean(user.analytics_enabled) : null; // null: not heard yet
+
   useEffect(() => {
-    if (!on) {
+    if (!userId) {
       setAnalytics(null);
       return undefined;
     }
+    if (known === false) {
+      forgetAnalytics(userId);
+      return undefined;
+    }
+    const remembered = rememberedSettings(userId);
+    if (remembered) setAnalytics(remembered, userId);
+    else awaitAnalytics(userId);
+    if (known === null) return undefined;
     let live = true;
     getClientConfig()
-      .then((config) => live && setAnalytics(config))
-      .catch(() => {}); // offline, say: try again on the next load
+      .then((config) => {
+        if (!live) return;
+        if (config?.umamiUrl && config?.umamiWebsiteId) setAnalytics(config, userId);
+        else forgetAnalytics(userId); // the server sends nothing anywhere
+      })
+      .catch(() => {
+        // Offline: the remembered answer (if any) already stands.
+        if (live && !remembered) setAnalytics(null);
+      });
     return () => {
       live = false;
     };
-  }, [on]);
+  }, [userId, known]);
 }
 
 /**
  * A page view on every route change (swipes between days and entries too),
  * once the page has settled and, inside a trip, once the trip (and so the
- * role) is known. Each navigation counts once.
+ * role) is known — offline too, from the trip saved on the phone. Each
+ * navigation counts once.
  */
 export function usePageViews() {
   const location = useLocation();
   const page = pageFor(location.pathname);
   const url = page?.url;
   const title = page?.title;
-  const on = useSelector((s) => Boolean(s.auth.user?.analytics_enabled));
   const role = useSelector((s) => (page ? roleOn(s, page.tripId) : null));
 
   useEffect(() => {
-    if (!on || !url || !role) return undefined;
+    // Whether it's sent at all is umami.js's call (the person's switch).
+    if (!url || !role) return undefined;
     const timer = setTimeout(() => trackPageView({ url, title, role }), SETTLE_MS);
     return () => clearTimeout(timer);
     // location.key: the same page reached again is another view (and the
     // path, for a history entry made outside the router, which has no key).
-  }, [location.key, location.pathname, on, role, url, title]);
+  }, [location.key, location.pathname, role, url, title]);
 }
 
 /** The role on the trip of the page on screen, read when it's needed. */

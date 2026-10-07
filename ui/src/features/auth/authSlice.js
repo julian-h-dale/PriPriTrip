@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
+import { forgetAnalytics } from "@/shared/analytics/umami";
 import { clearOutbox } from "@/shared/services/outbox";
 import { clearUser } from "@/shared/services/tripCache";
 import { tokenExpiry, userIdFromToken } from "@/shared/utils/authToken";
@@ -42,8 +43,8 @@ export const login = createAsyncThunk(
 );
 
 /**
- * An explicit sign-out also forgets this user's offline trips and any
- * memories still waiting to sync (the drawer warns about those first). An
+ * An explicit sign-out also forgets this user's offline trips, any
+ * analytics not yet sent, and any memories still waiting to sync (the drawer warns about those first). An
  * expired token — a 401 — only clears auth: both stay, keyed by user, so
  * signing back in shows the trips at once and sends the waiting memories.
  */
@@ -52,6 +53,7 @@ export const signOut = createAsyncThunk("auth/signOut", async (_, { dispatch, ge
   const userId = userIdFromToken(getState().auth.token);
   await clearUser(userId);
   await clearOutbox(userId);
+  await forgetAnalytics(userId); // their remembered switch and anything unsent
   dispatch(authSlice.actions.clearAuth());
 });
 

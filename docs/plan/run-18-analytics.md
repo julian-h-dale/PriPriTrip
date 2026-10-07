@@ -60,6 +60,10 @@ Asked 2026-10-07 (Julian), on the `analytics` branch:
 
 ### 3. Loading Umami only when it's on
 
+> **Replaced in Run stage 19:** no Umami script; the app posts to
+> `/api/send` itself through a queue on the phone
+> ([run-19](run-19-offline-analytics.md)).
+
 - One small module, `shared/analytics/umami.js`:
   - After sign-in, once `/users/me` and `/config` are known: if
     `analytics_enabled` and both settings are set, add Umami's `script.js` with
