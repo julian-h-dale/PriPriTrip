@@ -25,8 +25,9 @@
   - **Phase 71 ✅:** the map's List button (bottom left, above Google's
     logo): what's on the map, grouped with icons; a row jumps to its pin.
     `make verify` green (260 API + 459 UI); map e2e specs pass.
-  - **Run stage 16 is complete.** Not pushed. **Julian:** try it on the
-    phone; deploying runs migration 0013 (start.sh).
+  - **Run stage 16 is complete.** Pushed (`points-of-interest`, no PR yet)
+    and deployed to Fly from the branch (2026-10-07); migration 0013 ran on
+    start. **Julian:** try it on the phone.
 - **Run stage 15 ✅ (2026-10-06)** on `details-page`: New memory (blue
   icon) in the top bar in Share's place; Share trip in the drawer after
   Documents; Currency first in Trip tools; Journal's and Today's New memory
