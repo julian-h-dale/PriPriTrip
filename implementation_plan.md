@@ -25,7 +25,7 @@ project; the next one is **68**.
 
 ## Stages
 
-All complete unless marked. Current branch: `details-page` (Runs 13–15).
+All complete unless marked. Current branch: `points-of-interest` (Run 16).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -49,6 +49,7 @@ All complete unless marked. Current branch: `details-page` (Runs 13–15).
 | Run 13 | 62–64 | A full page for an entry's details | [run-13-entry-page.md](docs/plan/run-13-entry-page.md) |
 | Run 14 | 65–66 | Swipe up and down between a day's entries; Back goes where you came from | [run-14-swipe-between-entries.md](docs/plan/run-14-swipe-between-entries.md) |
 | Run 15 | 67 | New memory in the top bar, Share in the drawer, temperature on Today | [run-15-new-memory-top-bar.md](docs/plan/run-15-new-memory-top-bar.md) |
+| Run 16 | 68–71 | **Planned:** points of interest, one Filter button, the map's List button | [run-16-points-of-interest.md](docs/plan/run-16-points-of-interest.md) |
 
 ## Architecture Decisions
 
