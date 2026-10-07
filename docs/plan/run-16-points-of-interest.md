@@ -157,39 +157,59 @@ Calendar and Locate, one button fewer than now.
   - **E2E:** the button's position (not covering Google's logo) and the open
     list at 375 px, then a tap through to a pin.
 
+## Built
+
+### Phase 68 (2026-10-06): points of interest on the server
+
+`make verify` green (260 API + 433 UI tests; `tests/test_places.py`). The
+migration (0013) ran on a copy of the dev database.
+- **Model:** `Place` (`places` table): name, category (`shop`, `market`,
+  `food`, `sight`, `other`; default `other`), location (required, with
+  coordinates: rule 6), notes. Versioned and soft-deleted like a stay.
+- **API:** `POST /trips/:id/places`, `PUT` and `DELETE
+  /trips/:id/places/:placeId` with `If-Match`, each returning the trip.
+  `GET /trips/:id` always has `places` (an empty list when there are none).
+- **The trip document:** `places[]`, optional. A trip with none exports
+  with no `places` key (a serializer on `TripDocument`), so older documents
+  and exports are unchanged. The JSON Schema is regenerated.
+- **Naming:** the API says "place" for a point of interest. In the UI, where
+  "place" already means a Google search result, the map's marker kind will
+  be `poi`.
+- **Deploy:** run `make migrate` (start.sh does it on Fly).
+
 ## Open questions (Run stage 16)
 
 - **Q-P1. Categories for points of interest?** Recommendation: **yes, a
   small fixed set:** Shop, Market, Food & drink, Sight, Other. Each gets
   its own icon on the pin and in the list. Different set, or none (one icon
   for all)?
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-P2. No day at all?** Recommendation: **no day.** A point of interest
   belongs to the trip, not to a date. With a day picked on the map, points
   of interest are hidden like other things not on that day.
   - The alternative is an optional day ("near Thursday's market walk"), so
     they'd show when that day is picked.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-P3. Shared with everyone on the trip** (editors add and edit, viewers
   see), and part of the trip's export? Recommendation: **yes.** Personal,
   private ones like packing lists are the alternative.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-P4. Adding:** from a Google search only for now? Recommendation:
   **yes.** Long-press anywhere on the map to drop a pin, for a street corner
   Google doesn't know, could follow later.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-P5. Shown by default,** or only when the Filter asks for them (like
   memories)? Recommendation: **shown by default:** they're places you mean
   to go, and the Filter can show them alone.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-F1. The Filter menu as above** (Everything, Stays, Points of
   interest, Journal; one at a time)? Or checkboxes, to show any mix, e.g.
   stays and points of interest together? Recommendation: **one at a time**,
   as the toggles work now, simpler to read.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-L1. The list's order:** grouped by kind (as above), or one list in
   trip order? Recommendation: **grouped by kind.**
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).
 - **Q-L2. After choosing a row,** close the list and show the pin with its
   info window? Recommendation: **yes.** The List button reopens it.
-  - **Answer:**
+  - **Answer:** as recommended (2026-10-06).

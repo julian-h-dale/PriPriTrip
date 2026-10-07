@@ -38,9 +38,12 @@ from pydantic import (
     ConfigDict,
     Field,
     PlainSerializer,
+    SerializationInfo,
+    SerializerFunctionWrapHandler,
     StringConstraints,
     ValidationError,
     WithJsonSchema,
+    model_serializer,
     model_validator,
 )
 from pydantic.alias_generators import to_camel
@@ -120,6 +123,7 @@ _ZONE_FALLBACK = (
 
 StayType = Literal["hotel", "hostel", "airbnb", "rental", "other"]
 TravelMode = Literal["flight", "train", "bus", "ferry", "boat", "car", "other"]
+PlaceCategory = Literal["shop", "market", "food", "sight", "other"]
 
 
 # ---- Document models ----
@@ -222,6 +226,17 @@ class ItemDoc(DocModel):
     notes: Markdown | None = None
 
 
+class PlaceDoc(DocModel):
+    """A point of interest: a shop, market or sight worth finding. Lives at
+    trip level, on no day; it shows on the map only, so its place needs
+    coordinates."""
+
+    name: Title
+    category: PlaceCategory = "other"
+    location: LocationDoc = Field(description="Where it is. Needs lat and lng.")
+    notes: Markdown | None = None
+
+
 class DayDoc(DocModel):
     """One calendar date. Activities keep the order they are written in."""
 
@@ -244,6 +259,7 @@ RULES = (
     "is no later than the day after endDate. "
     "(5) A travel's depart is within the trip; arrive, when given, is after depart and "
     "no later than the day after endDate. "
+    "(6) A place (point of interest) has coordinates. "
     "Users write wall-clock times; each time's zone comes from its place's "
     "coordinates, else an explicit timezone field, else (activities) that night's "
     "stay, else the trip's timezone. Times in different zones are compared as real "
@@ -267,6 +283,21 @@ class TripDocument(DocModel):
     stays: list[StayDoc] = Field(default_factory=list)
     travels: list[TravelDoc] = Field(default_factory=list)
     days: list[DayDoc] = Field(default_factory=list)
+    places: list[PlaceDoc] = Field(
+        default_factory=list, description="Points of interest: on the map, on no day."
+    )
+
+    @model_serializer(mode="wrap")
+    def _no_empty_places(
+        self, handler: SerializerFunctionWrapHandler, info: SerializationInfo
+    ) -> dict[str, Any]:
+        """A document with no points of interest has no `places` key, so it
+        reads exactly as documents did before they existed. (The app's read
+        model, TripRead, always has the list.)"""
+        data: dict[str, Any] = handler(self)
+        if type(self) is TripDocument and not self.places:
+            data.pop("places", None)
+        return data
 
 
 # ---- Validation ----
@@ -390,8 +421,15 @@ def check_travel(travel: TravelDoc, frame: TripFrame, *, prefix: str = "") -> li
     return errors
 
 
+def check_place(place: PlaceDoc, *, prefix: str = "") -> list[DocError]:
+    """Rule (6): a point of interest is only ever on the map, so it needs coordinates."""
+    if place.location.lat is None:
+        return [DocError(f"{prefix}location", "needs lat and lng: a place shows on the map")]
+    return []
+
+
 def check_rules(doc: TripDocument) -> list[DocError]:
-    """Cross-field rules (1) to (5). Returns every violation, empty when sound."""
+    """Cross-field rules (1) to (6). Returns every violation, empty when sound."""
     errors: list[DocError] = []
     start, end = doc.start_date, doc.end_date
     span = f"the trip runs {start} to {end}"
@@ -421,6 +459,8 @@ def check_rules(doc: TripDocument) -> list[DocError]:
         errors.extend(check_stay(stay, frame, prefix=f"stays[{i}]."))
     for i, travel in enumerate(doc.travels):
         errors.extend(check_travel(travel, frame, prefix=f"travels[{i}]."))
+    for i, place in enumerate(doc.places):
+        errors.extend(check_place(place, prefix=f"places[{i}]."))
 
     return errors
 
@@ -500,6 +540,15 @@ def validate_travel_write(data: Any, frame: TripFrame) -> TravelDoc:
     if errors:
         raise TripDocumentError(errors)
     return travel
+
+
+def validate_place_write(data: Any) -> PlaceDoc:
+    """Parse and fully validate an edited point of interest, or raise TripDocumentError."""
+    place = parse_part(PlaceDoc, data)
+    errors = check_place(place)
+    if errors:
+        raise TripDocumentError(errors)
+    return place
 
 
 def validate_day_date(day_date: dt.date, start: dt.date, end: dt.date) -> None:

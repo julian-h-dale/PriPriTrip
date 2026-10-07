@@ -15,7 +15,15 @@ from fastapi_users import schemas
 from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
 
-from app.trip_document import DayDoc, IanaTimezone, ItemDoc, StayDoc, TravelDoc, TripDocument
+from app.trip_document import (
+    DayDoc,
+    IanaTimezone,
+    ItemDoc,
+    PlaceDoc,
+    StayDoc,
+    TravelDoc,
+    TripDocument,
+)
 
 
 class CamelModel(BaseModel):
@@ -113,6 +121,11 @@ class ItemRead(ItemDoc, VersionRead):
     zone: str | None = None
 
 
+class PlaceRead(PlaceDoc, VersionRead):
+    model_config = _READ_CONFIG
+    id: uuid.UUID
+
+
 class DayRead(DayDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
@@ -129,6 +142,7 @@ class TripRead(TripDocument):
     stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
     travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
     days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
+    places: list[PlaceRead] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class TripSummary(CamelModel):

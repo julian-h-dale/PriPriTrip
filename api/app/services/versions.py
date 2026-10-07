@@ -26,9 +26,9 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
-from app.models import Day, Item, Stay, Travel
+from app.models import Day, Item, Place, Stay, Travel
 
-Versioned = Day | Item | Stay | Travel
+Versioned = Day | Item | Place | Stay | Travel
 
 # An ETag as RFC 9110 writes it ("3" or W/"3"), or a bare number.
 _ETAG = re.compile(r'^\s*(?:W/)?"?(\d{1,9})"?\s*$')

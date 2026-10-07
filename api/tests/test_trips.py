@@ -76,6 +76,9 @@ async def test_round_trip_returns_the_same_document(client: AsyncClient) -> None
     assert body["id"] == trip_id
     assert all("id" in s for s in body["stays"])
     assert all("id" in i for d in body["days"] for i in d["items"])
+    # The read always has its points of interest, even none; a document
+    # without any has no `places` key.
+    assert body.pop("places") == []
     assert strip_server_fields(body) == load_sample_trip()
 
 

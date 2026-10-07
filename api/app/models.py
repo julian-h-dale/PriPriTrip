@@ -112,6 +112,7 @@ class Trip(SoftDeleteMixin, Base):
     stays: Mapped[list[Stay]] = relationship(order_by="Stay.position", lazy="raise")
     travels: Mapped[list[Travel]] = relationship(order_by="Travel.position", lazy="raise")
     days: Mapped[list[Day]] = relationship(order_by="Day.date", lazy="raise")
+    places: Mapped[list[Place]] = relationship(order_by="Place.position", lazy="raise")
 
 
 class Stay(SoftDeleteMixin, VersionedMixin, Base):
@@ -181,6 +182,21 @@ class Day(SoftDeleteMixin, VersionedMixin, Base):
             postgresql_where=text("NOT is_deleted"),
         ),
     )
+
+
+class Place(SoftDeleteMixin, VersionedMixin, Base):
+    """A point of interest (Run stage 16): a shop, market or sight worth
+    finding, kept with the trip but on no day. It shows on the map only."""
+
+    __tablename__ = "places"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trips.id"), index=True)
+    position: Mapped[int]
+    name: Mapped[str]
+    category: Mapped[str]
+    location: Mapped[dict[str, Any]] = mapped_column(JSON)
+    notes: Mapped[str | None]
 
 
 class Item(SoftDeleteMixin, VersionedMixin, Base):

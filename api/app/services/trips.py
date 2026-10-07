@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import Role, active
-from app.models import Day, Item, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import Day, Item, Place, Stay, Travel, Trip, TripMember, UserRecord
 from app.schemas import TripRead, TripSummary, VersionRead
 from app.services import versions
 from app.trip_document import (
@@ -26,6 +26,7 @@ from app.trip_document import (
     ItemDoc,
     ItemWrite,
     LocationDoc,
+    PlaceDoc,
     StayDoc,
     TravelDoc,
     TripDocument,
@@ -107,6 +108,17 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
             )
             for j, it in enumerate(d.items)
         )
+    db.add_all(
+        Place(
+            trip_id=trip.id,
+            position=i,
+            name=p.name,
+            category=p.category,
+            location=p.location.model_dump(by_alias=True, exclude_none=True),
+            notes=p.notes,
+        )
+        for i, p in enumerate(doc.places)
+    )
     await db.commit()
     await db.refresh(trip)
     return _summary(trip, stay_count=len(doc.stays), travel_count=len(doc.travels))
@@ -187,6 +199,7 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
             selectinload(Trip.stays.and_(active(Stay))),
             selectinload(Trip.travels.and_(active(Travel))),
             selectinload(Trip.days.and_(active(Day))).selectinload(Day.items.and_(active(Item))),
+            selectinload(Trip.places.and_(active(Place))),
         )
         .execution_options(populate_existing=True)
     )
@@ -246,13 +259,22 @@ async def export_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner"
                 _doc_part(TravelDoc, travel).model_dump(by_alias=True) for travel in trip.travels
             ],
             "days": [d.model_dump(by_alias=True) for d in days],
+            "places": [
+                _doc_part(PlaceDoc, place).model_dump(by_alias=True) for place in trip.places
+            ],
         }
     )
 
 
 def _entries(trip: TripRead) -> list[VersionRead]:
-    """Every versioned entry of a trip: stays, travel, days and activities."""
-    return [*trip.stays, *trip.travels, *trip.days, *(i for d in trip.days for i in d.items)]
+    """Every versioned entry of a trip: stays, travel, days, activities and places."""
+    return [
+        *trip.stays,
+        *trip.travels,
+        *trip.days,
+        *(i for d in trip.days for i in d.items),
+        *trip.places,
+    ]
 
 
 def _display_name(user: UserRecord) -> str:
@@ -471,7 +493,7 @@ def _apply_travel(travel: Travel, doc: TravelDoc) -> None:
 
 
 async def _next_booking_position(
-    db: AsyncSession, model: type[Stay] | type[Travel], trip: Trip
+    db: AsyncSession, model: type[Stay] | type[Travel] | type[Place], trip: Trip
 ) -> int:
     last = await db.scalar(
         select(func.max(model.position)).where(model.trip_id == trip.id, active(model))
@@ -543,5 +565,48 @@ async def delete_travel(
     versions.stamp(travel, user_id)
     travel.is_deleted = True
     travel.deleted_at = datetime.now(UTC)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+# ---- Points of interest (Run stage 16) ----
+#
+# On the map only, on no day: `position` is insertion order. Full replace and
+# versions, like the bookings above; every edit returns the trip.
+
+
+def _apply_place(place: Place, doc: PlaceDoc) -> None:
+    place.name = doc.name
+    place.category = doc.category
+    place.location = doc.location.model_dump(by_alias=True, exclude_none=True)  # as _location
+    place.notes = doc.notes
+
+
+async def create_place(db: AsyncSession, trip: Trip, doc: PlaceDoc, user_id: uuid.UUID) -> TripRead:
+    place = Place(trip_id=trip.id, position=await _next_booking_position(db, Place, trip))
+    _apply_place(place, doc)
+    versions.stamp(place, user_id, new=True)
+    db.add(place)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def replace_place(
+    db: AsyncSession, trip: Trip, place: Place, doc: PlaceDoc, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    await _check_version(db, trip, place, expected, place.id)
+    _apply_place(place, doc)
+    versions.stamp(place, user_id)
+    await db.commit()
+    return await get_trip(db, trip.id)
+
+
+async def delete_place(
+    db: AsyncSession, trip: Trip, place: Place, *, expected: int, user_id: uuid.UUID
+) -> TripRead:
+    await _check_version(db, trip, place, expected, place.id)
+    versions.stamp(place, user_id)
+    place.is_deleted = True
+    place.deleted_at = datetime.now(UTC)
     await db.commit()
     return await get_trip(db, trip.id)

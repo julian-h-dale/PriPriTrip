@@ -20,6 +20,7 @@ from app.database import get_db
 from app.dependencies import (
     ViewableTrip,
     get_editable_item,
+    get_editable_place,
     get_editable_stay,
     get_editable_travel,
     get_editable_trip,
@@ -27,7 +28,7 @@ from app.dependencies import (
     get_viewable_trip,
     if_match_version,
 )
-from app.models import Item, Stay, Travel, Trip, UserRecord
+from app.models import Item, Place, Stay, Travel, Trip, UserRecord
 from app.schemas import CamelModel, TripRead, TripSummary
 from app.services import trips as trips_service
 from app.trip_document import (
@@ -39,6 +40,7 @@ from app.trip_document import (
     trip_json_schema,
     validate_day_date,
     validate_item_write,
+    validate_place_write,
     validate_stay_write,
     validate_travel_write,
     validate_trip_document,
@@ -393,3 +395,58 @@ async def delete_travel(
 async def get_trip_schema() -> dict[str, Any]:
     """The trip document JSON Schema. Public: it describes a format, not data."""
     return trip_json_schema()
+
+
+# ---- Points of interest (Run stage 16): on the map, on no day ----
+
+
+@router.post(
+    "/{trip_id}/places",
+    response_model=TripRead,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_place(
+    body: JsonBody,
+    trip: Trip = Depends(get_editable_trip),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+) -> TripRead | JSONResponse:
+    try:
+        doc = validate_place_write(body)
+    except TripDocumentError as exc:
+        return _invalid(exc, "The place")
+    return await trips_service.create_place(db, trip, doc, user.id)
+
+
+@router.put(
+    "/{trip_id}/places/{place_id}", response_model=TripRead, response_model_exclude_none=True
+)
+async def replace_place(
+    body: JsonBody,
+    trip: Trip = Depends(get_editable_trip),
+    place: Place = Depends(get_editable_place),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
+) -> TripRead | JSONResponse:
+    try:
+        doc = validate_place_write(body)
+    except TripDocumentError as exc:
+        return _invalid(exc, "The place")
+    return await trips_service.replace_place(
+        db, trip, place, doc, expected=expected, user_id=user.id
+    )
+
+
+@router.delete(
+    "/{trip_id}/places/{place_id}", response_model=TripRead, response_model_exclude_none=True
+)
+async def delete_place(
+    trip: Trip = Depends(get_editable_trip),
+    place: Place = Depends(get_editable_place),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+    expected: int = Depends(if_match_version),
+) -> TripRead:
+    return await trips_service.delete_place(db, trip, place, expected=expected, user_id=user.id)

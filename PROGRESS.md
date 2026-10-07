@@ -9,7 +9,11 @@
 - **Run stage 16, planned (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.
-  **Waiting for Julian's answers** to the open questions before Phase 68.
+  Answers: all as recommended (2026-10-06).
+  - **Phase 68 ✅:** points of interest on the server (`Place`, migration
+    0013, `/trips/:id/places`, `places[]` in the trip document and the
+    read). `make verify` green (260 API + 433 UI). **Next: Phase 69** (on
+    the map), after Julian confirms.
 - **Run stage 15 ✅ (2026-10-06)** on `details-page`: New memory (blue
   icon) in the top bar in Share's place; Share trip in the drawer after
   Documents; Currency first in Trip tools; Journal's and Today's New memory
