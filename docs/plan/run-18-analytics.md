@@ -103,9 +103,10 @@ Asked 2026-10-07 (Julian), on the `analytics` branch:
 - **The role goes with it:** each page view also carries `role`
   (`owner`, `editor` or `viewer`, Q-A5) as event data. Pages outside a
   trip (All trips, Admin) carry `role: none`.
-  - If Umami's version stores data on page views, that's one call. If not,
-    the hook also sends a `page` event with `{ page, role }`. Phase 77 checks
-    which against your instance before building.
+  - **Built (Phase 77):** your instance's tracker is a recent Umami (it
+    has `tag`, `distinct-id`, `before-send`), so it's one call: the role
+    is the page view's **tag** (Umami's filters have Tag) and its event
+    data. Pages outside a trip have `none`.
 - **The timeline's Plan / Stays / Travel switch** counts as its own page
   view (`/trip/timeline/stays`), so you can see if the views get used.
 - Swiping between days or entries is a route change, so it counts. That's
@@ -133,8 +134,9 @@ owner/editor only, which the role still shows.
 ### 6. Reading it in Umami
 
 - **Pages:** Umami's dashboard → Pages lists `/trip/map` etc. with counts.
-- **By role:** Events → the `page` (or page-view) data → `role`, or a
-  Report (Insights / Breakdown) on `page` × `role`.
+- **By role:** add a filter on **Tag** (owner / editor / viewer) to the
+  dashboard, so Pages shows that role's counts; or a Breakdown report on
+  URL × the `role` property.
 - **Tools:** Events lists each tool event; its `role` property splits it
   (owner / editor).
 - No dashboard in the app: Umami is the dashboard.

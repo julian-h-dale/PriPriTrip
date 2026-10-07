@@ -19,6 +19,13 @@
     /admin/users/:id` takes `analyticsEnabled`. `UMAMI_URL` and
     `UMAMI_WEBSITE_ID` on `/config` (empty: nothing sent). `make verify`
     green (277 API + 480 UI). Dev database migrated.
+  - **Phase 77 ✅:** page views to Umami (`shared/analytics/`): loaded
+    only when the person's switch is on and `/config` has Umami; page
+    names, never addresses (`/trip/map`); the role on the trip as the tag
+    and event data; Stays / Travel views count apart. `make verify` green
+    (277 API + 496 UI); e2e `analytics.spec.js` (a pretend Umami serving
+    a copy of the real tracker) passes. Run e2e with `set -a; . api/.env`
+    for this machine's seed passwords.
 - **Run stage 17 ✅ (2026-10-07)** on branch
   **`roles-and-viewers`**, stacked on `points-of-interest` (Julian: stack
   them). Quiet offline (no "Network Error" toasts for reads), making

@@ -1,0 +1,98 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { test, expect } from "@playwright/test";
+import { SEED_ADMIN, login, screenshotPath, tripLink } from "./helpers.js";
+
+/**
+ * Usage analytics (Run stage 18) with Umami's real tracker (a copy of
+ * script.js from Julian's instance), served from a pretend Umami host, so
+ * what the app sends is checked without counting anything for real.
+ */
+const here = path.dirname(fileURLToPath(import.meta.url));
+const TRACKER = fs.readFileSync(path.join(here, "fixtures", "umami-script.js"), "utf8");
+const UMAMI = "https://umami.test";
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
+
+/** Point the app at the pretend Umami; returns what it sends, as it arrives. */
+async function fakeUmami(page) {
+  const sent = [];
+  let scriptLoads = 0;
+  await page.route(/\/config$/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({ response, json: { ...body, umamiUrl: UMAMI, umamiWebsiteId: "site-id" } });
+  });
+  await page.route(`${UMAMI}/script.js`, (route) => {
+    scriptLoads += 1;
+    return route.fulfill({ body: TRACKER, contentType: "text/javascript", headers: CORS });
+  });
+  await page.route(`${UMAMI}/api/send`, (route) => {
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+    sent.push(route.request().postDataJSON());
+    return route.fulfill({ json: {}, headers: CORS });
+  });
+  return { sent, scriptLoads: () => scriptLoads };
+}
+
+async function go(page, to) {
+  await page.evaluate((p) => {
+    window.history.pushState({}, "", p);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, to);
+  await page.waitForTimeout(800);
+}
+
+test("an owner's page views: page names with the role, never an id", async ({ page }) => {
+  const umami = await fakeUmami(page);
+  await login(page);
+  await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
+  await page.waitForTimeout(1000);
+  const trip = new URL(page.url()).pathname.replace(/\/today$/, "");
+  for (const p of ["", "/map", "/journal", "/days/2026-05-11", "/days/2026-05-12", "/packing"]) await go(page, trip + p);
+  await page.screenshot({ path: screenshotPath("18a-analytics-owner") });
+
+  const views = umami.sent.filter((s) => s.type === "event" && !s.payload.name);
+  const urls = views.map((s) => s.payload.url);
+  expect(urls).toEqual(
+    expect.arrayContaining(["/trips", "/trip/timeline", "/trip/map", "/trip/journal", "/trip/day", "/trip/packing"]),
+  );
+  expect(urls.filter((u) => u === "/trip/day")).toHaveLength(2); // each day counts
+  for (const { payload } of views.filter((v) => v.payload.url.startsWith("/trip/"))) {
+    expect(payload.tag).toBe("owner");
+    expect(payload.data).toEqual({ role: "owner" });
+  }
+  expect(JSON.stringify(umami.sent)).not.toMatch(UUID);
+  expect(JSON.stringify(umami.sent)).not.toContain("Bern"); // no trip names either
+  expect(umami.sent.some((s) => s.payload.url?.includes("login"))).toBe(false);
+});
+
+test("a viewer's page views say viewer", async ({ page }) => {
+  // The role is the trip read's `role`. (The seed viewer's password differs
+  // between machines, so the seed user's trip is read back as a viewer's.)
+  const umami = await fakeUmami(page);
+  await page.route(new RegExp(`/trips/${UUID.source}$`), async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), role: "viewer" } });
+  });
+  await login(page);
+  await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
+  await page.waitForTimeout(1000);
+  const trip = new URL(page.url()).pathname.replace(/\/today$/, "");
+  await go(page, `${trip}/map`);
+  const map = umami.sent.find((s) => s.payload.url === "/trip/map");
+  expect(map.payload).toMatchObject({ tag: "viewer", data: { role: "viewer" } });
+  await page.screenshot({ path: screenshotPath("18b-analytics-viewer") });
+});
+
+test("an admin (off by default) loads no tracker and sends nothing", async ({ page }) => {
+  const umami = await fakeUmami(page);
+  await login(page, SEED_ADMIN);
+  await page.goto("/admin");
+  await expect(page.getByRole("combobox", { name: `Analytics for ${SEED_ADMIN.email}` })).toHaveValue("off");
+  await page.waitForTimeout(800);
+  expect(umami.scriptLoads()).toBe(0);
+  expect(umami.sent).toHaveLength(0);
+  await page.screenshot({ path: screenshotPath("18c-admin-analytics-column"), fullPage: true });
+});

@@ -22,6 +22,8 @@ import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { formatDateRange } from "@/shared/utils/time";
 import { todayIn } from "@/shared/utils/tripDates";
+import { useTrackView } from "@/shared/analytics/useAnalytics";
+import { timelineViewPage } from "@/shared/analytics/pages";
 
 // Plan | Stays | Travel: exactly one at a time. (Was two unlabeled House/
 // Plane icon toggles; labeled segments are easier to find — ui_review §4.)
@@ -49,6 +51,13 @@ function TripTimeline({ trip }) {
   // Past days are greyed, judged on the trip's own calendar.
   const today = todayIn(trip.timezone);
   const [view, setView] = useState("plan");
+  const trackView = useTrackView();
+  function chooseView(v) {
+    if (v === view) return;
+    setView(v);
+    // Plan is the timeline's own page view; Stays and Travel count apart.
+    if (v !== "plan") trackView(timelineViewPage(v));
+  }
   const stayCov = useMemo(() => stayCoverage(trip), [trip]);
   const travelCov = useMemo(() => travelCoverage(trip), [trip]);
   const coverageByDate = view === "stays" ? stayCov : view === "travel" ? travelCov : null;
@@ -98,7 +107,7 @@ function TripTimeline({ trip }) {
                 key={v}
                 type="button"
                 aria-pressed={view === v}
-                onClick={() => setView(v)}
+                onClick={() => chooseView(v)}
                 className={cn(
                   "flex min-h-10 items-center justify-center gap-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
