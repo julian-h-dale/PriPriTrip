@@ -20,11 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import UserRecord
 from app.schemas import (
+    AdminUserUpdate,
     BackupJournal,
     BackupPhotoPage,
     InvitedUser,
     InviteUser,
-    SetAdmin,
     TemporaryPassword,
     UserRead,
 )
@@ -52,25 +52,32 @@ async def invite_user(body: InviteUser, db: AsyncSession = Depends(get_db)) -> I
 
 
 @router.patch("/users/{user_id}", response_model=UserRead)
-async def set_admin(
+async def update_user(
     user_id: uuid.UUID,
-    body: SetAdmin,
+    body: AdminUserUpdate,
     db: AsyncSession = Depends(get_db),
     admin: UserRecord = Depends(current_superuser),
 ) -> UserRecord:
-    """Make someone an admin of the app, or a plain user. Never your own row
-    (another admin can change it), and never the last admin."""
-    if user_id == admin.id:
+    """Make someone an admin of the app, or a plain user: never your own row
+    (another admin can change it), and never the last admin. And turn their
+    analytics on or off: any row, your own included (that's how an admin
+    keeps their testing out of the numbers)."""
+    if body.is_superuser is not None and user_id == admin.id:
         raise HTTPException(status.HTTP_409_CONFLICT, "You can't change your own role")
     user = await db.get(UserRecord, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    try:
-        return await users_service.set_admin(db, user, body.is_superuser)
-    except users_service.LastAdmin:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "There has to be at least one admin"
-        ) from None
+    # The role first: if it's refused, nothing has changed.
+    if body.is_superuser is not None:
+        try:
+            user = await users_service.set_admin(db, user, body.is_superuser)
+        except users_service.LastAdmin:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "There has to be at least one admin"
+            ) from None
+    if body.analytics_enabled is not None:
+        user = await users_service.set_analytics(db, user, body.analytics_enabled)
+    return user
 
 
 @router.post("/users/{user_id}/reset-password", response_model=TemporaryPassword)

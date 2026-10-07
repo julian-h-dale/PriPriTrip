@@ -157,7 +157,15 @@ const authSlice = createSlice({
       .addCase(changePassword.fulfilled, (state, action) => {
         state.token = action.payload;
         if (state.user) state.user.must_change_password = false;
-      });
+      })
+      // An admin changing their own analytics on the Admin page takes effect
+      // now, not on the next load (by type: the admin slice imports nothing here).
+      .addMatcher(
+        (action) => action.type === "admin/setAnalytics/fulfilled",
+        (state, action) => {
+          if (state.user?.id === action.payload.id) state.user.analytics_enabled = action.payload.analytics_enabled;
+        },
+      );
   },
 });
 

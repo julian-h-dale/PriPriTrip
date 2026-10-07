@@ -6,6 +6,19 @@
 
 ## Status
 
+- **Run stage 18 (2026-10-07)** on branch **`analytics`** (off `main`
+  after PR #16): usage analytics to Julian's Umami. Plan:
+  `docs/plan/run-18-analytics.md`; answers in (Q-A3 (b): the switch is set
+  when the account is made and only changed by hand; Q-A5: keep `owner`).
+  Julian: go through all the planned phases, then report.
+  - The seed's replant now deletes points of interest, packing items and
+    documents too (`make seed` failed on a database that had them).
+  - **Phase 76 ✅:** `users.analytics_enabled` (migration 0014: off for
+    admins, on for the rest; new accounts the same), an Analytics On / Off
+    column on the Admin page (any row, your own included), `PATCH
+    /admin/users/:id` takes `analyticsEnabled`. `UMAMI_URL` and
+    `UMAMI_WEBSITE_ID` on `/config` (empty: nothing sent). `make verify`
+    green (277 API + 480 UI). Dev database migrated.
 - **Run stage 17 ✅ (2026-10-07)** on branch
   **`roles-and-viewers`**, stacked on `points-of-interest` (Julian: stack
   them). Quiet offline (no "Network Error" toasts for reads), making

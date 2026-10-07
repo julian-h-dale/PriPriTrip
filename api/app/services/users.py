@@ -3,7 +3,8 @@
 Admins invite people and reset passwords; either way the person gets a
 random temporary password (shown to the admin once, to send) and must choose
 their own at sign-in (`must_change_password`). Admins also make someone an
-admin of the app, or take it away (`is_superuser`), never the last one.
+admin of the app, or take it away (`is_superuser`), never the last one, and
+turn a person's analytics on or off (`analytics_enabled`).
 """
 
 from __future__ import annotations
@@ -86,6 +87,15 @@ async def set_admin(db: AsyncSession, user: UserRecord, admin: bool) -> UserReco
         if (admins or 0) <= 1:
             raise LastAdmin()
     user.is_superuser = admin
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def set_analytics(db: AsyncSession, user: UserRecord, enabled: bool) -> UserRecord:
+    """Whether the app sends `user`'s usage to Umami. Only ever by hand: a
+    role change doesn't touch it (Run stage 18, Q-A3)."""
+    user.analytics_enabled = enabled
     await db.commit()
     await db.refresh(user)
     return user

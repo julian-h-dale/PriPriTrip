@@ -76,6 +76,14 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
     # API answers only sign-in, /users/me and change-password
     # (app.users.require_password_ok).
     must_change_password: Mapped[bool] = mapped_column(default=False, server_default="0")
+    # Whether the app sends this person's usage to Umami (Run stage 18). Set
+    # when the account is made — on, except for admins, so testing doesn't
+    # count — and after that changed only by an admin, by hand: making
+    # someone an admin (or a user) leaves it as it was.
+    analytics_enabled: Mapped[bool] = mapped_column(
+        default=lambda ctx: not ctx.get_current_parameters().get("is_superuser", False),
+        server_default="1",
+    )
 
 
 # A wall-clock column: naive on purpose (see module docstring).

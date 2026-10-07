@@ -237,20 +237,27 @@ async def test_anonymous_booking_edits_are_rejected(anon_client: AsyncClient) ->
 # ---- config / timezone ----
 
 
-async def test_config_returns_the_maps_key(
+async def test_config_returns_the_maps_key_and_umami(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(get_app_settings(), "google_maps_api_key", "browser-key")
-    monkeypatch.setattr(get_app_settings(), "google_maps_map_id", "map-id")
+    settings = get_app_settings()
+    monkeypatch.setattr(settings, "google_maps_api_key", "browser-key")
+    monkeypatch.setattr(settings, "google_maps_map_id", "map-id")
+    monkeypatch.setattr(settings, "umami_url", "https://umami.example.com/")
+    monkeypatch.setattr(settings, "umami_website_id", "site-id")
     assert (await client.get("/config")).json() == {
         "googleMapsApiKey": "browser-key",
         "googleMapsMapId": "map-id",
+        "umamiUrl": "https://umami.example.com",
+        "umamiWebsiteId": "site-id",
     }
-    monkeypatch.setattr(get_app_settings(), "google_maps_api_key", "")
-    monkeypatch.setattr(get_app_settings(), "google_maps_map_id", "")
+    for name in ("google_maps_api_key", "google_maps_map_id", "umami_url", "umami_website_id"):
+        monkeypatch.setattr(settings, name, "")
     assert (await client.get("/config")).json() == {
         "googleMapsApiKey": None,
         "googleMapsMapId": None,
+        "umamiUrl": None,
+        "umamiWebsiteId": None,
     }
 
 

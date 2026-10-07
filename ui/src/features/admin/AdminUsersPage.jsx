@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
-import { fetchUsers, resetPassword, setAdmin } from "@/features/admin/adminSlice";
+import { fetchUsers, resetPassword, setAdmin, setAnalytics } from "@/features/admin/adminSlice";
 import { CopyField } from "@/shared/components/CopyField";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -84,6 +84,25 @@ function RoleCell({ user, isMe, onChange }) {
   );
 }
 
+/**
+ * Whether the app sends a user's usage to Umami: On or Off, for anyone,
+ * yourself included (that's how an admin keeps their testing out of the
+ * numbers). New users start on, new admins off; a role change leaves it.
+ */
+function AnalyticsCell({ user, onChange }) {
+  return (
+    <Select
+      aria-label={`Analytics for ${user.email}`}
+      value={user.analytics_enabled ? "on" : "off"}
+      onChange={(e) => onChange(user, e.target.value === "on")}
+      className="h-9 w-20"
+    >
+      <option value="on">On</option>
+      <option value="off">Off</option>
+    </Select>
+  );
+}
+
 export function AdminUsersPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -105,6 +124,15 @@ export function AdminUsersPage() {
       dispatch(notify({ type: "error", message: result.payload?.message ?? "Couldn’t change their role" }));
     }
     setChanging(null);
+  }
+
+  async function changeAnalytics(user, enabled) {
+    const result = await dispatch(setAnalytics({ userId: user.id, enabled }));
+    if (setAnalytics.fulfilled.match(result)) {
+      dispatch(notify({ type: "success", message: `Analytics ${enabled ? "on" : "off"} for ${user.email}` }));
+    } else {
+      dispatch(notify({ type: "error", message: result.payload?.message ?? "Couldn’t change their analytics" }));
+    }
   }
 
   async function handleReset(user) {
@@ -146,6 +174,7 @@ export function AdminUsersPage() {
                 <th className="p-3 font-medium">Name</th>
                 <th className="p-3 font-medium">Email</th>
                 <th className="p-3 font-medium">Role</th>
+                <th className="p-3 font-medium">Analytics</th>
                 <th className="p-3 font-medium">Password</th>
                 <th className="p-3 font-medium">Status</th>
                 <th className="p-3 font-medium">Verified</th>
@@ -160,6 +189,9 @@ export function AdminUsersPage() {
                   {/* Role before Password: on a phone it's on screen without scrolling the table. */}
                   <td className="p-3">
                     <RoleCell user={u} isMe={u.id === me?.id} onChange={(user, admin) => setChanging({ user, admin })} />
+                  </td>
+                  <td className="p-3">
+                    <AnalyticsCell user={u} onChange={changeAnalytics} />
                   </td>
                   <td className="p-3">
                     <PasswordCell user={u} isMe={u.id === me?.id} onReset={handleReset} />

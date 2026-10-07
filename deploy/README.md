@@ -38,6 +38,8 @@ make run-container    # run on http://localhost:8080 with a throwaway JWT_SECRET
 fly app create your-app-name                 # then set the name in fly.toml
 fly volumes create data --size 1 --region <your-region>
 fly secrets set JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
+# Optional: usage analytics (Umami). Without them nothing is sent.
+fly secrets set UMAMI_URL=https://your-umami-host UMAMI_WEBSITE_ID=your-website-id
 
 # Ship it (builds Dockerfile, pushes, releases)
 fly deploy

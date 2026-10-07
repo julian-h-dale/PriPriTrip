@@ -47,6 +47,12 @@ class AppSettings(BaseSettings):
     # OpenWeatherMap key (One Call 3.0), used only by the server for the trip
     # weather page. Optional: without it the weather page says it isn't set up.
     openweather_api_key: str = ""
+    # Umami usage analytics (Run stage 18), handed to signed-in clients by
+    # GET /config. Not secret: the website id is in every page that uses it.
+    # Empty by default, so dev and the tests never send anything; production
+    # sets them (Fly secrets).
+    umami_url: str = ""
+    umami_website_id: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
