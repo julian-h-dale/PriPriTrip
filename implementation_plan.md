@@ -47,7 +47,7 @@ All complete unless marked. Current branch: `details-page` (Runs 13–15).
 | Run 11 | 54–55 | Admin: invite people, reset passwords | [run-11-admin-invites.md](docs/plan/run-11-admin-invites.md) |
 | Run 12 | 56–61 | Seed accounts, small fixes, map zoom, packing lists, documents, time zones | [run-12-seed-fixes-packing-documents.md](docs/plan/run-12-seed-fixes-packing-documents.md) |
 | Run 13 | 62–64 | A full page for an entry's details | [run-13-entry-page.md](docs/plan/run-13-entry-page.md) |
-| Run 14 | 65–66 | Swipe up and down between entries; Back goes where you came from | [run-14-swipe-between-entries.md](docs/plan/run-14-swipe-between-entries.md) |
+| Run 14 | 65–66 | Swipe up and down between a day's entries; Back goes where you came from | [run-14-swipe-between-entries.md](docs/plan/run-14-swipe-between-entries.md) |
 | Run 15 | 67 | New memory in the top bar, Share in the drawer, temperature on Today | [run-15-new-memory-top-bar.md](docs/plan/run-15-new-memory-top-bar.md) |
 
 ## Architecture Decisions

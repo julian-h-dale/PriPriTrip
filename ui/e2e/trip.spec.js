@@ -151,14 +151,14 @@ test("an entry's own page: a flight, a stay, an activity, and back to the day", 
   await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
 });
 
-test("an entry's page: pull past the bottom for the next entry, past the top for the previous", async ({ browser }) => {
+test("an entry's page: pull past the bottom for the day's next entry, past the top for its previous; never into another day", async ({ browser }) => {
   const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 375, height: 812 } });
   const page = await context.newPage();
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();
   await page.getByRole("list", { name: "Trip days" }).getByRole("link", { name: /Mon, May 11/ }).click();
-  await page.getByRole("list", { name: "Plans for Mon, May 11" }).getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
-  await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
+  await page.getByRole("list", { name: "Plans for Mon, May 11" }).getByRole("link", { name: /Check in · Hotel Goldener/ }).click();
+  await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
   await page.waitForTimeout(1500); // the photo and the mini map, so the page has its full height
 
   // Real touches (CDP), so the browser scrolls between them as on a phone.
@@ -179,7 +179,7 @@ test("an entry's page: pull past the bottom for the next entry, past the top for
   await drag(600, 300);
   await page.waitForTimeout(500);
   expect(await scrollTop()).toBeGreaterThan(100);
-  await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
 
   // At the bottom: pull up, and the page says what letting go will do.
   await page.evaluate(() => {
@@ -191,17 +191,33 @@ test("an entry's page: pull past the bottom for the next entry, past the top for
   await expect(page.getByText("Release for next")).toBeVisible();
   await page.screenshot({ path: screenshotPath("04e-entry-pull-next") });
   await touch("touchEnd");
-  await expect(page.getByRole("article", { name: "Morning at the Rose Garden" })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
   await expect(page).toHaveURL(/\/activities\//);
   expect(await scrollTop()).toBe(0);
+  await page.waitForTimeout(1500);
+
+  // Dinner is May 11's last entry: pulling on past it doesn't reach May 12.
+  await page.evaluate(() => {
+    const root = document.querySelector("[data-scroll-root]");
+    root.scrollTop = root.scrollHeight;
+  });
+  await page.waitForTimeout(300);
+  await drag(600, 400);
+  await page.waitForTimeout(400);
+  await expect(page.getByText(/for next/)).toHaveCount(0);
+  await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
 
   // At the top: pull down for the previous one.
+  await page.evaluate(() => {
+    document.querySelector("[data-scroll-root]").scrollTop = 0;
+  });
+  await page.waitForTimeout(300);
   await page.waitForTimeout(500);
   await drag(250, 430, { lift: false });
   await expect(page.getByText("Release for previous")).toBeVisible();
   await page.screenshot({ path: screenshotPath("04f-entry-pull-previous") });
   await touch("touchEnd");
-  await expect(page.getByRole("article", { name: "Dinner at Kornhauskeller" })).toBeVisible();
+  await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
 
   // Moving replaced the address: ← goes back to the day, past both entries.
   await page.getByRole("button", { name: "Back" }).click();

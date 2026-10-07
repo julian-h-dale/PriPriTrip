@@ -146,9 +146,10 @@ describe("an entry's page", () => {
 describe("the order entries are pulled through", () => {
   const ids = (steps) => steps.map((s) => `${s.id}${s.key.endsWith("-out") ? " out" : ""}`);
 
-  it("go through the timeline across days, without 'Staying at' rows or a leg's same-day arrival", () => {
+  it("go through the timeline, without 'Staying at' rows or a leg's same-day arrival", () => {
     expect(ids(entrySequence(TRIP))).toEqual([
-      "travel-0", // May 10; its arrival on May 11 opens the same page, so it's left out
+      "travel-0", // May 10
+      "travel-0", // its arrival, May 11: its own day, so its own step
       "travel-1",
       "2026-05-11-0",
       "2026-05-11-1",
@@ -171,10 +172,29 @@ describe("the order entries are pulled through", () => {
   it("a stay opened from its check-out row steps on from there", () => {
     const steps = entrySequence(TRIP);
     const fromOut = neighbours(steps, "stay", "stay-1", "stay-1-out");
-    expect([fromOut.prev.id, fromOut.next.id]).toEqual(["2026-05-13-2", "travel-3"]);
+    // May 14's first entry: nothing before it that day.
+    expect([fromOut.prev, fromOut.next.id]).toEqual([null, "travel-3"]);
     // Without the row (a reload), it's the stay's first: check-in.
     const first = neighbours(steps, "stay", "stay-1", null);
     expect([first.prev.id, first.next.id]).toEqual(["travel-2", "2026-05-12-1"]);
+  });
+});
+
+describe("moving stays within the day", () => {
+  it("the day's ends have no neighbour, though the trip goes on", () => {
+    const steps = entrySequence(TRIP);
+    expect(neighbours(steps, "activity", "2026-05-11-2", null).next).toBeNull(); // Dinner, May 11's last
+    expect(neighbours(steps, "activity", "2026-05-12-0", null).prev).toBeNull(); // Rose Garden, May 12's first
+    expect(neighbours(steps, "activity", "2026-05-11-1", null)).toMatchObject({ prev: { id: "2026-05-11-0" }, next: { id: "stay-0" } });
+  });
+
+  it("an overnight leg's arrival row moves through the day it lands", () => {
+    const steps = entrySequence(TRIP);
+    const arrival = neighbours(steps, "travel", "travel-0", "travel-0-arr");
+    expect(arrival.at.date).toBe("2026-05-11");
+    expect([arrival.prev, arrival.next.id]).toEqual([null, "travel-1"]);
+    const departure = neighbours(steps, "travel", "travel-0", "travel-0-dep");
+    expect([departure.prev, departure.next]).toEqual([null, null]); // alone on May 10
   });
 });
 

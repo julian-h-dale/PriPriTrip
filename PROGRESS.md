@@ -11,6 +11,9 @@
   Documents; Currency first in Trip tools; Journal's and Today's New memory
   buttons gone; Today shows the temperature now. `make verify` green (246
   API + 428 UI). **Julian: look at it on the phone.**
+- **Run stage 14 change (2026-10-06):** the pull between entries stays
+  within the entry's day (never into the next day); an overnight leg's
+  arrival row is its own step on the day it lands. `make verify` green.
 - **Run stage 14, in progress (2026-10-06)** on branch **`details-page`**:
   swipe up/down between entries on an entry's page. Plan:
   `docs/plan/run-14-swipe-between-entries.md` (answers: across days; ← to the

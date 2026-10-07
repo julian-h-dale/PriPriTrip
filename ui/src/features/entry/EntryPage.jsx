@@ -189,9 +189,9 @@ export function EntryView({ trip, found, children }) {
 
 /**
  * What letting go will do, in the room the pull opens above or below the
- * page: the entry it goes to, with its day when that's another one.
+ * page: the entry it goes to (always on the same day).
  */
-function PullHint({ trip, dir, distance, step, fromDate }) {
+function PullHint({ trip, dir, distance, step }) {
   const ready = distance >= PULL_THRESHOLD_PX;
   const Arrow = dir === "prev" ? ArrowUp : ArrowDown;
   const label = dir === "prev" ? "previous" : "next";
@@ -207,7 +207,6 @@ function PullHint({ trip, dir, distance, step, fromDate }) {
       <span className={cn("inline-flex items-center gap-1.5 text-sm", ready ? "font-medium text-primary" : "text-muted-foreground")}>
         <Arrow className="h-4 w-4" />
         {ready ? `Release for ${label}` : `Pull for ${label}`}
-        {step.date !== fromDate && ` · ${formatDayHeading(step.date)}`}
       </span>
       <span className="max-w-full truncate text-sm">{title}</span>
     </div>
@@ -240,8 +239,8 @@ function EntrySkeleton() {
  * An activity's, stay's or leg's own page (`kind`), by id: Run stage 13.
  * Reads the loaded trip (or the phone's saved copy), so it works offline.
  * ← (in ☰'s place) goes back where you came from, else to its day. Pulling
- * past the top or bottom moves through the timeline's entries, across days
- * (Run stage 14).
+ * past the top or bottom moves to the day's previous or next entry, never
+ * into another day (Run stage 14).
  */
 export function EntryPage({ kind }) {
   const { tripId, id } = useParams();
@@ -338,7 +337,6 @@ export function EntryPage({ kind }) {
             dir={pull.dir}
             distance={pull.distance}
             step={pull.dir === "prev" ? prev : next}
-            fromDate={at?.date}
           />
         )}
         {body}

@@ -49,12 +49,12 @@ function recordOf(entry) {
 }
 
 /**
- * Every entry's page in timeline order, across days (Run stage 14): one step
- * per timeline row, `{ kind, id, key, date, entry }`. "Staying at" rows are
- * left out (they're filler between check-in and check-out), and so is a row
- * for the same page as the row before it (a leg's arrival on its own day).
- * A stay or leg can still come up twice: check-in and check-out, an
- * overnight leg's two ends. `key` tells them apart.
+ * Every entry's page in timeline order (Run stage 14): one step per timeline
+ * row, `{ kind, id, key, date, entry }`. "Staying at" rows are left out
+ * (they're filler between check-in and check-out), and so is a row for the
+ * same page as the row before it on the same day (a leg arriving the day it
+ * left). A stay or leg can still come up twice: check-in and check-out, an
+ * overnight leg's two ends, each on its own day. `key` tells them apart.
  */
 export function entrySequence(trip) {
   const steps = [];
@@ -63,7 +63,7 @@ export function entrySequence(trip) {
       if (entry.phase === "staying") continue;
       const { kind, id } = recordOf(entry);
       const last = steps[steps.length - 1];
-      if (last && last.kind === kind && last.id === id) continue;
+      if (last && last.date === row.date && last.kind === kind && last.id === id) continue;
       steps.push({ kind, id, key: entry.key, date: row.date, entry });
     }
   }
@@ -72,7 +72,9 @@ export function entrySequence(trip) {
 
 /**
  * Where a page is in `steps` (from entrySequence): `{ at, prev, next }`, the
- * page's own step and those either side, each null at an end. `atKey` (the row it was opened from) picks
+ * page's own step and those either side **on the same day**, each null at
+ * the day's first or last entry: moving never crosses into another day
+ * (Julian, 2026-10-06: it isn't obvious enough that you've changed day). `atKey` (the row it was opened from) picks
  * which of a stay's or leg's rows it is; without it, or when that row isn't
  * one of the steps any more, it's the record's first.
  */
@@ -81,5 +83,6 @@ export function neighbours(steps, kind, id, atKey) {
   let i = atKey ? steps.findIndex((s) => s.key === atKey && mine(s)) : -1;
   if (i === -1) i = steps.findIndex(mine);
   if (i === -1) return { at: null, prev: null, next: null };
-  return { at: steps[i], prev: steps[i - 1] ?? null, next: steps[i + 1] ?? null };
+  const sameDay = (s) => (s && s.date === steps[i].date ? s : null);
+  return { at: steps[i], prev: sameDay(steps[i - 1]), next: sameDay(steps[i + 1]) };
 }

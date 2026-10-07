@@ -107,12 +107,22 @@ previous, a short pull springs back.
   only 140 px taller than the screen). Now the scroll stops at the end and
   a fresh touch pulls on.
 
+### Changed again (2026-10-06, Julian): within a day only
+
+Moving between entries no longer crosses into another day: it isn't
+obvious enough that you've changed day. `neighbours()` only returns steps
+on the entry's own day, so the day's first entry has no previous and its
+last no next. The hint lost its day label (it's always the same day).
+`entrySequence()` now drops a same-page row only on the same day, so an
+overnight leg's arrival row is a step on the day it lands, and opening the
+leg from that row moves through that day.
+
 ### Open questions (Run stage 14)
 
 - **Q-S1. Across days, or stop at the ends of a day?** Recommendation:
   across days, showing the day when it changes.
   - **Answer:** across days; swiping past a day's last entry goes to the
-    next day (2026-10-06).
+    next day (2026-10-06). **Revised:** within the day only (2026-10-06).
 - **Q-S2. Where does ← go?** The entry's day, or where you started?
   - **Answer:** the trip timeline (2026-10-06). **Revised:** back where you
     came from, else the entry's day; the day page likewise back to the
