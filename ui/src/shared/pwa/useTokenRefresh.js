@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { refreshToken } from "@/features/auth/authSlice";
+import { selectOnline } from "@/shared/networkSlice";
 
 /**
  * Keep the sign-in sliding: on app start and whenever the app returns to the
@@ -10,7 +11,7 @@ import { refreshToken } from "@/features/auth/authSlice";
 export function useTokenRefresh() {
   const dispatch = useDispatch();
   const signedIn = useSelector((s) => Boolean(s.auth.token));
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   useEffect(() => {
     if (!signedIn || !online) return undefined;

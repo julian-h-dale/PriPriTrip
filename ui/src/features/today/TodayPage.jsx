@@ -20,6 +20,7 @@ import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { directionsUrl } from "@/shared/utils/mapsLinks";
 import { daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
+import { selectOnline } from "@/shared/networkSlice";
 
 /**
  * The temperature right now at today's place (before the trip, the first
@@ -28,7 +29,7 @@ import { daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/u
  */
 function WeatherNow({ tripId }) {
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const weather = useSelector((s) => (s.weather?.tripId === tripId ? s.weather.data : null));
   useEffect(() => {
     dispatch(fetchWeather(tripId));
@@ -244,7 +245,7 @@ export function TodayPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {

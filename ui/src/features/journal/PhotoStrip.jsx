@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { CloudUpload, ImageOff } from "lucide-react";
 import { PhotoViewer } from "@/features/journal/PhotoViewer";
-import { photoSrc } from "@/features/journal/photoUrls";
+import { usePhotoSrc } from "@/features/journal/photoUrls";
 
 function Thumb({ photo, onOpen, label }) {
   const [failed, setFailed] = useState(false);
-  const src = photoSrc(photo.thumbUrl);
+  const src = usePhotoSrc(photo.thumbUrl);
   return (
     <button
       type="button"
@@ -16,7 +16,7 @@ function Thumb({ photo, onOpen, label }) {
       {src && !failed ? (
         <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" onError={() => setFailed(true)} />
       ) : (
-        // Offline and never seen: no cached thumbnail to show.
+        // Offline (or saved copies only) and never seen: no saved thumbnail.
         <ImageOff className="m-auto h-5 w-5 text-muted-foreground" aria-hidden="true" />
       )}
       {photo.pending && (

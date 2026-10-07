@@ -5,6 +5,7 @@ import { CopyField } from "@/shared/components/CopyField";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { apiClient } from "@/shared/services/apiClient";
+import { selectOnline } from "@/shared/networkSlice";
 
 function CodeSection({ title, hint, children, action }) {
   return (
@@ -103,7 +104,7 @@ function ShareCode({ title, hint, word, share, online }) {
  * joined and how, each removable.
  */
 export function ShareTripDialog({ trip, open, onClose }) {
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const [members, setMembers] = useState(null); // null while loading
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState(null); // userId awaiting a second tap

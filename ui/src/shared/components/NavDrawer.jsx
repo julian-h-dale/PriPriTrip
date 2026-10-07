@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { Clock, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
+import { Clock, CloudOff, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
 import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
 import { ShareTripDialog } from "@/features/sharing/ShareTripDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
@@ -12,6 +12,9 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { InstallAppButton } from "@/shared/pwa/InstallAppButton";
 import { useTrack } from "@/shared/analytics/useAnalytics";
+import { saveTripsForOffline } from "@/features/trips/tripsSlice";
+import { Switch } from "@/shared/components/ui/switch";
+import { selectSavedOnly, setSavedOnly } from "@/shared/networkSlice";
 
 const ITEM =
   "flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -37,6 +40,42 @@ function signOutWarning(memories, photos) {
 function useOpenTripId() {
   const { pathname } = useLocation();
   return matchPath({ path: "/trips/:tripId", end: false }, pathname)?.params.tripId ?? null;
+}
+
+/**
+ * "Use saved copies only" (Run stage 20): keeps the app offline on purpose,
+ * to save mobile data. For everyone (it's about this phone's data plan,
+ * not editing), remembered until turned off. Turning it on saves the trips
+ * that haven't ended first, while there's a connection.
+ */
+function SavedOnlySwitch() {
+  const dispatch = useDispatch();
+  const on = useSelector(selectSavedOnly);
+  const saving = useSelector((s) => Boolean(s.network?.saving));
+  return (
+    <div className="flex items-start gap-3 px-3 py-3">
+      <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <label htmlFor="saved-only" className="text-sm">
+          Use saved copies only
+        </label>
+        <p id="saved-only-hint" className="text-xs text-muted-foreground">
+          {saving
+            ? "Saving your trips to this phone…"
+            : on
+              ? "Nothing loads over the network. Memories and photos wait on the phone."
+              : "Saves mobile data: nothing loads over the network."}
+        </p>
+      </div>
+      <Switch
+        id="saved-only"
+        checked={on}
+        disabled={saving}
+        aria-describedby="saved-only-hint"
+        onChange={(next) => dispatch(setSavedOnly(next, saveTripsForOffline))}
+      />
+    </div>
+  );
 }
 
 export function NavDrawer({ open, onClose }) {
@@ -171,6 +210,7 @@ export function NavDrawer({ open, onClose }) {
           </Link>
         )}
         <div className="mt-auto border-t border-border pt-2">
+          <SavedOnlySwitch />
           <button type="button" onClick={() => setChangingPassword(true)} className={ITEM}>
             <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Change password

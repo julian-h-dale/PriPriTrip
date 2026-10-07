@@ -18,6 +18,7 @@ import { Select } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
 import { formatAgo } from "@/shared/utils/time";
 import { useTrackOnce } from "@/shared/analytics/useAnalytics";
+import { selectOnline } from "@/shared/networkSlice";
 
 function OtherCurrency({ open, onClose, onPick, exclude }) {
   const ids = useId();
@@ -136,7 +137,7 @@ function Converter({ code, rate }) {
 
 function Currency({ trip }) {
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const { rates, fetchedAt, status, error } = useSelector((s) => s.currency);
   const [extras, setExtras] = useState(() => tripExtras(trip.id));
   const [picking, setPicking] = useState(false);
@@ -188,7 +189,8 @@ function Currency({ trip }) {
             {c}
           </Button>
         ))}
-        <Button type="button" size="sm" variant="ghost" onClick={() => setPicking(true)}>
+        {/* The list of currencies comes from Frankfurter: online only. */}
+        <Button type="button" size="sm" variant="ghost" onClick={() => setPicking(true)} disabled={!online}>
           <Plus className="h-4 w-4" aria-hidden="true" />
           Other…
         </Button>

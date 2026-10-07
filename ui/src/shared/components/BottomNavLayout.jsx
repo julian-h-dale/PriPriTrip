@@ -7,6 +7,7 @@ import { TripSearch } from "@/features/search/TripSearch";
 import { BottomNav } from "@/shared/components/BottomNav";
 import { OfflineBar } from "@/shared/components/OfflineBar";
 import { TopBar } from "@/shared/components/TopBar";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 /**
  * Full-height shell for a trip-scoped page: scrollable content, with the
@@ -20,7 +21,8 @@ import { TopBar } from "@/shared/components/TopBar";
  * entry): back to where you came from, else to `back` (TopBar).
  */
 export function BottomNavLayout({ tripId, actions, showTitle = true, back, children }) {
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
   const { stale, savedAt, trip } = useSelector((s) => s.timeline ?? {});
   const loaded = trip?.id === tripId ? trip : null;
   const [searchOpen, setSearchOpen] = useState(false);
@@ -56,7 +58,7 @@ export function BottomNavLayout({ tripId, actions, showTitle = true, back, child
       </TopBar>
       {loaded && <TripSearch trip={loaded} open={searchOpen} onClose={() => setSearchOpen(false)} />}
       {writing && <MemoryDialog open onClose={() => setWriting(false)} tripId={tripId} />}
-      <OfflineBar online={online} stale={stale} savedAt={savedAt} />
+      <OfflineBar savedOnly={savedOnly} online={online} stale={stale} savedAt={savedAt} />
       {/* The page scrolls here, not the window; data-scroll-root lets a page
           find it (the day swiper scrolls it to the top after a swipe). */}
       <div data-scroll-root className="min-h-0 flex-1 overflow-y-auto">

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { selectPendingMemories, syncOutbox } from "@/features/journal/journalSlice";
+import { selectOnline } from "@/shared/networkSlice";
 
 const RETRY_MS = 30_000;
 
@@ -14,7 +15,7 @@ const RETRY_MS = 30_000;
 export function useOutboxSync() {
   const dispatch = useDispatch();
   const token = useSelector((s) => s.auth.token);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const waiting = useSelector(selectPendingMemories);
 
   useEffect(() => {

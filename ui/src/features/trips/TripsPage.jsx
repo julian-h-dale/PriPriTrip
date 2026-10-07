@@ -15,6 +15,7 @@ import { TopBar } from "@/shared/components/TopBar";
 import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDateRange } from "@/shared/utils/time";
 import { groupTrips } from "@/shared/utils/tripDates";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -135,7 +136,8 @@ function TripListSkeleton() {
 export function TripsPage() {
   const dispatch = useDispatch();
   const { items, status, stale, savedAt } = useSelector((s) => s.trips);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
   const readOnly = !online || stale;
   const [importOpen, setImportOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -172,7 +174,7 @@ export function TripsPage() {
   return (
     <>
       <TopBar title="PriPriTrip" />
-      <OfflineBar online={online} stale={stale} savedAt={savedAt} />
+      <OfflineBar savedOnly={savedOnly} online={online} stale={stale} savedAt={savedAt} />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">Trips</h1>
@@ -207,7 +209,7 @@ export function TripsPage() {
           <Card className="flex flex-col items-center gap-3 p-8 text-center">
             <p className="font-medium">Couldn’t load your trips</p>
             <p className="text-sm text-muted-foreground">
-              {online ? "The server didn’t answer." : "You’re offline, and no trips are saved on this device yet."}
+              {online ? "The server didn’t answer." : savedOnly ? "Saved copies only, and no trips are saved on this device yet." : "You’re offline, and no trips are saved on this device yet."}
             </p>
             <Button variant="outline" onClick={() => dispatch(fetchTrips())}>
               Try again

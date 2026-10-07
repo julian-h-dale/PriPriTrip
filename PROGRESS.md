@@ -6,6 +6,14 @@
 
 ## Status
 
+- **Run stage 20 (2026-10-07)** on **`analytics`**: "Use saved copies only".
+  Plan: `docs/plan/run-20-data-saver.md`.
+  - **Phase 80 ✅:** the switch (everyone's drawer, remembered per phone);
+    `selectOnline` replaces the 18 direct reads; `apiClient` refuses every
+    request but sign-in and `/users/me`; no mini maps, place photos,
+    Frankfurter or uncached journal photos; memories and analytics wait.
+    `make verify` green (277 API + 527 UI); e2e `saved-only.spec.js`.
+  - **Waiting for Julian's confirmation before Phase 81 (Refresh once).**
 - **Field review and docs (2026-10-07)** on **`analytics`**:
   - Usability review at 375 px, online and offline:
     `docs/ui-review-2026-10-07.md` (unscheduled; in the backlog).

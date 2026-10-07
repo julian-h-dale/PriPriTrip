@@ -19,6 +19,7 @@ import { cn } from "@/shared/utils/cn";
 import { keepFirstEntry } from "@/shared/utils/firstEntry";
 import { useHeroImage } from "@/shared/utils/useHeroImage";
 import { datePart, daysBetween, formatDayHeading, formatDuration, formatTime, zoneLabel } from "@/shared/utils/time";
+import { selectOnline } from "@/shared/networkSlice";
 
 // Shown in the "when" section, so not repeated in the facts list below it.
 const WHEN_FACTS = new Set(["Check-in", "Check-out", "Departs", "Arrives", "Duration"]);
@@ -125,10 +126,12 @@ function heading({ kind, record }, d) {
  * Everything about one activity, stay or leg (`found`, from findEntry): the
  * photo, the confirmation number first (it's what a desk asks for), when,
  * then the facts, notes and places with their maps. `children`: actions.
+ * Not `online` (offline, or "Use saved copies only"): no place photo and no
+ * maps, which are Google's and would load over the network.
  */
-export function EntryView({ trip, found, children }) {
+export function EntryView({ trip, found, online = true, children }) {
   const d = describeEntry(asEntry(found), trip);
-  const { hero, onError } = useHeroImage(d.hero);
+  const { hero, onError } = useHeroImage(online ? d.hero : null);
   const head = heading(found, d);
   const Icon = head.icon;
   const tripZone = trip.timezone;
@@ -174,7 +177,7 @@ export function EntryView({ trip, found, children }) {
         {d.locations.map(({ label, loc }) => (
           <div key={label} className="flex flex-col gap-2">
             <PlaceRow label={label} loc={loc} />
-            {loc.lat != null && loc.lng != null && (
+            {online && loc.lat != null && loc.lng != null && (
               <MiniMap lat={loc.lat} lng={loc.lng} className="h-40 w-full overflow-hidden rounded-md border border-border" />
             )}
           </div>
@@ -251,7 +254,7 @@ export function EntryPage({ kind }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const readOnly = useSelector(selectReadOnly);
   // A viewer never edits, so gets no actions at all (offline only greys them).
   const isViewer = useSelector(selectIsViewer);
@@ -305,7 +308,7 @@ export function EntryPage({ kind }) {
           came === "prev" && "slide-in-from-top-8"
         )}
       >
-        <EntryView trip={current} found={found}>
+        <EntryView trip={current} found={found} online={online}>
           {!isViewer && <EntryActions trip={current} found={found} readOnly={readOnly} />}
         </EntryView>
       </div>

@@ -19,6 +19,7 @@ import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { keepFirstEntry } from "@/shared/utils/firstEntry";
 import { daysBetween, formatDayHeading } from "@/shared/utils/time";
+import { selectOnline } from "@/shared/networkSlice";
 
 /** ⋯ on an activity's row (editors): move it up or down the day. Edit and
  * Delete are on the activity's own page. */
@@ -299,7 +300,7 @@ export function DayDetailPage() {
   const { tripId, date } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {

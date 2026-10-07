@@ -4,6 +4,7 @@ import { notify } from "@/shared/notificationSlice";
 import { readTrip, removeTrip, saveTrip } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
 import { formatAgo } from "@/shared/utils/time";
+import { selectOnline } from "@/shared/networkSlice";
 
 /**
  * Stale-while-revalidate, like the trips list: the phone's saved copy (if
@@ -268,5 +269,5 @@ export function selectIsViewer(state) {
  * edit controls; a viewer doesn't get them at all (selectIsViewer).
  */
 export function selectReadOnly(state) {
-  return state.network?.online === false || Boolean(state.timeline?.stale) || selectIsViewer(state);
+  return !selectOnline(state) || Boolean(state.timeline?.stale) || selectIsViewer(state);
 }

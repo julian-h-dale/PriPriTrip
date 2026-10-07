@@ -21,6 +21,7 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 function ItemRow({ item, tripId, disabled, onEdit }) {
   const dispatch = useDispatch();
@@ -265,7 +266,8 @@ function StartAList({ categories, onOpen, title }) {
 export function PackingPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
   const { items, status, tripId: loadedId } = useSelector((s) => s.packing);
   const tripName = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip.name : null));
   const track = useTrack();
@@ -322,7 +324,7 @@ export function PackingPage() {
       </header>
       {!online && (
         <p role="status" className="rounded-md border border-warning/40 px-3 py-2 text-xs text-warning">
-          You’re offline. Your list shows as it was; ticking and adding need a connection.
+          {savedOnly ? "Saved copies only." : "You’re offline."} Your list shows as it was; ticking and adding need a connection.
         </p>
       )}
       {status === "loading" && loadedId === tripId && (
@@ -334,7 +336,7 @@ export function PackingPage() {
       )}
       {status === "failed" && loadedId === tripId && (
         <p className="text-sm text-muted-foreground">
-          {online ? "Couldn’t load your packing list." : "Your packing list needs a connection. It loads when you’re back online."}
+          {online ? "Couldn’t load your packing list." : savedOnly ? "Your packing list isn’t saved on this phone. Turn off “Use saved copies only” to load it." : "Your packing list needs a connection. It loads when you’re back online."}
         </p>
       )}
       {status === "ready" && (

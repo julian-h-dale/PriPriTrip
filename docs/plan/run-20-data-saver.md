@@ -99,6 +99,32 @@ missing later.
   - **Tests:** one round of requests (trip, list, memories, analytics; no
     photos), then none again.
 
+## Built
+
+- **Phase 80 ✅ (2026-10-07).** As designed, plus what building it turned up:
+  - **Sign-in still works** with the switch on (nothing is saved for someone
+    signed out), and so does `GET /users/me` right after, to know who you
+    are. Everything else is refused before it's sent.
+  - **Trip edits are greyed**, as offline (`selectReadOnly` reads
+    `selectOnline`), so the "Turn off saved copies only to save this"
+    message only shows for a write that slips past that (packing ticks,
+    until Phase 84).
+  - **Journal photos** show only if the phone already has them (the
+    service worker's thumbnail and display caches, read directly); no full
+    quality or download, since originals are never saved.
+  - **Currency** never asks Frankfurter (the saved rate stands, however
+    old), and **Other…** is off: its list comes from Frankfurter. That was
+    the one leak the browser check found.
+  - **Analytics** keep queueing and are held; turning the switch off sends
+    them.
+  - The **journal's toast** says "it'll sync when “Use saved copies only” is
+    off".
+  - A shared `ui/switch.jsx` (the memory dialog's switch, now reused).
+  - `make verify` green (277 API + 527 UI). E2E `saved-only.spec.js`:
+    switch on, every page and an entry page, the app coming back to the
+    front, and a reload: no request anywhere but the UI's own files.
+    Turning it off reloads the trip.
+
 ## Open questions
 
 - **Q-D1. Who gets the switch?**

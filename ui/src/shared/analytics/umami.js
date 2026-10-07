@@ -35,6 +35,7 @@ let undecided = [];
 let flushing = null;
 let sentReferrer = false;
 let seq = 0;
+let held = false; // "Use saved copies only": keep queueing, send nothing
 
 let store;
 function db() {
@@ -169,9 +170,18 @@ async function sendOne(url, payload) {
   }
 }
 
+/**
+ * Hold sending (events still queue) while "Use saved copies only" is on;
+ * letting go sends what waited.
+ */
+export function holdAnalytics(on) {
+  held = on;
+  return on ? Promise.resolve() : flush();
+}
+
 /** Send what's waiting, oldest first; stop at the first that can't go. */
-export function flush() {
-  if (!target) return Promise.resolve();
+export function flush({ force = false } = {}) {
+  if (!target || (held && !force)) return Promise.resolve();
   if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.resolve();
   if (flushing) return flushing;
   const { umamiUrl, userId } = target;
@@ -232,6 +242,7 @@ export async function resetAnalyticsForTests() {
   undecided = [];
   flushing = null;
   sentReferrer = false;
+  held = false;
   await safely(async () => {
     const all = await entries(db());
     await Promise.all(all.map(([k]) => del(k, db())));

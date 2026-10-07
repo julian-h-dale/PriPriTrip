@@ -24,6 +24,7 @@ import { formatDateRange } from "@/shared/utils/time";
 import { todayIn } from "@/shared/utils/tripDates";
 import { useTrackView } from "@/shared/analytics/useAnalytics";
 import { timelineViewPage } from "@/shared/analytics/pages";
+import { selectOnline } from "@/shared/networkSlice";
 
 // Plan | Stays | Travel: exactly one at a time. (Was two unlabeled House/
 // Plane icon toggles; labeled segments are easier to find — ui_review §4.)
@@ -178,7 +179,7 @@ export function TripTimelinePage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   // Also re-runs when the connection changes: back online refreshes; going
   // offline falls back to the saved copy and marks it stale.

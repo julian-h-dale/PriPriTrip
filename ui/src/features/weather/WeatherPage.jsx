@@ -11,6 +11,7 @@ import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { formatAgo, formatDayHeading } from "@/shared/utils/time";
 import { useTrackOnce } from "@/shared/analytics/useAnalytics";
+import { selectOnline } from "@/shared/networkSlice";
 
 function Temp({ c, className }) {
   if (c == null) return null;
@@ -147,7 +148,7 @@ function Alerts({ alerts }) {
 export function WeatherPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const { data, savedAt, status, stale, tripId: loadedId } = useSelector((s) => s.weather);
   const tripName = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip.name : null));
   const weather = loadedId === tripId ? data : null;

@@ -22,6 +22,7 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { formatSavedAt } from "@/shared/utils/time";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 // What the server keeps (services/documents.py TYPES).
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.heic,.webp,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv";
@@ -156,7 +157,8 @@ function DeleteDialog({ doc, tripId, onClose }) {
 export function DocumentsPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
   const { documents, status, tripId: loadedId } = useSelector((s) => s.documents);
   const trip = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip : null));
   const [uploading, setUploading] = useState(false);
@@ -202,7 +204,7 @@ export function DocumentsPage() {
         <>
           {!online && (
             <p role="status" className="rounded-md border border-warning/40 px-3 py-2 text-xs text-warning">
-              You’re offline. Documents need a connection.
+              {savedOnly ? "Saved copies only." : "You’re offline."} Documents need a connection.
             </p>
           )}
           <div className="flex flex-wrap gap-2">

@@ -8,6 +8,7 @@ import { pageFor, timelineViewPage } from "@/shared/analytics/pages";
 import {
   flush,
   forgetAnalytics,
+  holdAnalytics,
   rememberedSettings,
   resetAnalyticsForTests,
   setAnalytics,
@@ -105,6 +106,19 @@ describe("sending to Umami", () => {
     trackPageView({ url: "/trips", title: "All trips", role: "none" });
     await new Promise((r) => setTimeout(r, 20));
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("with “Use saved copies only” on", () => {
+  it("keeps queueing but sends nothing, until it's off", async () => {
+    await setAnalytics(CONFIG, USER);
+    await holdAnalytics(true);
+    trackPageView({ url: "/trip/map", title: "Map", role: "owner" });
+    window.dispatchEvent(new Event("online"));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fetchMock).not.toHaveBeenCalled();
+    await holdAnalytics(false);
+    await waitFor(() => expect(sent().map((p) => p.url)).toEqual(["/trip/map"]));
   });
 });
 

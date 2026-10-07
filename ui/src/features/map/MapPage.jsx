@@ -40,6 +40,7 @@ import { permissionState, watchPosition } from "@/shared/services/geolocation";
 import { notify } from "@/shared/notificationSlice";
 import { defaultFormDate } from "@/shared/utils/tripDates";
 import { formatDayHeading } from "@/shared/utils/time";
+import { selectOnline } from "@/shared/networkSlice";
 
 function MissingConfig({ message }) {
   return (
@@ -136,7 +137,7 @@ function showView(map, view, { singleZoom = 14, padding = 48 } = {}) {
 
 function TripMap({ trip }) {
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const readOnly = useSelector(selectReadOnly);
   const isViewer = useSelector(selectIsViewer);
   const containerRef = useRef(null);
@@ -579,7 +580,7 @@ export function MapPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {

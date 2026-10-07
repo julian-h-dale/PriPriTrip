@@ -6,12 +6,14 @@ import { pageFor } from "@/shared/analytics/pages";
 import {
   awaitAnalytics,
   forgetAnalytics,
+  holdAnalytics,
   rememberedSettings,
   setAnalytics,
   trackEvent,
   trackPageView,
 } from "@/shared/analytics/umami";
 import { userIdFromToken } from "@/shared/utils/authToken";
+import { selectSavedOnly } from "@/shared/networkSlice";
 
 // Like Umami's own tracker: a page counts once it has been on screen this
 // long, so a redirect (a viewer sent from Today to the timeline) counts
@@ -32,6 +34,12 @@ function roleOn(state, tripId) {
  * on the phone stands in. A switch turned off forgets theirs, queue and all.
  */
 export function useAnalyticsSetup() {
+  // "Use saved copies only": events keep queueing on the phone, none sent.
+  const savedOnly = useSelector(selectSavedOnly);
+  useEffect(() => {
+    holdAnalytics(savedOnly);
+  }, [savedOnly]);
+
   const userId = useSelector((s) => userIdFromToken(s.auth.token));
   const user = useSelector((s) => s.auth.user);
   const known = user && user.id === userId ? Boolean(user.analytics_enabled) : null; // null: not heard yet
