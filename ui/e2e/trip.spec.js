@@ -637,6 +637,57 @@ test("sharing: someone joins with the edit code and can edit", async ({ browser 
   }
 });
 
+test("viewers: Timeline, Journal and Map only; no Stays/Travel views, no Trip tools", async ({ browser }) => {
+  // The seed admin isn't on the sample trip: it joins with the view code,
+  // is checked as a viewer, then leaves again.
+  const ownerContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const viewer = await viewerContext.newPage();
+  let tripId = null;
+  try {
+    const owner = await ownerContext.newPage();
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    tripId = new URL(owner.url()).pathname.split("/")[2];
+    const ownerToken = await owner.evaluate(() => localStorage.getItem("auth_token"));
+    const viewCode = (
+      await (await owner.request.get(`${API_URL}/trips/${tripId}/view-code`, { headers: { Authorization: `Bearer ${ownerToken}` } })).json()
+    ).code;
+
+    await login(viewer, SEED_ADMIN);
+    await viewer.getByRole("button", { name: "Join trip" }).click();
+    const join = viewer.getByRole("dialog", { name: "Join a trip" });
+    await join.getByLabel("Trip code").fill(viewCode);
+    await join.getByRole("button", { name: "Join", exact: true }).click();
+    // Joining opens Today, which a viewer doesn't get: the timeline instead.
+    await viewer.waitForURL(new RegExp(`/trips/${tripId}$`));
+    const tabs = viewer.getByRole("navigation", { name: "Trip" }).getByRole("link");
+    await expect(tabs).toHaveText(["Timeline", "Journal", "Map"]);
+    await expect(viewer.getByRole("group", { name: "Timeline view" })).toHaveCount(0);
+    await viewer.screenshot({ path: screenshotPath("23a-viewer-timeline") });
+
+    await viewer.getByRole("button", { name: "Open menu" }).click();
+    await expect(viewer.getByRole("navigation", { name: "Menu" })).toBeVisible();
+    await expect(viewer.getByRole("region", { name: "Trip tools" })).toHaveCount(0);
+    await viewer.screenshot({ path: screenshotPath("23b-viewer-drawer") });
+    await viewer.keyboard.press("Escape");
+
+    // A link to a Trip tool lands on the timeline too, with no error toast.
+    await viewer.goto(`/trips/${tripId}/weather`);
+    await viewer.waitForURL(new RegExp(`/trips/${tripId}$`));
+    await expect(viewer.getByTestId("toast-error")).toHaveCount(0);
+  } finally {
+    if (tripId) {
+      const token = await viewer.evaluate(() => localStorage.getItem("auth_token")).catch(() => null);
+      if (token) {
+        await viewer.request.delete(`${API_URL}/trips/${tripId}/membership`, { headers: { Authorization: `Bearer ${token}` } });
+      }
+    }
+    await ownerContext.close();
+    await viewerContext.close();
+  }
+});
+
 test("editing: two people change the same activity; the second gets a warning", async ({ browser }) => {
   const ownerContext = await browser.newContext();
   const editorContext = await browser.newContext();

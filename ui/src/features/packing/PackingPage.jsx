@@ -251,7 +251,8 @@ function StartAList({ categories, onOpen, title }) {
 
 /**
  * Your own packing lists for this trip (a trip tool, in the drawer). Everyone
- * on the trip has their own, viewers included; nobody sees anyone else's.
+ * travelling (the owner and editors) has their own; nobody sees anyone
+ * else's. Viewers don't get Trip tools (NotForViewers; the server says 403).
  */
 export function PackingPage() {
   const { tripId } = useParams();

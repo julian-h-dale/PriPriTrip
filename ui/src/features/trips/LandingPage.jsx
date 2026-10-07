@@ -6,7 +6,8 @@ import { pickLandingTrip } from "@/shared/utils/tripDates";
 
 /**
  * `/`: open straight onto the trip that matters now — the active one, else
- * the next upcoming one — on its Today tab. With neither, the trips list.
+ * the next upcoming one — on its Today tab (a viewer, who has no Today tab,
+ * on its timeline). With neither, the trips list.
  * Works offline from the saved trips list.
  */
 export function LandingPage() {
@@ -26,5 +27,6 @@ export function LandingPage() {
 
   if (!settled) return <div aria-label="Loading" className="h-dvh bg-background" />;
   const trip = pickLandingTrip(items);
-  return <Navigate to={trip ? `/trips/${trip.id}/today` : "/trips"} replace />;
+  if (!trip) return <Navigate to="/trips" replace />;
+  return <Navigate to={trip.role === "viewer" ? `/trips/${trip.id}` : `/trips/${trip.id}/today`} replace />;
 }

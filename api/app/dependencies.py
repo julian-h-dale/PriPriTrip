@@ -236,17 +236,17 @@ async def get_journal_trip(
 
 async def get_own_packing_item(
     item_id: uuid.UUID,
-    viewable: ViewableTrip = Depends(get_viewable_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> PackingItem:
-    """One of the caller's own live packing lines on a trip they can see.
-    Packing lists are personal, so anyone else's line is 404, as is a
-    deleted one."""
+    """One of the caller's own live packing lines on a trip they travel on
+    (owner or editor; a viewer gets 403). Packing lists are personal, so
+    anyone else's line is 404, as is a deleted one."""
     item = await db.scalar(
         select(PackingItem).where(
             PackingItem.id == item_id,
-            PackingItem.trip_id == viewable.trip.id,
+            PackingItem.trip_id == trip.id,
             PackingItem.user_id == user.id,
             active(PackingItem),
         )

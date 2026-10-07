@@ -97,12 +97,14 @@ describe("a viewer", () => {
     renderAt(`/trips/${TRIP_ID}`);
     await screen.findByRole("heading", { name: base.name, level: 1 });
     expect(screen.queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
-    // Not in the drawer either.
+    // Not in the drawer either: a viewer gets no Trip tools at all.
     await user.click(screen.getByRole("button", { name: "Open menu" }));
-    expect(within(screen.getByRole("region", { name: "Trip tools" })).queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Trip tools" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close menu" }));
-    await user.click(screen.getByRole("button", { name: "Stays" }));
-    await user.click(document.querySelector("#day-2026-05-11 button"));
+    // Nor the Stays / Travel views: from the day, to the stay's page.
+    expect(screen.queryByRole("group", { name: "Timeline view" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /Mon, May 11/ }));
+    await user.click(await screen.findByRole("link", { name: /Check in · Hotel Goldener/ }));
     await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
     expect(screen.queryByRole("button", { name: /^Edit/ })).not.toBeInTheDocument();
   });

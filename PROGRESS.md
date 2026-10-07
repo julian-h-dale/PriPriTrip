@@ -19,6 +19,10 @@
   - **Phase 73 ✅:** Role (User / Admin) in the Admin page's table,
     `PATCH /admin/users/:id`; not your own row, never the last admin.
     `make verify` green (266 API + 468 UI).
+  - **Phase 74 ✅:** viewers get Timeline, Journal and Map; no Today, no
+    Stays / Travel views, no Trip tools (`NotForViewers`); the server
+    refuses them weather and packing. `make verify` green (267 API + 475
+    UI).
 - **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.

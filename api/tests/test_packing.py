@@ -7,7 +7,7 @@ from typing import Any
 from httpx import AsyncClient
 
 from app.sample_data import load_sample_trip
-from tests.test_sharing import shared_trip
+from tests.test_sharing import edited_trip, shared_trip
 
 Json = dict[str, Any]
 
@@ -79,10 +79,9 @@ async def test_suggestions_fill_only_an_empty_list(client: AsyncClient) -> None:
 async def test_lists_are_personal(
     client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient
 ) -> None:
-    trip = await shared_trip(client, viewer)
+    trip = await edited_trip(client, viewer)  # `viewer` joined with the edit code: an editor
     tid = trip["id"]
     mine = await add(client, tid, "clothes", "Owner's socks")
-    # A viewer can't edit the trip, but keeps their own packing list.
     theirs = await add(viewer, tid, "toiletries", "Viewer's toothbrush")
 
     assert [i["text"] for i in (await client.get(f"/trips/{tid}/packing")).json()] == [
@@ -119,7 +118,7 @@ async def test_quantity_on_adding(client: AsyncClient) -> None:
 async def test_deleting_a_list_deletes_only_your_lines_on_it(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
-    trip = await shared_trip(client, viewer)
+    trip = await edited_trip(client, viewer)  # an editor
     tid = trip["id"]
     await add(client, tid, "clothes", "Socks")
     await add(client, tid, "clothes", "Shirt")
@@ -132,3 +131,18 @@ async def test_deleting_a_list_deletes_only_your_lines_on_it(
         "Viewer's hat"
     ]
     assert (await client.delete(f"/trips/{tid}/packing/lists/snacks")).status_code == 422
+
+
+async def test_a_viewer_has_no_packing_list(client: AsyncClient, viewer: AsyncClient) -> None:
+    """Packing is a Trip tool: viewers follow along and don't get one (403)."""
+    trip = await shared_trip(client, viewer)
+    tid = trip["id"]
+    mine = await add(client, tid, "clothes", "Socks")
+    assert (await viewer.get(f"/trips/{tid}/packing")).status_code == 403
+    body = {"category": "other", "text": "x"}
+    assert (await viewer.post(f"/trips/{tid}/packing", json=body)).status_code == 403
+    assert (await viewer.post(f"/trips/{tid}/packing/suggestions")).status_code == 403
+    assert (await viewer.delete(f"/trips/{tid}/packing/lists/clothes")).status_code == 403
+    one = f"/trips/{tid}/packing/{mine['id']}"
+    assert (await viewer.patch(one, json={"checked": True})).status_code == 403
+    assert (await viewer.delete(one)).status_code == 403

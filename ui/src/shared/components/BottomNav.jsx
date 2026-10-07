@@ -1,3 +1,4 @@
+import { useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import { BookOpen, CalendarCheck, List, MapPin } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
@@ -31,12 +32,15 @@ const TABS = [
   },
 ];
 
-/** The Today/Timeline/Journal/Map tab bar shown only while viewing one trip. */
+/** The Today/Timeline/Journal/Map tab bar shown only while viewing one trip.
+ * A viewer follows along with Timeline, Journal and Map: no Today. */
 export function BottomNav({ tripId }) {
   const { pathname } = useLocation();
+  const isViewer = useSelector((s) => s.timeline?.trip?.id === tripId && s.timeline.trip.role === "viewer");
+  const tabs = isViewer ? TABS.filter((t) => t.label !== "Today") : TABS;
   return (
     <nav aria-label="Trip" className="flex shrink-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
-      {TABS.map(({ to, icon: Icon, label, active }) => {
+      {tabs.map(({ to, icon: Icon, label, active }) => {
         const isActive = active(pathname, tripId);
         return (
           <Link

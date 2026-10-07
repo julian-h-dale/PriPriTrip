@@ -212,7 +212,7 @@ describe("Documents in the drawer", () => {
       </Provider>
     );
     await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    return within(screen.getByRole("navigation", { name: "Menu" })).getByRole("region", { name: "Trip tools" });
+    return within(screen.getByRole("navigation", { name: "Menu" })).queryByRole("region", { name: "Trip tools" });
   }
 
   it("is there for the owner and editors", async () => {
@@ -221,9 +221,7 @@ describe("Documents in the drawer", () => {
     expect(within(tools).getByRole("link", { name: "Packing" })).toBeInTheDocument();
   });
 
-  it("isn't there for viewers", async () => {
-    const tools = await drawerFor("viewer");
-    expect(within(tools).queryByRole("link", { name: "Documents" })).not.toBeInTheDocument();
-    expect(within(tools).getByRole("link", { name: "Packing" })).toBeInTheDocument();
+  it("isn't there for viewers: they get no Trip tools at all", async () => {
+    expect(await drawerFor("viewer")).toBeNull();
   });
 });

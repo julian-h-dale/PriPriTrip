@@ -19,6 +19,7 @@ import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { AdminRoute } from "@/shared/components/AdminRoute";
+import { NotForViewers } from "@/shared/components/NotForViewers";
 import { Toaster } from "@/shared/components/Toaster";
 import { PwaUpdate } from "@/shared/pwa/PwaUpdate";
 import { useOutboxSync } from "@/shared/pwa/useOutboxSync";
@@ -73,7 +74,9 @@ export function App() {
           path="/trips/:tripId/today"
           element={
             <ProtectedRoute>
-              <TodayPage />
+              <NotForViewers>
+                <TodayPage />
+              </NotForViewers>
             </ProtectedRoute>
           }
         />
@@ -129,7 +132,9 @@ export function App() {
           path="/trips/:tripId/weather"
           element={
             <ProtectedRoute>
-              <WeatherPage />
+              <NotForViewers>
+                <WeatherPage />
+              </NotForViewers>
             </ProtectedRoute>
           }
         />
@@ -137,7 +142,9 @@ export function App() {
           path="/trips/:tripId/currency"
           element={
             <ProtectedRoute>
-              <CurrencyPage />
+              <NotForViewers>
+                <CurrencyPage />
+              </NotForViewers>
             </ProtectedRoute>
           }
         />
@@ -145,7 +152,9 @@ export function App() {
           path="/trips/:tripId/packing"
           element={
             <ProtectedRoute>
-              <PackingPage />
+              <NotForViewers>
+                <PackingPage />
+              </NotForViewers>
             </ProtectedRoute>
           }
         />
@@ -153,7 +162,9 @@ export function App() {
           path="/trips/:tripId/documents"
           element={
             <ProtectedRoute>
-              <DocumentsPage />
+              <NotForViewers>
+                <DocumentsPage />
+              </NotForViewers>
             </ProtectedRoute>
           }
         />
@@ -161,7 +172,9 @@ export function App() {
           path="/trips/:tripId/time"
           element={
             <ProtectedRoute>
-              <ClocksPage />
+              <NotForViewers>
+                <ClocksPage />
+              </NotForViewers>
             </ProtectedRoute>
           }
         />

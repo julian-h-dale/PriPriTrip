@@ -201,6 +201,26 @@ Error".
 - fastapi-users' own `PATCH /users/:id` (superusers only) can still set
   `is_superuser` without these checks; the app never calls it.
 
+### Phase 74 (2026-10-07): what a viewer sees
+
+`make verify` green (267 API + 475 UI tests). E2E: the seed admin joins
+the sample trip with the view code and is checked as a viewer (three tabs,
+no views switch, no Trip tools, a tool's link lands on the timeline), then
+leaves (screenshots `23a`, `23b`).
+- **`NotForViewers`** (`shared/components/`) wraps Today and the Trip tools
+  (Weather, Currency, Packing, Documents, Time zones) in `App.jsx`. It waits
+  for the trip (or the phone's saved copy) to say your role, then sends a
+  viewer to the timeline, so a viewer's page never asks for what the server
+  refuses. If the trip can't be read at all, the page shows its own error.
+- **Landing:** a viewer's next trip opens on its timeline. Joining with a
+  view code still navigates to Today, which redirects.
+- **Tabs:** `BottomNav` leaves out Today for a viewer. The timeline has no
+  Plan / Stays / Travel switch for them, and the drawer no Trip tools
+  section.
+- **Server:** weather and every packing route use `get_editable_trip`, so a
+  viewer gets 403 (as for documents). Their tests now use an editor, plus a
+  viewer-refused test for each.
+
 ## Open questions (Run stage 17)
 
 - **Q-T1. Offline:** reads never toast; writes say "You're offline, so

@@ -30,6 +30,7 @@ function renderAt(path, element) {
           <Route path="/" element={element} />
           <Route path="/trips" element={<div>all trips</div>} />
           <Route path="/trips/:tripId/today" element={<div>trip page</div>} />
+          <Route path="/trips/:tripId" element={<div>the trip timeline</div>} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -46,6 +47,12 @@ describe("LandingPage", () => {
     });
     renderAt("/", <LandingPage />);
     expect(await screen.findByText("trip page")).toBeInTheDocument();
+  });
+
+  it("a viewer lands on the trip's timeline: they have no Today tab", async () => {
+    apiClient.get.mockResolvedValue({ data: [{ ...summary("next", "2099-01-01", "2099-01-05"), role: "viewer" }] });
+    renderAt("/", <LandingPage />);
+    expect(await screen.findByText("the trip timeline")).toBeInTheDocument();
   });
 
   it("falls back to the trips list when nothing is active or upcoming", async () => {
