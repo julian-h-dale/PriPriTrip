@@ -390,6 +390,12 @@ class InviteUser(CamelModel):
     name: str = Field(default="", max_length=100)
 
 
+class SetAdmin(CamelModel):
+    """An admin making someone an admin of the app, or a plain user."""
+
+    is_superuser: bool
+
+
 class TemporaryPassword(CamelModel):
     """Shown to the admin once, to send; the person must change it on sign-in."""
 

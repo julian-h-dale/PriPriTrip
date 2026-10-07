@@ -15,7 +15,10 @@
   - **Phase 72 ✅:** quiet offline: a read that can't reach the server
     never toasts; a write says "You’re offline, so that wasn’t saved."
     once. `make verify` green (260 API + 465 UI); e2e `offline-toasts`.
-    **Next: Phase 73** (making someone an admin), after Julian confirms.
+  - Julian: carry on through Phases 73–75 without stopping.
+  - **Phase 73 ✅:** Role (User / Admin) in the Admin page's table,
+    `PATCH /admin/users/:id`; not your own row, never the last admin.
+    `make verify` green (266 API + 468 UI).
 - **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.

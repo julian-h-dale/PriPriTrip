@@ -24,6 +24,7 @@ from app.schemas import (
     BackupPhotoPage,
     InvitedUser,
     InviteUser,
+    SetAdmin,
     TemporaryPassword,
     UserRead,
 )
@@ -48,6 +49,28 @@ async def invite_user(body: InviteUser, db: AsyncSession = Depends(get_db)) -> I
     except users_service.EmailTaken:
         raise HTTPException(status.HTTP_409_CONFLICT, "Someone already has that email") from None
     return InvitedUser(user=UserRead.model_validate(user), temporary_password=password)
+
+
+@router.patch("/users/{user_id}", response_model=UserRead)
+async def set_admin(
+    user_id: uuid.UUID,
+    body: SetAdmin,
+    db: AsyncSession = Depends(get_db),
+    admin: UserRecord = Depends(current_superuser),
+) -> UserRecord:
+    """Make someone an admin of the app, or a plain user. Never your own row
+    (another admin can change it), and never the last admin."""
+    if user_id == admin.id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "You can't change your own role")
+    user = await db.get(UserRecord, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    try:
+        return await users_service.set_admin(db, user, body.is_superuser)
+    except users_service.LastAdmin:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "There has to be at least one admin"
+        ) from None
 
 
 @router.post("/users/{user_id}/reset-password", response_model=TemporaryPassword)

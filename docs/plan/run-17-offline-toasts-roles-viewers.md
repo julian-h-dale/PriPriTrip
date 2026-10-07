@@ -183,6 +183,24 @@ Error".
 - `offlineOk` on `/config`, `/timezone`, packing and documents, for what
   they are, though the read rule covers them now anyway.
 
+### Phase 73 (2026-10-07): making someone an admin
+
+`make verify` green (266 API + 468 UI tests). E2E: the seed admin makes
+`user@example.com` an admin from the table, then a user again (screenshots
+`31`, `31a`).
+- **`PATCH /admin/users/:id`** `{ isSuperuser }` (`services/users.set_admin`):
+  409 for your own row ("You can't change your own role") and for the last
+  active admin ("There has to be at least one admin"); 404 unknown; 403 for
+  a non-admin.
+- **The Admin page's table:** a Role choice (User / Admin) on every row but
+  yours (a badge and "You"), confirmed in a dialog first. The Role column
+  now comes straight after Email, so it's on screen on a phone.
+- **To add yourself:** Invite someone (the drawer, on the trips list) with
+  your own email, sign in with the temporary password, then make that user
+  an admin here.
+- fastapi-users' own `PATCH /users/:id` (superusers only) can still set
+  `is_superuser` without these checks; the app never calls it.
+
 ## Open questions (Run stage 17)
 
 - **Q-T1. Offline:** reads never toast; writes say "You're offline, so

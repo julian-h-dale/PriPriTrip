@@ -2,7 +2,8 @@
 
 Admins invite people and reset passwords; either way the person gets a
 random temporary password (shown to the admin once, to send) and must choose
-their own at sign-in (`must_change_password`).
+their own at sign-in (`must_change_password`). Admins also make someone an
+admin of the app, or take it away (`is_superuser`), never the last one.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import secrets
 import uuid
 
 from fastapi_users.password import PasswordHelper
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import UserRecord
@@ -30,6 +31,10 @@ class EmailTaken(Exception):
 
 class WeakPassword(ValueError):
     pass
+
+
+class LastAdmin(Exception):
+    """Taking admin from the only admin left would leave nobody to give it back."""
 
 
 def temporary_password() -> str:
@@ -63,6 +68,27 @@ async def invite(db: AsyncSession, email: str, name: str) -> tuple[UserRecord, s
     await db.commit()
     await db.refresh(user)
     return user, password
+
+
+async def set_admin(db: AsyncSession, user: UserRecord, admin: bool) -> UserRecord:
+    """Make `user` an admin of the app, or a plain user; never the last admin
+    (counting active admins: an inactive one can't sign in to give it back)."""
+    if user.is_superuser and not admin:
+        admins = await db.scalar(
+            select(func.count())
+            .select_from(UserRecord)
+            # Through the table: fastapi-users types these attributes as plain bools.
+            .where(
+                UserRecord.__table__.c.is_superuser.is_(True),
+                UserRecord.__table__.c.is_active.is_(True),
+            )
+        )
+        if (admins or 0) <= 1:
+            raise LastAdmin()
+    user.is_superuser = admin
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 
 async def reset_password(db: AsyncSession, user: UserRecord) -> str:

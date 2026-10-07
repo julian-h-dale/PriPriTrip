@@ -21,7 +21,7 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **73**.
+project; the next one is **74**.
 
 ## Stages
 
