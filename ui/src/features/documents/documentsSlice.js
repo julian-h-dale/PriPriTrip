@@ -9,7 +9,7 @@ import { apiClient } from "@/shared/services/apiClient";
  * phone; "Download all" saves one zip to keep there instead.
  */
 export const fetchDocuments = createAsyncThunk("documents/fetch", async (tripId) => {
-  const { data } = await apiClient.get(`/trips/${tripId}/documents`, { silent: true });
+  const { data } = await apiClient.get(`/trips/${tripId}/documents`, { silent: true, offlineOk: true });
   return { tripId, documents: data };
 });
 

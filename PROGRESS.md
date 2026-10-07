@@ -12,6 +12,10 @@
   someone an admin from the Admin page's table, what viewers see, and a
   viewer's map with only activities and public memories. Plan:
   `docs/plan/run-17-offline-toasts-roles-viewers.md`; answers in.
+  - **Phase 72 ✅:** quiet offline: a read that can't reach the server
+    never toasts; a write says "You’re offline, so that wasn’t saved."
+    once. `make verify` green (260 API + 465 UI); e2e `offline-toasts`.
+    **Next: Phase 73** (making someone an admin), after Julian confirms.
 - **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.

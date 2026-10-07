@@ -24,6 +24,9 @@ apiClient.interceptors.request.use((config) => {
 
 const WRITE_METHODS = ["post", "put", "patch", "delete"];
 
+/** What a write that couldn't reach the server says (a read says nothing). */
+export const OFFLINE_WRITE = "You’re offline, so that wasn’t saved.";
+
 apiClient.interceptors.response.use(
   (response) => {
     // Brief success toast for write operations (see design_doc.md).
@@ -43,15 +46,19 @@ apiClient.interceptors.response.use(
       // A temporary password (an invite or a reset): the app shows the
       // "choose a new password" screen instead of an error toast.
       store?.dispatch(passwordChangeRequired());
-    } else if (!error.response && error.config?.offlineOk) {
-      // A request the offline cache backs, failing for want of a network:
-      // the offline bar says so — an error toast on every load would be noise.
-    } else if (error.config?.handles?.includes(status)) {
-      // The caller deals with this status itself (trip edits: someone else
-      // changed or removed the entry, see timelineSlice).
     } else if (error.config?.background) {
       // Housekeeping the user didn't ask for (the token refresh): its
       // failure changes nothing they can see, so no toast.
+    } else if (!error.response && (!WRITE_METHODS.includes(error.config?.method) || error.config?.offlineOk)) {
+      // A read (or an outbox write) failing for want of a network: the
+      // offline bar says so, and each page shows the phone's saved copy or
+      // its own "needs a connection" note. A toast on every load was noise.
+    } else if (error.config?.handles?.includes(status)) {
+      // The caller deals with this status itself (trip edits: someone else
+      // changed or removed the entry, see timelineSlice).
+    } else if (!error.response) {
+      // A write the user made that couldn't go: say so plainly, once.
+      store?.dispatch(setError(OFFLINE_WRITE));
     } else {
       const message =
         error.response?.data?.detail || error.message || "Something went wrong";

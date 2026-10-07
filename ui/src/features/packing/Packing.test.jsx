@@ -73,6 +73,15 @@ describe("groupByCategory", () => {
 });
 
 describe("the Packing page", () => {
+  it("offline: says the list needs a connection (it isn't saved on the phone)", async () => {
+    apiClient.get.mockImplementation(async (url) => {
+      if (url.endsWith("/packing")) throw Object.assign(new Error("Network Error"), { config: {} });
+      return { data: TRIP };
+    });
+    renderPage({ online: false });
+    expect(await screen.findByText(/Your packing list needs a connection/)).toBeInTheDocument();
+  });
+
   it("shows each started list with its count, and the rest as lists to start", async () => {
     serve(LIST);
     renderPage();

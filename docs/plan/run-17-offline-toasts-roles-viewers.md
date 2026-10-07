@@ -159,6 +159,30 @@ read (no places on stays and legs, no points of interest).
     - A stay's page for a viewer has no place.
   - **E2E:** the seed viewer's map at 375 px.
 
+## Built
+
+### Phase 72 (2026-10-07): quiet offline
+
+`make verify` green (260 API + 465 UI tests). New e2e
+`offline-toasts.spec.js`: offline, through every page (an entry's page
+with its mini maps, and coming back to the app), no error toast. Before
+the fix, Packing, Documents and an entry's page each toasted "Network
+Error".
+- **`apiClient`:** a request that got no response stays quiet when it's a
+  read, or a write the outbox keeps (`offlineOk`). Any other write says
+  "You’re offline, so that wasn’t saved." (`OFFLINE_WRITE`). Background
+  housekeeping stays quiet as before. A read the server answers with an
+  error still toasts.
+- **Repeats:** a notification already showing (same type and words) isn't
+  added again. The error toast holds one message, so repeats there replace
+  it.
+- **Packing:** offline, "Your packing list needs a connection. It loads
+  when you’re back online." It now reloads when the connection comes back,
+  and so do Documents, whose own offline banner already says they need a
+  connection.
+- `offlineOk` on `/config`, `/timezone`, packing and documents, for what
+  they are, though the read rule covers them now anyway.
+
 ## Open questions (Run stage 17)
 
 - **Q-T1. Offline:** reads never toast; writes say "You're offline, so

@@ -268,7 +268,8 @@ export function PackingPage() {
   useEffect(() => {
     dispatch(fetchTrip(tripId)); // for its name in the top bar
     dispatch(fetchPacking(tripId));
-  }, [dispatch, tripId]);
+    // Again when the connection comes back (it isn't saved for offline).
+  }, [dispatch, tripId, online]);
 
   const mine = loadedId === tripId ? items : [];
   const groups = groupByCategory(mine);
@@ -320,7 +321,11 @@ export function PackingPage() {
           ))}
         </div>
       )}
-      {status === "failed" && loadedId === tripId && <p className="text-sm text-muted-foreground">Couldn’t load your packing list.</p>}
+      {status === "failed" && loadedId === tripId && (
+        <p className="text-sm text-muted-foreground">
+          {online ? "Couldn’t load your packing list." : "Your packing list needs a connection. It loads when you’re back online."}
+        </p>
+      )}
       {status === "ready" && (
         <>
           {mine.length === 0 && visible.length === 0 && (

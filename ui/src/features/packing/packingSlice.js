@@ -7,7 +7,7 @@ import { apiClient } from "@/shared/services/apiClient";
  * Writes are silent (no "Saved" toast for every tick); failures still toast.
  */
 export const fetchPacking = createAsyncThunk("packing/fetch", async (tripId) => {
-  const { data } = await apiClient.get(`/trips/${tripId}/packing`, { silent: true });
+  const { data } = await apiClient.get(`/trips/${tripId}/packing`, { silent: true, offlineOk: true });
   return { tripId, items: data };
 });
 
