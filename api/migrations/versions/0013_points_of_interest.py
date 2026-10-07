@@ -1,4 +1,4 @@
-"""places: points of interest (Phase 68)
+"""points of interest (Phase 68)
 
 Shops, markets and sights worth finding, kept with a trip but on no day:
 they show on the map only. Versioned and soft-deleted like stays.
@@ -25,7 +25,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.create_table(
-        "places",
+        "points_of_interest",
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("trip_id", sa.Uuid(), nullable=False),
         sa.Column("position", sa.Integer(), nullable=False),
@@ -41,10 +41,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["trip_id"], ["trips.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    with op.batch_alter_table("places") as batch:
-        batch.create_index("ix_places_trip_id", ["trip_id"])
-        batch.create_index("ix_places_is_deleted", ["is_deleted"])
+    with op.batch_alter_table("points_of_interest") as batch:
+        batch.create_index("ix_points_of_interest_trip_id", ["trip_id"])
+        batch.create_index("ix_points_of_interest_is_deleted", ["is_deleted"])
 
 
 def downgrade() -> None:
-    op.drop_table("places")
+    op.drop_table("points_of_interest")

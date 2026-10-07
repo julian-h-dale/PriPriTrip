@@ -27,7 +27,7 @@ from app.models import (
     Item,
     Memory,
     PackingItem,
-    Place,
+    PointOfInterest,
     Stay,
     Travel,
     Trip,
@@ -165,18 +165,22 @@ async def get_editable_stay(
     return stay
 
 
-async def get_editable_place(
-    place_id: uuid.UUID,
+async def get_editable_point_of_interest(
+    point_of_interest_id: uuid.UUID,
     trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
-) -> Place:
+) -> PointOfInterest:
     """A live point of interest on a trip the current user may change, or 404."""
-    place = await db.scalar(
-        select(Place).where(Place.id == place_id, Place.trip_id == trip.id, active(Place))
+    poi = await db.scalar(
+        select(PointOfInterest).where(
+            PointOfInterest.id == point_of_interest_id,
+            PointOfInterest.trip_id == trip.id,
+            active(PointOfInterest),
+        )
     )
-    if place is None:
+    if poi is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    return place
+    return poi
 
 
 async def get_editable_travel(

@@ -19,7 +19,7 @@ from app.trip_document import (
     DayDoc,
     IanaTimezone,
     ItemDoc,
-    PlaceDoc,
+    PointOfInterestDoc,
     StayDoc,
     TravelDoc,
     TripDocument,
@@ -121,7 +121,7 @@ class ItemRead(ItemDoc, VersionRead):
     zone: str | None = None
 
 
-class PlaceRead(PlaceDoc, VersionRead):
+class PointOfInterestRead(PointOfInterestDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
 
@@ -142,7 +142,7 @@ class TripRead(TripDocument):
     stays: list[StayRead] = Field(default_factory=list)  # type: ignore[assignment]
     travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
     days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
-    places: list[PlaceRead] = Field(default_factory=list)  # type: ignore[assignment]
+    points_of_interest: list[PointOfInterestRead] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class TripSummary(CamelModel):

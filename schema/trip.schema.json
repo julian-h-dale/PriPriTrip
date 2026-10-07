@@ -275,7 +275,7 @@
       "title": "LocationDoc",
       "type": "object"
     },
-    "PlaceDoc": {
+    "PointOfInterestDoc": {
       "additionalProperties": false,
       "description": "A point of interest: a shop, market or sight worth finding. Lives at\ntrip level, on no day; it shows on the map only, so its place needs\ncoordinates.",
       "properties": {
@@ -320,7 +320,7 @@
         "name",
         "location"
       ],
-      "title": "PlaceDoc",
+      "title": "PointOfInterestDoc",
       "type": "object"
     },
     "StayDoc": {
@@ -619,7 +619,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. (6) A place (point of interest) has coordinates. Users write wall-clock times; each time's zone comes from its place's coordinates, else an explicit timezone field, else (activities) that night's stay, else the trip's timezone. Times in different zones are compared as real instants.",
+  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. (6) A point of interest has coordinates. Users write wall-clock times; each time's zone comes from its place's coordinates, else an explicit timezone field, else (activities) that night's stay, else the trip's timezone. Times in different zones are compared as real instants.",
   "properties": {
     "schemaVersion": {
       "const": 1,
@@ -672,12 +672,12 @@
       "title": "Days",
       "type": "array"
     },
-    "places": {
+    "pointsOfInterest": {
       "description": "Points of interest: on the map, on no day.",
       "items": {
-        "$ref": "#/$defs/PlaceDoc"
+        "$ref": "#/$defs/PointOfInterestDoc"
       },
-      "title": "Places",
+      "title": "Pointsofinterest",
       "type": "array"
     }
   },

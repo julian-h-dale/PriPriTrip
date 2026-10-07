@@ -42,11 +42,11 @@ scheduled.
 - **No day and no time:** it doesn't appear in the timeline, Today, a day
   page or trip search. It's on the map only.
 
-**Stored with the trip** (Q-P3): a new `places` table, shaped like stays
+**Stored with the trip** (Q-P3): a new `points_of_interest` table, shaped like stays
 (owned through the trip, versioned, soft-deleted).
 - It comes back in `GET /trips/:id`, so it works offline from the phone's
   saved copy.
-- It's in the trip document as `places[]` (optional), so export and import
+- It's in the trip document as `pointsOfInterest[]` (optional), so export and import
   keep it.
 - The owner and editors add, edit and delete them. Viewers see them.
 - A conflicting edit (409) behaves as it does for a stay.
@@ -103,13 +103,13 @@ Calendar and Locate, one button fewer than now.
 
 - **Phase 68 — points of interest on the server.**
   - **Scope:**
-    - `Place` model and migration 0013.
+    - `PointOfInterest` model and migration 0013.
     - Schemas (camelCase).
-    - `POST/PUT/DELETE /trips/:id/places`, with `If-Match` versions and a
-      409 like stays.
-    - `places` in `TripRead`.
-    - `places[]` in the trip document (import and export) and the JSON
-      Schema.
+    - `POST/PUT/DELETE /trips/:id/points-of-interest`, with `If-Match`
+      versions and a 409 like stays.
+    - `pointsOfInterest` in `TripRead`.
+    - `pointsOfInterest[]` in the trip document (import and export) and the
+      JSON Schema.
     - Viewers refused (403), foreign trips 404.
   - **Tests:**
     - Create, edit and delete.
@@ -120,10 +120,10 @@ Calendar and Locate, one button fewer than now.
     - `make migrate` on a copy of the dev database.
 - **Phase 69 — points of interest on the map.**
   - **Scope:**
-    - Markers from `trip.places` (colour, category icon).
+    - Markers from `trip.pointsOfInterest` (colour, category icon).
     - "Point of interest" as an add action on a Google result, guessed
       from its types.
-    - `PlaceForm` (name, category, notes).
+    - `PointOfInterestForm` (name, category, notes).
     - The info window with Edit and Delete.
     - Found by the map's search box.
   - **Tests:**
@@ -135,7 +135,7 @@ Calendar and Locate, one button fewer than now.
     - Not in the timeline, Today or trip search.
 - **Phase 70 — the Filter button.**
   - **Scope:** the Filter menu replaces Journal and Stays; `only` gains
-    `"places"`; the filled state with the filter's icon; the map refits to
+    `"pois"`; the filled state with the filter's icon; the map refits to
     what's left (as now).
   - **Tests:**
     - Each choice shows only its kind; Everything is the default and
@@ -161,20 +161,24 @@ Calendar and Locate, one button fewer than now.
 
 ### Phase 68 (2026-10-06): points of interest on the server
 
-`make verify` green (260 API + 433 UI tests; `tests/test_places.py`). The
-migration (0013) ran on a copy of the dev database.
-- **Model:** `Place` (`places` table): name, category (`shop`, `market`,
+`make verify` green (260 API + 433 UI tests;
+`tests/test_points_of_interest.py`). The migration (0013) ran on a copy of
+the dev database.
+- **Model:** `PointOfInterest` (`points_of_interest` table): name, category (`shop`, `market`,
   `food`, `sight`, `other`; default `other`), location (required, with
   coordinates: rule 6), notes. Versioned and soft-deleted like a stay.
-- **API:** `POST /trips/:id/places`, `PUT` and `DELETE
-  /trips/:id/places/:placeId` with `If-Match`, each returning the trip.
-  `GET /trips/:id` always has `places` (an empty list when there are none).
-- **The trip document:** `places[]`, optional. A trip with none exports
-  with no `places` key (a serializer on `TripDocument`), so older documents
-  and exports are unchanged. The JSON Schema is regenerated.
-- **Naming:** the API says "place" for a point of interest. In the UI, where
-  "place" already means a Google search result, the map's marker kind will
-  be `poi`.
+- **API:** `POST /trips/:id/points-of-interest`, `PUT` and `DELETE
+  /trips/:id/points-of-interest/:id` with `If-Match`, each returning the
+  trip. `GET /trips/:id` always has `pointsOfInterest` (an empty list when
+  there are none).
+- **The trip document:** `pointsOfInterest[]`, optional. A trip with none
+  exports with no `pointsOfInterest` key (a serializer on `TripDocument`),
+  so older documents and exports are unchanged. The JSON Schema is
+  regenerated.
+- **Naming (Julian, 2026-10-06):** "point of interest" everywhere, never
+  "place", which already means a Google result or an entry's location.
+  `PointOfInterest`, `pointsOfInterest`, `/points-of-interest`; `poi` for
+  short in code (the map's marker kind).
 - **Deploy:** run `make migrate` (start.sh does it on Fly).
 
 ## Open questions (Run stage 16)

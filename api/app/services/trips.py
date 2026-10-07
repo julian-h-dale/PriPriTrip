@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import Role, active
-from app.models import Day, Item, Place, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import Day, Item, PointOfInterest, Stay, Travel, Trip, TripMember, UserRecord
 from app.schemas import TripRead, TripSummary, VersionRead
 from app.services import versions
 from app.trip_document import (
@@ -26,7 +26,7 @@ from app.trip_document import (
     ItemDoc,
     ItemWrite,
     LocationDoc,
-    PlaceDoc,
+    PointOfInterestDoc,
     StayDoc,
     TravelDoc,
     TripDocument,
@@ -109,7 +109,7 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
             for j, it in enumerate(d.items)
         )
     db.add_all(
-        Place(
+        PointOfInterest(
             trip_id=trip.id,
             position=i,
             name=p.name,
@@ -117,7 +117,7 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
             location=p.location.model_dump(by_alias=True, exclude_none=True),
             notes=p.notes,
         )
-        for i, p in enumerate(doc.places)
+        for i, p in enumerate(doc.points_of_interest)
     )
     await db.commit()
     await db.refresh(trip)
@@ -199,7 +199,7 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
             selectinload(Trip.stays.and_(active(Stay))),
             selectinload(Trip.travels.and_(active(Travel))),
             selectinload(Trip.days.and_(active(Day))).selectinload(Day.items.and_(active(Item))),
-            selectinload(Trip.places.and_(active(Place))),
+            selectinload(Trip.points_of_interest.and_(active(PointOfInterest))),
         )
         .execution_options(populate_existing=True)
     )
@@ -259,21 +259,22 @@ async def export_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner"
                 _doc_part(TravelDoc, travel).model_dump(by_alias=True) for travel in trip.travels
             ],
             "days": [d.model_dump(by_alias=True) for d in days],
-            "places": [
-                _doc_part(PlaceDoc, place).model_dump(by_alias=True) for place in trip.places
+            "pointsOfInterest": [
+                _doc_part(PointOfInterestDoc, poi).model_dump(by_alias=True)
+                for poi in trip.points_of_interest
             ],
         }
     )
 
 
 def _entries(trip: TripRead) -> list[VersionRead]:
-    """Every versioned entry of a trip: stays, travel, days, activities and places."""
+    """Every versioned entry of a trip: stays, travel, days, activities and points of interest."""
     return [
         *trip.stays,
         *trip.travels,
         *trip.days,
         *(i for d in trip.days for i in d.items),
-        *trip.places,
+        *trip.points_of_interest,
     ]
 
 
@@ -493,7 +494,7 @@ def _apply_travel(travel: Travel, doc: TravelDoc) -> None:
 
 
 async def _next_booking_position(
-    db: AsyncSession, model: type[Stay] | type[Travel] | type[Place], trip: Trip
+    db: AsyncSession, model: type[Stay] | type[Travel] | type[PointOfInterest], trip: Trip
 ) -> int:
     last = await db.scalar(
         select(func.max(model.position)).where(model.trip_id == trip.id, active(model))
@@ -575,38 +576,48 @@ async def delete_travel(
 # versions, like the bookings above; every edit returns the trip.
 
 
-def _apply_place(place: Place, doc: PlaceDoc) -> None:
-    place.name = doc.name
-    place.category = doc.category
-    place.location = doc.location.model_dump(by_alias=True, exclude_none=True)  # as _location
-    place.notes = doc.notes
+def _apply_point_of_interest(poi: PointOfInterest, doc: PointOfInterestDoc) -> None:
+    poi.name = doc.name
+    poi.category = doc.category
+    poi.location = doc.location.model_dump(by_alias=True, exclude_none=True)  # as _location
+    poi.notes = doc.notes
 
 
-async def create_place(db: AsyncSession, trip: Trip, doc: PlaceDoc, user_id: uuid.UUID) -> TripRead:
-    place = Place(trip_id=trip.id, position=await _next_booking_position(db, Place, trip))
-    _apply_place(place, doc)
-    versions.stamp(place, user_id, new=True)
-    db.add(place)
+async def create_point_of_interest(
+    db: AsyncSession, trip: Trip, doc: PointOfInterestDoc, user_id: uuid.UUID
+) -> TripRead:
+    poi = PointOfInterest(
+        trip_id=trip.id, position=await _next_booking_position(db, PointOfInterest, trip)
+    )
+    _apply_point_of_interest(poi, doc)
+    versions.stamp(poi, user_id, new=True)
+    db.add(poi)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def replace_place(
-    db: AsyncSession, trip: Trip, place: Place, doc: PlaceDoc, *, expected: int, user_id: uuid.UUID
+async def replace_point_of_interest(
+    db: AsyncSession,
+    trip: Trip,
+    poi: PointOfInterest,
+    doc: PointOfInterestDoc,
+    *,
+    expected: int,
+    user_id: uuid.UUID,
 ) -> TripRead:
-    await _check_version(db, trip, place, expected, place.id)
-    _apply_place(place, doc)
-    versions.stamp(place, user_id)
+    await _check_version(db, trip, poi, expected, poi.id)
+    _apply_point_of_interest(poi, doc)
+    versions.stamp(poi, user_id)
     await db.commit()
     return await get_trip(db, trip.id)
 
 
-async def delete_place(
-    db: AsyncSession, trip: Trip, place: Place, *, expected: int, user_id: uuid.UUID
+async def delete_point_of_interest(
+    db: AsyncSession, trip: Trip, poi: PointOfInterest, *, expected: int, user_id: uuid.UUID
 ) -> TripRead:
-    await _check_version(db, trip, place, expected, place.id)
-    versions.stamp(place, user_id)
-    place.is_deleted = True
-    place.deleted_at = datetime.now(UTC)
+    await _check_version(db, trip, poi, expected, poi.id)
+    versions.stamp(poi, user_id)
+    poi.is_deleted = True
+    poi.deleted_at = datetime.now(UTC)
     await db.commit()
     return await get_trip(db, trip.id)

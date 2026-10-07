@@ -123,7 +123,7 @@ _ZONE_FALLBACK = (
 
 StayType = Literal["hotel", "hostel", "airbnb", "rental", "other"]
 TravelMode = Literal["flight", "train", "bus", "ferry", "boat", "car", "other"]
-PlaceCategory = Literal["shop", "market", "food", "sight", "other"]
+PointOfInterestCategory = Literal["shop", "market", "food", "sight", "other"]
 
 
 # ---- Document models ----
@@ -226,13 +226,13 @@ class ItemDoc(DocModel):
     notes: Markdown | None = None
 
 
-class PlaceDoc(DocModel):
+class PointOfInterestDoc(DocModel):
     """A point of interest: a shop, market or sight worth finding. Lives at
     trip level, on no day; it shows on the map only, so its place needs
     coordinates."""
 
     name: Title
-    category: PlaceCategory = "other"
+    category: PointOfInterestCategory = "other"
     location: LocationDoc = Field(description="Where it is. Needs lat and lng.")
     notes: Markdown | None = None
 
@@ -259,7 +259,7 @@ RULES = (
     "is no later than the day after endDate. "
     "(5) A travel's depart is within the trip; arrive, when given, is after depart and "
     "no later than the day after endDate. "
-    "(6) A place (point of interest) has coordinates. "
+    "(6) A point of interest has coordinates. "
     "Users write wall-clock times; each time's zone comes from its place's "
     "coordinates, else an explicit timezone field, else (activities) that night's "
     "stay, else the trip's timezone. Times in different zones are compared as real "
@@ -283,20 +283,20 @@ class TripDocument(DocModel):
     stays: list[StayDoc] = Field(default_factory=list)
     travels: list[TravelDoc] = Field(default_factory=list)
     days: list[DayDoc] = Field(default_factory=list)
-    places: list[PlaceDoc] = Field(
+    points_of_interest: list[PointOfInterestDoc] = Field(
         default_factory=list, description="Points of interest: on the map, on no day."
     )
 
     @model_serializer(mode="wrap")
-    def _no_empty_places(
+    def _no_empty_points_of_interest(
         self, handler: SerializerFunctionWrapHandler, info: SerializationInfo
     ) -> dict[str, Any]:
-        """A document with no points of interest has no `places` key, so it
+        """A document with no points of interest has no `pointsOfInterest` key, so it
         reads exactly as documents did before they existed. (The app's read
         model, TripRead, always has the list.)"""
         data: dict[str, Any] = handler(self)
-        if type(self) is TripDocument and not self.places:
-            data.pop("places", None)
+        if type(self) is TripDocument and not self.points_of_interest:
+            data.pop("pointsOfInterest", None)
         return data
 
 
@@ -421,10 +421,12 @@ def check_travel(travel: TravelDoc, frame: TripFrame, *, prefix: str = "") -> li
     return errors
 
 
-def check_place(place: PlaceDoc, *, prefix: str = "") -> list[DocError]:
+def check_point_of_interest(poi: PointOfInterestDoc, *, prefix: str = "") -> list[DocError]:
     """Rule (6): a point of interest is only ever on the map, so it needs coordinates."""
-    if place.location.lat is None:
-        return [DocError(f"{prefix}location", "needs lat and lng: a place shows on the map")]
+    if poi.location.lat is None:
+        return [
+            DocError(f"{prefix}location", "needs lat and lng: a point of interest shows on the map")
+        ]
     return []
 
 
@@ -459,8 +461,8 @@ def check_rules(doc: TripDocument) -> list[DocError]:
         errors.extend(check_stay(stay, frame, prefix=f"stays[{i}]."))
     for i, travel in enumerate(doc.travels):
         errors.extend(check_travel(travel, frame, prefix=f"travels[{i}]."))
-    for i, place in enumerate(doc.places):
-        errors.extend(check_place(place, prefix=f"places[{i}]."))
+    for i, poi in enumerate(doc.points_of_interest):
+        errors.extend(check_point_of_interest(poi, prefix=f"pointsOfInterest[{i}]."))
 
     return errors
 
@@ -542,13 +544,13 @@ def validate_travel_write(data: Any, frame: TripFrame) -> TravelDoc:
     return travel
 
 
-def validate_place_write(data: Any) -> PlaceDoc:
+def validate_point_of_interest_write(data: Any) -> PointOfInterestDoc:
     """Parse and fully validate an edited point of interest, or raise TripDocumentError."""
-    place = parse_part(PlaceDoc, data)
-    errors = check_place(place)
+    poi = parse_part(PointOfInterestDoc, data)
+    errors = check_point_of_interest(poi)
     if errors:
         raise TripDocumentError(errors)
-    return place
+    return poi
 
 
 def validate_day_date(day_date: dt.date, start: dt.date, end: dt.date) -> None:
