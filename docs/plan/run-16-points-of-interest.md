@@ -181,6 +181,28 @@ the dev database.
   short in code (the map's marker kind).
 - **Deploy:** run `make migrate` (start.sh does it on Fly).
 
+### Phase 69 (2026-10-06): points of interest on the map
+
+`make verify` green (260 API + 451 UI tests). E2E: a Google result saved
+as a point of interest, then edited and deleted (screenshots `16a`, `16b`).
+- `features/pointsOfInterest/`: the categories with their icons, the guess
+  from Google's types (`categoryFor`: market, then food, then shop, then
+  sight), the form's values, and `PointOfInterestForm` (where, name, kind,
+  link, notes). `PlaceField` takes `showClock={false}`: a point of interest
+  has no times.
+- **Pins:** green (`--series-3`) with the category's icon. Marker kind
+  `poi`, on no day, so picking a day hides them.
+- **Adding:** "Point of interest" is the first action for a shop, market,
+  café or sight, and under "More…" for anything else.
+- **Info window:** photo, name, "Point of interest · Shop", address, notes,
+  Directions; Edit and Delete (asks first) for the owner and editors.
+  After an edit the window closes, since it would show the old details.
+- **Offline**, the map tab's list of places has them after the trip's
+  days. Fixed with it: the "last" sort used `"~"`, which `localeCompare`
+  puts before digits.
+- The sample trip has no points of interest; the e2e adds one and removes
+  it.
+
 ## Open questions (Run stage 16)
 
 - **Q-P1. Categories for points of interest?** Recommendation: **yes, a

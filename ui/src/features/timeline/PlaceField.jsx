@@ -20,8 +20,10 @@ const DEBOUNCE_MS = 250;
  * can be typed by hand; times then use `fallbackZone`.
  *
  * `value` is a location ({ name, address?, lat?, lng?, placeId?, ... }) or null.
+ * `showClock={false}`: no clock line, for something with no times (a point
+ * of interest).
  */
-export function PlaceField({ label, value, onChange, error, near, fallbackZone, hint }) {
+export function PlaceField({ label, value, onChange, error, near, fallbackZone, hint, showClock = true }) {
   const ids = useId();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -29,7 +31,7 @@ export function PlaceField({ label, value, onChange, error, near, fallbackZone, 
   const [unavailable, setUnavailable] = useState(false);
   const [open, setOpen] = useState(false);
   const searchRef = useRef(null); // one search session per field
-  const zone = usePlaceZone(value);
+  const zone = usePlaceZone(showClock ? value : null);
 
   // The bias point by value, so a parent re-render doesn't re-run the search.
   const nearLat = near?.lat;
@@ -110,14 +112,16 @@ export function PlaceField({ label, value, onChange, error, near, fallbackZone, 
           </div>
           {value.address && <p className="pl-6 text-xs text-muted-foreground">{value.address}</p>}
           {located && <MiniMap lat={value.lat} lng={value.lng} className="h-28 w-full" />}
-          <p className="flex items-center gap-1.5 pl-6 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
-            {located
-              ? zone
-                ? `Times here are ${zoneLabel(zone)} time`
-                : "Working out the local time…"
-              : `Not on the map, so times use ${zoneLabel(fallbackZone)} time`}
-          </p>
+          {showClock && (
+            <p className="flex items-center gap-1.5 pl-6 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {located
+                ? zone
+                  ? `Times here are ${zoneLabel(zone)} time`
+                  : "Working out the local time…"
+                : `Not on the map, so times use ${zoneLabel(fallbackZone)} time`}
+            </p>
+          )}
         </div>
         {error && (
           <p id={errorId} className="text-xs text-destructive">

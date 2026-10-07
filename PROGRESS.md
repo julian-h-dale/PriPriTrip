@@ -15,6 +15,10 @@
     the trip document and the read). Named "point of interest" throughout,
     never "place" (Julian). `make verify` green (260 API + 433 UI).
   - Julian: go ahead with Phases 69–71 without stopping between them.
+  - **Phase 69 ✅:** points of interest on the map (pins, "Point of
+    interest" from a search result, the form, Edit and Delete in the info
+    window). `make verify` green (260 API + 451 UI). The dev database was
+    migrated (`make migrate`) for the e2e.
 - **Run stage 15 ✅ (2026-10-06)** on `details-page`: New memory (blue
   icon) in the top bar in Share's place; Share trip in the drawer after
   Documents; Currency first in Trip tools; Journal's and Today's New memory

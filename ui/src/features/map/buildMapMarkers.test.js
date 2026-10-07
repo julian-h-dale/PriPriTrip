@@ -92,4 +92,20 @@ describe("a travel leg's days", () => {
     expect(to.legDays).toEqual(["2026-05-10", "2026-05-11"]);
     expect([from.day, to.day]).toEqual(["2026-05-10", "2026-05-11"]);
   });
+
+  it("a point of interest is a marker on no day, with its category and notes", () => {
+    const trip = readTrip();
+    trip.pointsOfInterest = [
+      { id: "p1", name: "Loeb", category: "shop", notes: "Sale", location: { name: "Loeb", lat: 46.948, lng: 7.44, address: "Spitalgasse 47" } },
+    ];
+    expect(buildMapMarkers(trip).find((m) => m.id === "poi-p1")).toMatchObject({
+      kind: "poi",
+      entryId: "p1",
+      title: "Loeb",
+      category: "shop",
+      notes: "Sale",
+      address: "Spitalgasse 47",
+      day: null,
+    });
+  });
 });

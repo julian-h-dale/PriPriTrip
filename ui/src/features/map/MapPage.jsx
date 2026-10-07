@@ -11,21 +11,28 @@ import { MapInfoContent } from "@/features/map/MapInfoContent";
 import { filterMarkers, viewFor } from "@/features/map/mapFilters";
 import { colorFor, directionsUrl, glyphSrcFor, iconFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import { isArea } from "@/features/map/placeActions";
+import { PointOfInterestForm } from "@/features/pointsOfInterest/PointOfInterestForm";
+import { POI_CATEGORY_LABEL } from "@/features/pointsOfInterest/pointsOfInterest";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { stayCoverage } from "@/features/timeline/coverageView";
 import { runEdit } from "@/features/timeline/runEdit";
 import { StayForm } from "@/features/timeline/StayForm";
 import {
   createItem,
+  createPointOfInterest,
   createStay,
   createTravel,
+  deletePointOfInterest,
   fetchTrip,
+  replacePointOfInterest,
   selectIsViewer,
   selectReadOnly,
 } from "@/features/timeline/timelineSlice";
 import { TravelForm } from "@/features/timeline/TravelForm";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
+import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
+import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { getClientConfig } from "@/shared/services/clientConfig";
 import { loadGoogleMapsLibrary } from "@/shared/services/googleMapsLoader";
 import { permissionState, watchPosition } from "@/shared/services/geolocation";
@@ -47,7 +54,8 @@ function MissingConfig({ message }) {
  * Google Maps app, which has its own downloadable offline areas.
  */
 function OfflinePlaces({ trip, markers }) {
-  const days = [...markers].sort((a, b) => a.day.localeCompare(b.day));
+  // By day; points of interest (on no day) last.
+  const days = [...markers].sort((a, b) => (a.day === null) - (b.day === null) || (a.day ?? "").localeCompare(b.day ?? ""));
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -64,7 +72,7 @@ function OfflinePlaces({ trip, markers }) {
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm">{m.title}</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDayHeading(m.day)}
+                    {m.day ? formatDayHeading(m.day) : `Point of interest · ${POI_CATEGORY_LABEL[m.category] ?? "Other"}`}
                     {m.city ? ` · ${m.city}` : ""}
                   </span>
                 </div>
@@ -100,6 +108,7 @@ const ACTION_FORM = {
   stay: { kind: "stay" },
   travelFrom: { kind: "travel", end: "from" },
   travelTo: { kind: "travel", end: "to" },
+  poi: { kind: "poi" },
 };
 
 /**
@@ -150,7 +159,11 @@ function TripMap({ trip }) {
   // The picked Google place on the map: null | { place, types }
   const [result, setResult] = useState(null);
   // null | { kind: "activity" | "stay" | "travel", prefill, date }
+  //      | { kind: "poi", prefill } (new) | { kind: "poi", poi } (edit)
   const [form, setForm] = useState(null);
+  // The point of interest waiting for "Delete?" to be confirmed, or null.
+  const [deletingPoi, setDeletingPoi] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   // The trip's places, plus journal memories that carry a location.
   const journal = useSelector((s) => (s.journal?.tripId === trip.id ? s.journal.items : null));
   const markers = useMemo(
@@ -405,6 +418,10 @@ function TripMap({ trip }) {
   function startAdd(action) {
     if (!info || info.kind !== "place") return;
     const { kind, end } = ACTION_FORM[action];
+    if (kind === "poi") {
+      setForm({ kind, prefill: { place: info.place, types: info.types } });
+      return;
+    }
     setForm({
       kind,
       prefill: { place: info.place, end },
@@ -416,8 +433,45 @@ function TripMap({ trip }) {
     });
   }
 
+  /** The point of interest a marker stands for (the live record, for its version). */
+  const poiFor = (marker) => (trip.pointsOfInterest ?? []).find((p) => p.id === marker.entryId) ?? null;
+
+  function closeInfo() {
+    infoWindowRef.current?.close();
+    setInfo(null);
+  }
+
+  function editPoi(marker) {
+    const poi = poiFor(marker);
+    if (poi) setForm({ kind: "poi", poi });
+  }
+
+  async function confirmDeletePoi() {
+    setDeleteBusy(true);
+    const outcome = await runEdit(
+      dispatch,
+      deletePointOfInterest({ tripId: trip.id, poiId: deletingPoi.id, version: deletingPoi.version })
+    );
+    setDeleteBusy(false);
+    setDeletingPoi(null);
+    if (outcome.ok || outcome.reloaded) closeInfo();
+  }
+
   async function save(payload) {
     const tripId = trip.id;
+    if (form.kind === "poi") {
+      const thunk = form.poi
+        ? replacePointOfInterest({ tripId, poiId: form.poi.id, poi: payload, version: form.poi.version })
+        : createPointOfInterest({ tripId, poi: payload });
+      const outcome = await runEdit(dispatch, thunk);
+      if (outcome.ok) {
+        // New: it's a point of interest's own pin now. Edited: its info
+        // window would show the old details, so it closes.
+        if (form.poi) closeInfo();
+        else clearResult();
+      }
+      return outcome;
+    }
     const thunk =
       form.kind === "stay"
         ? createStay({ tripId, stay: payload })
@@ -474,13 +528,46 @@ function TripMap({ trip }) {
       )}
       {info &&
         createPortal(
-          <MapInfoContent info={info} tripId={trip.id} onAction={startAdd} readOnly={readOnly} canAdd={!isViewer} />,
+          <MapInfoContent
+            info={info}
+            tripId={trip.id}
+            onAction={startAdd}
+            onEditPoi={editPoi}
+            onDeletePoi={(marker) => setDeletingPoi(poiFor(marker))}
+            readOnly={readOnly}
+            canAdd={!isViewer}
+          />,
           infoNode
         )}
 
       {form?.kind === "activity" && <ActivityForm {...formProps} item={null} />}
       {form?.kind === "stay" && <StayForm {...formProps} stay={null} />}
       {form?.kind === "travel" && <TravelForm {...formProps} travel={null} />}
+      {form?.kind === "poi" && (
+        <PointOfInterestForm
+          open
+          onClose={() => setForm(null)}
+          trip={trip}
+          poi={form.poi ?? null}
+          prefill={form.prefill}
+          onSave={save}
+        />
+      )}
+      <Dialog
+        open={deletingPoi !== null}
+        onClose={() => !deleteBusy && setDeletingPoi(null)}
+        title="Delete point of interest?"
+        description={deletingPoi ? `${deletingPoi.name} will be removed from the map for everyone on the trip.` : undefined}
+      >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeletingPoi(null)} disabled={deleteBusy}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={confirmDeletePoi} disabled={deleteBusy}>
+            {deleteBusy ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { entryPath } from "@/features/entry/entries";
 import { ACTION_LABEL, placeActions } from "@/features/map/placeActions";
+import { POI_CATEGORY_LABEL } from "@/features/pointsOfInterest/pointsOfInterest";
 import { directionsUrl } from "@/features/map/mapStyle";
 import { formatDayHeading } from "@/shared/utils/time";
 
@@ -44,14 +45,12 @@ function TripMarkerInfo({ marker, tripId }) {
   );
 }
 
+const INFO_BUTTON =
+  "rounded-[4px] border border-[#1a73e8] px-2 py-1 text-[13px] font-medium text-[#1a73e8] hover:bg-[#e8f0fe] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] disabled:opacity-50";
+
 function ActionButton({ action, onAction, disabled }) {
   return (
-    <button
-      type="button"
-      onClick={() => onAction(action)}
-      disabled={disabled}
-      className="rounded-[4px] border border-[#1a73e8] px-2 py-1 text-[13px] font-medium text-[#1a73e8] hover:bg-[#e8f0fe] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8] disabled:opacity-50"
-    >
+    <button type="button" onClick={() => onAction(action)} disabled={disabled} className={INFO_BUTTON}>
       {ACTION_LABEL[action]}
     </button>
   );
@@ -93,6 +92,38 @@ function NewPlaceInfo({ place, types, onAction, readOnly, canAdd }) {
   );
 }
 
+/**
+ * A point of interest: photo, name, its kind, address and notes, then
+ * Directions, and for editors Edit and Delete (greyed while read-only:
+ * offline). It has no day, so no day links.
+ */
+function PointOfInterestInfo({ marker, onEdit, onDelete, readOnly, canEdit }) {
+  return (
+    <>
+      <Photo src={marker.imgRef} />
+      <div className={`font-semibold ${TEXT}`}>{marker.title}</div>
+      <div className={`text-xs ${MUTED}`}>Point of interest · {POI_CATEGORY_LABEL[marker.category] ?? "Other"}</div>
+      {marker.address && <div className={`text-xs ${MUTED}`}>{marker.address}</div>}
+      {marker.notes && (
+        <p className={`mt-1 line-clamp-4 whitespace-pre-wrap break-words text-xs ${TEXT}`}>{marker.notes}</p>
+      )}
+      <a href={directionsUrl(marker)} target="_blank" rel="noopener noreferrer" className={`mt-1.5 block ${LINK}`}>
+        Directions
+      </a>
+      {canEdit && (
+        <div className="mt-2 flex gap-1.5">
+          <button type="button" onClick={onEdit} disabled={readOnly} className={INFO_BUTTON}>
+            Edit
+          </button>
+          <button type="button" onClick={onDelete} disabled={readOnly} className={INFO_BUTTON}>
+            Delete
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 /** A journal memory: its words, when and by whom, and a way to the journal. */
 function MemoryInfo({ marker, tripId }) {
   return (
@@ -116,12 +147,22 @@ function MemoryInfo({ marker, tripId }) {
  * popup) so its buttons and links are ordinary React handlers.
  *
  * `info`: { kind: "trip", marker } | { kind: "place", place, types }
+ * (a Google place, not on the trip). `canAdd`: may add and edit (not a
+ * viewer); `onEditPoi` / `onDeletePoi(marker)` for a point of interest.
  */
-export function MapInfoContent({ info, tripId, onAction, readOnly, canAdd = true }) {
+export function MapInfoContent({ info, tripId, onAction, onEditPoi, onDeletePoi, readOnly, canAdd = true }) {
   return (
     <div className="max-w-[220px] text-sm">
       {info.kind === "trip" && info.marker.kind === "memory" ? (
         <MemoryInfo marker={info.marker} tripId={tripId} />
+      ) : info.kind === "trip" && info.marker.kind === "poi" ? (
+        <PointOfInterestInfo
+          marker={info.marker}
+          onEdit={() => onEditPoi?.(info.marker)}
+          onDelete={() => onDeletePoi?.(info.marker)}
+          readOnly={readOnly}
+          canEdit={canAdd}
+        />
       ) : info.kind === "trip" ? (
         <TripMarkerInfo marker={info.marker} tripId={tripId} />
       ) : (

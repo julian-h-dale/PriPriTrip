@@ -392,7 +392,7 @@ test("map search and filters", async ({ page }) => {
 });
 
 /** Delete what a test added through the UI, so the dev trip is left as it was. */
-async function deleteAdded(page, tripId, { itemTitle, stayName }) {
+async function deleteAdded(page, tripId, { itemTitle, stayName, poiName }) {
   const token = await page.evaluate(() => localStorage.getItem("auth_token"));
   const api = API_URL;
   const headers = { Authorization: `Bearer ${token}` };
@@ -407,6 +407,11 @@ async function deleteAdded(page, tripId, { itemTitle, stayName }) {
   for (const stay of trip.stays.filter((s) => s.name === stayName)) {
     await page.request.delete(`${api}/trips/${tripId}/stays/${stay.id}`, {
       headers: { ...headers, "If-Match": `"${stay.version}"` },
+    });
+  }
+  for (const poi of (trip.pointsOfInterest ?? []).filter((p) => p.name === poiName)) {
+    await page.request.delete(`${api}/trips/${tripId}/points-of-interest/${poi.id}`, {
+      headers: { ...headers, "If-Match": `"${poi.version}"` },
     });
   }
 }
@@ -467,6 +472,60 @@ test("map: add a Google place to the trip (activity and stay)", async ({ page })
     await expect(pins).toHaveCount(12);
   } finally {
     await deleteAdded(page, tripId, { itemTitle: addedItem, stayName: addedStay });
+  }
+});
+
+test("map: save a Google place as a point of interest, then edit and delete it", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  const tripId = page.url().split("/trips/")[1];
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+  const pins = page.locator("gmp-advanced-marker");
+  await expect(pins).toHaveCount(10);
+  const search = page.getByRole("combobox", { name: "Search trip or places" });
+  const info = page.locator(".gm-style-iw");
+  let added = null;
+
+  try {
+    // A department store: "Point of interest" comes first.
+    await search.fill("Loeb Bern");
+    await page.getByRole("option", { name: /Loeb/ }).first().click();
+    await expect(info).toContainText("Not in this trip");
+    // Offered straight away, not under More…
+    await expect(info.getByRole("button", { name: "Point of interest" })).toBeVisible();
+    await info.getByRole("button", { name: "Point of interest" }).click();
+
+    const form = page.getByRole("dialog", { name: "Add point of interest" });
+    added = await form.getByLabel("Name").inputValue();
+    expect(added).toMatch(/Loeb/);
+    await expect(form.getByLabel("Kind")).toHaveValue("shop");
+    await form.getByLabel("Notes").fill("Rooftop café on the top floor.");
+    await page.screenshot({ path: screenshotPath("16a-map-add-point-of-interest") });
+    await form.getByRole("button", { name: "Save" }).click();
+    await expect(form).toBeHidden();
+    await expect(pins).toHaveCount(11); // its own pin; the search result's is gone
+
+    // Its info window: the kind and the notes, then Edit and Delete.
+    await page.locator(`gmp-advanced-marker[title="${added}"]`).click();
+    await expect(info).toContainText("Point of interest · Shop");
+    await expect(info).toContainText("Rooftop café on the top floor.");
+    await page.waitForTimeout(1000);
+    await page.screenshot({ path: screenshotPath("16b-map-point-of-interest-info") });
+    await info.getByRole("button", { name: "Edit" }).click();
+    const edit = page.getByRole("dialog", { name: "Edit point of interest" });
+    await edit.getByLabel("Kind").selectOption("food");
+    await edit.getByRole("button", { name: "Save" }).click();
+    await expect(edit).toBeHidden();
+
+    await page.locator(`gmp-advanced-marker[title="${added}"]`).click();
+    await expect(info).toContainText("Point of interest · Food & drink");
+    await info.getByRole("button", { name: "Delete" }).click();
+    const confirm = page.getByRole("dialog", { name: "Delete point of interest?" });
+    await confirm.getByRole("button", { name: "Delete" }).click();
+    await expect(pins).toHaveCount(10);
+    added = null;
+  } finally {
+    if (added) await deleteAdded(page, tripId, { poiName: added });
   }
 });
 

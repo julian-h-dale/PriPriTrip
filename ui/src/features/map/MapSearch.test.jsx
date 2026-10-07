@@ -387,3 +387,148 @@ describe("memories and the blue dot on the map", () => {
   });
 });
 
+
+describe("points of interest on the map", () => {
+  const MARKET = {
+    id: "poi-1",
+    name: "Bundesplatz market",
+    category: "market",
+    location: { name: "Bundesplatz", address: "Bundesplatz, 3011 Bern", lat: 46.9467, lng: 7.4442 },
+    notes: "Tuesday and Saturday mornings.",
+    version: 1,
+  };
+  const withPoi = (extra = {}) => ({ ...structuredClone(TRIP), pointsOfInterest: [MARKET], ...extra });
+  function serveTrip(trip) {
+    const base = apiClient.get.getMockImplementation();
+    apiClient.get.mockImplementation(async (url) => (url === "/trips/trip-1" ? { data: trip } : base(url)));
+  }
+  const MARKET_GLYPH = glyphSrcFor({ kind: "poi", category: "market" });
+  const poiPin = () => fake.markers.find((m) => m.map !== null && m.content?.glyphSrc === MARKET_GLYPH);
+
+  it("a café from search is a point of interest first; the form guesses its kind and saves it", async () => {
+    const user = userEvent.setup();
+    const saved = { ...structuredClone(TRIP), pointsOfInterest: [{ ...MARKET, id: "poi-2", name: CAFE.name, category: "food" }] };
+    apiClient.post.mockResolvedValue({ data: saved });
+    renderMap();
+    const list = await search("Café");
+    await user.click(within(await within(list).findByRole("option", { name: /Café Fédéral/ })).getByRole("button"));
+    const actions = (await screen.findByText("Not in this trip")).parentElement;
+    const names = within(actions).getAllByRole("button").map((b) => b.textContent);
+    expect(names.slice(0, 2)).toEqual(["Point of interest", "Add activity"]);
+
+    await user.click(screen.getByRole("button", { name: "Point of interest" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add point of interest" });
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("Café Fédéral");
+    expect(within(dialog).getByLabelText("Kind")).toHaveValue("food");
+    expect(within(dialog).queryByText(/Times here are/)).not.toBeInTheDocument(); // no clock: it has no times
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/trips/trip-1/points-of-interest",
+      expect.objectContaining({
+        name: "Café Fédéral",
+        category: "food",
+        location: expect.objectContaining({ placeId: "cafe-1", lat: CAFE.lat, lng: CAFE.lng }),
+      }),
+      expect.anything()
+    );
+    expect(apiClient.post.mock.calls[0][1].location).not.toHaveProperty("types");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
+    await waitFor(() => expect(fake.markers.some((m) => m.map !== null && m.content?.glyphSrc === glyphSrcFor({ kind: "poi", category: "food" }))).toBe(true));
+  });
+
+  it("shows its own pin; its info window has its kind and notes, and Edit saves with its version", async () => {
+    const user = userEvent.setup();
+    serveTrip(withPoi());
+    apiClient.put.mockResolvedValue({ data: withPoi({ pointsOfInterest: [{ ...MARKET, notes: "Saturdays", version: 2 }] }) });
+    renderMap();
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+    expect(poiPin().content.background).toBe("#199f70");
+    act(() => poiPin().listeners.click());
+    expect(await screen.findByText("Point of interest · Market")).toBeInTheDocument();
+    expect(screen.getByText("Tuesday and Saturday mornings.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "View day" })).not.toBeInTheDocument(); // on no day
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit point of interest" });
+    expect(within(dialog).getByLabelText("Kind")).toHaveValue("market");
+    await user.clear(within(dialog).getByLabelText("Notes"));
+    await user.type(within(dialog).getByLabelText("Notes"), "Saturdays");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    const [url, body, config] = apiClient.put.mock.calls[0];
+    expect(url).toBe("/trips/trip-1/points-of-interest/poi-1");
+    expect(body).toMatchObject({ name: "Bundesplatz market", category: "market", notes: "Saturdays" });
+    expect(config.headers["If-Match"]).toBe('"1"');
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("Delete asks first, then deletes it", async () => {
+    const user = userEvent.setup();
+    serveTrip(withPoi());
+    apiClient.delete.mockResolvedValue({ data: structuredClone(TRIP) });
+    renderMap();
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+    act(() => poiPin().listeners.click());
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    const confirm = screen.getByRole("dialog", { name: "Delete point of interest?" });
+    expect(confirm).toHaveTextContent("Bundesplatz market will be removed from the map for everyone");
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/points-of-interest/poi-1", expect.objectContaining({ headers: { "If-Match": '"1"' } }));
+    await waitFor(() => expect(poiPin()).toBeFalsy());
+  });
+
+  it("someone else's change (409): the form closes, a warning says who, the trip reloads", async () => {
+    const user = userEvent.setup();
+    serveTrip(withPoi());
+    apiClient.put.mockRejectedValue({ response: { status: 409, data: { detail: { message: "Changed", version: 2, updatedByName: "PriPri" } } } });
+    const store = renderMap();
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+    act(() => poiPin().listeners.click());
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(JSON.stringify(store.getState().notification)).toContain("PriPri changed this");
+  });
+
+  it("a viewer sees it but gets no Edit or Delete", async () => {
+    serveTrip(withPoi({ role: "viewer" }));
+    renderMap();
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+    act(() => poiPin().listeners.click());
+    expect(await screen.findByText("Point of interest · Market")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+  });
+
+  it("the map's search finds it, under On this trip; picking it opens its info window", async () => {
+    const user = userEvent.setup();
+    serveTrip(withPoi());
+    renderMap();
+    const list = await search("Bundesplatz");
+    expect(await within(list).findByText("On this trip")).toBeInTheDocument();
+    await user.click(within(within(list).getByRole("option", { name: /Bundesplatz market/ })).getByRole("button"));
+    expect(await screen.findByText("Point of interest · Market")).toBeInTheDocument();
+  });
+
+  it("on no day: picking a day hides it", async () => {
+    const user = userEvent.setup();
+    serveTrip(withPoi());
+    renderMap();
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Pick a day"), { target: { value: "2026-05-11" } });
+    await waitFor(() => expect(poiPin()).toBeFalsy());
+    await user.click(screen.getByRole("button", { name: /Showing .* only; clear/ }));
+    await waitFor(() => expect(poiPin()).toBeTruthy());
+  });
+
+  it("offline, the list of places has it, after the trip's days", async () => {
+    serveTrip(withPoi());
+    renderMap({ online: false });
+    const list = await screen.findByRole("list", { name: "Places on this trip" });
+    await within(list).findByText("Bundesplatz market"); // after the phone's saved copy, the trip as read
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows.at(-1)).toHaveTextContent("Bundesplatz market");
+    expect(rows.at(-1)).toHaveTextContent("Point of interest · Market");
+  });
+});
