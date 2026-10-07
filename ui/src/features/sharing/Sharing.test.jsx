@@ -97,6 +97,10 @@ describe("a viewer", () => {
     renderAt(`/trips/${TRIP_ID}`);
     await screen.findByRole("heading", { name: base.name, level: 1 });
     expect(screen.queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    // Not in the drawer either.
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(within(screen.getByRole("region", { name: "Trip tools" })).queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close menu" }));
     await user.click(screen.getByRole("button", { name: "Stays" }));
     await user.click(document.querySelector("#day-2026-05-11 button"));
     await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
@@ -120,6 +124,13 @@ describe("an editor", () => {
   });
 });
 
+/** Share is in the drawer (☰), after Documents. */
+async function openShare(user) {
+  await user.click(await screen.findByRole("button", { name: "Open menu" }));
+  const tools = screen.getByRole("region", { name: "Trip tools" });
+  await user.click(await within(tools).findByRole("button", { name: "Share trip" }));
+}
+
 describe("the owner", () => {
   function ownerApi(members) {
     apiClient.get.mockImplementation(async (url) =>
@@ -140,7 +151,7 @@ describe("the owner", () => {
       { userId: "v2", email: "friend@example.com", role: "viewer", joinedAt: "2026-10-03T01:00:00Z" },
     ]);
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const dialog = screen.getByRole("dialog", { name: "Share trip" });
     const view = within(dialog).getByRole("region", { name: "Can view" });
     expect(await within(view).findByText(VIEW_CODE)).toBeInTheDocument();
@@ -163,7 +174,7 @@ describe("the owner", () => {
     ownerApi([]);
     apiClient.post.mockResolvedValue({ data: { code: "NEWcode_000000000000" } });
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const edit = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can edit" });
     await within(edit).findByText(EDIT_CODE);
 
@@ -180,7 +191,7 @@ describe("the owner", () => {
     ownerApi([]);
     apiClient.post.mockResolvedValue({ data: { code: "NEWview_00000000000" } });
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const view = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can view" });
     await within(view).findByText(VIEW_CODE);
     await user.click(within(view).getByRole("button", { name: "New view code" }));
@@ -194,7 +205,7 @@ describe("the owner", () => {
     ownerApi([{ userId: "v1", email: "pripri@example.com", role: "viewer", joinedAt: "2026-10-03T00:00:00Z" }]);
     apiClient.delete.mockResolvedValue({});
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const dialog = screen.getByRole("dialog", { name: "Share trip" });
     await user.click(await within(dialog).findByRole("button", { name: "Remove pripri@example.com" }));
     expect(apiClient.delete).not.toHaveBeenCalled();

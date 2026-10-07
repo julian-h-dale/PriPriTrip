@@ -3,13 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { BedDouble, ChevronRight, DoorOpen, Info, Navigation } from "lucide-react";
 import { nextUp, referenceDay, tonight, untilLabel } from "@/features/today/todayView";
-import { MemoryDialog } from "@/features/journal/MemoryDialog";
-import { NewMemoryButton } from "@/features/journal/JournalPage";
-import { canWriteMemories } from "@/features/journal/journalSlice";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { dayCities } from "@/features/timeline/dayCities";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { toC, toF } from "@/features/weather/units";
+import { weatherIcon } from "@/features/weather/weatherIcon";
+import { fetchWeather } from "@/features/weather/weatherSlice";
 import { entryPath, entryPathFor } from "@/features/entry/entries";
 import { ConfirmationNumber } from "@/features/timeline/EntryDetails";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
@@ -20,6 +20,33 @@ import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { directionsUrl } from "@/shared/utils/mapsLinks";
 import { daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
+
+/**
+ * The temperature right now at today's place (before the trip, the first
+ * day's), from the trip's weather: a link to the Weather page. Nothing when
+ * there's none (weather not set up, the trip is over, not loaded yet).
+ */
+function WeatherNow({ tripId }) {
+  const dispatch = useDispatch();
+  const online = useSelector((s) => s.network?.online ?? true);
+  const weather = useSelector((s) => (s.weather?.tripId === tripId ? s.weather.data : null));
+  useEffect(() => {
+    dispatch(fetchWeather(tripId));
+  }, [dispatch, tripId, online]);
+  const now = weather?.configured ? weather.today : null;
+  if (now?.temp == null) return null;
+  const Icon = weatherIcon(now.icon);
+  return (
+    <Link
+      to={`/trips/${tripId}/weather`}
+      aria-label={`Weather in ${now.place}: ${toF(now.temp)}°F, ${toC(now.temp)}°C`}
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-lg font-semibold hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+      {toF(now.temp)}°
+    </Link>
+  );
+}
 
 function SectionTitle({ children }) {
   return <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{children}</h2>;
@@ -144,7 +171,6 @@ function TodayView({ trip }) {
   const index = rows.findIndex((r) => r.date === ref.date);
   const row = rows[index];
   const tomorrow = rows[index + 1] ?? null;
-  const [writing, setWriting] = useState(false);
   const dayNumber = daysBetween(trip.startDate, ref.date) + 1;
   const dayCount = daysBetween(trip.startDate, trip.endDate) + 1;
 
@@ -154,8 +180,7 @@ function TodayView({ trip }) {
       <header className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">{ref.active ? "Today" : "Day 1 preview"}</h1>
-          {/* Spur of the moment: one tap to write it down. */}
-          {canWriteMemories(trip) && <NewMemoryButton onClick={() => setWriting(true)} />}
+          <WeatherNow tripId={trip.id} />
         </div>
         <p className="text-sm text-muted-foreground">
           {formatDayHeading(ref.date)} · Day {dayNumber} of {dayCount}
@@ -190,8 +215,6 @@ function TodayView({ trip }) {
           <p className="text-sm text-muted-foreground">Nothing planned.</p>
         )}
       </section>
-
-      {writing && <MemoryDialog open onClose={() => setWriting(false)} tripId={trip.id} />}
 
       {tomorrow && (
         <section aria-label="Tomorrow">

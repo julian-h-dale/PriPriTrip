@@ -59,6 +59,31 @@ test("trip search opens a result's own page", async ({ page }) => {
   await expect(page.getByRole("article", { name: "Chicago → Zürich" })).toBeVisible();
 });
 
+test("top bar: New memory (blue) in place of Share; the drawer's Trip tools; Today's temperature", async ({ page }) => {
+  // The sample trip is over, so the server has no weather "now": stand one in.
+  await page.route(/\/trips\/[^/]+\/weather$/, (route) =>
+    route.fulfill({
+      json: { configured: true, today: { place: "Bern", temp: 17.4, icon: "10d", condition: "Rain" }, days: [], alerts: [] },
+    })
+  );
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("link", { name: "Today" }).click();
+  await expect(page.getByRole("button", { name: "New memory" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Share trip" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Weather in Bern: 63°F, 17°C" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("05-today-top-bar") });
+
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const tools = page.getByRole("region", { name: "Trip tools" });
+  await expect(tools.getByRole("link").first()).toHaveText("Currency");
+  await expect(tools.getByRole("button", { name: "Share trip" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("05a-drawer-trip-tools") });
+  await tools.getByRole("button", { name: "Share trip" }).click();
+  await expect(page.getByRole("dialog", { name: "Share trip" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("05b-share-from-drawer") });
+});
+
 test("trip timeline", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();
@@ -436,7 +461,9 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
     const owner = await ownerContext.newPage();
     await login(owner);
     await (await tripLink(owner, SAMPLE_TRIP)).click();
-    await owner.getByRole("button", { name: "Share trip" }).click();
+    // Share is in the drawer, after Documents.
+    await owner.getByRole("button", { name: "Open menu" }).click();
+    await owner.getByRole("region", { name: "Trip tools" }).getByRole("button", { name: "Share trip" }).click();
     const share = owner.getByRole("dialog", { name: "Share trip" });
     await expect(share.getByText(SEED_VIEWER.email)).toBeVisible();
     await owner.screenshot({ path: screenshotPath("21-share-dialog"), fullPage: true });
@@ -468,7 +495,9 @@ test("sharing: someone joins with the edit code and can edit", async ({ browser 
     await login(owner);
     await (await tripLink(owner, SAMPLE_TRIP)).click();
     tripId = new URL(owner.url()).pathname.split("/")[2];
-    await owner.getByRole("button", { name: "Share trip" }).click();
+    // Share is in the drawer, after Documents.
+    await owner.getByRole("button", { name: "Open menu" }).click();
+    await owner.getByRole("region", { name: "Trip tools" }).getByRole("button", { name: "Share trip" }).click();
     const canEdit = owner.getByRole("dialog", { name: "Share trip" }).getByRole("region", { name: "Can edit" });
     const code = (await canEdit.locator(".font-mono").textContent()).trim();
     expect(code).toHaveLength(20);
