@@ -210,6 +210,7 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
     trip.role = role
     if role == "viewer":
         _without_booking_refs(trip)
+        _without_private_places(trip)
     return trip
 
 
@@ -223,6 +224,36 @@ def _without_booking_refs(trip: TripRead) -> None:
     ]
     for entry in entries:
         entry.confirmation_number = None
+
+
+# What puts a place on a map (or finds it): left off for viewers.
+_PLACE_DETAIL = {
+    "address": None,
+    "lat": None,
+    "lng": None,
+    "url": None,
+    "place_id": None,
+    "img_ref": None,
+}
+
+
+def _name_and_city(loc: LocationDoc | None) -> LocationDoc | None:
+    return None if loc is None else loc.model_copy(update=_PLACE_DETAIL)
+
+
+def _without_private_places(trip: TripRead) -> None:
+    """Viewers see the trip's activities and public memories on the map, not
+    where the travellers sleep or go (Run stage 17): no points of interest,
+    and stays and legs keep only their places' names and cities (the
+    timeline's day rows), with no address, coordinates, photo or link. Done
+    here, so it isn't only hidden: the phone never gets them. Zones are
+    worked out before this, so every time still reads on its own clock."""
+    trip.points_of_interest = []
+    for stay in trip.stays:
+        stay.location = _name_and_city(stay.location)
+    for travel in trip.travels:
+        travel.from_location = _name_and_city(travel.from_location)  # type: ignore[assignment]
+        travel.to_location = _name_and_city(travel.to_location)
 
 
 def _doc_part(model: type[Any], read: Any) -> Any:

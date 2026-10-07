@@ -258,6 +258,18 @@ describe("Edit and Delete on an entry's page", () => {
     expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
   });
 
+  it("a viewer's stay, its place only by name (as the server sends it): no map, address or links", async () => {
+    const asViewer = structuredClone(TRIP);
+    asViewer.role = "viewer";
+    asViewer.stays = asViewer.stays.map((st) => ({ ...st, location: { name: st.location.name, city: st.location.city } }));
+    apiClient.get.mockResolvedValue({ data: asViewer });
+    renderAt("/trips/trip-1/stays/stay-0");
+    const page = await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
+    expect(within(page).queryByRole("link", { name: "Open map" })).not.toBeInTheDocument();
+    expect(within(page).queryByText(/Rathausgasse/)).not.toBeInTheDocument();
+    expect(page.querySelector("img")).toBeNull(); // no photo
+  });
+
   it("offline, the actions are there but greyed", async () => {
     renderAt("/trips/trip-1/stays/stay-0", { online: false });
     await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });

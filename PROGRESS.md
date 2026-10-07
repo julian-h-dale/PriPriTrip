@@ -6,7 +6,7 @@
 
 ## Status
 
-- **Run stage 17, in progress (2026-10-07)** on branch
+- **Run stage 17 ✅ (2026-10-07)** on branch
   **`roles-and-viewers`**, stacked on `points-of-interest` (Julian: stack
   them). Quiet offline (no "Network Error" toasts for reads), making
   someone an admin from the Admin page's table, what viewers see, and a
@@ -23,6 +23,12 @@
     Stays / Travel views, no Trip tools (`NotForViewers`); the server
     refuses them weather and packing. `make verify` green (267 API + 475
     UI).
+  - **Phase 75 ✅:** a viewer's map: the server sends viewers no points of
+    interest, and stays' and legs' places only by name and city, so only
+    activities and public memories are pins. `make verify` green (271 API
+    + 478 UI).
+  - **Run stage 17 is complete.** Not pushed or deployed. Deploying runs no
+    new migration.
 - **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.

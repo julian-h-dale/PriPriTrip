@@ -121,14 +121,13 @@ async def test_an_editor_adds_points_of_interest(client: AsyncClient, viewer: As
     assert len((await client.get(f"/trips/{trip['id']}")).json()["pointsOfInterest"]) == 1
 
 
-async def test_a_viewer_sees_points_of_interest_but_cannot_change_them(
+async def test_a_viewer_gets_none_and_cannot_change_them(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
+    """A viewer's map is activities and public memories only (Run stage 17)."""
     trip = await shared_trip(client, viewer)
     poi = await add(client, trip["id"])
-    assert (await viewer.get(f"/trips/{trip['id']}")).json()["pointsOfInterest"][0]["id"] == poi[
-        "id"
-    ]
+    assert (await viewer.get(f"/trips/{trip['id']}")).json()["pointsOfInterest"] == []
     url = f"/trips/{trip['id']}/points-of-interest"
     assert (await viewer.post(url, json=MARKET)).status_code == 403
     one = f"{url}/{poi['id']}"

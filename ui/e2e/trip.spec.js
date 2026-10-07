@@ -676,6 +676,20 @@ test("viewers: Timeline, Journal and Map only; no Stays/Travel views, no Trip to
     await viewer.goto(`/trips/${tripId}/weather`);
     await viewer.waitForURL(new RegExp(`/trips/${tripId}$`));
     await expect(viewer.getByTestId("toast-error")).toHaveCount(0);
+
+    // The map: the activities only (the owner sees 10 pins), and the Filter
+    // offers Everything and Journal.
+    await viewer.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+    const pins = viewer.locator("gmp-advanced-marker");
+    await expect(pins).toHaveCount(4);
+    await viewer.getByRole("button", { name: "Filter the map" }).click();
+    await expect(viewer.getByRole("menu", { name: "Show on the map" }).getByRole("menuitemradio")).toHaveText(["Everything", "Journal"]);
+    await viewer.keyboard.press("Escape");
+    await viewer.getByRole("button", { name: "List what's on the map" }).click();
+    const list = viewer.getByRole("dialog", { name: "On the map" });
+    await expect(list.getByRole("region")).toHaveCount(1); // Activities
+    await viewer.waitForTimeout(800);
+    await viewer.screenshot({ path: screenshotPath("23c-viewer-map-list") });
   } finally {
     if (tripId) {
       const token = await viewer.evaluate(() => localStorage.getItem("auth_token")).catch(() => null);

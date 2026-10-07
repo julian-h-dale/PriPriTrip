@@ -100,9 +100,10 @@ Option (a): for everyone who's a viewer, the map shows only activities
 and public memories. It's done on the server, so it isn't only hidden:
 a viewer's trip read (the same one the phone saves for offline) has:
 - **no points of interest at all** (they're on the map only);
-- **stays and travel legs without their places:** a stay still shows on
-  the timeline by name, with its dates, and a leg with its title and times,
-  but neither has an address, coordinates, photo or map.
+- **stays and travel legs with their places' names and cities only:** a
+  stay still shows on the timeline by name, with its dates and its city in
+  the day rows, and a leg with its title and times, but neither has an
+  address, coordinates, photo or map.
 - Activities and public memories keep their places, as now.
 
 So a viewer's map has activity pins and, with the Filter's Journal, public
@@ -220,6 +221,26 @@ leaves (screenshots `23a`, `23b`).
 - **Server:** weather and every packing route use `get_editable_trip`, so a
   viewer gets 403 (as for documents). Their tests now use an editor, plus a
   viewer-refused test for each.
+
+### Phase 75 (2026-10-07): the map for viewers
+
+`make verify` green (271 API + 478 UI tests). E2E: the viewer's map has the
+four activity pins (the owner's has 10), a Filter of Everything and
+Journal, and a List of just Activities (screenshot `23c`). All other e2e
+specs pass, except the sharing spec's viewer sign-in (the dev `pripri@`
+password, as before).
+- **Server** (`services/trips._without_private_places`, after the
+  confirmation numbers): a viewer's read and export have no points of
+  interest, and stays' and legs' places keep only their **name and city**.
+  The address, coordinates, place id, photo and link are gone. Deviation
+  from the plan's wording ("without their places"): name and city stay, so
+  the timeline's day rows ("Bern → Wengen") still read. Zones are worked out
+  first, so times stay on their clocks.
+- **App:** the Filter offers a viewer Everything and Journal. A stay's or
+  leg's page with a name-only place already shows no map, address, photo or
+  links. Pins come only from located places, so none show for them.
+
+**Run stage 17 is complete.**
 
 ## Open questions (Run stage 17)
 

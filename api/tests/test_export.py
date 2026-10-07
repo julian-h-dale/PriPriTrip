@@ -78,9 +78,11 @@ async def test_export_leaves_out_deleted_entries(client: AsyncClient) -> None:
     assert item["title"] not in titles
 
 
-async def test_a_viewer_can_export_without_confirmation_numbers(
+async def test_a_viewer_can_export_without_confirmation_numbers_or_private_places(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
+    """As their read: no confirmation numbers, and stays' and legs' places
+    only by name and city (Run stage 17)."""
     trip = await shared_trip(client, viewer)
     resp = await viewer.get(f"/trips/{trip['id']}/export")
     assert resp.status_code == 200
@@ -90,6 +92,17 @@ async def test_a_viewer_can_export_without_confirmation_numbers(
         i for d in expected["days"] for i in d.get("items", [])
     ]:
         entry.pop("confirmationNumber", None)
+
+    def name_and_city(loc: dict[str, Any]) -> dict[str, Any]:
+        return {k: v for k, v in loc.items() if k in ("name", "city")}
+
+    for stay in expected["stays"]:
+        if "location" in stay:
+            stay["location"] = name_and_city(stay["location"])
+    for travel in expected["travels"]:
+        for end in ("from", "to"):
+            if end in travel:
+                travel[end] = name_and_city(travel[end])
     assert resp.json() == expected
 
 

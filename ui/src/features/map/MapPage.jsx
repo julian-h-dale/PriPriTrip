@@ -525,6 +525,7 @@ function TripMap({ trip }) {
           locating={locating}
           date={date}
           onDateChange={setDate}
+          isViewer={isViewer}
         />
       )}
       {ready && <MarkerList markers={visibleMarkers} onSelect={selectMarker} />}

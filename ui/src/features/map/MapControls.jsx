@@ -64,11 +64,14 @@ const MAP_FILTERS = [
  * trip's places and points of interest), Stays, Points of interest or
  * Journal. While anything but Everything is on, the button is filled and
  * shows that filter's icon, so a filtered map is never a surprise.
+ * A viewer's map has only activities and public memories (the server sends
+ * them nothing else), so they get Everything and Journal.
  */
-function FilterMenu({ only, onOnlyChange }) {
+function FilterMenu({ only, onOnlyChange, isViewer = false }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
-  const active = MAP_FILTERS.find((f) => f.value === only) ?? MAP_FILTERS[0];
+  const filters = isViewer ? MAP_FILTERS.filter((f) => f.value === null || f.value === "memories") : MAP_FILTERS;
+  const active = filters.find((f) => f.value === only) ?? filters[0];
   const filtered = active.value !== null;
   const Icon = filtered ? active.icon : Filter;
 
@@ -109,7 +112,7 @@ function FilterMenu({ only, onOnlyChange }) {
           aria-label="Show on the map"
           className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-border bg-card py-1"
         >
-          {MAP_FILTERS.map((f) => {
+          {filters.map((f) => {
             const checked = f.value === active.value;
             const ItemIcon = f.icon;
             return (
@@ -169,6 +172,7 @@ export function MapControls({
   locating = false,
   date,
   onDateChange,
+  isViewer = false,
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -287,7 +291,7 @@ export function MapControls({
         )}
       </form>
 
-      <FilterMenu only={only} onOnlyChange={onOnlyChange} />
+      <FilterMenu only={only} onOnlyChange={onOnlyChange} isViewer={isViewer} />
 
       {date ? (
         <Button

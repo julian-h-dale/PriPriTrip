@@ -627,3 +627,31 @@ describe("the map's List button", () => {
     ]);
   });
 });
+
+describe("a viewer's map", () => {
+  it("the Filter offers Everything and Journal only", async () => {
+    const user = userEvent.setup();
+    const base = apiClient.get.getMockImplementation();
+    apiClient.get.mockImplementation(async (url) =>
+      url === "/trips/trip-1" ? { data: { ...structuredClone(TRIP), role: "viewer" } } : base(url)
+    );
+    renderMap();
+    await user.click(await screen.findByRole("button", { name: "Filter the map" }));
+    expect(within(screen.getByRole("menu")).getAllByRole("menuitemradio").map((i) => i.textContent)).toEqual(["Everything", "Journal"]);
+  });
+
+  it("stays and legs the server sent without places get no pins; activities keep theirs", async () => {
+    const asViewerReads = structuredClone(TRIP);
+    asViewerReads.role = "viewer";
+    asViewerReads.pointsOfInterest = [];
+    asViewerReads.stays = asViewerReads.stays.map((s) => ({ ...s, location: { name: s.location.name, city: s.location.city } }));
+    asViewerReads.travels = asViewerReads.travels.map((t) => ({ ...t, from: { name: t.from.name }, to: t.to && { name: t.to.name } }));
+    const base = apiClient.get.getMockImplementation();
+    apiClient.get.mockImplementation(async (url) => (url === "/trips/trip-1" ? { data: asViewerReads } : base(url)));
+    renderMap();
+    const activity = glyphSrcFor({ kind: "activity" });
+    await waitFor(() => expect(fake.markers.some((m) => m.map !== null && m.content?.glyphSrc === activity)).toBe(true));
+    const kinds = new Set(fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc).map((m) => m.content.glyphSrc));
+    expect(kinds).toEqual(new Set([activity]));
+  });
+});
