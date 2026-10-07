@@ -6,6 +6,11 @@
 
 ## Status
 
+- **Run stage 17, planned (2026-10-07):** quiet offline (no "Network
+  Error" toasts for reads), changing roles (trip and admin), what viewers
+  see, and an estimate for limiting viewers' map. Plan:
+  `docs/plan/run-17-offline-toasts-roles-viewers.md`. **Waiting for
+  Julian's answers** before Phase 72.
 - **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
   (off `main` after PR #15): points of interest on the map, one Filter
   button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.
