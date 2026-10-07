@@ -18,9 +18,10 @@ import { TopBar } from "@/shared/components/TopBar";
  * `backTo` (a path): a ← at the far right of the top bar, back up to that
  * page (a day's page goes back to the whole timeline).
  * `back` (a path): ← in ☰'s place instead, for a page you drill into (an
- * entry's page): back to where you came from, else to `back` (TopBar).
+ * entry's page): back to where you came from, else to `back` (TopBar);
+ * with `backHistory={false}`, always to `back`.
  */
-export function BottomNavLayout({ tripId, actions, showTitle = true, backTo, back, children }) {
+export function BottomNavLayout({ tripId, actions, showTitle = true, backTo, back, backHistory, children }) {
   const online = useSelector((s) => s.network?.online ?? true);
   const { stale, savedAt, trip } = useSelector((s) => s.timeline ?? {});
   const loaded = trip?.id === tripId ? trip : null;
@@ -30,7 +31,7 @@ export function BottomNavLayout({ tripId, actions, showTitle = true, backTo, bac
   return (
     // Height excludes the notch padding #root adds in the installed app.
     <div className="flex h-[calc(100dvh-env(safe-area-inset-top))] flex-col">
-      <TopBar title={showTitle ? (loaded?.name ?? "") : ""} back={back}>
+      <TopBar title={showTitle ? (loaded?.name ?? "") : ""} back={back} backHistory={backHistory}>
         {actions}
         {isOwner && (
           <button

@@ -41,6 +41,7 @@ export function TimelineEntry({ entry, trip, menu }) {
       <Card className="flex items-start overflow-hidden">
         <Link
           to={entryPathFor(trip.id, entry)}
+          state={{ atKey: entry.key }}
           className="flex min-w-0 flex-1 items-start gap-3 px-3 py-2.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <span className="w-[4.5rem] shrink-0 pt-0.5">

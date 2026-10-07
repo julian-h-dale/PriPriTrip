@@ -70,7 +70,7 @@ function NextUp({ trip, next, active, now }) {
       {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
       <div className="flex flex-wrap gap-2">
         <DirectionsLink loc={placeOf(next.entry)} />
-        <Link to={entryPathFor(trip.id, next.entry)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}>
+        <Link to={entryPathFor(trip.id, next.entry)} state={{ atKey: next.entry.key }} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}>
           Details
         </Link>
         <Link

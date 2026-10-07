@@ -64,7 +64,7 @@ function DayDetail({ trip, row }) {
   const openKey = searchParams.get("open");
   useEffect(() => {
     const entry = openKey && row.entries.find((e) => e.key === openKey);
-    if (entry) navigate(entryPathFor(trip.id, entry), { replace: true });
+    if (entry) navigate(entryPathFor(trip.id, entry), { replace: true, state: { atKey: entry.key } });
   }, [openKey, row.entries, navigate, trip.id]);
 
   const day = trip.days.find((d) => d.date === row.date) ?? null;

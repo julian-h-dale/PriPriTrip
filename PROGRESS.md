@@ -6,6 +6,18 @@
 
 ## Status
 
+- **Run stage 14, in progress (2026-10-06)** on branch **`details-page`**:
+  swipe up/down between entries on an entry's page. Plan:
+  `implementation_plan.md`, "Run stage 14" (answers: across days; ← to the
+  trip timeline; 80 px; keep visible Previous / Next for now).
+  - **Phase 65 ✅:** `entrySequence()`/`neighbours()` in `entries.js` (the
+    timeline's rows across days, no "Staying at" rows, no same-day leg
+    arrival); rows pass `atKey` in router state so a stay's check-out steps
+    on from check-out; "↑ Previous" / "Next ↓" rows on the page (replace the
+    URL); ← goes to the trip timeline (`TopBar backHistory={false}`); the
+    entry view is keyed so a move doesn't show the old photo. `make verify`
+    green (246 API + 407 UI). E2E screenshots `04c`, `04d`.
+  - **Next: Phase 66** (the pull gesture), after Julian confirms 65.
 - **Run stage 13, in progress (2026-10-06)** on branch **`details-page`**
   (off `enhance-trip`). Plan: `implementation_plan.md`, "Run stage 13". All
   recommendations taken; the confirmation number moves to the top.

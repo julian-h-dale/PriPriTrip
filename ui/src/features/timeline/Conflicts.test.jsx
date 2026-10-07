@@ -187,10 +187,9 @@ describe("who changed it", () => {
     renderDay("2026-05-11");
     await user.click(await screen.findByRole("link", { name: /Dinner at 8, not 7/ }));
     expect(await screen.findByText("Edited by PriPri, 2 minutes ago")).toBeInTheDocument();
-    // Never-edited (imported) entries say nothing.
-    await user.click(screen.getByRole("button", { name: "Back" }));
-    await user.click(await screen.findByRole("link", { name: /Lunch at Altes Tramdepot/ }));
-    await screen.findByRole("article", { name: "Lunch at Altes Tramdepot" });
+    // Never-edited (imported) entries say nothing: the one before it, a stay.
+    await user.click(screen.getByRole("link", { name: /^Previous: Check in · Hotel Goldener Schlüssel/ }));
+    await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
     expect(screen.queryByText(/^Edited by/)).not.toBeInTheDocument();
   });
 });

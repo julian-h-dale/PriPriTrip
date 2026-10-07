@@ -105,6 +105,7 @@ export function TripSearch({ trip, open, onClose }) {
                     <li key={r.key}>
                       <Link
                         to={entryPathFor(trip.id, r.entry)}
+                        state={{ atKey: r.entry.key }}
                         onClick={onClose}
                         className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >

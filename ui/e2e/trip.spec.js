@@ -81,7 +81,7 @@ test("day detail page", async ({ page }) => {
   await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
 });
 
-test("an entry's own page: a flight, a stay, an activity, and back to the day", async ({ page }) => {
+test("an entry's own page: a flight, a stay, an activity; Previous / Next; back", async ({ page }) => {
   await login(page);
   await (await tripLink(page, SAMPLE_TRIP)).click();
   await page.getByRole("list", { name: "Trip days" }).getByRole("link", { name: /Mon, May 11/ }).click();
@@ -102,14 +102,14 @@ test("an entry's own page: a flight, a stay, an activity, and back to the day", 
   await expect(flight.getByRole("region", { name: "When" })).toContainText("8h 45m");
   await page.waitForTimeout(1500); // the photo and the mini maps
   await page.screenshot({ path: screenshotPath("04-entry-flight"), fullPage: true });
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.goBack(); // the phone's back gesture: to where you came from
   await expect(page).toHaveURL(/\/days\/2026-05-11$/);
 
   await plans.getByRole("link", { name: /Check in · Hotel Goldener/ }).click();
   await expect(page.getByRole("article", { name: "Hotel Goldener Schlüssel" })).toBeVisible();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: screenshotPath("04a-entry-stay"), fullPage: true });
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.goBack();
 
   await plans.getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
   const dinner = page.getByRole("article", { name: "Dinner at Kornhauskeller" });
@@ -117,8 +117,26 @@ test("an entry's own page: a flight, a stay, an activity, and back to the day", 
   await expect(dinner.getByRole("button", { name: "Edit activity" })).toBeVisible();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: screenshotPath("04b-entry-activity"), fullPage: true });
-  await page.getByRole("button", { name: "Back" }).click();
+
+  // Next, at the bottom: the next entry is on the next day, so it says which.
+  const next = page.getByRole("link", { name: "Next: Morning at the Rose Garden" });
+  await next.scrollIntoViewIfNeeded();
+  await expect(next).toContainText("Tue, May 12");
+  await page.screenshot({ path: screenshotPath("04c-entry-next") });
+  await next.click();
+  await expect(page.getByRole("article", { name: "Morning at the Rose Garden" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Previous: Dinner at Kornhauskeller/ })).toBeInViewport();
+  await page.waitForTimeout(1500); // its own photo
+  await page.screenshot({ path: screenshotPath("04d-entry-previous") });
+
+  // Moving replaced the address: the back gesture skips Dinner, to the day.
+  await page.goBack();
   await expect(page.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
+
+  // ← goes to the trip's timeline.
+  await plans.getByRole("link", { name: /Dinner at Kornhauskeller/ }).click();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("list", { name: "Trip days" })).toBeVisible();
 });
 
 test("day detail: swipe between days", async ({ browser }) => {

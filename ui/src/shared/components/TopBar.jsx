@@ -11,14 +11,15 @@ const ICON_BUTTON =
  *
  * `back` (a path): a page reached from the drawer gets ← in ☰'s place
  * instead. It goes back to the screen you came from, or to `back` when the
- * page was opened directly (a reload, a shared link).
+ * page was opened directly (a reload, a shared link). `backHistory={false}`:
+ * always to `back` (an entry's page, where Previous / Next replace history).
  */
-export function TopBar({ title, back, children }) {
+export function TopBar({ title, back, backHistory = true, children }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   // React Router keys the first entry "default": nothing in the app to go back to.
-  const goBack = () => (location.key === "default" ? navigate(back) : navigate(-1));
+  const goBack = () => (!backHistory || location.key === "default" ? navigate(back) : navigate(-1));
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-2">
       {back ? (

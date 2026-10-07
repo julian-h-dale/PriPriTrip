@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams } from "react-router-dom";
-import { ArrowDown, BedDouble } from "lucide-react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { ArrowDown, ArrowUp, BedDouble } from "lucide-react";
 import { EntryActions } from "@/features/entry/EntryActions";
-import { findEntry } from "@/features/entry/entries";
+import { entryPath, entrySequence, findEntry, neighbours } from "@/features/entry/entries";
 import { MODE_ICON, MODE_LABEL, describeEntry } from "@/features/timeline/describeEntry";
 import { ConfirmationNumber, EditedBy, PlaceRow } from "@/features/timeline/EntryDetails";
 import { fetchTrip, selectIsViewer, selectReadOnly } from "@/features/timeline/timelineSlice";
@@ -185,6 +185,37 @@ export function EntryView({ trip, found, children }) {
   );
 }
 
+/**
+ * "↑ Previous" or "Next ↓" (Run stage 14): the entry before or after this
+ * one on the trip's timeline, with its day when that's another one. Moving
+ * replaces the address, like swiping between days, so Back isn't a list of
+ * every entry passed; `atKey` says which of a stay's or leg's rows it is.
+ */
+function StepLink({ trip, step, direction, fromDate }) {
+  const d = describeEntry(step.entry, trip);
+  const Arrow = direction === "prev" ? ArrowUp : ArrowDown;
+  const label = direction === "prev" ? "Previous" : "Next";
+  const when = [step.date !== fromDate && formatDayHeading(step.date), d.start && formatTime(d.start)].filter(Boolean).join(" · ");
+  return (
+    <Link
+      to={entryPath(trip.id, step.kind, step.id)}
+      replace
+      state={{ atKey: step.key }}
+      aria-label={`${label}: ${d.title}`}
+      className="mx-4 flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Arrow className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className={SECTION_LABEL}>
+          {label}
+          {when && ` · ${when}`}
+        </span>
+        <span className="truncate text-sm font-medium">{d.title}</span>
+      </span>
+    </Link>
+  );
+}
+
 function Gone({ tripId }) {
   return (
     <Card className="mx-4 mt-6 flex flex-col items-center gap-3 p-8 text-center">
@@ -210,10 +241,14 @@ function EntrySkeleton() {
 /**
  * An activity's, stay's or leg's own page (`kind`), by id: Run stage 13.
  * Reads the loaded trip (or the phone's saved copy), so it works offline.
- * ← (in ☰'s place) goes back where you came from, else to its day.
+ * ← (in ☰'s place) goes to the trip's timeline. Previous / Next step through
+ * the timeline's entries, across days (Run stage 14).
  */
 export function EntryPage({ kind }) {
   const { tripId, id } = useParams();
+  // The timeline row this was opened from, telling a stay's check-in from
+  // its check-out (absent after a reload: then it's the record's first row).
+  const atKey = useLocation().state?.atKey ?? null;
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
   const online = useSelector((s) => s.network?.online ?? true);
@@ -228,14 +263,36 @@ export function EntryPage({ kind }) {
 
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
   const found = current ? findEntry(current, kind, id) : null;
-  const back = found ? `/trips/${tripId}/days/${found.date}` : `/trips/${tripId}`;
+  const steps = useMemo(() => (current ? entrySequence(current) : []), [current]);
+  const { at, prev, next } = neighbours(steps, kind, id, atKey);
+
+  // Moving to another entry keeps this page mounted: start it at the top.
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    const root = wrapRef.current?.closest("[data-scroll-root]");
+    if (root) root.scrollTop = 0;
+  }, [kind, id]);
 
   let body;
   if (found)
     body = (
-      <EntryView trip={current} found={found}>
-        {!isViewer && <EntryActions trip={current} found={found} readOnly={readOnly} />}
-      </EntryView>
+      <>
+        {prev && (
+          <div className="pt-3">
+            <StepLink trip={current} step={prev} direction="prev" fromDate={at?.date} />
+          </div>
+        )}
+        {/* Keyed, so moving to another entry starts afresh: no old photo
+            showing while the new one loads, no dialog state carried over. */}
+        <EntryView key={`${kind}-${id}`} trip={current} found={found}>
+          {!isViewer && <EntryActions trip={current} found={found} readOnly={readOnly} />}
+        </EntryView>
+        {next && (
+          <div className="pb-6">
+            <StepLink trip={current} step={next} direction="next" fromDate={at?.date} />
+          </div>
+        )}
+      </>
     );
   else if (current) body = <Gone tripId={tripId} />;
   else if (status === "notFound") body = <Gone tripId={tripId} />;
@@ -251,8 +308,10 @@ export function EntryPage({ kind }) {
   else body = <EntrySkeleton />;
 
   return (
-    <BottomNavLayout tripId={tripId} back={back}>
-      <div className="mx-auto max-w-2xl">{body}</div>
+    <BottomNavLayout tripId={tripId} back={`/trips/${tripId}`} backHistory={false}>
+      <div ref={wrapRef} className="mx-auto max-w-2xl">
+        {body}
+      </div>
     </BottomNavLayout>
   );
 }
