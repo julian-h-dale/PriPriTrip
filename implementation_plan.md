@@ -4110,6 +4110,18 @@ top of the next page).
 - The phone's back gesture still follows history; only ← goes to the
   timeline.
 
+### Built (2026-10-06): Phase 66
+
+As planned. `make verify` green (246 API + 418 UI tests); e2e drives real
+touches through Chromium's DevTools protocol at 375 px (screenshots `04e`,
+`04f`): a mid-page drag scrolls, a pull at the bottom goes next, at the top
+previous, a short pull springs back.
+- The page moves half as far as the finger (up to 80 px), so the 80 px
+  threshold is finger travel.
+- The hint ("Pull for next" → "Release for next") sits in the room the pull
+  opens; the Previous / Next rows from Phase 65 stay.
+- Not yet tried on a real phone (Julian away from his desk).
+
 ### Open questions (Run stage 14)
 
 - **Q-S1. Across days, or stop at the ends of a day?** Recommendation:

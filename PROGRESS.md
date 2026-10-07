@@ -17,7 +17,19 @@
     URL); ← goes to the trip timeline (`TopBar backHistory={false}`); the
     entry view is keyed so a move doesn't show the old photo. `make verify`
     green (246 API + 407 UI). E2E screenshots `04c`, `04d`.
-  - **Next: Phase 66** (the pull gesture), after Julian confirms 65.
+  - **Phase 66 ✅:** the pull. `useEdgePull` (`features/entry/`) watches the
+    scroll root's touches and only takes over at an end, pulling outward
+    (`overscroll-behavior-y: contain` while the page is open); the page
+    follows the finger at half speed with "Pull for / Release for next";
+    past 80 px it moves, short of it it springs back; the new entry slides
+    in from that side (not with reduced motion). Off while a dialog is open,
+    sideways, or with two fingers. The test trip moved to
+    `src/test/sampleTrip.js`. `make verify` green (246 API + 418 UI); e2e
+    with real touches (CDP) at 375 px, screenshots `04e`, `04f`.
+  - Julian said to go ahead with 66 without checking 65 (away from his
+    desk). **Julian: try both on the phone**, iOS especially (the
+    rubber-band inside a scroll area is what Chromium can't show).
+  - **Run stage 14 is complete** apart from that check.
 - **Run stage 13, in progress (2026-10-06)** on branch **`details-page`**
   (off `enhance-trip`). Plan: `implementation_plan.md`, "Run stage 13". All
   recommendations taken; the confirmation number moves to the top.

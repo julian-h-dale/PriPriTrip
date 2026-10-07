@@ -16,21 +16,12 @@ import { entryPath, entryPathFor, entrySequence, findEntry, neighbours } from "@
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
-import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
+import { TRIP } from "@/test/sampleTrip";
 
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
-// The sample trip as the API reads it: ids, zones, a duration.
-export const TRIP = (() => {
-  const t = { ...structuredClone(sampleTrip), id: "trip-1", role: "owner", createdAt: "2026-10-02T05:00:00Z" };
-  t.stays = t.stays.map((s, i) => ({ ...s, id: `stay-${i}`, zone: "Europe/Zurich", version: 1 }));
-  t.travels = t.travels.map((x, i) => ({ ...x, id: `travel-${i}`, version: 1 }));
-  t.travels[0] = { ...t.travels[0], departZone: "America/Chicago", arriveZone: "Europe/Zurich", durationMinutes: 525 };
-  t.days = t.days.map((d) => ({ ...d, items: d.items.map((it, i) => ({ ...it, id: `${d.date}-${i}`, zone: "Europe/Zurich", version: 1 })) }));
-  return t;
-})();
 
 /** The phone's own back gesture: one step back in history. */
 function HistoryBack() {

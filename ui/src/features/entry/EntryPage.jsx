@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, BedDouble } from "lucide-react";
 import { EntryActions } from "@/features/entry/EntryActions";
 import { entryPath, entrySequence, findEntry, neighbours } from "@/features/entry/entries";
+import { PULL_THRESHOLD_PX, pullOffset, useEdgePull } from "@/features/entry/useEdgePull";
 import { MODE_ICON, MODE_LABEL, describeEntry } from "@/features/timeline/describeEntry";
 import { ConfirmationNumber, EditedBy, PlaceRow } from "@/features/timeline/EntryDetails";
 import { fetchTrip, selectIsViewer, selectReadOnly } from "@/features/timeline/timelineSlice";
@@ -189,7 +190,8 @@ export function EntryView({ trip, found, children }) {
  * "↑ Previous" or "Next ↓" (Run stage 14): the entry before or after this
  * one on the trip's timeline, with its day when that's another one. Moving
  * replaces the address, like swiping between days, so Back isn't a list of
- * every entry passed; `atKey` says which of a stay's or leg's rows it is.
+ * every entry passed; `atKey` says which of a stay's or leg's rows it is,
+ * `came` which way the new page slides in from.
  */
 function StepLink({ trip, step, direction, fromDate }) {
   const d = describeEntry(step.entry, trip);
@@ -200,7 +202,7 @@ function StepLink({ trip, step, direction, fromDate }) {
     <Link
       to={entryPath(trip.id, step.kind, step.id)}
       replace
-      state={{ atKey: step.key }}
+      state={{ atKey: step.key, came: direction }}
       aria-label={`${label}: ${d.title}`}
       className="mx-4 flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
@@ -213,6 +215,26 @@ function StepLink({ trip, step, direction, fromDate }) {
         <span className="truncate text-sm font-medium">{d.title}</span>
       </span>
     </Link>
+  );
+}
+
+/** What letting go will do, in the room the pull opens above or below the page. */
+function PullHint({ dir, distance }) {
+  const ready = distance >= PULL_THRESHOLD_PX;
+  const Arrow = dir === "prev" ? ArrowUp : ArrowDown;
+  const label = dir === "prev" ? "previous" : "next";
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "absolute inset-x-0 flex items-center justify-center gap-2 py-3 text-sm",
+        dir === "prev" ? "bottom-full" : "top-full",
+        ready ? "font-medium text-primary" : "text-muted-foreground"
+      )}
+    >
+      <Arrow className="h-4 w-4" />
+      {ready ? `Release for ${label}` : `Pull for ${label}`}
+    </div>
   );
 }
 
@@ -248,7 +270,8 @@ export function EntryPage({ kind }) {
   const { tripId, id } = useParams();
   // The timeline row this was opened from, telling a stay's check-in from
   // its check-out (absent after a reload: then it's the record's first row).
-  const atKey = useLocation().state?.atKey ?? null;
+  const { atKey = null, came = null } = useLocation().state ?? {};
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
   const online = useSelector((s) => s.network?.online ?? true);
@@ -273,18 +296,38 @@ export function EntryPage({ kind }) {
     if (root) root.scrollTop = 0;
   }, [kind, id]);
 
+  // Pull past the top or bottom to move (Run stage 14), the same as the
+  // Previous / Next rows.
+  const go = (step, direction) =>
+    navigate(entryPath(tripId, step.kind, step.id), { replace: true, state: { atKey: step.key, came: direction } });
+  const pull = useEdgePull(wrapRef, {
+    hasPrev: Boolean(found && prev),
+    hasNext: Boolean(found && next),
+    onPrev: () => go(prev, "prev"),
+    onNext: () => go(next, "next"),
+  });
+  const offset = pull.dir === "prev" ? pullOffset(pull.distance) : -pullOffset(pull.distance);
+
   let body;
   if (found)
     body = (
-      <>
+      // Keyed, so moving to another entry starts afresh (no old photo while
+      // the new one loads, no dialog state carried over) and slides in from
+      // the way you went.
+      <div
+        key={`${kind}-${id}`}
+        className={cn(
+          came && "animate-in fade-in duration-200 motion-reduce:animate-none",
+          came === "next" && "slide-in-from-bottom-8",
+          came === "prev" && "slide-in-from-top-8"
+        )}
+      >
         {prev && (
           <div className="pt-3">
             <StepLink trip={current} step={prev} direction="prev" fromDate={at?.date} />
           </div>
         )}
-        {/* Keyed, so moving to another entry starts afresh: no old photo
-            showing while the new one loads, no dialog state carried over. */}
-        <EntryView key={`${kind}-${id}`} trip={current} found={found}>
+        <EntryView trip={current} found={found}>
           {!isViewer && <EntryActions trip={current} found={found} readOnly={readOnly} />}
         </EntryView>
         {next && (
@@ -292,7 +335,7 @@ export function EntryPage({ kind }) {
             <StepLink trip={current} step={next} direction="next" fromDate={at?.date} />
           </div>
         )}
-      </>
+      </div>
     );
   else if (current) body = <Gone tripId={tripId} />;
   else if (status === "notFound") body = <Gone tripId={tripId} />;
@@ -309,7 +352,13 @@ export function EntryPage({ kind }) {
 
   return (
     <BottomNavLayout tripId={tripId} back={`/trips/${tripId}`} backHistory={false}>
-      <div ref={wrapRef} className="mx-auto max-w-2xl">
+      {/* Follows the finger while pulling; springs back when let go. */}
+      <div
+        ref={wrapRef}
+        className={cn("relative mx-auto max-w-2xl", !pull.dir && "transition-transform duration-200 motion-reduce:transition-none")}
+        style={offset ? { transform: `translateY(${offset}px)` } : undefined}
+      >
+        {pull.dir && <PullHint dir={pull.dir} distance={pull.distance} />}
         {body}
       </div>
     </BottomNavLayout>
