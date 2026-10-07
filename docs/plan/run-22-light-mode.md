@@ -5,7 +5,7 @@ only, with mid-grey secondary text, which is the hardest thing to read
 outdoors in bright sun. Julian (2026-10-07): plan a light mode, switched on
 or off from the drawer on the **All trips** screen.
 
-**Status: planned.** Two questions open (Q-L1, Q-L2).
+**Status: planned.** All questions answered (2026-10-07).
 
 ## Where we are
 
@@ -58,10 +58,13 @@ or off from the drawer on the **All trips** screen.
   Google's white.
 - `theme-color` follows the theme, so the status bar matches.
 
-### Along with it
+### Text size (Q-L2)
 
-- The **text-size** preference in the backlog would sit next to this
-  switch. Q-L2.
+- **Text size** (from the backlog) sits next to the switch on the All trips
+  drawer: Normal / Large / Larger, remembered per phone like the theme.
+- It scales the type (the root font size, so everything in `rem` follows)
+  and the timeline's rails and dots with it, so the rail lines up with
+  bigger dates.
 
 ## Phases
 
@@ -78,8 +81,13 @@ or off from the drawer on the **All trips** screen.
   - **E2E:** screenshots of every page in light at 375 px (the same tour as
     the review), looked at by a human for anything still dark-on-light or
     illegible.
-- **Phase 86 — text size** (if Q-L2 is yes): Normal / Large / Larger on
-  the same screen, scaling the type and the timeline's rails and dots.
+- **Phase 86 — text size.**
+  - **Scope:** Normal / Large / Larger on the All trips drawer, remembered
+    per phone and applied before first paint; the timeline's rails and
+    dots scale with it.
+  - **Tests:** the choice sets the root size and is remembered; the
+    timeline's dot stays centred on its date at each size.
+  - **E2E:** the timeline, a day page and Today at Larger, at 375 px.
 
 ## Open questions
 
@@ -88,9 +96,9 @@ or off from the drawer on the **All trips** screen.
     bright phone screen outdoors vs a laptop indoors), and it works before
     sign-in and offline.
   - (b) Per account, so it follows you to another device.
-  - **Answer:**
+  - **Answer:** (a) (Julian, 2026-10-07). Per phone.
 - **Q-L2. Bring the backlog's text-size setting in with it?**
   - (a) *Recommended:* yes, as Phase 86: both are "can I read this out
     there", and they share the same drawer spot and the same screenshots.
   - (b) No, light mode alone; text size stays in the backlog.
-  - **Answer:**
+  - **Answer:** (a) (Julian, 2026-10-07). Yes, Phase 86.

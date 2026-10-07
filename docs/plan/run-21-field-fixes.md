@@ -11,7 +11,7 @@ them (2026-10-07):
 - **Elsewhere:** the data saver (§5) is [Run 20](run-20-data-saver.md); light
   mode (§6) is [Run 22](run-22-light-mode.md).
 
-**Status: planned.** One question open (Q-F1).
+**Status: planned.** All questions answered (2026-10-07).
 
 ## Where we are
 
@@ -39,11 +39,12 @@ them (2026-10-07):
 
 ### 1. A trip opens on Today (Q-F1)
 
-- A trip card opens `/trips/:id/today` for owners and editors; a viewer's
-  opens the timeline, as now.
-- Importing a trip opens its Today too.
-- Today already handles a trip that isn't under way: it previews Day 1
-  ("Day 1 plan"). For a **past** trip: Q-F1.
+- A trip card opens `/trips/:id/today` for owners and editors of an
+  **active or upcoming** trip. Before it starts, Today previews Day 1 ("Day 1
+  plan"), useful for the last check.
+- A **past** trip's card opens its timeline: nothing is "today" any more.
+- A viewer's card opens the timeline, as now (viewers have no Today tab).
+- Importing a trip follows the same rule.
 
 ### 2. Tonight: check-out once you're checked in
 
@@ -89,11 +90,12 @@ Like the journal:
 ## Phases
 
 - **Phase 82 — Today first, and Tonight's check-out.**
-  - **Scope:** trip cards and import open Today (viewers: the timeline);
-    Tonight's check-in / check-out line.
+  - **Scope:** trip cards and import open Today for active and upcoming
+    trips (past trips and viewers: the timeline); Tonight's check-in /
+    check-out line.
   - **Tests:**
-    - An owner's and an editor's card links to Today; a viewer's to the
-      timeline.
+    - An owner's and an editor's card for an active or upcoming trip links
+      to Today; a past trip's and a viewer's to the timeline.
     - Tonight on the check-in night, a middle night, and check-out day.
 - **Phase 83 — sticky hover and search results.**
   - **Scope:** `hoverOnlyWhenSupported`; the search result's second line.
@@ -121,4 +123,4 @@ Like the journal:
     before it starts is useful for the last check), the **timeline** for
     past trips (nothing is "today" any more; you're looking back).
   - (b) Always Today, as asked, past trips included.
-  - **Answer:**
+  - **Answer:** (a) (Julian, 2026-10-07). Today for active and upcoming trips; the timeline for past ones.

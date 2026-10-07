@@ -4,8 +4,7 @@ Asked 2026-10-07 (Julian): a switch in the drawer that stops the app's
 network calls so it uses only what's saved on the phone. Then nothing loads
 on mobile data unless you want it to.
 
-**Status: planned.** Q-D1–Q-D5 answered (2026-10-07); two follow-ups
-(Q-D6, Q-D7) open.
+**Status: planned.** All questions answered (2026-10-07).
 
 ## Where we are
 
@@ -51,8 +50,10 @@ What's missing is a way to be in that state **on purpose**, with a signal.
   - **analytics** (its own queue, Run 19).
 - **What's refused** (Q-D3): every edit to the trip (activities, stays,
   travel, days, points of interest, sharing, documents), with "Turn off
-  saved copies only to save this", so nothing is silently lost. Packing:
-  Q-D6.
+  saved copies only to save this", so nothing is silently lost.
+- **Packing** (Q-D6) is your own list, not the trip: its changes wait on the
+  phone like memories, once Run 21 (Phase 84) gives it a queue. Until then
+  they're refused like trip edits.
 - **Not our API:**
   - Google Maps: the map tab already shows its list from the online flag.
     **Mini maps on entry pages and the hero photos (Google-hosted) don't
@@ -62,7 +63,8 @@ What's missing is a way to be in that state **on purpose**, with a signal.
   - Currency rates use the saved rate (as offline now).
 - **The bar** says "Saved copies only · from Oct 7, 2:33 PM", with a
   **Refresh once** button (Q-D4): the open trip and the trips list reload,
-  then it's back to saved copies. What else goes with it: Q-D7.
+  and the memories and analytics waiting are sent (Q-D7); photos still
+  wait for their own Upload button. Then it's back to saved copies.
 
 ### Before you rely on it
 
@@ -85,16 +87,17 @@ missing later.
   - **Tests:**
     - With it on: no request leaves `apiClient`; pages show saved copies;
       the map tab is the list; no mini maps or hero photos; no toasts.
-    - A memory and a photo queue; an activity edit is refused with the
-      message; analytics stays queued.
+    - A memory and a photo queue; an activity edit and a packing tick are
+      refused with the message; analytics stays queued.
     - It's remembered across a reload; a viewer has the switch too.
     - Turning it off reloads the open trip and sends what waited.
   - **E2E:** turn it on, then move through every page while counting
     network requests: none to the API, Google or Umami.
 - **Phase 81 — Refresh once.**
-  - **Scope:** the bar's button: the open trip and trips list reload (and
-    Q-D7), then back to saved copies.
-  - **Tests:** one round of requests, then none again.
+  - **Scope:** the bar's button: the open trip and trips list reload, the
+    waiting memories and analytics are sent, then back to saved copies.
+  - **Tests:** one round of requests (trip, list, memories, analytics; no
+    photos), then none again.
 
 ## Open questions
 
@@ -120,10 +123,10 @@ missing later.
     wait on the phone and go when the switch is off. (Phase 80 refuses
     them until Run 21's queue exists, then they queue.)
   - (b) Treat it like the trip: refused while the switch is on.
-  - **Answer:**
+  - **Answer:** (a) (Julian, 2026-10-07). Queued like memories once Phase 84 exists; refused before that.
 - **Q-D7. What does Refresh once send?**
   - (a) *Recommended:* the trip reload, plus the memories and analytics
     waiting (both small). Photos still wait for their own Upload button.
   - (b) Only the trip reload; everything waiting stays until the switch is
     off.
-  - **Answer:**
+  - **Answer:** (a) (Julian, 2026-10-07). Trip reload plus waiting memories and analytics; not photos.

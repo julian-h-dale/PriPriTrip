@@ -10,10 +10,10 @@
   - Usability review at 375 px, online and offline:
     `docs/ui-review-2026-10-07.md` (unscheduled; in the backlog).
   - Julian's data-saver idea planned as **Run stage 20**
-    (`docs/plan/run-20-data-saver.md`): Q-D1–5 answered; **Q-D6–7 open**.
-  - Review decisions planned as **Run 21** (field fixes, Q-F1 open) and
-    **Run 22** (light mode, Q-L1–2 open). Order: 20 → 21 → 22. No phase
-    starts until the open questions are answered.
+    (`docs/plan/run-20-data-saver.md`).
+  - Review decisions planned as **Run 21** (field fixes) and **Run 22**
+    (light mode, text size). Order: 20 → 21 → 22. All questions answered
+    (Julian took every recommendation, 2026-10-07).
   - READMEs: the root one is now a map of the parts and how to run each;
     new `api/README.md`, `ui/README.md`, `scripts/pi-backup/README.md`
     (moved from the root); `deploy/README.md` lists every production
