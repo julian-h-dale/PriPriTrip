@@ -3,13 +3,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { BedDouble, ChevronRight, DoorOpen, Info, Navigation } from "lucide-react";
 import { nextUp, referenceDay, tonight, untilLabel } from "@/features/today/todayView";
-import { MemoryDialog } from "@/features/journal/MemoryDialog";
-import { NewMemoryButton } from "@/features/journal/JournalPage";
-import { canWriteMemories } from "@/features/journal/journalSlice";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { dayCities } from "@/features/timeline/dayCities";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { toC, toF } from "@/features/weather/units";
+import { weatherIcon } from "@/features/weather/weatherIcon";
+import { fetchWeather } from "@/features/weather/weatherSlice";
+import { entryPath, entryPathFor } from "@/features/entry/entries";
 import { ConfirmationNumber } from "@/features/timeline/EntryDetails";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
@@ -19,6 +20,33 @@ import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { directionsUrl } from "@/shared/utils/mapsLinks";
 import { daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
+
+/**
+ * The temperature right now at today's place (before the trip, the first
+ * day's), from the trip's weather: a link to the Weather page. Nothing when
+ * there's none (weather not set up, the trip is over, not loaded yet).
+ */
+function WeatherNow({ tripId }) {
+  const dispatch = useDispatch();
+  const online = useSelector((s) => s.network?.online ?? true);
+  const weather = useSelector((s) => (s.weather?.tripId === tripId ? s.weather.data : null));
+  useEffect(() => {
+    dispatch(fetchWeather(tripId));
+  }, [dispatch, tripId, online]);
+  const now = weather?.configured ? weather.today : null;
+  if (now?.temp == null) return null;
+  const Icon = weatherIcon(now.icon);
+  return (
+    <Link
+      to={`/trips/${tripId}/weather`}
+      aria-label={`Weather in ${now.place}: ${toF(now.temp)}°F, ${toC(now.temp)}°C`}
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-lg font-semibold hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+      {toF(now.temp)}°
+    </Link>
+  );
+}
 
 function SectionTitle({ children }) {
   return <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{children}</h2>;
@@ -69,6 +97,9 @@ function NextUp({ trip, next, active, now }) {
       {d.confirmation && <ConfirmationNumber value={d.confirmation} />}
       <div className="flex flex-wrap gap-2">
         <DirectionsLink loc={placeOf(next.entry)} />
+        <Link to={entryPathFor(trip.id, next.entry)} state={{ atKey: next.entry.key }} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}>
+          Details
+        </Link>
         <Link
           to={`/trips/${trip.id}/days/${next.date}`}
           className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}
@@ -117,6 +148,10 @@ function Tonight({ trip, night }) {
           {stay.confirmationNumber && <ConfirmationNumber value={stay.confirmationNumber} />}
           <div className="flex flex-wrap gap-2">
             <DirectionsLink loc={stay.location} />
+            <Link to={entryPath(trip.id, "stay", stay.id)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "min-h-11")}>
+              Details
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
         </>
       ) : (
@@ -136,27 +171,16 @@ function TodayView({ trip }) {
   const index = rows.findIndex((r) => r.date === ref.date);
   const row = rows[index];
   const tomorrow = rows[index + 1] ?? null;
-  const [openEntries, setOpenEntries] = useState(() => new Set());
-  const [writing, setWriting] = useState(false);
   const dayNumber = daysBetween(trip.startDate, ref.date) + 1;
   const dayCount = daysBetween(trip.startDate, trip.endDate) + 1;
 
-  function toggle(key) {
-    setOpenEntries((s) => {
-      const nextSet = new Set(s);
-      if (nextSet.has(key)) nextSet.delete(key);
-      else nextSet.add(key);
-      return nextSet;
-    });
-  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
       <header className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">{ref.active ? "Today" : "Day 1 preview"}</h1>
-          {/* Spur of the moment: one tap to write it down. */}
-          {canWriteMemories(trip) && <NewMemoryButton onClick={() => setWriting(true)} />}
+          <WeatherNow tripId={trip.id} />
         </div>
         <p className="text-sm text-muted-foreground">
           {formatDayHeading(ref.date)} · Day {dayNumber} of {dayCount}
@@ -184,21 +208,13 @@ function TodayView({ trip }) {
         {row && row.entries.length > 0 ? (
           <ol className="flex flex-col">
             {row.entries.map((entry) => (
-              <TimelineEntry
-                key={entry.key}
-                entry={entry}
-                trip={trip}
-                expanded={openEntries.has(entry.key)}
-                onToggle={() => toggle(entry.key)}
-              />
+              <TimelineEntry key={entry.key} entry={entry} trip={trip} />
             ))}
           </ol>
         ) : (
           <p className="text-sm text-muted-foreground">Nothing planned.</p>
         )}
       </section>
-
-      {writing && <MemoryDialog open onClose={() => setWriting(false)} tripId={trip.id} />}
 
       {tomorrow && (
         <section aria-label="Tomorrow">

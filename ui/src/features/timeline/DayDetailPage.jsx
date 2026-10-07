@@ -1,164 +1,78 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus } from "lucide-react";
+import { entryPathFor } from "@/features/entry/entries";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { DayForm } from "@/features/timeline/DayForm";
 import { runEdit } from "@/features/timeline/runEdit";
-import { StayForm } from "@/features/timeline/StayForm";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
-import {
-  createItem,
-  deleteItem,
-  deleteStay,
-  deleteTravel,
-  fetchTrip,
-  moveItem,
-  replaceItem,
-  replaceStay,
-  replaceTravel,
-  selectIsViewer,
-  selectReadOnly,
-  updateDay,
-} from "@/features/timeline/timelineSlice";
-import { TravelForm } from "@/features/timeline/TravelForm";
+import { createItem, fetchTrip, moveItem, selectIsViewer, selectReadOnly, updateDay } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Markdown } from "@/shared/components/Markdown";
+import { RowMenu } from "@/shared/components/RowMenu";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
-import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { cn } from "@/shared/utils/cn";
+import { keepFirstEntry } from "@/shared/utils/firstEntry";
 import { daysBetween, formatDayHeading } from "@/shared/utils/time";
 
-function ActivityActions({ entry, busy, readOnly, onEdit, onMove, onDelete }) {
+/** ⋯ on an activity's row (editors): move it up or down the day. Edit and
+ * Delete are on the activity's own page. */
+function MoveMenu({ entry, busy, readOnly, onMove }) {
   const title = entry.item.title;
+  const why = readOnly ? "You’re offline" : undefined;
   return (
-    <div className="flex flex-wrap gap-1 border-t border-border pt-3">
-      <Button variant="outline" size="sm" onClick={onEdit} disabled={readOnly} aria-label={`Edit ${title}`}>
-        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-        Edit
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onMove("up")}
-        disabled={readOnly || busy || entry.index === 0}
-        aria-label={`Move ${title} up`}
-      >
-        <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
-        Up
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onMove("down")}
-        disabled={readOnly || busy || entry.index === entry.count - 1}
-        aria-label={`Move ${title} down`}
-      >
-        <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-        Down
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
-        onClick={onDelete}
-        disabled={readOnly}
-        aria-label={`Delete ${title}`}
-      >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-        Delete
-      </Button>
-    </div>
+    <RowMenu
+      label={`More for ${title}`}
+      items={[
+        {
+          label: "Move up",
+          icon: <ArrowUp className="h-4 w-4" aria-hidden="true" />,
+          disabled: readOnly || busy || entry.index === 0,
+          title: why,
+          onSelect: () => onMove("up"),
+        },
+        {
+          label: "Move down",
+          icon: <ArrowDown className="h-4 w-4" aria-hidden="true" />,
+          disabled: readOnly || busy || entry.index === entry.count - 1,
+          title: why,
+          onSelect: () => onMove("down"),
+        },
+      ]}
+    />
   );
 }
 
-function BookingActions({ kind, record, readOnly, onEdit, onDelete }) {
-  const name = kind === "stay" ? record.name : record.title;
-  return (
-    <div className="flex flex-wrap gap-1 border-t border-border pt-3">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onEdit(record)}
-        disabled={readOnly}
-        aria-label={`Edit ${kind} ${name}`}
-      >
-        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-        Edit {kind}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-auto text-destructive hover:bg-destructive hover:text-destructive-foreground"
-        onClick={() => onDelete(record)}
-        disabled={readOnly}
-        aria-label={`Delete ${kind} ${name}`}
-      >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-        Delete
-      </Button>
-    </div>
-  );
-}
-
-function deleteMessage({ kind, record }) {
-  if (kind === "activity") return `“${record.title}” will be removed from this day.`;
-  if (kind === "stay") return `“${record.name}” will be removed from every day it covers.`;
-  return `“${record.title}” will be removed from the timeline.`;
-}
-
-/** One day's own timeline: its entries as points on an hour-ordered rail. */
+/** One day's own timeline: its entries as points on an hour-ordered rail.
+ * Each row opens its entry's page (Run stage 13). */
 function DayDetail({ trip, row }) {
   const dispatch = useDispatch();
-
-  // `form` / `deleting`: null, or { kind: "activity" | "stay" | "travel", record }.
-  // A null record in `form` means "add" — only ever true for an activity here;
-  // adding a stay or travel now happens from the trip page's coverage views.
-  const [form, setForm] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [adding, setAdding] = useState(false);
   const readOnly = useSelector(selectReadOnly);
   // A viewer never edits, so they get no edit controls at all (offline only greys them).
   const isViewer = useSelector(selectIsViewer);
   const [dayFormOpen, setDayFormOpen] = useState(false);
-  const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
-  // `?open=<entry key>` (from trip search) opens that entry and scrolls to it.
+
+  // `?open=<entry key>`: an older search link. It now opens the entry's page.
   const [searchParams] = useSearchParams();
   const openKey = searchParams.get("open");
-  const [openEntries, setOpenEntries] = useState(() => new Set(openKey ? [openKey] : []));
   useEffect(() => {
-    if (!openKey) return;
-    // Also when already on this day and searching again.
-    setOpenEntries((current) => (current.has(openKey) ? current : new Set([...current, openKey])));
-    requestAnimationFrame(() =>
-      document.getElementById(`entry-${openKey}`)?.scrollIntoView?.({ block: "start" })
-    );
-  }, [openKey]);
+    const entry = openKey && row.entries.find((e) => e.key === openKey);
+    if (entry) navigate(entryPathFor(trip.id, entry), { replace: true, state: keepFirstEntry(location, { atKey: entry.key }) });
+  }, [openKey, row.entries, navigate, trip.id, location]);
 
   const day = trip.days.find((d) => d.date === row.date) ?? null;
   const editable = !row.afterTrip && !isViewer;
   const heading = formatDayHeading(row.date);
   const blurb = [row.title && `**${row.title}**`, row.summary].filter(Boolean).join(" — ");
-
-  function save(payload) {
-    const { kind, record } = form;
-    const tripId = trip.id;
-    // Stays and travel are only ever edited from here (never added — that
-    // moved to the trip page's coverage views), so `record` is always set
-    // for those two kinds.
-    const thunk =
-      kind === "activity"
-        ? record
-          ? replaceItem({ tripId, itemId: record.id, item: payload, version: record.version })
-          : createItem({ tripId, item: payload })
-        : kind === "stay"
-          ? replaceStay({ tripId, stayId: record.id, stay: payload, version: record.version })
-          : replaceTravel({ tripId, travelId: record.id, travel: payload, version: record.version });
-    return runEdit(dispatch, thunk);
-  }
 
   async function move(item, direction) {
     setBusy(true);
@@ -166,35 +80,11 @@ function DayDetail({ trip, row }) {
     setBusy(false);
   }
 
-  async function confirmDelete() {
-    const { kind, record } = deleting;
-    const tripId = trip.id;
-    setBusy(true);
-    await dispatch(
-      kind === "activity"
-        ? deleteItem({ tripId, itemId: record.id, version: record.version })
-        : kind === "stay"
-          ? deleteStay({ tripId, stayId: record.id, version: record.version })
-          : deleteTravel({ tripId, travelId: record.id, version: record.version })
-    );
-    setBusy(false);
-    setDeleting(null);
-  }
-
-  function toggleEntry(key) {
-    setOpenEntries((s) => {
-      const next = new Set(s);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
   const addButton = editable && (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => setForm({ kind: "activity", record: null })}
+      onClick={() => setAdding(true)}
       disabled={readOnly} title={readOnly ? "You’re offline" : undefined}
       aria-label={`Add activity to ${heading}`}
     >
@@ -225,28 +115,10 @@ function DayDetail({ trip, row }) {
               key={entry.key}
               entry={entry}
               trip={trip}
-              expanded={openEntries.has(entry.key)}
-              onToggle={() => toggleEntry(entry.key)}
-              actions={
-                isViewer ? null : entry.kind === "activity" ? (
-                  <ActivityActions
-                    entry={entry}
-                    busy={busy}
-                    readOnly={readOnly}
-                    onEdit={() => setForm({ kind: "activity", record: entry.item })}
-                    onMove={(direction) => move(entry.item, direction)}
-                    onDelete={() => setDeleting({ kind: "activity", record: entry.item })}
-                  />
-                ) : (
-                  // Stay and travel markers edit the booking itself.
-                  <BookingActions
-                    kind={entry.kind}
-                    record={entry.kind === "stay" ? entry.stay : entry.travel}
-                    readOnly={readOnly}
-                    onEdit={(record) => setForm({ kind: entry.kind, record })}
-                    onDelete={(record) => setDeleting({ kind: entry.kind, record })}
-                  />
-                )
+              menu={
+                editable && entry.kind === "activity" && entry.count > 1 ? (
+                  <MoveMenu entry={entry} busy={busy} readOnly={readOnly} onMove={(direction) => move(entry.item, direction)} />
+                ) : null
               }
             />
           ))}
@@ -269,37 +141,15 @@ function DayDetail({ trip, row }) {
         </div>
       )}
 
-      {form?.kind === "activity" && (
+      {adding && (
         <ActivityForm
-          key={form.record?.id ?? "new"}
+          key="new"
           open
-          onClose={() => setForm(null)}
+          onClose={() => setAdding(false)}
           trip={trip}
-          item={form.record}
+          item={null}
           date={row.date}
-          onSave={save}
-        />
-      )}
-      {form?.kind === "stay" && (
-        <StayForm
-          key={form.record?.id ?? "new"}
-          open
-          onClose={() => setForm(null)}
-          trip={trip}
-          stay={form.record}
-          date={row.date}
-          onSave={save}
-        />
-      )}
-      {form?.kind === "travel" && (
-        <TravelForm
-          key={form.record?.id ?? "new"}
-          open
-          onClose={() => setForm(null)}
-          trip={trip}
-          travel={form.record}
-          date={row.date}
-          onSave={save}
+          onSave={(payload) => runEdit(dispatch, createItem({ tripId: trip.id, item: payload }))}
         />
       )}
 
@@ -315,22 +165,6 @@ function DayDetail({ trip, row }) {
           }
         />
       )}
-
-      <Dialog
-        open={deleting !== null}
-        onClose={() => !busy && setDeleting(null)}
-        title={deleting ? `Delete ${deleting.kind}?` : ""}
-        description={deleting ? deleteMessage(deleting) : ""}
-      >
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setDeleting(null)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={confirmDelete} disabled={busy}>
-            {busy ? "Deleting…" : "Delete"}
-          </Button>
-        </DialogFooter>
-      </Dialog>
     </div>
   );
 }
@@ -353,6 +187,9 @@ function arrowChangesDay(e) {
  */
 function DaySwiper({ trip, date }) {
   const navigate = useNavigate();
+  // Read by the Embla listeners, like rowsRef below.
+  const locationRef = useRef(null);
+  locationRef.current = useLocation();
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const index = rows.findIndex((r) => r.date === date);
   const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: Math.max(index, 0) });
@@ -372,7 +209,7 @@ function DaySwiper({ trip, date }) {
       const next = rowsRef.current[emblaApi.selectedScrollSnap()]?.date;
       if (!next || next === dateRef.current) return;
       toTop.current = true;
-      navigate(`/trips/${trip.id}/days/${next}`, { replace: true });
+      navigate(`/trips/${trip.id}/days/${next}`, { replace: true, state: keepFirstEntry(locationRef.current) });
     }
     function onSettle() {
       if (!toTop.current) return;
@@ -472,7 +309,7 @@ export function DayDetailPage() {
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
 
   return (
-    <BottomNavLayout tripId={tripId}>
+    <BottomNavLayout tripId={tripId} back={`/trips/${tripId}`}>
       <div className="mx-auto max-w-2xl py-6">
         {current ? (
           <DaySwiper key={current.id} trip={current} date={date} />

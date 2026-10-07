@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { entryPath } from "@/features/entry/entries";
 import { ACTION_LABEL, placeActions } from "@/features/map/placeActions";
 import { directionsUrl } from "@/features/map/mapStyle";
 import { formatDayHeading } from "@/shared/utils/time";
@@ -20,13 +21,19 @@ function Photo({ src }) {
   );
 }
 
-/** A trip marker: photo, title, its day (a link to that day's page), directions. */
+/** A trip marker: photo, title, its day, then links: its own page, the
+ * day's page, directions. */
 function TripMarkerInfo({ marker, tripId }) {
   return (
     <>
       <Photo src={marker.imgRef} />
       <div className={`mb-0.5 font-semibold ${TEXT}`}>{marker.title}</div>
       <div className={`mb-1.5 text-xs ${MUTED}`}>{formatDayHeading(marker.day)}</div>
+      {marker.entryId && (
+        <Link to={entryPath(tripId, marker.kind, marker.entryId)} className={`mb-0.5 block ${LINK}`}>
+          Details
+        </Link>
+      )}
       <Link to={`/trips/${tripId}/days/${marker.day}`} className={`mb-0.5 block ${LINK}`}>
         View day
       </Link>

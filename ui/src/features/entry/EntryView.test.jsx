@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { EntryView } from "@/features/entry/EntryPage";
 import { describeEntry } from "@/features/timeline/describeEntry";
-import { EntryDetails } from "@/features/timeline/EntryDetails";
-import { TimelineEntry } from "@/features/timeline/TimelineEntry";
 
-const TRIP = { timezone: "Asia/Tokyo" };
+const TRIP = { id: "t", timezone: "Asia/Tokyo" };
 const PHOTO = "https://example.com/photo.jpg";
 
 const stay = {
@@ -30,37 +29,38 @@ const flight = {
   to: { name: "Taoyuan (TPE)", lat: 25.07, lng: 121.23, imgRef: PHOTO },
 };
 
+function view(found) {
+  return render(<EntryView trip={TRIP} found={{ date: "2026-10-30", ...found }} />);
+}
+
+/** Where things sit on the page, by document position. */
 function order(container) {
-  // Facts, then confirmation, then notes, then places — by document position.
   const pos = (node) => [...container.querySelectorAll("*")].indexOf(node);
   return {
-    facts: pos(container.querySelector("dl")),
     confirmation: pos(screen.getByText("Confirmation")),
-    notes: pos(screen.getByText(/included|online/)),
+    when: pos(screen.getByRole("region", { name: "When" })),
+    facts: pos(container.querySelector("dl")),
+    notes: pos(screen.getByRole("region", { name: "Notes" })),
     place: pos(screen.getAllByText(/^(Where|From)$/)[0]),
   };
 }
 
-describe("EntryDetails", () => {
-  it("a stay: facts (with the room), confirmation, notes, then the place", () => {
-    const d = describeEntry({ kind: "stay", phase: "check-in", stay }, TRIP);
-    const { container } = render(<EntryDetails d={d} />);
+describe("the entry page's layout", () => {
+  it("a stay: confirmation, when, facts (the room), notes, then the place", () => {
+    const { container } = view({ kind: "stay", record: stay });
     expect(screen.getByText("Room").nextSibling).toHaveTextContent("Twin, ocean view");
     const o = order(container);
-    expect(o.facts).toBeLessThan(o.confirmation);
-    expect(o.confirmation).toBeLessThan(o.notes);
+    expect(o.confirmation).toBeLessThan(o.when);
+    expect(o.when).toBeLessThan(o.facts);
+    expect(o.facts).toBeLessThan(o.notes);
     expect(o.notes).toBeLessThan(o.place);
-    expect(container.querySelector("img")).toBeNull(); // the photo is the hero, not here
   });
 
-  it("a flight: the seat in the facts", () => {
-    const d = describeEntry({ kind: "travel", phase: "depart", travel: flight, overnight: true }, TRIP);
-    const { container } = render(<EntryDetails d={d} />);
+  it("a flight: the seat in the facts, both airports", () => {
+    view({ kind: "travel", record: flight });
     expect(screen.getByText("Seat").nextSibling).toHaveTextContent("42A");
-    expect(screen.getByText("O'Hare (ORD)")).toBeInTheDocument();
-    expect(container.querySelector("img")).toBeNull();
-    const o = order(container);
-    expect(o.confirmation).toBeLessThan(o.place);
+    expect(screen.getAllByText("O'Hare (ORD)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Taoyuan (TPE)").length).toBeGreaterThan(0);
   });
 });
 
@@ -77,36 +77,22 @@ describe("the hero photo", () => {
     expect(describeEntry({ kind: "activity", item: { title: "Walk" } }, TRIP).hero).toBeNull();
   });
 
-  function row(entry) {
-    return render(
-      <ul>
-        <TimelineEntry entry={{ ...entry, key: "k" }} trip={TRIP} expanded onToggle={() => {}} />
-      </ul>
-    );
-  }
-
-  it("fades in behind an expanded row, as in the details dialog", () => {
-    row({ kind: "stay", phase: "check-in", stay });
-    expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", PHOTO);
-    expect(document.querySelectorAll("img")).toHaveLength(1);
-  });
-
-  it("an expanded flight gets one too (the same for every kind of entry)", () => {
-    row({ kind: "travel", phase: "depart", travel: flight, overnight: true });
+  it("fades into the top of the page", () => {
+    view({ kind: "stay", record: stay });
     expect(screen.getByTestId("hero-fade")).toHaveAttribute("src", PHOTO);
   });
 
   it("is dropped, with its room, when the photo can't load", () => {
-    const { container } = row({ kind: "stay", phase: "check-in", stay });
-    expect(container.querySelector(".pt-28")).not.toBeNull();
+    const { container } = view({ kind: "stay", record: stay });
+    expect(container.querySelector(".pt-44")).not.toBeNull();
     fireEvent.error(screen.getByTestId("hero-fade"));
     expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
-    expect(container.querySelector(".pt-28")).toBeNull();
+    expect(container.querySelector(".pt-44")).toBeNull();
     expect(screen.getByText("HR-123")).toBeInTheDocument();
   });
 
   it("is absent without a photo", () => {
-    row({ kind: "activity", item: { title: "Walk", notes: "Easy" } });
+    view({ kind: "activity", record: { title: "Walk", notes: "Easy" } });
     expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
   });
 });

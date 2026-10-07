@@ -9,7 +9,7 @@ This is a ground-up rebuild of v1. See [docs/lessons_learned.md](docs/lessons_le
 for what we learned, and [reference/](reference/) for v1 material.
 
 - What we're building: [functional_spec.md](functional_spec.md)
-- How, phase by phase: [implementation_plan.md](implementation_plan.md)
+- How, phase by phase: [implementation_plan.md](implementation_plan.md) (an index; each stage's plan is in [docs/plan/](docs/plan/))
 - Where we are: [PROGRESS.md](PROGRESS.md)
 
 ## For agents

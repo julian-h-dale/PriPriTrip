@@ -15,6 +15,7 @@ import { JournalPage } from "@/features/journal/JournalPage";
 import { fetchMemories, syncOutbox } from "@/features/journal/journalSlice";
 import { deviceZone } from "@/features/journal/journalDays";
 import { TodayPage } from "@/features/today/TodayPage";
+import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearOutbox, pending } from "@/shared/services/outbox";
 import { clearAll, saveMemories, saveTrip } from "@/shared/services/tripCache";
@@ -62,6 +63,7 @@ function renderAt(path, { online = true } = {}) {
         <Routes>
           <Route path="/trips/:tripId/journal" element={<JournalPage />} />
           <Route path="/trips/:tripId/today" element={<TodayPage />} />
+          <Route path="/trips/:tripId" element={<TripTimelinePage />} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -195,7 +197,27 @@ describe("Journal tab", () => {
   });
 });
 
-describe("New memory on the Today tab", () => {
+describe("New memory in the top bar", () => {
+  it("is on every trip page, filled blue, before Search; the Journal has no button of its own", async () => {
+    const user = userEvent.setup();
+    renderAt("/trips/trip-1");
+    const button = await screen.findByRole("button", { name: "New memory" });
+    expect(button).toHaveClass("bg-primary");
+    const bar = button.closest("header");
+    const names = within(bar).getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+    expect(names.indexOf("New memory")).toBe(names.indexOf("Search this trip") - 1);
+    expect(within(bar).queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    await user.click(button);
+    expect(screen.getByRole("dialog", { name: "New memory" })).toBeInTheDocument();
+  });
+
+  it("the Journal page's own header has no New memory", async () => {
+    renderAt("/trips/trip-1/journal");
+    const header = (await screen.findByRole("heading", { name: "Journal" })).closest("header");
+    expect(within(header).queryByRole("button", { name: "New memory" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "New memory" })).toHaveLength(1);
+  });
+
   it("sends the phone's own id and time (UTC, when Save was tapped) with the text and zone", async () => {
     const user = userEvent.setup();
     apiClient.post.mockImplementation(async (url, body) => ({ data: { ...body, mine: true } }));

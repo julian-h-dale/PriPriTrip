@@ -69,3 +69,27 @@ describe("buildMapMarkers", () => {
     expect(kornhauskeller.address).toBe("Kornhausplatz 18, 3011 Bern, Switzerland");
   });
 });
+
+describe("a travel leg's days", () => {
+  it("gives both ends the leg's departure and arrival dates", () => {
+    const trip = {
+      stays: [],
+      days: [],
+      travels: [
+        {
+          id: "t1",
+          mode: "flight",
+          title: "Chicago → Zürich",
+          depart: "2026-05-10T17:40",
+          arrive: "2026-05-11T09:25",
+          from: { name: "ORD", lat: 41.97, lng: -87.9 },
+          to: { name: "ZRH", lat: 47.45, lng: 8.55 },
+        },
+      ],
+    };
+    const [from, to] = buildMapMarkers(trip);
+    expect(from.legDays).toEqual(["2026-05-10", "2026-05-11"]);
+    expect(to.legDays).toEqual(["2026-05-10", "2026-05-11"]);
+    expect([from.day, to.day]).toEqual(["2026-05-10", "2026-05-11"]);
+  });
+});

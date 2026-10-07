@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Home, List, Plane } from "lucide-react";
-import { BookingDetailsDialog } from "@/features/timeline/BookingDetailsDialog";
+import { entryPath } from "@/features/entry/entries";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { stayCoverage, travelCoverage } from "@/features/timeline/coverageView";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
@@ -13,9 +13,6 @@ import {
   createStay,
   createTravel,
   fetchTrip,
-  replaceStay,
-  replaceTravel,
-  selectIsViewer,
   selectReadOnly,
 } from "@/features/timeline/timelineSlice";
 import { TravelForm } from "@/features/timeline/TravelForm";
@@ -38,16 +35,14 @@ const VIEWS = [
  * The timeline for one loaded trip: a date per row, linking to that day's own
  * page. The House/Plane buttons switch the whole list into a coverage view —
  * exactly one of plan/stays/travel at a time, never combined. In a coverage
- * view, selecting a date opens a quick read-only look at that stay/leg (or
- * the add form when there's none) instead of navigating to the day page —
- * unless a date has more than one travel leg, where the day page is the only
- * place both are listed. "Edit" in that quick look switches to the real form.
+ * view, selecting a date opens that stay's or leg's own page (or the add form
+ * when there's none) instead of the day page — unless a date has more than
+ * one travel leg, where the day page is the only place both are listed.
  */
 function TripTimeline({ trip }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const readOnly = useSelector(selectReadOnly);
-  const isViewer = useSelector(selectIsViewer);
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   // Past days are greyed, judged on the trip's own calendar.
   const today = todayIn(trip.timezone);
@@ -57,14 +52,12 @@ function TripTimeline({ trip }) {
   const coverageByDate = view === "stays" ? stayCov : view === "travel" ? travelCov : null;
   // null, or { kind: "stay" | "travel", record, date }. A null record means "add".
   const [form, setForm] = useState(null);
-  // null, or { kind: "stay" | "travel", record } — the read-only quick look.
-  const [details, setDetails] = useState(null);
 
 
   function selectDate(date) {
     if (view === "stays") {
       const stay = stayCov.get(date)?.stay;
-      if (stay) setDetails({ kind: "stay", record: stay });
+      if (stay) navigate(entryPath(trip.id, "stay", stay.id));
       else if (readOnly) navigate(`/trips/${trip.id}/days/${date}`);
       else setForm({ kind: "stay", record: null, date });
       return;
@@ -73,7 +66,7 @@ function TripTimeline({ trip }) {
     if (travels.length > 1) {
       navigate(`/trips/${trip.id}/days/${date}`);
     } else if (travels.length === 1) {
-      setDetails({ kind: "travel", record: travels[0] });
+      navigate(entryPath(trip.id, "travel", travels[0].id));
     } else if (readOnly) {
       navigate(`/trips/${trip.id}/days/${date}`);
     } else {
@@ -81,22 +74,11 @@ function TripTimeline({ trip }) {
     }
   }
 
-  function editFromDetails() {
-    setForm({ kind: details.kind, record: details.record, date: trip.startDate });
-    setDetails(null);
-  }
-
+  // Only ever adding here: an existing booking is edited on its own page.
   function saveBooking(payload) {
-    const { kind, record } = form;
     const tripId = trip.id;
     const thunk =
-      kind === "stay"
-        ? record
-          ? replaceStay({ tripId, stayId: record.id, stay: payload, version: record.version })
-          : createStay({ tripId, stay: payload })
-        : record
-          ? replaceTravel({ tripId, travelId: record.id, travel: payload, version: record.version })
-          : createTravel({ tripId, travel: payload });
+      form.kind === "stay" ? createStay({ tripId, stay: payload }) : createTravel({ tripId, travel: payload });
     return runEdit(dispatch, thunk);
   }
 
@@ -164,18 +146,6 @@ function TripTimeline({ trip }) {
         />
       )}
 
-      {details && (
-        <BookingDetailsDialog
-          open
-          onClose={() => setDetails(null)}
-          onEdit={editFromDetails}
-          readOnly={readOnly}
-          canEdit={!isViewer}
-          trip={trip}
-          kind={details.kind}
-          record={details.record}
-        />
-      )}
     </>
   );
 }

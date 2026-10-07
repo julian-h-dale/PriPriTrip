@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Search, X } from "lucide-react";
+import { entryPathFor } from "@/features/entry/entries";
 import { searchTrip } from "@/features/search/tripSearch";
 import { describeEntry } from "@/features/timeline/describeEntry";
 import { Input } from "@/shared/components/ui/input";
@@ -9,7 +10,7 @@ import { formatDayHeading } from "@/shared/utils/time";
 
 /**
  * Full-screen search over one trip. Results are grouped by day; picking one
- * opens that day with the entry expanded (`?open=<entry key>`). All on the
+ * opens that entry's own page (a day's summary opens the day). All on the
  * device — works offline.
  */
 export function TripSearch({ trip, open, onClose }) {
@@ -103,7 +104,8 @@ export function TripSearch({ trip, open, onClose }) {
                   return (
                     <li key={r.key}>
                       <Link
-                        to={`${dayUrl(group.date)}?open=${encodeURIComponent(r.key)}`}
+                        to={entryPathFor(trip.id, r.entry)}
+                        state={{ atKey: r.entry.key }}
                         onClick={onClose}
                         className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >

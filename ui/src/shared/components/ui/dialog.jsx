@@ -1,8 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
-import { HeroFade } from "@/shared/components/ui/hero-fade";
 import { cn } from "@/shared/utils/cn";
-import { useHeroImage } from "@/shared/utils/useHeroImage";
 
 /**
  * Modal dialog — hand-rolled in the shadcn *shape* like the other primitives
@@ -10,12 +8,8 @@ import { useHeroImage } from "@/shared/utils/useHeroImage";
  *
  * Escape and a backdrop click close it; focus moves into the panel on open and
  * returns to the opener on close.
- *
- * `heroImage` (optional): a photo shown at the top of the panel, fading into
- * the card behind the title (see hero-fade.jsx). Without one, or if it fails
- * to load (e.g. offline), it's the plain dialog.
  */
-export function Dialog({ open, onClose, title, description, children, className, heroImage }) {
+export function Dialog({ open, onClose, title, description, children, className }) {
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef(null);
@@ -24,7 +18,6 @@ export function Dialog({ open, onClose, title, description, children, className,
   // otherwise every keystroke in a form re-ran it and yanked focus away.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const { hero, onError: onHeroError } = useHeroImage(heroImage);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -54,11 +47,9 @@ export function Dialog({ open, onClose, title, description, children, className,
         tabIndex={-1}
         className={cn(
           "relative flex max-h-[85vh] w-full max-w-md flex-col gap-4 rounded-lg border border-border bg-card p-5 text-card-foreground focus:outline-none",
-          hero && "overflow-hidden pt-32",
           className
         )}
       >
-        {hero && <HeroFade src={hero} onError={onHeroError} className="h-48" />}
         <div className="relative flex flex-col gap-1">
           <h2 id={titleId} className="text-base font-semibold">
             {title}
@@ -69,7 +60,7 @@ export function Dialog({ open, onClose, title, description, children, className,
             </p>
           )}
         </div>
-        {hero ? <div className="relative flex min-h-0 flex-col gap-4">{children}</div> : children}
+        {children}
       </div>
     </div>,
     document.body

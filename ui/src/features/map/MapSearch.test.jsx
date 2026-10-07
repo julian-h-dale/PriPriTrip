@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -153,7 +153,10 @@ beforeEach(() => {
   window.google = {
     maps: {
       LatLngBounds: class {
-        extend() {}
+        points = [];
+        extend(point) {
+          this.points.push(point);
+        }
       },
     },
   };
@@ -313,6 +316,43 @@ describe("memories and the blue dot on the map", () => {
     expect(journal).toHaveAttribute("aria-pressed", "true");
     expect(house).toHaveAttribute("aria-pressed", "false");
     await waitFor(() => expect(glyphs()).toEqual([MEMORY]));
+  });
+
+  it("follows the filters: a day fits that day's places, travel included; clearing goes back", async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await waitFor(() => expect(glyphs()).toContain(STAY));
+    const lats = () => fake.map.fitBounds.mock.lastCall[0].points.map((p) => Math.round(p.lat));
+    // Opened on the trip's places: the hotels, not Chicago.
+    expect(fake.map.fitBounds).toHaveBeenCalledTimes(1);
+    expect(lats()).not.toContain(42);
+
+    // The flight day: Chicago and Zürich airports, an ocean apart, is fine.
+    fireEvent.change(screen.getByLabelText("Pick a day"), { target: { value: "2026-05-10" } });
+    await waitFor(() => expect(fake.map.fitBounds).toHaveBeenCalledTimes(2));
+    expect(new Set(lats())).toEqual(new Set([42, 47]));
+    expect(fake.map.fitBounds.mock.lastCall[1]).toBe(48); // room for the pins
+
+    // Clearing the day goes back to the trip's places.
+    await user.click(screen.getByRole("button", { name: /Showing .* only; clear/ }));
+    await waitFor(() => expect(fake.map.fitBounds).toHaveBeenCalledTimes(3));
+    expect(lats()).not.toContain(42);
+
+    // Journal: the one memory with a place, so centre on it.
+    fake.map.setZoom.mockClear();
+    await user.click(screen.getByRole("button", { name: "Show only memories" }));
+    await waitFor(() => expect(fake.map.setZoom).toHaveBeenCalledWith(14));
+    expect(fake.map.panTo).toHaveBeenLastCalledWith({ lat: 46.948, lng: 7.447 });
+  });
+
+  it("doesn't move the map when a filter leaves nothing, or on anything but a filter change", async () => {
+    renderMap();
+    await waitFor(() => expect(glyphs()).toContain(STAY));
+    act(() => shown()[0].listeners.click()); // opening a pin's info isn't a filter change
+    // A day with nothing on the map (before the trip): the view stays put.
+    fireEvent.change(screen.getByLabelText("Pick a day"), { target: { value: "2026-05-09" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Showing .* only; clear/ })).toBeInTheDocument());
+    expect(fake.map.fitBounds).toHaveBeenCalledTimes(1);
   });
 
   it("locate me: asks, then shows a blue dot with an honest accuracy circle and follows it", async () => {

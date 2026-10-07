@@ -10,6 +10,7 @@ import timelineReducer from "@/features/timeline/timelineSlice";
 import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
+import { EntryPage } from "@/features/entry/EntryPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { TripsPage } from "@/features/trips/TripsPage";
@@ -22,6 +23,10 @@ vi.mock("@/shared/services/apiClient", () => ({
 
 const TRIP_ID = "3f2b8c1e-1111-4222-8333-444455556666";
 const base = { ...structuredClone(sampleTrip), id: TRIP_ID, createdAt: "2026-10-02T05:00:00Z" };
+// Ids, as every trip read has them (an entry's page is found by its id).
+base.stays.forEach((s, i) => (s.id = `stay-${i}`));
+base.travels.forEach((t, i) => (t.id = `travel-${i}`));
+base.days.forEach((d, i) => d.items.forEach((item, j) => (item.id = `item-${i}-${j}`)));
 const asOwner = { ...base, role: "owner" };
 const asViewer = { ...base, role: "viewer" };
 const asEditor = { ...base, role: "editor" };
@@ -59,6 +64,8 @@ function renderAt(path) {
           <Route path="/trips/:tripId" element={<TripTimelinePage />} />
           <Route path="/trips/:tripId/today" element={<div>today page</div>} />
           <Route path="/trips/:tripId/days/:date" element={<DayDetailPage />} />
+          <Route path="/trips/:tripId/activities/:id" element={<EntryPage kind="activity" />} />
+          <Route path="/trips/:tripId/stays/:id" element={<EntryPage kind="stay" />} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -76,22 +83,28 @@ describe("a viewer", () => {
     await screen.findByRole("heading", { name: "Mon, May 11" });
     expect(screen.queryByRole("button", { name: /Add activity/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /title and summary/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    expect(screen.queryByRole("button", { name: /^Edit / })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Delete / })).not.toBeInTheDocument();
+    // No ⋯ to move things, and the activity's page has no Edit or Delete.
+    expect(screen.queryByRole("button", { name: /^More for/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /Lunch at Altes Tramdepot/ }));
+    await screen.findByRole("article", { name: "Lunch at Altes Tramdepot" });
+    expect(screen.queryByRole("button", { name: /^Edit/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
   });
 
-  it("gets a quick look with no Edit, and no Share button", async () => {
+  it("opens a stay's page with no Edit, and has no Share button", async () => {
     const user = userEvent.setup();
     apiClient.get.mockResolvedValue({ data: asViewer });
     renderAt(`/trips/${TRIP_ID}`);
     await screen.findByRole("heading", { name: base.name, level: 1 });
     expect(screen.queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    // Not in the drawer either.
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(within(screen.getByRole("region", { name: "Trip tools" })).queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close menu" }));
     await user.click(screen.getByRole("button", { name: "Stays" }));
     await user.click(document.querySelector("#day-2026-05-11 button"));
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: "Close" })).toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    await screen.findByRole("article", { name: "Hotel Goldener Schlüssel" });
+    expect(screen.queryByRole("button", { name: /^Edit/ })).not.toBeInTheDocument();
   });
 });
 
@@ -103,12 +116,20 @@ describe("an editor", () => {
     await screen.findByRole("heading", { name: "Mon, May 11" });
     expect(screen.getByRole("button", { name: /Add activity/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /title and summary/ })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Lunch at Altes Tramdepot/ }));
-    expect(screen.getByRole("button", { name: /^Edit Lunch/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Delete Lunch/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: /Lunch at Altes Tramdepot/ }));
+    await screen.findByRole("article", { name: "Lunch at Altes Tramdepot" });
+    expect(screen.getByRole("button", { name: "Edit activity" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 });
+
+/** Share is in the drawer (☰), after Documents. */
+async function openShare(user) {
+  await user.click(await screen.findByRole("button", { name: "Open menu" }));
+  const tools = screen.getByRole("region", { name: "Trip tools" });
+  await user.click(await within(tools).findByRole("button", { name: "Share trip" }));
+}
 
 describe("the owner", () => {
   function ownerApi(members) {
@@ -130,7 +151,7 @@ describe("the owner", () => {
       { userId: "v2", email: "friend@example.com", role: "viewer", joinedAt: "2026-10-03T01:00:00Z" },
     ]);
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const dialog = screen.getByRole("dialog", { name: "Share trip" });
     const view = within(dialog).getByRole("region", { name: "Can view" });
     expect(await within(view).findByText(VIEW_CODE)).toBeInTheDocument();
@@ -153,7 +174,7 @@ describe("the owner", () => {
     ownerApi([]);
     apiClient.post.mockResolvedValue({ data: { code: "NEWcode_000000000000" } });
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const edit = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can edit" });
     await within(edit).findByText(EDIT_CODE);
 
@@ -170,7 +191,7 @@ describe("the owner", () => {
     ownerApi([]);
     apiClient.post.mockResolvedValue({ data: { code: "NEWview_00000000000" } });
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const view = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can view" });
     await within(view).findByText(VIEW_CODE);
     await user.click(within(view).getByRole("button", { name: "New view code" }));
@@ -184,7 +205,7 @@ describe("the owner", () => {
     ownerApi([{ userId: "v1", email: "pripri@example.com", role: "viewer", joinedAt: "2026-10-03T00:00:00Z" }]);
     apiClient.delete.mockResolvedValue({});
     renderAt(`/trips/${TRIP_ID}`);
-    await user.click(await screen.findByRole("button", { name: "Share trip" }));
+    await openShare(user);
     const dialog = screen.getByRole("dialog", { name: "Share trip" });
     await user.click(await within(dialog).findByRole("button", { name: "Remove pripri@example.com" }));
     expect(apiClient.delete).not.toHaveBeenCalled();

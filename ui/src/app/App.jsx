@@ -10,6 +10,10 @@ import { TodayPage } from "@/features/today/TodayPage";
 import { JournalPage } from "@/features/journal/JournalPage";
 import { WeatherPage } from "@/features/weather/WeatherPage";
 import { CurrencyPage } from "@/features/currency/CurrencyPage";
+import { PackingPage } from "@/features/packing/PackingPage";
+import { DocumentsPage } from "@/features/documents/DocumentsPage";
+import { ClocksPage } from "@/features/clocks/ClocksPage";
+import { EntryPage } from "@/features/entry/EntryPage";
 import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { AdminUsersPage } from "@/features/admin/AdminUsersPage";
@@ -90,6 +94,30 @@ export function App() {
           }
         />
         <Route
+          path="/trips/:tripId/activities/:id"
+          element={
+            <ProtectedRoute>
+              <EntryPage kind="activity" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/stays/:id"
+          element={
+            <ProtectedRoute>
+              <EntryPage kind="stay" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/travel/:id"
+          element={
+            <ProtectedRoute>
+              <EntryPage kind="travel" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/trips/:tripId/map"
           element={
             <ProtectedRoute>
@@ -110,6 +138,30 @@ export function App() {
           element={
             <ProtectedRoute>
               <CurrencyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/packing"
+          element={
+            <ProtectedRoute>
+              <PackingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/documents"
+          element={
+            <ProtectedRoute>
+              <DocumentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/time"
+          element={
+            <ProtectedRoute>
+              <ClocksPage />
             </ProtectedRoute>
           }
         />

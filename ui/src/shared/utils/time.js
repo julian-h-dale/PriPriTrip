@@ -89,7 +89,6 @@ export function formatDateRange(start, end) {
   return `${MONTHS[a.m - 1]} ${a.d} – ${MONTHS[b.m - 1]} ${b.d}, ${a.y}`;
 }
 
-/** "America/Chicago" -> "Chicago", "America/Argentina/Buenos_Aires" -> "Buenos Aires". */
 /** A leg's length from the server's `durationMinutes`: "45m", "2h 5m",
  * "13h 50m"; days only past 24 hours ("1d 2h"). Null when unknown. */
 export function formatDuration(minutes) {
@@ -102,6 +101,7 @@ export function formatDuration(minutes) {
   return mins ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
+/** "America/Chicago" -> "Chicago", "America/Argentina/Buenos_Aires" -> "Buenos Aires". */
 export function zoneLabel(timezone) {
   return timezone.split("/").pop().replaceAll("_", " ");
 }

@@ -16,6 +16,8 @@ primary_region = "iad"
   # Journal photos live on the same volume (grow it to ~10 GB first:
   # fly volumes extend <volume id> --size 10).
   PHOTO_DIR = "/data/photos"
+  # Trip documents (tickets, passport scans), also on the volume.
+  DOCUMENT_DIR = "/data/documents"
 
 [http_service]
   internal_port = 8080

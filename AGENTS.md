@@ -30,8 +30,13 @@ the user fill in [templates/functional_spec.template.md](templates/functional_sp
    **one or more phases** (e.g. several crawl phases for different parts of the
    app). Every phase is independently verifiable with its own test section. End
    with an **Open Questions** section.
+   **In this project:** `implementation_plan.md` is a short index; each stage's
+   plan is its own file in `docs/plan/` (one row per stage in the index). Read
+   the index and the **current** stage's file only — older stage files and
+   `docs/progress-history.md` are history, opened when you need a past
+   decision. A new stage is a new `docs/plan/run-NN-<slug>.md` plus a row.
 3. **Stop for answers.** Do not start phase work until the user has answered the
-   open questions inline in `implementation_plan.md`. Once answered, update the
+   open questions inline in the stage's plan file. Once answered, update the
    plan **body** — the Architecture, phase scopes and test bullets — not just the
    answer lines, so no phase still describes the pre-answer design.
 4. **Execute one phase at a time.** After each phase: run `make verify`, update

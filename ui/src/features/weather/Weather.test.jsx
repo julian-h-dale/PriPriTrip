@@ -165,11 +165,14 @@ describe("the Weather page", () => {
 });
 
 describe("the drawer's Trip tools", () => {
-  async function openDrawer(path) {
+  async function openDrawer(path, timeline) {
     const { TopBar } = await import("@/shared/components/TopBar");
     const store = configureStore({
-      reducer: { auth: authReducer, journal: journalReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
-      preloadedState: { auth: { token: fakeToken(USER), user: { email: "u@x.com" }, status: "idle" } },
+      reducer: { auth: authReducer, journal: journalReducer, timeline: timelineReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
+      preloadedState: {
+        auth: { token: fakeToken(USER), user: { email: "u@x.com" }, status: "idle" },
+        ...(timeline && { timeline: { ...timelineReducer(undefined, { type: "init" }), ...timeline, tripId: timeline.trip.id } }),
+      },
     });
     render(
       <Provider store={store}>
@@ -187,10 +190,69 @@ describe("the drawer's Trip tools", () => {
     const tools = within(menu).getByRole("region", { name: "Trip tools" });
     expect(within(tools).getByRole("link", { name: "Weather" })).toHaveAttribute("href", "/trips/trip-1/weather");
     expect(within(tools).getByRole("link", { name: "Currency" })).toHaveAttribute("href", "/trips/trip-1/currency");
+    expect(within(tools).getByRole("link", { name: "Time zones" })).toHaveAttribute("href", "/trips/trip-1/time");
+  });
+
+  it("lists Currency first, then Weather, Time zones, Packing, Documents, and Share trip for the owner", async () => {
+    apiClient.get.mockResolvedValue({ data: [] }); // the Share dialog's members and codes
+    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
+    const tools = within(menu).getByRole("region", { name: "Trip tools" });
+    const names = [...tools.querySelectorAll("a, button")].map((el) => el.textContent.trim());
+    expect(names).toEqual(["Currency", "Weather", "Time zones", "Packing", "Documents", "Share trip"]);
+    await userEvent.click(within(tools).getByRole("button", { name: "Share trip" }));
+    expect(await screen.findByRole("dialog", { name: "Share trip" })).toBeInTheDocument();
+  });
+
+  it("an editor gets Documents but not Share trip", async () => {
+    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "editor" } });
+    const tools = within(menu).getByRole("region", { name: "Trip tools" });
+    expect(within(tools).getByRole("link", { name: "Documents" })).toBeInTheDocument();
+    expect(within(tools).queryByRole("button", { name: "Share trip" })).not.toBeInTheDocument();
   });
 
   it("has no Trip tools outside a trip", async () => {
     const menu = await openDrawer("/trips");
     expect(within(menu).queryByRole("region", { name: "Trip tools" })).not.toBeInTheDocument();
+  });
+});
+
+describe("a tool page's top bar", () => {
+  /** Opens at `entry`; the day page has a button that moves to the tool, as the drawer does. */
+  async function renderTool(entry) {
+    const { ToolLayout } = await import("@/shared/components/ToolLayout");
+    const { useNavigate } = await import("react-router-dom");
+    function DayPage() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate("/trips/trip-1/weather")}>The day page: open the tool</button>;
+    }
+    const store = configureStore({
+      reducer: { auth: authReducer, journal: journalReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
+      preloadedState: { auth: { token: fakeToken(USER), user: null, status: "idle" } },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={[entry]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Routes>
+            <Route path="/trips/:tripId/weather" element={<ToolLayout tripId="trip-1" title="Okinawa">Tool</ToolLayout>} />
+            <Route path="/trips/:tripId/days/:date" element={<DayPage />} />
+            <Route path="/trips/:tripId/today" element={<p>The Today page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+  }
+
+  it("has ← instead of ☰, back to where you came from", async () => {
+    await renderTool("/trips/trip-1/days/2026-10-30");
+    await userEvent.click(screen.getByRole("button", { name: /open the tool/ }));
+    expect(screen.queryByRole("button", { name: "Open menu" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("button", { name: /The day page/ })).toBeInTheDocument();
+  });
+
+  it("opened directly, ← goes to the trip", async () => {
+    await renderTool("/trips/trip-1/weather");
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("The Today page")).toBeInTheDocument();
   });
 });

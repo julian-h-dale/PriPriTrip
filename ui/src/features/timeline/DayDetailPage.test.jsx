@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { Link, MemoryRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
@@ -28,7 +28,7 @@ function LocationProbe() {
   return <Link to="/trips/trip-1/days/2026-05-14">Elsewhere: Thu</Link>;
 }
 
-function renderDay(date, tripId = "trip-1") {
+function renderDay(date, tripId = "trip-1", { from } = {}) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
@@ -40,7 +40,8 @@ function renderDay(date, tripId = "trip-1") {
   render(
     <Provider store={store}>
       <MemoryRouter
-        initialEntries={[`/trips/${tripId}/days/${date}`]}
+        initialEntries={[from, `/trips/${tripId}/days/${date}`].filter(Boolean)}
+        initialIndex={from ? 1 : 0}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
@@ -62,6 +63,35 @@ beforeEach(() => {
 });
 
 describe("DayDetailPage", () => {
+  it("has ← in ☰'s place: opened directly, it goes to the whole timeline", async () => {
+    const user = userEvent.setup();
+    renderDay("2026-05-11");
+    await screen.findByRole("heading", { name: "Mon, May 11" });
+    const bar = screen.getByRole("button", { name: "Back" }).closest("header");
+    expect(within(bar).getAllByRole("button")[0]).toHaveAccessibleName("Back");
+    expect(within(bar).queryByRole("button", { name: "Open menu" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(where.path).toBe("/trips/trip-1");
+  });
+
+  it("opened directly and swiped to another day, ← still goes to the timeline", async () => {
+    const user = userEvent.setup();
+    renderDay("2026-05-11");
+    await screen.findByRole("heading", { name: "Mon, May 11" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await waitFor(() => expect(where.path).toBe("/trips/trip-1/days/2026-05-12"));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(where.path).toBe("/trips/trip-1");
+  });
+
+  it("← goes back where you came from", async () => {
+    const user = userEvent.setup();
+    renderDay("2026-05-11", "trip-1", { from: "/trips/trip-1/today" });
+    await screen.findByRole("heading", { name: "Mon, May 11" });
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(where.path).toBe("/trips/trip-1/today");
+  });
+
   it("shows a day's entries, merged by time", async () => {
     renderDay("2026-05-11");
     await screen.findByRole("heading", { name: "Mon, May 11" });
@@ -79,19 +109,11 @@ describe("DayDetailPage", () => {
     expect(await screen.findByText("Nothing planned for this day.")).toBeInTheDocument();
   });
 
-  it("expands an entry to markdown notes, map link and confirmation", async () => {
-    const user = userEvent.setup();
+  it("a row is a link to its entry's page (the check-in opens its stay)", async () => {
     renderDay("2026-05-11");
-    await user.click(await screen.findByRole("button", { name: /Check in · Hotel Goldener/ }));
-
-    const bold = screen.getByText("drop bags");
-    expect(bold.tagName).toBe("STRONG");
-    expect(screen.getByText("SAMPLE-1001")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open map" })).toHaveAttribute(
-      "href",
-      "https://www.google.com/maps/search/?api=1&query=46.9486227,7.4487269&query_place_id=ChIJjxe45cM5jkcRYwP0oTEWgmU"
-    );
-    await user.click(screen.getByRole("button", { name: /Check in · Hotel Goldener/ }));
+    const checkIn = await screen.findByRole("link", { name: /Check in · Hotel Goldener/ });
+    expect(checkIn).toHaveAttribute("href", expect.stringMatching(/^\/trips\/trip-1\/stays\//));
+    // Nothing expands in place any more.
     expect(screen.queryByText("SAMPLE-1001")).not.toBeInTheDocument();
   });
 

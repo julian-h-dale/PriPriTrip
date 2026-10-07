@@ -9,7 +9,7 @@ const SAMPLE_TRIP = "Bern & Wengen Long Weekend";
  * on the API for real forecasts; without it the page says it isn't set up.
  * Currency calls Frankfurter from the browser, so it needs the internet.
  */
-test("trip tools: Weather and Currency from the drawer", async ({ page }) => {
+test("trip tools: Weather, Currency and Time zones from the drawer", async ({ page }) => {
   await login(page);
   await page.screenshot({ path: screenshotPath("30-trips-countdown"), fullPage: true });
   await (await tripLink(page, SAMPLE_TRIP)).click();
@@ -22,6 +22,12 @@ test("trip tools: Weather and Currency from the drawer", async ({ page }) => {
   await expect(page.getByText(/Weather isn’t set up|Trip days|Couldn’t load the weather/).first()).toBeVisible();
   await page.screenshot({ path: screenshotPath("32-weather"), fullPage: true });
 
+  // A tool page has ← in place of ☰: back to the trip, then the drawer again.
+  await expect(page.getByRole("button", { name: "Open menu" })).toHaveCount(0);
+  const tripUrl = page.url().replace(/\/weather$/, "");
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).not.toHaveURL(/\/weather$/);
+  expect(page.url().startsWith(tripUrl)).toBe(true);
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Currency" }).click();
   await expect(page.getByRole("heading", { name: "Currency" })).toBeVisible();
@@ -31,6 +37,16 @@ test("trip tools: Weather and Currency from the drawer", async ({ page }) => {
   await page.getByLabel("Amount in CHF").fill("50");
   await expect(page.getByRole("region", { name: "Calculator" })).toContainText("$");
   await page.screenshot({ path: screenshotPath("33-currency"), fullPage: true });
+
+  // Time zones: a live clock for each zone on the trip (Chicago, Zürich).
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Time zones" }).click();
+  await expect(page.getByRole("heading", { name: "Time zones" })).toBeVisible();
+  const zones = page.getByRole("region", { name: "The trip's time zones" });
+  await expect(zones.getByRole("region")).toHaveCount(2);
+  await expect(zones.getByRole("region").nth(1)).toContainText(/Zürich|Bern/);
+  await page.screenshot({ path: screenshotPath("35-time-zones"), fullPage: true });
 });
 
 test("trip tools: the Weather page's layout, with a made-up forecast", async ({ page }) => {

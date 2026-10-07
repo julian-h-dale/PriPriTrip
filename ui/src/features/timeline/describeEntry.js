@@ -16,7 +16,8 @@ import { formatDayHeading, formatDuration, formatTime, zoneLabel } from "@/share
 
 /**
  * Presentation for one timeline entry: icon, title, times, and the details
- * shown when it expands (`hero` is the one photo behind them). Pure — no React state — so it is easy to test.
+ * its own page shows (`hero` is the photo at the top). Pure — no React
+ * state — so it is easy to test.
  */
 
 export const MODE_ICON = { flight: Plane, train: TrainFront, bus: Bus, ferry: Ship, boat: Ship, car: Car, other: Route };

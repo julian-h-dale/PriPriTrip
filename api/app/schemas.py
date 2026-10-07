@@ -389,3 +389,80 @@ class InvitedUser(TemporaryPassword):
 class ChangePassword(CamelModel):
     current_password: str = Field(max_length=200)
     new_password: str = Field(max_length=200)
+
+
+# ---- packing lists ----
+
+PackingCategory = Literal[
+    "clothes", "toiletries", "electronics", "documents", "health", "outdoors", "carry_on", "other"
+]
+
+
+def _packing_text(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("say what to pack")
+    if len(value) > 200:
+        raise ValueError("keep it under 200 characters")
+    return value
+
+
+PackingText = Annotated[str, AfterValidator(_packing_text)]
+PackingQuantity = Annotated[int, Field(ge=1, le=99)]
+
+
+class PackingItemCreate(CamelModel):
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    category: PackingCategory
+    text: PackingText
+    quantity: PackingQuantity = 1
+
+
+class PackingItemUpdate(CamelModel):
+    """Any of: new words, how many, ticked or not, another list. Left out =
+    unchanged."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    text: PackingText | None = None
+    quantity: PackingQuantity | None = None
+    checked: bool | None = None
+    category: PackingCategory | None = None
+
+
+class PackingItemRead(CamelModel):
+    id: uuid.UUID
+    category: PackingCategory
+    text: str
+    quantity: int
+    checked: bool
+    position: int
+
+
+# ---- trip documents ----
+
+
+def _document_name(value: str) -> str:
+    value = " ".join(value.split())
+    if not value:
+        raise ValueError("give it a name")
+    if len(value) > 120:
+        raise ValueError("keep the name under 120 characters")
+    return value
+
+
+DocumentName = Annotated[str, AfterValidator(_document_name)]
+
+
+class DocumentRename(CamelModel):
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    name: DocumentName
+
+
+class DocumentRead(CamelModel):
+    id: uuid.UUID
+    name: str
+    filename: str
+    content_type: str
+    size: int
+    updated_at: datetime
+    uploaded_by_name: str | None = None

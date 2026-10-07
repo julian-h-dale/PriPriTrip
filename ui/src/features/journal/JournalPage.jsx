@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { CloudUpload, Eye, MapPin, NotebookPen, Pencil, Trash2 } from "lucide-react";
+import { CloudUpload, Eye, MapPin, Pencil, Trash2 } from "lucide-react";
 import { journalDays, memoryTime } from "@/features/journal/journalDays";
 import {
   canWriteMemories,
@@ -28,16 +28,6 @@ function groupHeading(group) {
   if (group.kind === "before") return "Before the trip";
   if (group.kind === "after") return "After the trip";
   return formatDayHeading(group.date);
-}
-
-/** "New memory". Always available: offline, memories wait in the outbox. */
-export function NewMemoryButton({ onClick, className, size = "sm" }) {
-  return (
-    <Button size={size} className={className} onClick={onClick}>
-      <NotebookPen className="h-4 w-4" aria-hidden="true" />
-      New memory
-    </Button>
-  );
 }
 
 function MemoryCard({ memory, trip, onEdit, onDelete }) {
@@ -142,7 +132,7 @@ function Journal({ trip }) {
     () => journalDays(tripId === trip.id ? items : [], trip),
     [items, tripId, trip]
   );
-  // null | { memory: null } (new) | { memory } (edit)
+  // null | { memory } (edit). A new one is the top bar's New memory.
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -163,7 +153,6 @@ function Journal({ trip }) {
             {writer ? "Everyone’s memories from this trip" : "What the travelers have shared"}
           </p>
         </div>
-        {writer && <NewMemoryButton onClick={() => setEditing({ memory: null })} />}
       </header>
 
       {writer && <UploadBar />}

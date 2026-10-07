@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
+import weatherReducer from "@/features/weather/weatherSlice";
 import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
@@ -26,6 +27,7 @@ function renderAt(path) {
     reducer: {
       auth: authReducer,
       timeline: timelineReducer,
+      weather: weatherReducer,
       network: networkReducer,
       error: errorReducer,
       notification: notificationReducer,
@@ -80,6 +82,19 @@ describe("Today tab", () => {
 
     const plan = screen.getByRole("region", { name: "Today’s plan" });
     expect(within(plan).getByText("Dinner at Kornhauskeller")).toBeInTheDocument();
+    // Every row, and Next up and Tonight, open the entry's own page.
+    expect(within(plan).getByRole("link", { name: /Dinner at Kornhauskeller/ })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/trips\/trip-1\/activities\//)
+    );
+    expect(within(next).getByRole("link", { name: "Details" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/trips\/trip-1\/activities\//)
+    );
+    expect(within(tonight).getByRole("link", { name: "Details" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/trips\/trip-1\/stays\//)
+    );
     expect(within(screen.getByRole("region", { name: "Tomorrow" })).getByRole("link")).toHaveAttribute(
       "href",
       "/trips/trip-1/days/2026-05-12"
@@ -116,5 +131,28 @@ describe("untilLabel", () => {
     expect(untilLabel(3 * 3_600_000, now)).toBe("in 3 h");
     expect(untilLabel(3 * 3_600_000 + 10 * 60_000, now)).toBe("in 3 h 10 min");
     expect(untilLabel(2 * 86_400_000, now)).toBe("in 2 days");
+  });
+});
+
+describe("the temperature on Today", () => {
+  const weather = (today) => ({ configured: true, today, days: [], alerts: [] });
+  const serve = (w) =>
+    apiClient.get.mockImplementation(async (url) => ({ data: url.endsWith("/weather") ? w : TRIP }));
+
+  it("shows it now at today's place, in °F, linking to Weather", async () => {
+    serve(weather({ place: "Bern", temp: 17.4, icon: "10d", condition: "Rain" }));
+    renderAt("/trips/trip-1/today");
+    const link = await screen.findByRole("link", { name: "Weather in Bern: 63°F, 17°C" });
+    expect(link).toHaveAttribute("href", "/trips/trip-1/weather");
+    expect(link).toHaveTextContent("63°");
+    // Where New memory was: beside the heading (New memory is in the top bar now).
+    expect(link.parentElement).toContainElement(screen.getByRole("heading", { level: 1 }));
+  });
+
+  it("shows nothing when weather isn't set up", async () => {
+    serve({ configured: false });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("link", { name: /^Weather in/ })).not.toBeInTheDocument();
   });
 });

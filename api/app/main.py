@@ -17,7 +17,9 @@ from app.routers import (
     admin,
     auth_refresh,
     config,
+    documents,
     memories,
+    packing,
     photos,
     sharing,
     trips,
@@ -67,6 +69,8 @@ def create_app() -> FastAPI:
     application.include_router(memories.router, dependencies=password_ok)
     application.include_router(photos.router)
     application.include_router(weather.router, dependencies=password_ok)
+    application.include_router(packing.router, dependencies=password_ok)
+    application.include_router(documents.router, dependencies=password_ok)
     application.include_router(trips.schema_router)
     application.include_router(config.router, dependencies=password_ok)
     application.include_router(admin.router, dependencies=password_ok)
