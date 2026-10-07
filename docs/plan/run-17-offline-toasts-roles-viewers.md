@@ -1,12 +1,12 @@
-# Run stage 17 — quiet offline, changing roles, what viewers see
+# Run stage 17 — quiet offline, making someone an admin, what viewers see
 
 Asked 2026-10-07 (Julian), after trying Run stage 16 on the phone:
 1. In airplane mode, a lot of "Network Error" toasts, even where the page
    is showing the phone's saved copy.
-2. Change a user's role, and make a user an admin.
+2. Make a user an admin of the app (from the Admin page's table).
 3. Viewers see only the Timeline, Journal and Map: no Today tab, no Stays
    or Travel views on the timeline, no Trip tools in the drawer.
-4. How much work it would be to limit what viewers see on the map.
+4. Limit what viewers see on the map: activities and public memories only.
 
 ## Where we are
 
@@ -61,21 +61,22 @@ Offline in the browser, moving around the app as the installed app does
 - **Map key and time zone lookups** (`/config`, `/timezone`) fail quietly;
   the mini map and the clock line just don't show.
 
-### 2. Changing roles (Q-R1, Q-R2)
+### 2. Making someone an admin (Q-R1, Q-R2)
 
-**On a trip** (the owner, in Share trip):
-- Each member's row gets a role menu: Editor or Viewer.
-- New endpoint: `PATCH /trips/:id/members/:userId` with `{ role }`, owner
-  only.
-- The owner's own row can't change.
-- The change takes effect on that person's next load.
+The app's own admin (`users.is_superuser`), not a role on a trip: e.g.
+invite yourself under your own email, then make that user an admin, so
+the seed's `admin@example.com` isn't the only one. Editor and viewer on a
+trip stay as they are (joined with a code).
 
-**In the app** (an admin, on the Admin page):
-- Each user's row gets **Make admin** / **Remove admin**, asking first.
-- New endpoint: `PATCH /admin/users/:id` with `{ isSuperuser }`, behind
+- **The Admin page's table of users:** the Role column becomes a choice,
+  Admin or User, on each row. Changing it asks first ("Make
+  julian@… an admin?").
+- **Endpoint:** `PATCH /admin/users/:id` with `{ isSuperuser }`, behind
   `current_superuser` like the rest of `/admin`.
-- **Safeguards:** you can't remove your own admin, and the last admin
-  can't be removed, so nobody can lock everyone out.
+- **Safeguards** (Q-R2): your own row can't be changed (another admin can
+  change it), and the last admin can't be made a User, so nobody can lock
+  everyone out.
+- **A new admin** gets the Admin page in their drawer on their next load.
 
 ### 3. What a viewer sees (Q-V1, Q-V2)
 
@@ -93,33 +94,22 @@ Offline in the browser, moving around the app as the installed app does
   documents already do, so hiding them isn't only cosmetic. Currency and
   time zones never touch the server.
 
-### 4. Limiting what viewers see on the map: effort (Q-M1)
+### 4. The map for viewers: activities and public memories only (Q-M1)
 
-Hiding pins only in the app is cosmetic: the trip the viewer's phone
-downloads still has every place, and a viewer can see stays' addresses on
-the timeline anyway. A real limit goes on the server, the way confirmation
-numbers are stripped from a viewer's read today. Three sizes:
+Option (a): for everyone who's a viewer, the map shows only activities
+and public memories. It's done on the server, so it isn't only hidden:
+a viewer's trip read (the same one the phone saves for offline) has:
+- **no points of interest at all** (they're on the map only);
+- **stays and travel legs without their places:** a stay still shows on
+  the timeline by name, with its dates, and a leg with its title and times,
+  but neither has an address, coordinates, photo or map.
+- Activities and public memories keep their places, as now.
 
-- **(a) By kind, for all viewers** (e.g. no stays, or no stays and no
-  travel, for anyone who's a viewer):
-  - **Server:** a viewer's trip read leaves out those places (or their
-    locations).
-  - **App:** the map, timeline and entry pages cope with places that have
-    no location (they already do for places that were never located).
-  - **Effort:** about one phase, **½–1 day**.
-- **(b) A switch on each entry**, "Hide from viewers":
-  - **Server:** a column on stays, activities, legs and points of interest
-    (migration), the switch in each form, and a viewer's read that drops
-    hidden entries.
-  - **Decision needed:** the export question (does a viewer's export skip
-    them too? yes).
-  - **Effort:** **2 phases, about 2 days**.
-- **(c) A per-trip setting** for the owner, "Viewers see: everything /
-  plans only / …" in Share trip: (a) with a choice.
-  - **Effort:** **about 1 day**.
-
-Recommendation: decide what you want hidden before building any of these;
-(a) covers "don't show viewers where we sleep" cheaply.
+So a viewer's map has activity pins and, with the Filter's Journal, public
+memories. The Filter menu offers a viewer only Everything and Journal, and
+the List shows only those. The entry page for a stay or leg shows no
+place, map or Directions for a viewer. A viewer's export follows the same
+read (no places on stays and legs, no points of interest).
 
 ## Phases
 
@@ -136,18 +126,14 @@ Recommendation: decide what you want hidden before building any of these;
   - **E2E:** go offline and move through every page, including an entry's
     page with mini maps and coming back to the app; no "Network Error"
     toast anywhere.
-- **Phase 73 — changing roles.**
-  - **Scope:**
-    - Trip: `PATCH …/members/:userId` and the role menu in Share trip.
-    - App: `PATCH /admin/users/:id` with the safeguards, and Make / Remove
-      admin on the Admin page.
+- **Phase 73 — making someone an admin.**
+  - **Scope:** `PATCH /admin/users/:id` with the safeguards; the Role
+    choice (Admin / User) in the Admin page's table, confirmed first.
   - **Tests:**
-    - Owner changes a member's role; an editor or viewer can't (403).
-    - The owner's own role can't change.
-    - Making and removing an admin; refused for yourself and for the last
-      admin.
+    - Making and removing an admin.
+    - Refused for your own row and for the last admin.
     - A non-admin gets 403.
-    - The UI for each.
+    - The table's choice and its confirm; your own row has none.
 - **Phase 74 — what a viewer sees.**
   - **Scope:**
     - Viewer tabs; landing on the timeline; redirects from Today and the
@@ -159,30 +145,42 @@ Recommendation: decide what you want hidden before building any of these;
     - An editor's unchanged.
     - Weather and packing 403 for a viewer.
   - **E2E:** the seed viewer at 375 px.
-- **(Later) Phase 75 — the map for viewers,** once Q-M1 is answered.
+- **Phase 75 — the map for viewers.**
+  - **Scope:**
+    - A viewer's trip read (and export): no points of interest; stays and
+      legs without their places.
+    - The Filter offers a viewer Everything and Journal only.
+    - A stay's or leg's page copes with no place.
+  - **Tests:**
+    - A viewer's read has none of those places; an editor's has all.
+    - A viewer's export follows the read.
+    - A viewer's map has only activity pins and public memories, and the
+      List matches.
+    - A stay's page for a viewer has no place.
+  - **E2E:** the seed viewer's map at 375 px.
 
 ## Open questions (Run stage 17)
 
 - **Q-T1. Offline:** reads never toast; writes say "You're offline, so
   that wasn't saved" (once). Recommendation: **yes.**
-  - **Answer:**
+  - **Answer:** yes (2026-10-07).
 - **Q-R1. "Change a user's role":** the role on a trip (editor or viewer,
   changed by the trip's owner), making someone an admin of the app (by an
   admin), or both? Recommendation: **both**, as above.
-  - **Answer:**
+  - **Answer:** the app's admin only: set Admin or User in the Admin page's table of users (e.g. invite yourself, then make that user an admin). No changing editor / viewer (2026-10-07).
 - **Q-R2. Admin safeguards:** you can't remove your own admin, and there's
   always at least one admin. Recommendation: **yes.**
-  - **Answer:**
+  - **Answer:** see Q-R1; the safeguards are kept as recommended (2026-10-07).
 - **Q-V1. A viewer keeps** day pages, an entry's own page, trip search and
   the map, and loses Today, the Stays / Travel views and every Trip tool.
   Is that the line? Recommendation: **yes.**
-  - **Answer:**
+  - **Answer:** yes (2026-10-07).
 - **Q-V2. Enforce it on the server too:** weather and packing refuse
   viewers, as documents do. Recommendation: **yes**; otherwise it's only
   hidden.
-  - **Answer:**
+  - **Answer:** yes (2026-10-07).
 - **Q-M1. The map for viewers:** (a) by kind for all viewers, (b) a "Hide
   from viewers" switch per entry, (c) a per-trip setting, or not now? And
   what should be hidden: stays, travel, points of interest, memories?
   Recommendation: decide what to hide first; (a) if it's "where we sleep".
-  - **Answer:**
+  - **Answer:** (a), hiding stays, travel and points of interest: viewers see only activities and public memories (2026-10-07).
