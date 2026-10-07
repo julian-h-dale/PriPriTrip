@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
-import { fetchUsers, resetPassword } from "@/features/admin/adminSlice";
+import { fetchUsers, resetPassword, setAdmin } from "@/features/admin/adminSlice";
 import { CopyField } from "@/shared/components/CopyField";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
+import { Select } from "@/shared/components/ui/select";
+import { notify } from "@/shared/notificationSlice";
 
 function Badge({ children, tone = "default" }) {
   const tones = {
@@ -55,12 +57,55 @@ function PasswordCell({ user, isMe, onReset }) {
   );
 }
 
+/**
+ * A user's role in the app: Admin or User, changed here (asking first).
+ * Your own row is a badge: another admin changes it, so nobody removes the
+ * last admin by accident (the server refuses that too).
+ */
+function RoleCell({ user, isMe, onChange }) {
+  if (isMe) {
+    return (
+      <span className="flex items-center gap-2">
+        <Badge>{user.is_superuser ? "Admin" : "User"}</Badge>
+        <span className="text-xs text-muted-foreground">You</span>
+      </span>
+    );
+  }
+  return (
+    <Select
+      aria-label={`Role for ${user.email}`}
+      value={user.is_superuser ? "admin" : "user"}
+      onChange={(e) => onChange(user, e.target.value === "admin")}
+      className="h-9 w-28"
+    >
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </Select>
+  );
+}
+
 export function AdminUsersPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { users, status } = useSelector((s) => s.admin);
   const me = useSelector((s) => s.auth.user);
   const [issued, setIssued] = useState(null); // { email, temporaryPassword }
+  // The role change waiting for "Make … an admin?": { user, admin } or null.
+  const [changing, setChanging] = useState(null);
+  const [roleBusy, setRoleBusy] = useState(false);
+
+  async function confirmRole() {
+    setRoleBusy(true);
+    const result = await dispatch(setAdmin({ userId: changing.user.id, admin: changing.admin }));
+    setRoleBusy(false);
+    if (setAdmin.fulfilled.match(result)) {
+      const { email } = changing.user;
+      dispatch(notify({ type: "success", message: changing.admin ? `${email} is an admin` : `${email} is a user` }));
+    } else {
+      dispatch(notify({ type: "error", message: result.payload?.message ?? "Couldn’t change their role" }));
+    }
+    setChanging(null);
+  }
 
   async function handleReset(user) {
     const result = await dispatch(resetPassword(user.id));
@@ -100,8 +145,8 @@ export function AdminUsersPage() {
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="p-3 font-medium">Name</th>
                 <th className="p-3 font-medium">Email</th>
-                <th className="p-3 font-medium">Password</th>
                 <th className="p-3 font-medium">Role</th>
+                <th className="p-3 font-medium">Password</th>
                 <th className="p-3 font-medium">Status</th>
                 <th className="p-3 font-medium">Verified</th>
                 <th className="p-3 font-medium">Timezone</th>
@@ -112,13 +157,12 @@ export function AdminUsersPage() {
                 <tr key={u.id} className="border-b border-border last:border-0">
                   <td className="p-3">{u.name || "—"}</td>
                   <td className="p-3">{u.email}</td>
+                  {/* Role before Password: on a phone it's on screen without scrolling the table. */}
                   <td className="p-3">
-                    <PasswordCell user={u} isMe={u.id === me?.id} onReset={handleReset} />
+                    <RoleCell user={u} isMe={u.id === me?.id} onChange={(user, admin) => setChanging({ user, admin })} />
                   </td>
                   <td className="p-3">
-                    <Badge tone={u.is_superuser ? "default" : "muted"}>
-                      {u.is_superuser ? "Admin" : "User"}
-                    </Badge>
+                    <PasswordCell user={u} isMe={u.id === me?.id} onReset={handleReset} />
                   </td>
                   <td className="p-3">
                     <Badge tone={u.is_active ? "default" : "muted"}>
@@ -133,6 +177,27 @@ export function AdminUsersPage() {
           </table>
         </div>
       )}
+      <Dialog
+        open={changing !== null}
+        onClose={() => !roleBusy && setChanging(null)}
+        title={changing?.admin ? "Make them an admin?" : "Make them a user?"}
+        description={
+          changing
+            ? changing.admin
+              ? `${changing.user.email} will be able to invite people, reset passwords and change who’s an admin.`
+              : `${changing.user.email} will no longer have the Admin page.`
+            : undefined
+        }
+      >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setChanging(null)} disabled={roleBusy}>
+            Cancel
+          </Button>
+          <Button onClick={confirmRole} disabled={roleBusy}>
+            {roleBusy ? "Saving…" : changing?.admin ? "Make admin" : "Make user"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
       <Dialog
         open={issued !== null}
         onClose={() => setIssued(null)}

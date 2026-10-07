@@ -43,6 +43,8 @@ function TripTimeline({ trip }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const readOnly = useSelector(selectReadOnly);
+  // A viewer follows the plan: no Stays / Travel views (Run stage 17).
+  const isViewer = trip.role === "viewer";
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   // Past days are greyed, judged on the trip's own calendar.
   const today = todayIn(trip.timezone);
@@ -89,23 +91,25 @@ function TripTimeline({ trip }) {
           <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
           <p className="text-sm text-muted-foreground">{formatDateRange(trip.startDate, trip.endDate)}</p>
         </div>
-        <div role="group" aria-label="Timeline view" className="grid grid-cols-3 rounded-md border border-border bg-card p-1">
-          {VIEWS.map(({ view: v, icon: Icon, label }) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={view === v}
-              onClick={() => setView(v)}
-              className={cn(
-                "flex min-h-10 items-center justify-center gap-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4" aria-hidden="true" />
-              {label}
-            </button>
-          ))}
-        </div>
+        {!isViewer && (
+          <div role="group" aria-label="Timeline view" className="grid grid-cols-3 rounded-md border border-border bg-card p-1">
+            {VIEWS.map(({ view: v, icon: Icon, label }) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={cn(
+                  "flex min-h-10 items-center justify-center gap-1.5 rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <ol aria-label="Trip days" className="flex flex-col">

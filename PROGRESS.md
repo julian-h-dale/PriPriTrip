@@ -6,6 +6,51 @@
 
 ## Status
 
+- **Run stage 17 ✅ (2026-10-07)** on branch
+  **`roles-and-viewers`**, stacked on `points-of-interest` (Julian: stack
+  them). Quiet offline (no "Network Error" toasts for reads), making
+  someone an admin from the Admin page's table, what viewers see, and a
+  viewer's map with only activities and public memories. Plan:
+  `docs/plan/run-17-offline-toasts-roles-viewers.md`; answers in.
+  - **Phase 72 ✅:** quiet offline: a read that can't reach the server
+    never toasts; a write says "You’re offline, so that wasn’t saved."
+    once. `make verify` green (260 API + 465 UI); e2e `offline-toasts`.
+  - Julian: carry on through Phases 73–75 without stopping.
+  - **Phase 73 ✅:** Role (User / Admin) in the Admin page's table,
+    `PATCH /admin/users/:id`; not your own row, never the last admin.
+    `make verify` green (266 API + 468 UI).
+  - **Phase 74 ✅:** viewers get Timeline, Journal and Map; no Today, no
+    Stays / Travel views, no Trip tools (`NotForViewers`); the server
+    refuses them weather and packing. `make verify` green (267 API + 475
+    UI).
+  - **Phase 75 ✅:** a viewer's map: the server sends viewers no points of
+    interest, and stays' and legs' places only by name and city, so only
+    activities and public memories are pins. `make verify` green (271 API
+    + 478 UI).
+  - **Run stage 17 is complete.** Not pushed or deployed. Deploying runs no
+    new migration.
+- **Run stage 16 ✅ (2026-10-06)** on branch **`points-of-interest`**
+  (off `main` after PR #15): points of interest on the map, one Filter
+  button, the map's List button. Plan: `docs/plan/run-16-points-of-interest.md`.
+  Answers: all as recommended (2026-10-06).
+  - **Phase 68 ✅:** points of interest on the server (`PointOfInterest`,
+    migration 0013, `/trips/:id/points-of-interest`, `pointsOfInterest[]` in
+    the trip document and the read). Named "point of interest" throughout,
+    never "place" (Julian). `make verify` green (260 API + 433 UI).
+  - Julian: go ahead with Phases 69–71 without stopping between them.
+  - **Phase 69 ✅:** points of interest on the map (pins, "Point of
+    interest" from a search result, the form, Edit and Delete in the info
+    window). `make verify` green (260 API + 451 UI). The dev database was
+    migrated (`make migrate`) for the e2e.
+  - **Phase 70 ✅:** one Filter button (Everything, Stays, Points of
+    interest, Journal) in place of the Journal and Stays toggles. `make
+    verify` green (260 API + 453 UI).
+  - **Phase 71 ✅:** the map's List button (bottom left, above Google's
+    logo): what's on the map, grouped with icons; a row jumps to its pin.
+    `make verify` green (260 API + 459 UI); map e2e specs pass.
+  - **Run stage 16 is complete.** Pushed (`points-of-interest`, no PR yet)
+    and deployed to Fly from the branch (2026-10-07); migration 0013 ran on
+    start. **Julian:** try it on the phone.
 - **Run stage 15 ✅ (2026-10-06)** on `details-page`: New memory (blue
   icon) in the top bar in Share's place; Share trip in the drawer after
   Documents; Currency first in Trip tools; Journal's and Today's New memory

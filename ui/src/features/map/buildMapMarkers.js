@@ -2,20 +2,29 @@ import { datePart } from "@/shared/utils/time";
 
 /**
  * Every located place in the trip, flattened for the map: one marker per
- * stay, per travel endpoint (from and to), and per activity with a place.
+ * stay, per travel endpoint (from and to), per activity with a place, and
+ * per point of interest (always located; on no day, so `day` is null).
  * Pure — no React, no Google Maps — so it's easy to test independently of
  * the map widget itself.
  */
 
-function markerFromLocation(loc, { id, kind, mode, day, endDay, legDays, entryId, title }) {
+function markerFromLocation(loc, { id, kind, mode, end, category, notes, day, endDay, legDays, entryId, title }) {
   if (loc?.lat == null || loc?.lng == null) return null;
   return {
     id,
-    kind, // "stay" | "travel" | "activity"
+    kind, // "stay" | "travel" | "activity" | "poi" (a point of interest)
     mode: mode ?? null, // a travel's mode (flight, train, ...); null otherwise
+    // A point of interest's category (shop, market, ...) and notes; null otherwise.
+    category: category ?? null,
+    notes: notes ?? null,
     lat: loc.lat,
     lng: loc.lng,
     title,
+    // The location's own name: a leg's two ends share its title, so this
+    // tells them apart (the map's List).
+    placeName: loc.name ?? null,
+    // A travel endpoint's end of the leg: "from" | "to"; null otherwise.
+    end: end ?? null,
     city: loc.city ?? null,
     imgRef: loc.imgRef ?? null,
     placeId: loc.placeId ?? null,
@@ -28,7 +37,7 @@ function markerFromLocation(loc, { id, kind, mode, day, endDay, legDays, entryId
     // A travel endpoint's leg: [departure date, arrival date]. Both ends match
     // every day the leg travels on. Null for stays and activities.
     legDays: legDays ?? null,
-    // The stay's, leg's or activity's own id, for a link to its page.
+    // The stay's, leg's, activity's or point of interest's own id.
     entryId: entryId ?? null,
   };
 }
@@ -54,6 +63,7 @@ export function buildMapMarkers(trip) {
     const from = markerFromLocation(travel.from, {
       id: `travel-${travel.id}-from`,
       kind: "travel",
+      end: "from",
       entryId: travel.id,
       mode: travel.mode,
       day: datePart(travel.depart),
@@ -65,6 +75,7 @@ export function buildMapMarkers(trip) {
     const to = markerFromLocation(travel.to, {
       id: `travel-${travel.id}-to`,
       kind: "travel",
+      end: "to",
       entryId: travel.id,
       mode: travel.mode,
       day: datePart(travel.arrive ?? travel.depart),
@@ -85,6 +96,19 @@ export function buildMapMarkers(trip) {
       });
       if (marker) markers.push(marker);
     }
+  }
+
+  for (const poi of trip.pointsOfInterest ?? []) {
+    const marker = markerFromLocation(poi.location, {
+      id: `poi-${poi.id}`,
+      kind: "poi",
+      entryId: poi.id,
+      category: poi.category,
+      notes: poi.notes,
+      day: null,
+      title: poi.name,
+    });
+    if (marker) markers.push(marker);
   }
 
   return markers;

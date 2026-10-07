@@ -17,7 +17,7 @@ from app.models import WeatherCache
 from app.services import weather as weather_service
 from app.settings import get_app_settings
 from app.trip_document import TripDocument
-from tests.test_sharing import shared_trip
+from tests.test_sharing import edited_trip, shared_trip
 
 NAHA = {"name": "Hotel Palm Royal", "city": "Naha", "lat": 26.2164, "lng": 127.6899}
 TOKASHIKI = {
@@ -321,9 +321,13 @@ async def test_alerts_come_through_once(client: AsyncClient, owm: FakeOWM) -> No
     assert alerts[0]["sender"] == "Japan Meteorological Agency"
 
 
-async def test_viewers_see_it_and_strangers_dont(
+async def test_editors_see_it_viewers_and_strangers_dont(
     client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient, owm: FakeOWM
 ) -> None:
+    """Weather is a Trip tool: the owner and editors (Run stage 17)."""
     trip = await shared_trip(client, viewer)
-    assert (await viewer.get(f"/trips/{trip['id']}/weather")).status_code == 200
+    assert (await client.get(f"/trips/{trip['id']}/weather")).status_code == 200
+    assert (await viewer.get(f"/trips/{trip['id']}/weather")).status_code == 403
     assert (await stranger.get(f"/trips/{trip['id']}/weather")).status_code == 404
+    edited = await edited_trip(client, stranger)  # `stranger` joins another as an editor
+    assert (await stranger.get(f"/trips/{edited['id']}/weather")).status_code == 200

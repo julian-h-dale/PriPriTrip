@@ -5,7 +5,7 @@ describe("placeActions", () => {
   it("lodging: stay first, then activity; travel under More", () => {
     expect(placeActions(["hotel", "lodging", "point_of_interest", "establishment"])).toEqual({
       primary: ["stay", "activity"],
-      more: ["travelFrom", "travelTo"],
+      more: ["poi", "travelFrom", "travelTo"],
     });
   });
 
@@ -13,7 +13,7 @@ describe("placeActions", () => {
     for (const types of [["international_airport", "airport"], ["train_station", "transit_station"]]) {
       expect(placeActions(types)).toEqual({
         primary: ["travelFrom", "travelTo", "activity"],
-        more: ["stay"],
+        more: ["poi", "stay"],
       });
     }
   });
@@ -24,10 +24,24 @@ describe("placeActions", () => {
     expect(isArea(["locality", "political"])).toBe(true);
   });
 
-  it("anything else: activity, with the rest under More", () => {
-    expect(placeActions(["restaurant", "food", "establishment"])).toEqual({
+  it("a shop, market, café or sight: point of interest first, then activity", () => {
+    for (const types of [
+      ["restaurant", "food", "establishment"],
+      ["clothing_store", "store"],
+      ["market", "establishment"],
+      ["museum", "tourist_attraction"],
+    ]) {
+      expect(placeActions(types)).toEqual({
+        primary: ["poi", "activity"],
+        more: ["stay", "travelFrom", "travelTo"],
+      });
+    }
+  });
+
+  it("anything else: activity, with the rest (point of interest too) under More", () => {
+    expect(placeActions(["dentist", "health", "establishment"])).toEqual({
       primary: ["activity"],
-      more: ["stay", "travelFrom", "travelTo"],
+      more: ["poi", "stay", "travelFrom", "travelTo"],
     });
   });
 

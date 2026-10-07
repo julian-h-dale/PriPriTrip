@@ -165,7 +165,8 @@ export function DocumentsPage() {
   useEffect(() => {
     dispatch(fetchTrip(tripId)); // its name, and whether you may see this
     dispatch(fetchDocuments(tripId));
-  }, [dispatch, tripId]);
+    // Again when the connection comes back (they aren't saved for offline).
+  }, [dispatch, tripId, online]);
 
   const mine = loadedId === tripId ? documents : [];
   const disabled = !online;
@@ -208,7 +209,10 @@ export function DocumentsPage() {
           {status === "loading" && loadedId === tripId && (
             <div className="h-24 animate-pulse rounded-lg border border-border bg-card" aria-label="Loading documents" />
           )}
-          {status === "failed" && loadedId === tripId && <p className="text-sm text-muted-foreground">Couldn’t load the documents.</p>}
+          {/* Offline, the banner above already says they need a connection. */}
+          {status === "failed" && loadedId === tripId && online && (
+            <p className="text-sm text-muted-foreground">Couldn’t load the documents.</p>
+          )}
           {status === "ready" && mine.length === 0 && (
             <Card className="flex flex-col items-center gap-2 p-6 text-center">
               <FolderOpen className="h-8 w-8 text-primary" aria-hidden="true" />

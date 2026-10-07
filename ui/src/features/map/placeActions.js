@@ -1,11 +1,15 @@
+import { categoryFor } from "@/features/pointsOfInterest/pointsOfInterest";
+
 /**
  * Which "Add" actions to offer for a place picked from Google search, from
  * its Google place types. Relevant ones first (`primary`); the rest stay one
  * "More…" away (`more`) in case Google's types are off — a ryokan typed as a
  * restaurant, say. A city or region offers nothing: the map just pans there.
  *
- * Actions: "stay" | "activity" | "travelFrom" | "travelTo".
+ * Actions: "stay" | "activity" | "travelFrom" | "travelTo" | "poi" (save
+ * it as a point of interest: first for a shop, market, café or sight).
  */
+
 
 const LODGING = new Set([
   "lodging",
@@ -54,7 +58,7 @@ const AREA = new Set([
   "geocode",
 ]);
 
-const ALL = ["activity", "stay", "travelFrom", "travelTo"];
+const ALL = ["activity", "poi", "stay", "travelFrom", "travelTo"];
 
 function split(primary) {
   return { primary, more: ALL.filter((a) => !primary.includes(a)) };
@@ -69,6 +73,8 @@ export function placeActions(types = []) {
   if (isArea(types)) return { primary: [], more: [] };
   if (types.some((t) => LODGING.has(t))) return split(["stay", "activity"]);
   if (types.some((t) => TRANSIT_HUB.has(t))) return split(["travelFrom", "travelTo", "activity"]);
+  // Somewhere to wander into rather than book: a point of interest first.
+  if (categoryFor(types) !== "other") return split(["poi", "activity"]);
   return split(["activity"]);
 }
 
@@ -77,4 +83,5 @@ export const ACTION_LABEL = {
   stay: "Add stay",
   travelFrom: "Travel from here",
   travelTo: "Travel to here",
+  poi: "Point of interest",
 };

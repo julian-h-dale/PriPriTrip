@@ -1,8 +1,8 @@
 /**
- * The map's "what" filter (House: stays only; Journal: memories only) and
- * its Calendar filter (one day). The two "what" choices are either-or; the
- * date narrows whichever is active. Pure, so it's testable without the map
- * widget itself.
+ * The map's "what" filter (the Filter menu: everything, stays, points of
+ * interest, or journal memories, one at a time) and its Calendar filter
+ * (one day), which narrows whichever is active. Pure, so it's testable
+ * without the map widget itself.
  */
 
 /** Whether a marker is relevant on `date`: a stay matches any night it
@@ -21,16 +21,17 @@ export function markerMatchesDate(marker, date) {
   return marker.day === date;
 }
 
-/** Whether a marker belongs to the "what" filter: `"stays"` and `"memories"`
- * keep only that kind; no filter keeps the trip's places but not memories,
- * which show only when asked for. */
+/** Whether a marker belongs to the "what" filter: `"stays"`, `"pois"` and
+ * `"memories"` keep only that kind; no filter keeps the trip's places and
+ * points of interest but not memories, which show only when asked for. */
 function markerMatchesOnly(marker, only) {
   if (only === "stays") return marker.kind === "stay";
+  if (only === "pois") return marker.kind === "poi";
   if (only === "memories") return marker.kind === "memory";
   return marker.kind !== "memory";
 }
 
-/** Markers left after the active filters. `only`: null | "stays" | "memories". */
+/** Markers left after the active filters. `only`: null | "stays" | "pois" | "memories". */
 export function filterMarkers(markers, { only = null, date = null } = {}) {
   return markers.filter((m) => markerMatchesOnly(m, only) && markerMatchesDate(m, date));
 }

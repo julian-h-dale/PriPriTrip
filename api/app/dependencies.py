@@ -27,6 +27,7 @@ from app.models import (
     Item,
     Memory,
     PackingItem,
+    PointOfInterest,
     Stay,
     Travel,
     Trip,
@@ -164,6 +165,24 @@ async def get_editable_stay(
     return stay
 
 
+async def get_editable_point_of_interest(
+    point_of_interest_id: uuid.UUID,
+    trip: Trip = Depends(get_editable_trip),
+    db: AsyncSession = Depends(get_db),
+) -> PointOfInterest:
+    """A live point of interest on a trip the current user may change, or 404."""
+    poi = await db.scalar(
+        select(PointOfInterest).where(
+            PointOfInterest.id == point_of_interest_id,
+            PointOfInterest.trip_id == trip.id,
+            active(PointOfInterest),
+        )
+    )
+    if poi is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return poi
+
+
 async def get_editable_travel(
     travel_id: uuid.UUID,
     trip: Trip = Depends(get_editable_trip),
@@ -217,17 +236,17 @@ async def get_journal_trip(
 
 async def get_own_packing_item(
     item_id: uuid.UUID,
-    viewable: ViewableTrip = Depends(get_viewable_trip),
+    trip: Trip = Depends(get_editable_trip),
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> PackingItem:
-    """One of the caller's own live packing lines on a trip they can see.
-    Packing lists are personal, so anyone else's line is 404, as is a
-    deleted one."""
+    """One of the caller's own live packing lines on a trip they travel on
+    (owner or editor; a viewer gets 403). Packing lists are personal, so
+    anyone else's line is 404, as is a deleted one."""
     item = await db.scalar(
         select(PackingItem).where(
             PackingItem.id == item_id,
-            PackingItem.trip_id == viewable.trip.id,
+            PackingItem.trip_id == trip.id,
             PackingItem.user_id == user.id,
             active(PackingItem),
         )

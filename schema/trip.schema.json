@@ -275,6 +275,54 @@
       "title": "LocationDoc",
       "type": "object"
     },
+    "PointOfInterestDoc": {
+      "additionalProperties": false,
+      "description": "A point of interest: a shop, market or sight worth finding. Lives at\ntrip level, on no day; it shows on the map only, so its place needs\ncoordinates.",
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "default": "other",
+          "enum": [
+            "shop",
+            "market",
+            "food",
+            "sight",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/LocationDoc",
+          "description": "Where it is. Needs lat and lng."
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "description": "Markdown text.",
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "name",
+        "location"
+      ],
+      "title": "PointOfInterestDoc",
+      "type": "object"
+    },
     "StayDoc": {
       "additionalProperties": false,
       "description": "One accommodation booking, spanning nights. Lives at trip level.",
@@ -571,7 +619,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. Users write wall-clock times; each time's zone comes from its place's coordinates, else an explicit timezone field, else (activities) that night's stay, else the trip's timezone. Times in different zones are compared as real instants.",
+  "description": "One JSON document describing a whole trip. Rules beyond the structure below (an import that breaks any is rejected): (1) endDate is on or after startDate. (2) Every day's date is within the trip, and no date appears twice. (3) An activity's start, when given, is on its day's date; end requires start and is after it. (4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut is no later than the day after endDate. (5) A travel's depart is within the trip; arrive, when given, is after depart and no later than the day after endDate. (6) A point of interest has coordinates. Users write wall-clock times; each time's zone comes from its place's coordinates, else an explicit timezone field, else (activities) that night's stay, else the trip's timezone. Times in different zones are compared as real instants.",
   "properties": {
     "schemaVersion": {
       "const": 1,
@@ -622,6 +670,14 @@
         "$ref": "#/$defs/DayDoc"
       },
       "title": "Days",
+      "type": "array"
+    },
+    "pointsOfInterest": {
+      "description": "Points of interest: on the map, on no day.",
+      "items": {
+        "$ref": "#/$defs/PointOfInterestDoc"
+      },
+      "title": "Pointsofinterest",
       "type": "array"
     }
   },

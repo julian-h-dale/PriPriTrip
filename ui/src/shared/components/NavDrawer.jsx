@@ -51,6 +51,7 @@ export function NavDrawer({ open, onClose }) {
   const canEditTrip = Boolean(trip) && trip.role !== "viewer";
   // Only the owner shares (the server enforces it too).
   const isOwner = trip?.role === "owner";
+  const isViewer = trip?.role === "viewer";
   const unsynced = useSelector(selectPendingMemories);
   const { count: photos } = useSelector(selectWaitingPhotos);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
@@ -107,7 +108,8 @@ export function NavDrawer({ open, onClose }) {
           <List className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           All trips
         </Link>
-        {tripId && (
+        {/* A viewer follows along: no Trip tools at all (Run stage 17). */}
+        {tripId && !isViewer && (
           <section aria-label="Trip tools" className="mt-2 flex flex-col gap-1 border-t border-border pt-2">
             <h2 className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Trip tools</h2>
             <Link to={`/trips/${tripId}/currency`} onClick={onClose} className={ITEM}>

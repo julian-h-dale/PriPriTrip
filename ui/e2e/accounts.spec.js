@@ -82,3 +82,30 @@ test("accounts: invite, forced change, reset, forced again", async ({ browser })
     await inviteeContext.close();
   }
 });
+
+test("accounts: an admin makes someone an admin from the users table, then a user again", async ({ page }) => {
+  await login(page, SEED_ADMIN);
+  await page.goto("/admin");
+  const row = page.getByRole("row").filter({ hasText: "user@example.com" });
+  const role = row.getByRole("combobox", { name: "Role for user@example.com" });
+  await expect(role).toHaveValue("user");
+  // Your own row is a badge, not a choice.
+  await expect(page.getByRole("row").filter({ hasText: SEED_ADMIN.email }).getByRole("combobox")).toHaveCount(0);
+
+  try {
+    await role.selectOption("admin");
+    const confirm = page.getByRole("dialog", { name: "Make them an admin?" });
+    await page.screenshot({ path: screenshotPath("31-admin-make-admin") });
+    await confirm.getByRole("button", { name: "Make admin" }).click();
+    await expect(confirm).toBeHidden();
+    await expect(role).toHaveValue("admin");
+    await page.screenshot({ path: screenshotPath("31a-admin-users-roles") });
+  } finally {
+    // Back as it was, for every other spec.
+    if ((await role.inputValue()) === "admin") {
+      await role.selectOption("user");
+      await page.getByRole("dialog", { name: "Make them a user?" }).getByRole("button", { name: "Make user" }).click();
+    }
+    await expect(role).toHaveValue("user");
+  }
+});

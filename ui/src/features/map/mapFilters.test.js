@@ -27,10 +27,15 @@ describe("markerMatchesDate", () => {
 
 describe("filterMarkers", () => {
   const memory = { kind: "memory", day: "2026-05-12" };
-  const markers = [stay, activity, travelLeg, memory];
+  const poi = { kind: "poi", day: null };
+  const markers = [stay, activity, travelLeg, memory, poi];
 
-  it("by default keeps the trip's places but not memories", () => {
-    expect(filterMarkers(markers)).toEqual([stay, activity, travelLeg]);
+  it("by default keeps the trip's places and points of interest, but not memories", () => {
+    expect(filterMarkers(markers)).toEqual([stay, activity, travelLeg, poi]);
+  });
+
+  it('"pois" keeps only points of interest', () => {
+    expect(filterMarkers(markers, { only: "pois" })).toEqual([poi]);
   });
 
   it('"stays" keeps only stays, any date', () => {
@@ -41,8 +46,9 @@ describe("filterMarkers", () => {
     expect(filterMarkers(markers, { only: "memories" })).toEqual([memory]);
   });
 
-  it("a date alone keeps the places relevant that day, any kind but memories", () => {
+  it("a date alone keeps the places relevant that day, any kind but memories; points of interest are on no day", () => {
     expect(filterMarkers(markers, { date: "2026-05-12" })).toEqual([stay, activity]);
+    expect(filterMarkers(markers, { only: "pois", date: "2026-05-12" })).toEqual([]);
   });
 
   it("the date narrows either filter", () => {

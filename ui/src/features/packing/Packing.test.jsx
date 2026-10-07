@@ -22,7 +22,7 @@ vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
-const TRIP = { id: "trip-1", name: "Okinawa & Taipei", role: "viewer", days: [], stays: [], travels: [] };
+const TRIP = { id: "trip-1", name: "Okinawa & Taipei", role: "editor", days: [], stays: [], travels: [] };
 const item = (id, category, text, position, checked = false, quantity = 1) => ({ id, category, text, position, checked, quantity });
 const LIST = [
   item("a", "clothes", "Socks", 0, false, 7),
@@ -73,6 +73,15 @@ describe("groupByCategory", () => {
 });
 
 describe("the Packing page", () => {
+  it("offline: says the list needs a connection (it isn't saved on the phone)", async () => {
+    apiClient.get.mockImplementation(async (url) => {
+      if (url.endsWith("/packing")) throw Object.assign(new Error("Network Error"), { config: {} });
+      return { data: TRIP };
+    });
+    renderPage({ online: false });
+    expect(await screen.findByText(/Your packing list needs a connection/)).toBeInTheDocument();
+  });
+
   it("shows each started list with its count, and the rest as lists to start", async () => {
     serve(LIST);
     renderPage();

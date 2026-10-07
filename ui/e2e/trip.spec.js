@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { API_URL } from "../playwright.config.js";
-import { SEED_ADMIN, SEED_VIEWER, login, screenshotPath, tripLink } from "./helpers.js";
+import { SEED_ADMIN, SEED_VIEWER, filterMap, login, screenshotPath, tripLink } from "./helpers.js";
 
 /**
  * Practical smoke checks: page views and basic clicking against the seeded
@@ -361,28 +361,35 @@ test("map search and filters", async ({ page }) => {
   await suggestion.click();
   await expect(page.locator(".gm-style-iw")).toContainText("Dinner at Kornhauskeller");
 
-  // House filter: only the sample trip's 2 stays.
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  // The Filter menu: Stays shows only the sample trip's 2 stays.
+  await page.getByRole("button", { name: "Filter the map" }).click();
+  await expect(page.getByRole("menu", { name: "Show on the map" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("08a-map-filter-menu") });
+  await page.getByRole("menuitemradio", { name: "Stays" }).click();
   await expect(pins).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Filter the map: Stays" })).toBeVisible();
+  await page.mouse.move(0, 400); // off the button, so it isn't drawn hovered
+  await page.waitForTimeout(800); // the map's new view, and the button's colour transition
+  await page.screenshot({ path: screenshotPath("08b-map-filtered-to-stays") });
   // Round-tripping the filter off shouldn't lose any markers (regression:
   // Google Maps silently dropped one of two co-located markers — e.g.
   // Chicago appearing on both the outbound and return flight — when
   // detaching/reattaching instead of rebuilding them).
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  await filterMap(page, "Everything");
   await expect(pins).toHaveCount(10);
 
-  // Calendar filter: one day, combined with House.
+  // Calendar filter: one day, combined with Stays.
   await page.getByRole("button", { name: "Show one day" }).click();
   await page.getByRole("textbox", { name: "Pick a day" }).fill("2026-05-12");
   await expect(page.getByRole("button", { name: /Showing Tue, May 12/ })).toBeVisible();
   await page.screenshot({ path: screenshotPath("09-map-date-filter"), fullPage: true });
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  await filterMap(page, "Stays");
   await expect(pins).toHaveCount(1); // Beausite Park Hotel covers that night
   await page.screenshot({ path: screenshotPath("09a-map-day-and-stays"), fullPage: true });
 
   // The overnight flight's day: both airports, an ocean apart, and the map
   // zooms out to show them.
-  await page.getByRole("button", { name: "Show only stays" }).click();
+  await filterMap(page, "Everything");
   await page.getByRole("button", { name: /Showing Tue, May 12/ }).click();
   await page.getByRole("button", { name: "Show one day" }).click();
   await page.getByRole("textbox", { name: "Pick a day" }).fill("2026-05-10");
@@ -392,7 +399,7 @@ test("map search and filters", async ({ page }) => {
 });
 
 /** Delete what a test added through the UI, so the dev trip is left as it was. */
-async function deleteAdded(page, tripId, { itemTitle, stayName }) {
+async function deleteAdded(page, tripId, { itemTitle, stayName, poiName }) {
   const token = await page.evaluate(() => localStorage.getItem("auth_token"));
   const api = API_URL;
   const headers = { Authorization: `Bearer ${token}` };
@@ -409,7 +416,39 @@ async function deleteAdded(page, tripId, { itemTitle, stayName }) {
       headers: { ...headers, "If-Match": `"${stay.version}"` },
     });
   }
+  for (const poi of (trip.pointsOfInterest ?? []).filter((p) => p.name === poiName)) {
+    await page.request.delete(`${api}/trips/${tripId}/points-of-interest/${poi.id}`, {
+      headers: { ...headers, "If-Match": `"${poi.version}"` },
+    });
+  }
 }
+
+test("map: the List button lists what's shown and jumps to it", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+  await expect(page.locator("gmp-advanced-marker")).toHaveCount(10);
+
+  // Bottom left, just above Google's logo, which stays in full view.
+  const button = page.getByRole("button", { name: "List what's on the map" });
+  const logo = page.locator('a[href*="maps.google.com/maps"]').first();
+  await expect(logo).toBeVisible();
+  const [b, l] = [await button.boundingBox(), await logo.boundingBox()];
+  expect(b.y + b.height).toBeLessThanOrEqual(l.y);
+  expect(b.x).toBeLessThan(l.x + l.width); // on the left, above it
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: screenshotPath("08c-map-list-button") });
+
+  await button.click();
+  const list = page.getByRole("dialog", { name: "On the map" });
+  await expect(list.getByRole("region", { name: "Stays" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("08d-map-list") });
+  await list.getByRole("button", { name: /Dinner at Kornhauskeller/ }).click();
+  await expect(list).toBeHidden();
+  await expect(page.locator(".gm-style-iw")).toContainText("Dinner at Kornhauskeller");
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: screenshotPath("08e-map-list-picked") });
+});
 
 test("map: add a Google place to the trip (activity and stay)", async ({ page }) => {
   await login(page);
@@ -467,6 +506,60 @@ test("map: add a Google place to the trip (activity and stay)", async ({ page })
     await expect(pins).toHaveCount(12);
   } finally {
     await deleteAdded(page, tripId, { itemTitle: addedItem, stayName: addedStay });
+  }
+});
+
+test("map: save a Google place as a point of interest, then edit and delete it", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  const tripId = page.url().split("/trips/")[1];
+  await page.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+  const pins = page.locator("gmp-advanced-marker");
+  await expect(pins).toHaveCount(10);
+  const search = page.getByRole("combobox", { name: "Search trip or places" });
+  const info = page.locator(".gm-style-iw");
+  let added = null;
+
+  try {
+    // A department store: "Point of interest" comes first.
+    await search.fill("Loeb Bern");
+    await page.getByRole("option", { name: /Loeb/ }).first().click();
+    await expect(info).toContainText("Not in this trip");
+    // Offered straight away, not under More…
+    await expect(info.getByRole("button", { name: "Point of interest" })).toBeVisible();
+    await info.getByRole("button", { name: "Point of interest" }).click();
+
+    const form = page.getByRole("dialog", { name: "Add point of interest" });
+    added = await form.getByLabel("Name").inputValue();
+    expect(added).toMatch(/Loeb/);
+    await expect(form.getByLabel("Kind")).toHaveValue("shop");
+    await form.getByLabel("Notes").fill("Rooftop café on the top floor.");
+    await page.screenshot({ path: screenshotPath("16a-map-add-point-of-interest") });
+    await form.getByRole("button", { name: "Save" }).click();
+    await expect(form).toBeHidden();
+    await expect(pins).toHaveCount(11); // its own pin; the search result's is gone
+
+    // Its info window: the kind and the notes, then Edit and Delete.
+    await page.locator(`gmp-advanced-marker[title="${added}"]`).click();
+    await expect(info).toContainText("Point of interest · Shop");
+    await expect(info).toContainText("Rooftop café on the top floor.");
+    await page.waitForTimeout(1000);
+    await page.screenshot({ path: screenshotPath("16b-map-point-of-interest-info") });
+    await info.getByRole("button", { name: "Edit" }).click();
+    const edit = page.getByRole("dialog", { name: "Edit point of interest" });
+    await edit.getByLabel("Kind").selectOption("food");
+    await edit.getByRole("button", { name: "Save" }).click();
+    await expect(edit).toBeHidden();
+
+    await page.locator(`gmp-advanced-marker[title="${added}"]`).click();
+    await expect(info).toContainText("Point of interest · Food & drink");
+    await info.getByRole("button", { name: "Delete" }).click();
+    const confirm = page.getByRole("dialog", { name: "Delete point of interest?" });
+    await confirm.getByRole("button", { name: "Delete" }).click();
+    await expect(pins).toHaveCount(10);
+    added = null;
+  } finally {
+    if (added) await deleteAdded(page, tripId, { poiName: added });
   }
 });
 
@@ -541,6 +634,71 @@ test("sharing: someone joins with the edit code and can edit", async ({ browser 
     }
     await ownerContext.close();
     await editorContext.close();
+  }
+});
+
+test("viewers: Timeline, Journal and Map only; no Stays/Travel views, no Trip tools", async ({ browser }) => {
+  // The seed admin isn't on the sample trip: it joins with the view code,
+  // is checked as a viewer, then leaves again.
+  const ownerContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const viewer = await viewerContext.newPage();
+  let tripId = null;
+  try {
+    const owner = await ownerContext.newPage();
+    await login(owner);
+    await (await tripLink(owner, SAMPLE_TRIP)).click();
+    tripId = new URL(owner.url()).pathname.split("/")[2];
+    const ownerToken = await owner.evaluate(() => localStorage.getItem("auth_token"));
+    const viewCode = (
+      await (await owner.request.get(`${API_URL}/trips/${tripId}/view-code`, { headers: { Authorization: `Bearer ${ownerToken}` } })).json()
+    ).code;
+
+    await login(viewer, SEED_ADMIN);
+    await viewer.getByRole("button", { name: "Join trip" }).click();
+    const join = viewer.getByRole("dialog", { name: "Join a trip" });
+    await join.getByLabel("Trip code").fill(viewCode);
+    await join.getByRole("button", { name: "Join", exact: true }).click();
+    // Joining opens Today, which a viewer doesn't get: the timeline instead.
+    await viewer.waitForURL(new RegExp(`/trips/${tripId}$`));
+    const tabs = viewer.getByRole("navigation", { name: "Trip" }).getByRole("link");
+    await expect(tabs).toHaveText(["Timeline", "Journal", "Map"]);
+    await expect(viewer.getByRole("group", { name: "Timeline view" })).toHaveCount(0);
+    await viewer.screenshot({ path: screenshotPath("23a-viewer-timeline") });
+
+    await viewer.getByRole("button", { name: "Open menu" }).click();
+    await expect(viewer.getByRole("navigation", { name: "Menu" })).toBeVisible();
+    await expect(viewer.getByRole("region", { name: "Trip tools" })).toHaveCount(0);
+    await viewer.screenshot({ path: screenshotPath("23b-viewer-drawer") });
+    await viewer.keyboard.press("Escape");
+
+    // A link to a Trip tool lands on the timeline too, with no error toast.
+    await viewer.goto(`/trips/${tripId}/weather`);
+    await viewer.waitForURL(new RegExp(`/trips/${tripId}$`));
+    await expect(viewer.getByTestId("toast-error")).toHaveCount(0);
+
+    // The map: the activities only (the owner sees 10 pins), and the Filter
+    // offers Everything and Journal.
+    await viewer.getByRole("navigation", { name: "Trip" }).getByRole("link", { name: "Map" }).click();
+    const pins = viewer.locator("gmp-advanced-marker");
+    await expect(pins).toHaveCount(4);
+    await viewer.getByRole("button", { name: "Filter the map" }).click();
+    await expect(viewer.getByRole("menu", { name: "Show on the map" }).getByRole("menuitemradio")).toHaveText(["Everything", "Journal"]);
+    await viewer.keyboard.press("Escape");
+    await viewer.getByRole("button", { name: "List what's on the map" }).click();
+    const list = viewer.getByRole("dialog", { name: "On the map" });
+    await expect(list.getByRole("region")).toHaveCount(1); // Activities
+    await viewer.waitForTimeout(800);
+    await viewer.screenshot({ path: screenshotPath("23c-viewer-map-list") });
+  } finally {
+    if (tripId) {
+      const token = await viewer.evaluate(() => localStorage.getItem("auth_token")).catch(() => null);
+      if (token) {
+        await viewer.request.delete(`${API_URL}/trips/${tripId}/membership`, { headers: { Authorization: `Bearer ${token}` } });
+      }
+    }
+    await ownerContext.close();
+    await viewerContext.close();
   }
 });
 

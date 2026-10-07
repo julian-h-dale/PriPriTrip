@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -24,7 +24,7 @@ import { TopBar } from "@/shared/components/TopBar";
 import { apiClient } from "@/shared/services/apiClient";
 
 vi.mock("@/shared/services/apiClient", () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 const ADMIN = { id: "a1", email: "admin@example.com", is_superuser: true, is_active: true, must_change_password: false };
@@ -266,3 +266,51 @@ describe("resetting a password on the Admin page", () => {
     expect(within(userRow).getByText("Must change")).toBeInTheDocument();
   });
 });
+
+describe("making someone an admin on the Admin page", () => {
+  it("a Role choice on each row asks first, then saves; your own row is just a badge", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({ data: [ADMIN, { ...USER, is_superuser: false }] });
+    apiClient.patch.mockResolvedValue({ data: { ...USER, is_superuser: true } });
+    renderAt("/admin", ADMIN, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
+    const userRow = (await screen.findByText("user@example.com")).closest("tr");
+    const adminRow = screen.getAllByText("admin@example.com")[0].closest("tr");
+    expect(within(adminRow).queryByRole("combobox")).not.toBeInTheDocument();
+    expect(within(adminRow).getByText("You")).toBeInTheDocument();
+
+    const role = within(userRow).getByRole("combobox", { name: "Role for user@example.com" });
+    expect(role).toHaveValue("user");
+    await user.selectOptions(role, "admin");
+    const confirm = screen.getByRole("dialog", { name: "Make them an admin?" });
+    expect(confirm).toHaveTextContent("user@example.com will be able to invite people");
+    expect(apiClient.patch).not.toHaveBeenCalled();
+    await user.click(within(confirm).getByRole("button", { name: "Make admin" }));
+    expect(apiClient.patch).toHaveBeenCalledWith("/admin/users/u1", { isSuperuser: true }, expect.objectContaining({ silent: true }));
+    await waitFor(() => expect(within(userRow).getByRole("combobox", { name: "Role for user@example.com" })).toHaveValue("admin"));
+  });
+
+  it("Cancel changes nothing", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({ data: [ADMIN, { ...USER, is_superuser: true }] });
+    renderAt("/admin", ADMIN, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
+    const role = await screen.findByRole("combobox", { name: "Role for user@example.com" });
+    await user.selectOptions(role, "user");
+    await user.click(within(screen.getByRole("dialog", { name: "Make them a user?" })).getByRole("button", { name: "Cancel" }));
+    expect(apiClient.patch).not.toHaveBeenCalled();
+    expect(role).toHaveValue("admin");
+  });
+
+  it("the server's refusal (the last admin) is said, and the row stays", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({ data: [ADMIN, { ...USER, is_superuser: true }] });
+    apiClient.patch.mockRejectedValue({ response: { status: 409, data: { detail: "There has to be at least one admin" } } });
+    const store = renderAt("/admin", ADMIN, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
+    const role = await screen.findByRole("combobox", { name: "Role for user@example.com" });
+    await user.selectOptions(role, "user");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Make user" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(JSON.stringify(store.getState().notification)).toContain("There has to be at least one admin");
+    expect(role).toHaveValue("admin");
+  });
+});
+

@@ -47,4 +47,9 @@ describe("searchTrip", () => {
     expect(titles(searchTrip(TRIP, "fondue night"))).toContain("Fondue night");
     expect(searchTrip(TRIP, "   ")).toEqual([]);
   });
+
+  it("never finds a point of interest: they're on the map only", () => {
+    const trip = { ...structuredClone(sampleTrip), pointsOfInterest: [{ id: "p1", name: "Bundesplatz market", category: "market", location: { name: "Bundesplatz", lat: 46.9, lng: 7.4 } }] };
+    expect(searchTrip(trip, "bundesplatz")).toEqual([]);
+  });
 });

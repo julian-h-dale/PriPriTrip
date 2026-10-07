@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { API_URL } from "../playwright.config.js";
-import { login, screenshotPath, tripLink } from "./helpers.js";
+import { filterMap, login, screenshotPath, tripLink } from "./helpers.js";
 
 // Standing a few metres from the Bern hotel (the sample trip's first stay).
 const NEAR_HOTEL = { latitude: 46.9488, longitude: 7.4487, accuracy: 15 };
@@ -27,7 +27,7 @@ test("location: a memory names the place it was written near, pins on the map, a
   await nav.getByRole("link", { name: "Map" }).click();
   // Memories show only with the Journal filter on: then the memory's own
   // pin, and the blue "you are here" dot.
-  await page.getByRole("button", { name: "Show only memories" }).click();
+  await filterMap(page, "Journal");
   await expect(page.locator(`gmp-advanced-marker[title^='${text}']`)).toHaveCount(1);
   await expect(page.locator("gmp-advanced-marker[title='You are here']")).toHaveCount(1);
   await page.getByRole("button", { name: "Show where I am" }).click();

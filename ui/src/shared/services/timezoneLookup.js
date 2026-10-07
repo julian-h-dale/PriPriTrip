@@ -10,7 +10,7 @@ export function zoneAt(lat, lng) {
     cache.set(
       key,
       apiClient
-        .get("/timezone", { params: { lat, lng }, silent: true })
+        .get("/timezone", { params: { lat, lng }, silent: true, offlineOk: true })
         .then(({ data }) => data.timezone ?? null)
         .catch(() => {
           cache.delete(key);

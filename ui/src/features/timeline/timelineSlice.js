@@ -166,6 +166,26 @@ export const deleteTravel = tripEdit(
   "Travel deleted"
 );
 
+export const createPointOfInterest = tripEdit(
+  "timeline/createPointOfInterest",
+  ({ tripId, poi }) => apiClient.post(`/trips/${tripId}/points-of-interest`, poi, quiet),
+  "Point of interest added"
+);
+
+export const replacePointOfInterest = tripEdit(
+  "timeline/replacePointOfInterest",
+  ({ tripId, poiId, poi, version }) =>
+    apiClient.put(`/trips/${tripId}/points-of-interest/${poiId}`, poi, versioned(version)),
+  "Point of interest saved"
+);
+
+export const deletePointOfInterest = tripEdit(
+  "timeline/deletePointOfInterest",
+  ({ tripId, poiId, version }) =>
+    apiClient.delete(`/trips/${tripId}/points-of-interest/${poiId}`, versioned(version)),
+  "Point of interest deleted"
+);
+
 const EDITS = [
   createItem,
   replaceItem,
@@ -178,6 +198,9 @@ const EDITS = [
   createTravel,
   replaceTravel,
   deleteTravel,
+  createPointOfInterest,
+  replacePointOfInterest,
+  deletePointOfInterest,
 ];
 
 // `tripId` records which trip the state belongs to, so the page never shows

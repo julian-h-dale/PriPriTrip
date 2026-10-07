@@ -25,6 +25,21 @@ export const resetPassword = createAsyncThunk("admin/resetPassword", async (user
   return { userId, temporaryPassword: data.temporaryPassword };
 });
 
+/**
+ * Make someone an admin of the app (`admin: true`) or a plain user: resolves
+ * to the updated user. Refused (409) for your own row or the last admin,
+ * with the server's reason.
+ */
+export const setAdmin = createAsyncThunk("admin/setAdmin", async ({ userId, admin }, { rejectWithValue }) => {
+  try {
+    const { data } = await apiClient.patch(`/admin/users/${userId}`, { isSuperuser: admin }, { silent: true, handles: [409] });
+    return data;
+  } catch (err) {
+    const detail = err?.response?.data?.detail;
+    return rejectWithValue({ message: typeof detail === "string" ? detail : "Couldn’t change their role" });
+  }
+});
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: { users: [], status: "idle" },
@@ -43,6 +58,10 @@ const adminSlice = createSlice({
       })
       .addCase(inviteUser.fulfilled, (state, action) => {
         state.users = [...state.users, action.payload.user].sort((a, b) => a.email.localeCompare(b.email));
+      })
+      .addCase(setAdmin.fulfilled, (state, action) => {
+        const i = state.users.findIndex((u) => u.id === action.payload.id);
+        if (i >= 0) state.users[i] = action.payload;
       })
       .addCase(resetPassword.fulfilled, (state, action) => {
         const user = state.users.find((u) => u.id === action.payload.userId);

@@ -21,11 +21,11 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **68**.
+project; the next one is **76**.
 
 ## Stages
 
-All complete unless marked. Current branch: `details-page` (Runs 13–15).
+All complete unless marked. Current branch: `roles-and-viewers` (Run 17), stacked on `points-of-interest` (Run 16).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -49,6 +49,8 @@ All complete unless marked. Current branch: `details-page` (Runs 13–15).
 | Run 13 | 62–64 | A full page for an entry's details | [run-13-entry-page.md](docs/plan/run-13-entry-page.md) |
 | Run 14 | 65–66 | Swipe up and down between a day's entries; Back goes where you came from | [run-14-swipe-between-entries.md](docs/plan/run-14-swipe-between-entries.md) |
 | Run 15 | 67 | New memory in the top bar, Share in the drawer, temperature on Today | [run-15-new-memory-top-bar.md](docs/plan/run-15-new-memory-top-bar.md) |
+| Run 16 | 68–71 | Points of interest, one Filter button, the map's List button | [run-16-points-of-interest.md](docs/plan/run-16-points-of-interest.md) |
+| Run 17 | 72–75 | Quiet offline, making someone an admin, what viewers see (and their map) | [run-17-offline-toasts-roles-viewers.md](docs/plan/run-17-offline-toasts-roles-viewers.md) |
 
 ## Architecture Decisions
 

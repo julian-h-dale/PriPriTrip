@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Home, LocateFixed, MapPinPlus, NotebookPen, Search, X } from "lucide-react";
+import { BedDouble, CalendarDays, Check, Filter, Layers, LocateFixed, MapPinned, MapPinPlus, NotebookPen, Search, X } from "lucide-react";
 import { iconFor } from "@/features/map/mapStyle";
 import { matchMarkers } from "@/features/map/markerSearch";
 import { searchRows } from "@/features/map/searchRows";
@@ -51,29 +51,100 @@ function Row({ row, onPick }) {
   );
 }
 
-/** One of the either-or "what" filters: pressed when it's the active one. */
-function OnlyToggle({ value, only, onOnlyChange, label, icon: Icon }) {
-  const pressed = only === value;
+/** What the map can show, one at a time (Q-F1). `value` is MapPage's `only`. */
+const MAP_FILTERS = [
+  { value: null, label: "Everything", icon: Layers },
+  { value: "stays", label: "Stays", icon: BedDouble },
+  { value: "pois", label: "Points of interest", icon: MapPinned },
+  { value: "memories", label: "Journal", icon: NotebookPen },
+];
+
+/**
+ * One Filter button for what the map shows (Run stage 16): Everything (the
+ * trip's places and points of interest), Stays, Points of interest or
+ * Journal. While anything but Everything is on, the button is filled and
+ * shows that filter's icon, so a filtered map is never a surprise.
+ * A viewer's map has only activities and public memories (the server sends
+ * them nothing else), so they get Everything and Journal.
+ */
+function FilterMenu({ only, onOnlyChange, isViewer = false }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const filters = isViewer ? MAP_FILTERS.filter((f) => f.value === null || f.value === "memories") : MAP_FILTERS;
+  const active = filters.find((f) => f.value === only) ?? filters[0];
+  const filtered = active.value !== null;
+  const Icon = filtered ? active.icon : Filter;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onPointer(e) {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    }
+    function onKey(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <Button
-      type="button"
-      variant={pressed ? "default" : "ghost"}
-      size="icon"
-      // bg-card only when off: it would otherwise hide the pressed fill.
-      className={cn("shrink-0", !pressed && "bg-card")}
-      aria-pressed={pressed}
-      aria-label={label}
-      onClick={() => onOnlyChange(pressed ? null : value)}
-    >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </Button>
+    <div ref={wrapRef} className="relative shrink-0">
+      <Button
+        type="button"
+        variant={filtered ? "default" : "ghost"}
+        size="icon"
+        // bg-card only when off: it would otherwise hide the filled state.
+        className={cn(!filtered && "bg-card")}
+        aria-label={filtered ? `Filter the map: ${active.label}` : "Filter the map"}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      {open && (
+        <ul
+          role="menu"
+          aria-label="Show on the map"
+          className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-border bg-card py-1"
+        >
+          {filters.map((f) => {
+            const checked = f.value === active.value;
+            const ItemIcon = f.icon;
+            return (
+              <li key={f.label} role="none">
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={checked}
+                  onClick={() => {
+                    setOpen(false);
+                    onOnlyChange(f.value);
+                  }}
+                  className="flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+                >
+                  <ItemIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="flex-1">{f.label}</span>
+                  {checked && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
 /**
- * Search box + Journal/House/Calendar filters, overlaid on the map. Journal
- * (memories only) and House (stays only) are either-or: turning one on turns
- * the other off. With neither, the trip's places show and memories don't.
+ * Search box + Filter + Calendar + Locate, overlaid on the map. The Filter
+ * menu shows one kind at a time (`only`: null for everything, "stays",
+ * "pois" or "memories"); everything is the trip's places and points of
+ * interest, not memories.
  *
  * Suggestions come in two sections, never interleaved: the trip's own
  * (currently filtered-in) places first, then Google's places — marked "New",
@@ -101,6 +172,7 @@ export function MapControls({
   locating = false,
   date,
   onDateChange,
+  isViewer = false,
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -219,8 +291,7 @@ export function MapControls({
         )}
       </form>
 
-      <OnlyToggle value="memories" only={only} onOnlyChange={onOnlyChange} label="Show only memories" icon={NotebookPen} />
-      <OnlyToggle value="stays" only={only} onOnlyChange={onOnlyChange} label="Show only stays" icon={Home} />
+      <FilterMenu only={only} onOnlyChange={onOnlyChange} isViewer={isViewer} />
 
       {date ? (
         <Button

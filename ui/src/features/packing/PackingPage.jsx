@@ -251,7 +251,8 @@ function StartAList({ categories, onOpen, title }) {
 
 /**
  * Your own packing lists for this trip (a trip tool, in the drawer). Everyone
- * on the trip has their own, viewers included; nobody sees anyone else's.
+ * travelling (the owner and editors) has their own; nobody sees anyone
+ * else's. Viewers don't get Trip tools (NotForViewers; the server says 403).
  */
 export function PackingPage() {
   const { tripId } = useParams();
@@ -268,7 +269,8 @@ export function PackingPage() {
   useEffect(() => {
     dispatch(fetchTrip(tripId)); // for its name in the top bar
     dispatch(fetchPacking(tripId));
-  }, [dispatch, tripId]);
+    // Again when the connection comes back (it isn't saved for offline).
+  }, [dispatch, tripId, online]);
 
   const mine = loadedId === tripId ? items : [];
   const groups = groupByCategory(mine);
@@ -320,7 +322,11 @@ export function PackingPage() {
           ))}
         </div>
       )}
-      {status === "failed" && loadedId === tripId && <p className="text-sm text-muted-foreground">Couldn’t load your packing list.</p>}
+      {status === "failed" && loadedId === tripId && (
+        <p className="text-sm text-muted-foreground">
+          {online ? "Couldn’t load your packing list." : "Your packing list needs a connection. It loads when you’re back online."}
+        </p>
+      )}
       {status === "ready" && (
         <>
           {mine.length === 0 && visible.length === 0 && (
