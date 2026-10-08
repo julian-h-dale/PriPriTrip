@@ -15,6 +15,11 @@
     cities drop under the date rather than being squeezed. `make verify`
     green (278 API + 576 UI). **Run stage 22 is complete. Runs 20–22 are
     done; nothing is pushed or deployed.**
+  - Full e2e run (2026-10-07): 39 pass, 2 skipped (need a build). The
+    sharing spec fails on this machine only: the seed viewer's password
+    here isn't the default and `api/.env` has no `SEED_VIEWER_PASSWORD`
+    (set it to run that spec). `accounts.spec.js` had a stale check since
+    Phase 76 (your own row now has an Analytics choice): fixed.
 - **Run stage 21 (2026-10-07)** on **`analytics`**: field fixes. Plan:
   `docs/plan/run-21-field-fixes.md`.
   - **Phase 82 ✅:** trips open on Today (active and upcoming; past trips and

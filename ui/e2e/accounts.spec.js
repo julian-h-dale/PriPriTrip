@@ -89,8 +89,10 @@ test("accounts: an admin makes someone an admin from the users table, then a use
   const row = page.getByRole("row").filter({ hasText: "user@example.com" });
   const role = row.getByRole("combobox", { name: "Role for user@example.com" });
   await expect(role).toHaveValue("user");
-  // Your own row is a badge, not a choice.
-  await expect(page.getByRole("row").filter({ hasText: SEED_ADMIN.email }).getByRole("combobox")).toHaveCount(0);
+  // Your own row's role is a badge, not a choice (its Analytics is a choice).
+  const mine = page.getByRole("row").filter({ hasText: SEED_ADMIN.email });
+  await expect(mine.getByRole("combobox", { name: /^Role for/ })).toHaveCount(0);
+  await expect(mine.getByRole("combobox", { name: `Analytics for ${SEED_ADMIN.email}` })).toBeVisible();
 
   try {
     await role.selectOption("admin");
