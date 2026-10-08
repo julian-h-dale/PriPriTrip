@@ -20,3 +20,30 @@ test("a trip opens on Today; Tonight says when to check out", async ({ page }) =
   await (await tripLink(page, "Bern & Wengen Long Weekend")).click();
   await expect(page).toHaveURL(/\/trips\/[0-9a-f-]{36}$/);
 });
+
+test("on a touch phone, a tool's Back button doesn't come up filled", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await login(page);
+  await (await tripLink(page, "Athens Getaway")).click();
+  await page.getByRole("button", { name: "Open menu" }).tap();
+  await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Currency" }).tap();
+  const back = page.getByRole("button", { name: "Back" });
+  await expect(back).toBeVisible();
+  // What a phone does after a tap: the spot stays "hovered". (A Playwright
+  // tap doesn't, so put the pointer there; the phone has no real hover.)
+  await back.hover();
+  await page.waitForTimeout(300);
+  expect(await back.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await page.screenshot({ path: screenshotPath("21b-tool-back-button") });
+  await context.close();
+});
+
+test("search results say when and where", async ({ page }) => {
+  await login(page);
+  await (await tripLink(page, "Athens Getaway")).click();
+  await page.getByRole("button", { name: "Search this trip" }).click();
+  await page.getByRole("searchbox", { name: "Search this trip" }).fill("dinner");
+  await expect(page.getByRole("dialog").getByRole("link").first()).toContainText(/\d:\d\d [AP]M/);
+  await page.screenshot({ path: screenshotPath("21c-search-details") });
+});

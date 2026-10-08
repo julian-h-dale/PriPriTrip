@@ -122,6 +122,13 @@ Like the journal:
   all use it. Tonight shows "Check-out Mon, Oct 12 · 11:00 AM" after the
   check-in night. E2E `field-fixes.spec.js` (uses the demo trip, so re-seed
   on the day).
+- **Phase 83 ✅ (2026-10-07).** `future.hoverOnlyWhenSupported` in
+  `tailwind.config.js`; a unit test builds the CSS and checks hover rules sit
+  in `@media (hover: hover)` (it fails without the flag). The e2e puts the
+  pointer over a tool's Back button in a touch-phone context and checks it
+  stays clear; checked both ways (filled without the fix). Search results
+  have a second line: "12:15 PM · Altes Tramdepot Brauerei", "2:00 PM ·
+  Bern", "5:40 PM · SWISS LX 9"; the matched field still shows under it.
 
 ## Open questions
 

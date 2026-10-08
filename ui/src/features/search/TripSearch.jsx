@@ -112,11 +112,11 @@ export function TripSearch({ trip, open, onClose }) {
                         <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                         <span className="flex min-w-0 flex-1 flex-col">
                           <span className="break-words text-sm font-medium">{r.title}</span>
-                          {r.where ? (
-                            <span className="break-words text-xs text-muted-foreground">{r.where}</span>
-                          ) : (
-                            r.subtitle && <span className="break-words text-xs text-muted-foreground">{r.subtitle}</span>
+                          {/* When and where, so two "Dinner" rows can be told apart. */}
+                          {(r.detail ?? r.subtitle) && (
+                            <span className="break-words text-xs text-muted-foreground">{r.detail ?? r.subtitle}</span>
                           )}
+                          {r.where && <span className="break-words text-xs text-muted-foreground">{r.where}</span>}
                         </span>
                       </Link>
                     </li>

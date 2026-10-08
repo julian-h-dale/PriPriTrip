@@ -10,6 +10,9 @@
   `docs/plan/run-21-field-fixes.md`.
   - **Phase 82 ✅:** trips open on Today (active and upcoming; past trips and
     viewers on the timeline); Tonight shows check-out once you're staying.
+  - **Phase 83 ✅:** no sticky hover on touch (`hoverOnlyWhenSupported`);
+    search results show time and place. `make verify` green (277 API + 540
+    UI); e2e `field-fixes.spec.js`.
 - **Run stage 20 (2026-10-07)** on **`analytics`**: "Use saved copies only".
   Plan: `docs/plan/run-20-data-saver.md`.
   - **Phase 80 ✅:** the switch (everyone's drawer, remembered per phone);

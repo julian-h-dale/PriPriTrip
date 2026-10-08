@@ -53,3 +53,23 @@ describe("searchTrip", () => {
     expect(searchTrip(trip, "bundesplatz")).toEqual([]);
   });
 });
+
+describe("each result's time and place (Run stage 21)", () => {
+  const first = (query) => searchTrip(TRIP, query).flatMap((g) => g.results)[0];
+
+  it("an activity: its time and its place", () => {
+    expect(first("Altes Tramdepot").detail).toBe("12:15 PM · Altes Tramdepot Brauerei");
+  });
+
+  it("a stay: its check-in time and city", () => {
+    expect(first("Goldener").detail).toBe("2:00 PM · Bern");
+  });
+
+  it("a leg: its departure and the carrier and number", () => {
+    expect(first("LX 9").detail).toBe("5:40 PM · SWISS LX 9");
+  });
+
+  it("an activity with no time or place has none", () => {
+    expect(first("Zytglogge walk").detail).toBeNull();
+  });
+});

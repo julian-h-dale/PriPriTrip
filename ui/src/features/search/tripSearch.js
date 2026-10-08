@@ -1,5 +1,6 @@
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { describeEntry, MODE_LABEL } from "@/features/timeline/describeEntry";
+import { formatTime } from "@/shared/utils/time";
 
 /**
  * Search the whole trip on the device (so it works offline): every entry's
@@ -11,8 +12,10 @@ import { describeEntry, MODE_LABEL } from "@/features/timeline/describeEntry";
  * its departure), not on every date it touches.
  *
  * Returns days in trip order: [{ date, day: matchedDayText | null, results:
- * [{ key, entry, title, subtitle, where }] }], where `where` names the field
- * that matched when it isn't the title ("Confirmation: LX7Q2K").
+ * [{ key, entry, title, subtitle, detail, where }] }], where `detail` is the
+ * time and place in the timeline's words ("10:00 AM · Varvakios Central
+ * Market") and `where` names the field that matched when it isn't the title
+ * ("Confirmation: LX7Q2K").
  */
 
 export function normalize(text) {
@@ -62,6 +65,20 @@ function fieldsOf(entry, d) {
     ...placeFields("From", travel.from),
     ...placeFields("To", travel.to),
   ];
+}
+
+/**
+ * A result's second line: its time (shown as written: a wall-clock value),
+ * then where — an activity's place, a stay's city, a leg's carrier and
+ * number. Either alone when that's all there is.
+ */
+function detailOf(entry, d) {
+  const time = d.start && d.start.length > 10 ? formatTime(d.start) : null;
+  let place = null;
+  if (entry.kind === "activity") place = entry.item.location?.name ?? entry.item.location?.city ?? null;
+  else if (entry.kind === "stay") place = entry.stay.location?.city ?? null;
+  else place = [entry.travel.carrier, entry.travel.number].filter(Boolean).join(" ") || null;
+  return [time, place].filter(Boolean).join(" · ") || null;
 }
 
 /** Notes are markdown; a snippet shows the words, not the markup. */
@@ -115,7 +132,7 @@ export function searchTrip(trip, query) {
           }
         }
       }
-      results.push({ key: entry.key, entry, title: d.title, subtitle: d.subtitle, where });
+      results.push({ key: entry.key, entry, title: d.title, subtitle: d.subtitle, detail: detailOf(entry, d), where });
     }
 
     const day = daysByDate.get(row.date);
