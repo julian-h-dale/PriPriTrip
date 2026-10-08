@@ -1,14 +1,17 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { fetchRates, isFresh, storedRates } from "@/features/currency/rates";
+import { selectOnline } from "@/shared/networkSlice";
 
 /**
  * USD exchange rates for the Currency page, cached on the device
  * (features/currency/rates.js). `loadRates(codes)` makes no request while the
- * stored rates cover `codes` and are under 12 hours old.
+ * stored rates cover `codes` and are under 12 hours old, and none offline or
+ * with "Use saved copies only" on (the stored rate, however old, stands).
  */
-export const loadRates = createAsyncThunk("currency/load", async (codes, { rejectWithValue }) => {
+export const loadRates = createAsyncThunk("currency/load", async (codes, { getState, rejectWithValue }) => {
   const stored = storedRates();
   if (codes.length === 0 || isFresh(stored, codes)) return stored;
+  if (!selectOnline(getState())) return rejectWithValue({ stored, message: "No connection" });
   try {
     return await fetchRates(codes);
   } catch (err) {

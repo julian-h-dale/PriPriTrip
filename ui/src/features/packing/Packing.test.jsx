@@ -7,20 +7,24 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import journalReducer from "@/features/journal/journalSlice";
-import packingReducer from "@/features/packing/packingSlice";
+import packingReducer, { syncPacking } from "@/features/packing/packingSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { PackingPage } from "@/features/packing/PackingPage";
 import { groupByCategory } from "@/features/packing/categories";
+import { trackEvent } from "@/shared/analytics/umami";
 import { apiClient } from "@/shared/services/apiClient";
-import { clearAll } from "@/shared/services/tripCache";
+import { clearAll, savePacking } from "@/shared/services/tripCache";
+import { clearPackingQueue, waitingChanges } from "@/shared/services/packingQueue";
+import { setOnline } from "@/shared/networkSlice";
 import { fakeToken } from "@/test/fakeToken";
 
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 
 const TRIP = { id: "trip-1", name: "Okinawa & Taipei", role: "editor", days: [], stays: [], travels: [] };
 const item = (id, category, text, position, checked = false, quantity = 1) => ({ id, category, text, position, checked, quantity });
@@ -55,13 +59,39 @@ function renderPage({ online = true } = {}) {
   return store;
 }
 
+/**
+ * A small stand-in for the server's packing list: GET, add (with the
+ * phone's id), PATCH, DELETE a line or a list. A change ends with a reload
+ * of the list, so the stand-in has to remember what it was sent.
+ */
+let server = [];
 function serve(list) {
-  apiClient.get.mockImplementation(async (url) => ({ data: url.endsWith("/packing") ? list : TRIP }));
+  server = list.map((i) => ({ ...i }));
+  apiClient.get.mockImplementation(async (url) => ({ data: url.endsWith("/packing") ? server.map((i) => ({ ...i })) : TRIP }));
+  apiClient.post.mockImplementation(async (url, body) => {
+    const position = server.filter((i) => i.category === body.category).length;
+    const added = { checked: false, quantity: 1, position, ...body };
+    server.push(added);
+    return { data: { ...added } };
+  });
+  apiClient.patch.mockImplementation(async (url, body) => {
+    const line = server.find((i) => i.id === url.split("/").pop());
+    if (!line) throw { response: { status: 404 } };
+    Object.assign(line, body);
+    return { data: { ...line } };
+  });
+  apiClient.delete.mockImplementation(async (url) => {
+    const last = url.split("/").pop();
+    server = url.includes("/lists/") ? server.filter((i) => i.category !== last) : server.filter((i) => i.id !== last);
+    return {};
+  });
 }
+const SILENT = expect.objectContaining({ silent: true });
 
 beforeEach(async () => {
   vi.clearAllMocks();
   await clearAll();
+  await clearPackingQueue("user-1");
 });
 
 describe("groupByCategory", () => {
@@ -97,24 +127,24 @@ describe("the Packing page", () => {
     expect(within(more).getByRole("button", { name: "Toiletries" })).toBeInTheDocument();
   });
 
-  it("ticks at once, and unticks again if the server refuses", async () => {
+  it("ticks at once, and unticks again if the server refuses it for good", async () => {
     const user = userEvent.setup();
     serve(LIST);
-    let refuse;
-    apiClient.patch.mockReturnValue(new Promise((_, reject) => (refuse = reject)));
     renderPage();
     const socks = await screen.findByRole("checkbox", { name: "Socks ×7" });
+    let refuse;
+    apiClient.patch.mockReturnValueOnce(new Promise((_, reject) => (refuse = reject)));
     await user.click(socks);
     expect(socks).toBeChecked();
-    expect(apiClient.patch).toHaveBeenCalledWith("/trips/trip-1/packing/a", { checked: true }, { silent: true });
-    refuse(new Error("offline"));
-    await waitFor(() => expect(socks).not.toBeChecked());
+    await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith("/trips/trip-1/packing/a", { checked: true }, SILENT));
+    expect(trackEvent).toHaveBeenCalledWith("packing-check", { url: "/trip/packing", role: "editor" });
+    refuse({ response: { status: 404 } }); // gone on the server: the list is reloaded
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Socks ×7" })).not.toBeChecked());
   });
 
   it("adds to a list, with how many", async () => {
     const user = userEvent.setup();
     serve(LIST);
-    apiClient.post.mockResolvedValue({ data: item("d", "electronics", "Cables", 1, false, 3) });
     renderPage();
     const electronics = await screen.findByRole("region", { name: "Electronics" });
     const howMany = within(electronics).getByRole("spinbutton", { name: "How many, for Electronics" });
@@ -122,14 +152,17 @@ describe("the Packing page", () => {
     await user.clear(howMany);
     await user.type(howMany, "3");
     await user.type(within(electronics).getByRole("textbox", { name: "Add to Electronics" }), "Cables{Enter}");
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/trips/trip-1/packing",
-      { category: "electronics", text: "Cables", quantity: 3 },
-      { silent: true }
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/trips/trip-1/packing",
+        { id: expect.any(String), category: "electronics", text: "Cables", quantity: 3 },
+        SILENT
+      )
     );
     expect(await within(electronics).findByRole("checkbox", { name: "Cables ×3" })).toBeInTheDocument();
     expect(within(electronics).getByRole("textbox", { name: "Add to Electronics" })).toHaveValue("");
     expect(howMany).toHaveValue(1);
+    expect(trackEvent).toHaveBeenCalledWith("packing-add", { url: "/trip/packing", role: "editor", from: "typed" });
   });
 
   it("starts a new list from its button", async () => {
@@ -144,8 +177,6 @@ describe("the Packing page", () => {
   it("edits (name and how many) and deletes from ⋯", async () => {
     const user = userEvent.setup();
     serve(LIST);
-    apiClient.patch.mockResolvedValue({ data: item("a", "clothes", "Wool socks", 0, false, 4) });
-    apiClient.delete.mockResolvedValue({});
     renderPage();
     await user.click(await screen.findByRole("button", { name: "More for Socks" }));
     await user.click(screen.getByRole("menuitem", { name: "Edit" }));
@@ -157,32 +188,31 @@ describe("the Packing page", () => {
     await user.clear(within(dialog).getByLabelText("How many"));
     await user.type(within(dialog).getByLabelText("How many"), "4");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(apiClient.patch).toHaveBeenCalledWith(
-      "/trips/trip-1/packing/a",
-      { text: "Wool socks", quantity: 4 },
-      { silent: true }
+    await waitFor(() =>
+      expect(apiClient.patch).toHaveBeenCalledWith("/trips/trip-1/packing/a", { text: "Wool socks", quantity: 4 }, SILENT)
     );
     expect(await screen.findByRole("checkbox", { name: "Wool socks ×4" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "More for Plug adapter" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     await waitFor(() => expect(screen.queryByRole("checkbox", { name: "Plug adapter" })).not.toBeInTheDocument());
-    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/packing/c", { silent: true });
+    await waitFor(() => expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/packing/c", SILENT));
   });
 
   it("deletes a whole list after asking; it can be started again", async () => {
     const user = userEvent.setup();
     serve(LIST);
-    apiClient.delete.mockResolvedValue({});
     renderPage();
     await user.click(await screen.findByRole("button", { name: "More for the Clothes list" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete list" }));
     const confirm = screen.getByRole("dialog", { name: "Delete the Clothes list?" });
     expect(confirm).toHaveTextContent("Its 2 things go too");
     await user.click(within(confirm).getByRole("button", { name: "Delete list" }));
-    expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/packing/lists/clothes", { silent: true });
+    await waitFor(() => expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/packing/lists/clothes", SILENT));
     await waitFor(() => expect(screen.queryByRole("region", { name: "Clothes" })).not.toBeInTheDocument());
-    expect(within(screen.getByRole("region", { name: "More lists" })).getByRole("button", { name: "Clothes" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(screen.getByRole("region", { name: "More lists" })).getByRole("button", { name: "Clothes" })).toBeInTheDocument()
+    );
   });
 
   it("an empty list just closes", async () => {
@@ -214,16 +244,84 @@ describe("the Packing page", () => {
     apiClient.post.mockResolvedValue({ data: [item("p", "documents", "Passport", 0)] });
     renderPage();
     await user.click(await screen.findByRole("button", { name: "Start from suggestions" }));
-    expect(apiClient.post).toHaveBeenCalledWith("/trips/trip-1/packing/suggestions", null, { silent: true });
+    expect(apiClient.post).toHaveBeenCalledWith("/trips/trip-1/packing/suggestions", null, SILENT);
     const documents = await screen.findByRole("region", { name: "Documents & money" });
     expect(within(documents).getByRole("checkbox", { name: "Passport" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start from suggestions" })).not.toBeInTheDocument();
   });
 
-  it("offline, shows the list but can't change it", async () => {
+  it("offline: the saved list shows, changes show at once and wait, and go once back online", async () => {
+    const user = userEvent.setup();
     serve(LIST);
+    await savePacking("user-1", "trip-1", LIST);
+    apiClient.get.mockRejectedValue(Object.assign(new Error("Network Error"), { config: {} }));
+    const store = renderPage({ online: false });
+    const socks = await screen.findByRole("checkbox", { name: "Socks ×7" });
+    expect(socks).toBeEnabled();
+
+    await user.click(socks); // tick
+    const electronics = screen.getByRole("region", { name: "Electronics" });
+    await user.type(within(electronics).getByRole("textbox", { name: "Add to Electronics" }), "Charger{Enter}");
+    await user.click(screen.getByRole("button", { name: "More for Plug adapter" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+
+    expect(socks).toBeChecked();
+    expect(await within(electronics).findByRole("checkbox", { name: "Charger" })).toBeInTheDocument();
+    expect(within(electronics).queryByRole("checkbox", { name: "Plug adapter" })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("You’re offline. Your changes are saved on this phone (3 waiting)")
+    );
+    expect(apiClient.post).not.toHaveBeenCalled();
+    expect(apiClient.patch).not.toHaveBeenCalled();
+    expect(apiClient.delete).not.toHaveBeenCalled();
+    expect((await waitingChanges("user-1", "trip-1")).map((c) => c.op)).toEqual(["update", "create", "delete"]);
+
+    // Back online: sent once, in order, then the list reloads from the server.
+    serve(LIST);
+    store.dispatch(setOnline(true));
+    await store.dispatch(syncPacking());
+    expect(apiClient.patch).toHaveBeenCalledTimes(1);
+    expect(apiClient.post).toHaveBeenCalledTimes(1);
+    expect(apiClient.delete).toHaveBeenCalledTimes(1);
+    expect(await waitingChanges("user-1", "trip-1")).toEqual([]);
+    expect(server.map((i) => [i.text, i.checked])).toEqual([
+      ["Socks", true],
+      ["Swim shorts", true],
+      ["Charger", false],
+    ]);
+  });
+
+  it("a tick then an untick of the same thing sends only the last state", async () => {
+    const user = userEvent.setup();
+    serve(LIST);
+    await savePacking("user-1", "trip-1", LIST);
+    apiClient.get.mockRejectedValue(Object.assign(new Error("Network Error"), { config: {} }));
+    const store = renderPage({ online: false });
+    const socks = await screen.findByRole("checkbox", { name: "Socks ×7" });
+    await user.click(socks);
+    await user.click(socks);
+    serve(LIST);
+    store.dispatch(setOnline(true));
+    await store.dispatch(syncPacking());
+    expect(apiClient.patch.mock.calls).toEqual([["/trips/trip-1/packing/a", { checked: false }, SILENT]]);
+  });
+
+  it("suggestions need a connection", async () => {
+    serve([]);
+    await savePacking("user-1", "trip-1", []);
+    apiClient.get.mockRejectedValue(Object.assign(new Error("Network Error"), { config: {} }));
     renderPage({ online: false });
-    expect(await screen.findByRole("checkbox", { name: "Socks ×7" })).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent("You’re offline");
+    expect(await screen.findByRole("button", { name: "Start from suggestions" })).toBeDisabled();
+    expect(screen.getByText("Suggestions need a connection.")).toBeInTheDocument();
+  });
+});
+
+describe("Packing's analytics", () => {
+  it("counts ticking something, not unticking it", async () => {
+    const user = userEvent.setup();
+    serve(LIST);
+    renderPage();
+    await user.click(await screen.findByRole("checkbox", { name: "Swim shorts" })); // already packed
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });

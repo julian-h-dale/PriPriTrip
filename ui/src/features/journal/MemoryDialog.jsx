@@ -2,13 +2,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Camera, Eye, ImagePlus, MapPin, MapPinOff, X } from "lucide-react";
 import { MAX_PHOTO_BYTES, MAX_PHOTOS, createMemory, updateMemory } from "@/features/journal/journalSlice";
-import { photoSrc } from "@/features/journal/photoUrls";
+import { usePhotoSrc } from "@/features/journal/photoUrls";
 import { locationLabel } from "@/features/journal/nearestPlace";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { currentPosition, geolocationAvailable, permissionState } from "@/shared/services/geolocation";
+import { Switch } from "@/shared/components/ui/switch";
 
 const MAX = 2000;
 
@@ -81,7 +82,11 @@ function useNewMemoryLocation(active) {
   return { attach, setAttach, position, status, resolve };
 }
 
-function PhotoTile({ src, label, onRemove }) {
+function PhotoTile({ url, src: given, label, onRemove }) {
+  // A kept photo by its API path (saved copies only: from the phone's cache),
+  // a new one by its blob: URL.
+  const fromUrl = usePhotoSrc(url);
+  const src = given ?? fromUrl;
   return (
     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
       {src && <img src={src} alt="" className="h-full w-full object-cover" />}
@@ -161,24 +166,7 @@ function usePhotoPicks(existing) {
 function PublicSwitch({ id, checked, onChange }) {
   return (
     <div className="flex items-start gap-3">
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-describedby={`${id}-hint`}
-        onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          checked ? "bg-primary" : "bg-muted"
-        }`}
-      >
-        <span
-          aria-hidden="true"
-          className={`inline-block h-4 w-4 rounded-full transition-transform ${
-            checked ? "translate-x-6 bg-primary-foreground" : "translate-x-1 bg-muted-foreground"
-          }`}
-        />
-      </button>
+      <Switch id={id} checked={checked} onChange={onChange} aria-describedby={`${id}-hint`} className="mt-0.5" />
       <div className="flex flex-col gap-0.5">
         <label htmlFor={id} className="inline-flex items-center gap-1.5 text-sm font-medium">
           <Eye className="h-4 w-4" aria-hidden="true" />
@@ -325,7 +313,7 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
               {photos.kept.map((p, i) => (
                 <PhotoTile
                   key={p.id}
-                  src={photoSrc(p.thumbUrl)}
+                  url={p.thumbUrl}
                   label={`Remove photo ${i + 1}`}
                   onRemove={() => photos.dropExisting(p.id)}
                 />

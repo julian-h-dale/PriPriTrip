@@ -6,6 +6,95 @@
 
 ## Status
 
+- **Run stage 22 (2026-10-07)** on **`analytics`**: light mode and text size.
+  Plan: `docs/plan/run-22-light-mode.md`.
+  - **Phase 85 ✅:** light mode, from the All trips drawer, per phone,
+    applied before first paint; contrast checked by a unit test (light text
+    7:1, AAA).
+  - **Phase 86 ✅:** text size (Normal / Large / Larger) beside it; day rows'
+    cities drop under the date rather than being squeezed. `make verify`
+    green (278 API + 576 UI). **Run stage 22 is complete. Runs 20–22 are
+    done; nothing is pushed or deployed.**
+  - Full e2e run (2026-10-07): 39 pass, 2 skipped (need a build). The
+    sharing spec fails on this machine only: the seed viewer's password
+    here isn't the default and `api/.env` has no `SEED_VIEWER_PASSWORD`
+    (set it to run that spec). `accounts.spec.js` had a stale check since
+    Phase 76 (your own row now has an Analytics choice): fixed.
+- **Run stage 21 (2026-10-07)** on **`analytics`**: field fixes. Plan:
+  `docs/plan/run-21-field-fixes.md`.
+  - **Phase 82 ✅:** trips open on Today (active and upcoming; past trips and
+    viewers on the timeline); Tonight shows check-out once you're staying.
+  - **Phase 83 ✅:** no sticky hover on touch (`hoverOnlyWhenSupported`);
+    search results show time and place. `make verify` green (277 API + 540
+    UI); e2e `field-fixes.spec.js`.
+  - **Phase 84 ✅:** packing offline (saved list, a queue for every change,
+    `POST` takes the phone's id). `make verify` green (278 API + 548 UI).
+    **Run stage 21 is complete.**
+- **Run stage 20 (2026-10-07)** on **`analytics`**: "Use saved copies only".
+  Plan: `docs/plan/run-20-data-saver.md`.
+  - **Phase 80 ✅:** the switch (everyone's drawer, remembered per phone);
+    `selectOnline` replaces the 18 direct reads; `apiClient` refuses every
+    request but sign-in and `/users/me`; no mini maps, place photos,
+    Frankfurter or uncached journal photos; memories and analytics wait.
+    `make verify` green (277 API + 527 UI); e2e `saved-only.spec.js`.
+  - Julian: complete all the outstanding phases (81–86) without stopping.
+  - **Phase 81 ✅:** Refresh once on the bar. `make verify` green (277 API
+    + 532 UI). **Run stage 20 is complete.**
+- **Field review and docs (2026-10-07)** on **`analytics`**:
+  - Usability review at 375 px, online and offline:
+    `docs/ui-review-2026-10-07.md` (unscheduled; in the backlog).
+  - Julian's data-saver idea planned as **Run stage 20**
+    (`docs/plan/run-20-data-saver.md`).
+  - Review decisions planned as **Run 21** (field fixes) and **Run 22**
+    (light mode, text size). Order: 20 → 21 → 22. All questions answered
+    (Julian took every recommendation, 2026-10-07).
+  - READMEs: the root one is now a map of the parts and how to run each;
+    new `api/README.md`, `ui/README.md`, `scripts/pi-backup/README.md`
+    (moved from the root); `deploy/README.md` lists every production
+    secret and the deploy steps; `ui/e2e/README.md` lists the specs and
+    how to source `api/.env` for local seed passwords.
+    `api/.env.example` gained `DOCUMENT_DIR`.
+- **Run stage 19 ✅ (2026-10-07)** on **`analytics`**: analytics that
+  survive being offline. Plan: `docs/plan/run-19-offline-analytics.md`
+  (Julian took the recommendation; Umami is 3.4.0, whose `/api/send`
+  takes `timestamp`).
+  - **Phase 79 ✅:** no Umami script; `shared/analytics/umami.js` posts
+    to `/api/send` through a queue in IndexedDB (per user, oldest first,
+    500 events / 30 days), sent at once, when back online and when the app
+    returns to the front, each with the time it happened. The switch and
+    Umami address are remembered on the phone, so an app opened offline
+    counts. A switch turned off or signing out drops the queue. `make
+    verify` green (277 API + 505 UI); e2e `analytics.spec.js` (5) passes.
+  - Not pushed or deployed (nor is Run 18).
+- **Run stage 18 (2026-10-07)** on branch **`analytics`** (off `main`
+  after PR #16): usage analytics to Julian's Umami. Plan:
+  `docs/plan/run-18-analytics.md`; answers in (Q-A3 (b): the switch is set
+  when the account is made and only changed by hand; Q-A5: keep `owner`).
+  Julian: go through all the planned phases, then report.
+  - The seed's replant now deletes points of interest, packing items and
+    documents too (`make seed` failed on a database that had them).
+  - **Phase 76 ✅:** `users.analytics_enabled` (migration 0014: off for
+    admins, on for the rest; new accounts the same), an Analytics On / Off
+    column on the Admin page (any row, your own included), `PATCH
+    /admin/users/:id` takes `analyticsEnabled`. `UMAMI_URL` and
+    `UMAMI_WEBSITE_ID` on `/config` (empty: nothing sent). `make verify`
+    green (277 API + 480 UI). Dev database migrated.
+  - **Phase 77 ✅:** page views to Umami (`shared/analytics/`): loaded
+    only when the person's switch is on and `/config` has Umami; page
+    names, never addresses (`/trip/map`); the role on the trip as the tag
+    and event data; Stays / Travel views count apart. `make verify` green
+    (277 API + 496 UI); e2e `analytics.spec.js` (a pretend Umami serving
+    a copy of the real tracker) passes. Run e2e with `set -a; . api/.env`
+    for this machine's seed passwords.
+  - **Phase 78 ✅:** Trip tools events (`tool-open`, `currency-convert`,
+    `weather-view`, `timezones-view`, `packing-check` / `packing-add`,
+    `document-upload` / `document-open`, `share-open`), each with the
+    role. Weather has no day to tap, so `weather-view` is "a forecast
+    shown". `make verify` green (277 API + 499 UI); e2e
+    `analytics.spec.js` (4 tests) passes.
+  - **Run stage 18 is complete.** Not pushed or deployed. Deploying runs
+    migration 0014; set the Fly secrets `UMAMI_URL` and
+    `UMAMI_WEBSITE_ID` first. Next (Julian): plan offline analytics.
 - **Run stage 17 ✅ (2026-10-07)** on branch
   **`roles-and-viewers`**, stacked on `points-of-interest` (Julian: stack
   them). Quiet offline (no "Network Error" toasts for reads), making

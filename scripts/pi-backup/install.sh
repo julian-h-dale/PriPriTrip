@@ -8,7 +8,7 @@
 #   sudo BACKUP_USER=pi scripts/pi-backup/install.sh
 #
 # The drive must be formatted, mounted and owned by that user first — see
-# README.md, "Photo backup to the Pi".
+# scripts/pi-backup/README.md.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

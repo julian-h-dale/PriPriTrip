@@ -15,11 +15,31 @@ function DayHeading({ heading, isToday }) {
     <h2 className="flex shrink-0 items-baseline gap-2 text-base font-semibold leading-snug">
       {heading}
       {isToday && (
-        <span className="rounded-sm bg-primary px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none text-primary-foreground">
+        <span className="rounded-sm bg-primary px-1.5 py-0.5 text-[0.6875rem] font-semibold uppercase leading-none text-primary-foreground">
           Today
         </span>
       )}
     </h2>
+  );
+}
+
+/**
+ * The date, its badge and what's on the right (cities, a stay, a leg). When
+ * there isn't room for the right-hand words (a "Today" badge, a larger text
+ * size), they drop to their own line under the date instead of being
+ * squeezed to a sliver and broken mid-word.
+ */
+function RowHead({ heading, isToday, aside }) {
+  return (
+    <>
+      <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3">
+        <DayHeading heading={heading} isToday={isToday} />
+        {aside && (
+          <span className="min-w-[min(100%,4.5rem)] flex-1 break-words text-right text-sm text-muted-foreground">{aside}</span>
+        )}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground" aria-hidden="true" />
+    </>
   );
 }
 
@@ -59,11 +79,7 @@ export function DayRow({ row, tripId, view = "plan", coverage, onSelect, past = 
               to={to}
               className="flex w-full items-baseline gap-3 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <DayHeading heading={heading} isToday={isToday} />
-              <span className="min-w-0 flex-1 break-words text-right text-sm text-muted-foreground">
-                {dayCities(row).join(" → ")}
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground" aria-hidden="true" />
+              <RowHead heading={heading} isToday={isToday} aside={dayCities(row).join(" → ")} />
             </Link>
             {blurb && <Markdown className="text-muted-foreground">{blurb}</Markdown>}
           </div>
@@ -81,11 +97,7 @@ export function DayRow({ row, tripId, view = "plan", coverage, onSelect, past = 
           onClick={() => onSelect?.(row.date)}
           className="flex w-full items-baseline gap-3 p-3 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
-          <DayHeading heading={heading} isToday={isToday} />
-          <span className="min-w-0 flex-1 break-words text-right text-sm text-muted-foreground">
-            {coverage?.label ?? ""}
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground" aria-hidden="true" />
+          <RowHead heading={heading} isToday={isToday} aside={coverage?.label} />
         </button>
       </Card>
     </li>

@@ -55,6 +55,7 @@ describe("trip search", () => {
     const day = within(dialog).getByRole("region", { name: "Sun, May 10" });
     const result = within(day).getByRole("link", { name: /Chicago → Zürich/ });
     expect(result).toHaveTextContent(/Notes: .*SBB/);
+    expect(result).toHaveTextContent("5:40 PM · SWISS LX 9"); // when and how, as well as where it matched
     await user.click(result);
 
     // The flight's own page.

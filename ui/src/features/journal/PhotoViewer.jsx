@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight, Download, Maximize2, Save, X } from "lucide-react";
-import { photoSrc } from "@/features/journal/photoUrls";
+import { photoSrc, usePhotoSrc } from "@/features/journal/photoUrls";
 import { saveToPhone } from "@/features/journal/saveToPhone";
 import { notify } from "@/shared/notificationSlice";
 import { pendingPhotoFile } from "@/shared/services/outbox";
 import { userIdFromToken } from "@/shared/utils/authToken";
+import { selectSavedOnly } from "@/shared/networkSlice";
 
 const SWIPE_MIN_PX = 60;
 const TAP_SLOP_PX = 10; // a finger that moved further was swiping or panning
@@ -23,11 +24,15 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
   const userId = useSelector((s) => userIdFromToken(s.auth?.token));
   const [index, setIndex] = useState(start);
   const [full, setFull] = useState(false);
+  // Saved copies only: originals are never saved on the phone, so no full
+  // quality or download, and the display copy only if it's saved.
+  const savedOnly = useSelector(selectSavedOnly);
   const touch = useRef(null);
   const gesture = useRef(false); // the last touch swiped, panned or pinched: its click isn't a tap
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const photo = photos[index];
+  const shown = usePhotoSrc(full ? photo?.originalUrl : photo?.displayUrl);
   const go = (delta) => {
     setIndex((i) => Math.min(photos.length - 1, Math.max(0, i + delta)));
     setFull(false);
@@ -96,12 +101,12 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
           {index + 1} / {photos.length}
         </span>
         <div className="flex gap-2">
-          {!photo.pending && !full && (
+          {!photo.pending && !full && !savedOnly && (
             <button type="button" onClick={() => setFull(true)} className={button} aria-label="Full quality">
               <Maximize2 className="h-5 w-5" aria-hidden="true" />
             </button>
           )}
-          {!photo.pending && (
+          {!photo.pending && !savedOnly && (
             <a href={photoSrc(photo.originalUrl)} download className={button} aria-label="Download original">
               <Download className="h-5 w-5" aria-hidden="true" />
             </a>
@@ -131,7 +136,7 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
       >
         <img
           key={`${photo.id}:${full}`}
-          src={photoSrc(full ? photo.originalUrl : photo.displayUrl)}
+          src={shown ?? undefined}
           alt=""
           className={full ? "max-w-none" : "max-h-full max-w-full object-contain"}
         />

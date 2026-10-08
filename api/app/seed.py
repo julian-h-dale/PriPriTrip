@@ -21,7 +21,20 @@ from sqlalchemy import delete, select
 
 from app.database import AsyncSessionLocal
 from app.migrate import migrate
-from app.models import Day, Item, Memory, Photo, Stay, Travel, Trip, TripMember, UserRecord
+from app.models import (
+    Day,
+    Item,
+    Memory,
+    PackingItem,
+    Photo,
+    PointOfInterest,
+    Stay,
+    Travel,
+    Trip,
+    TripDocument,
+    TripMember,
+    UserRecord,
+)
 from app.sample_data import load_sample_trip
 from app.sample_data.demo_trip import build_demo_trip
 from app.schemas import UserCreate
@@ -66,8 +79,19 @@ async def _seed_trip(raw: dict[str, Any]) -> None:
         old = select(Trip.id).where(Trip.user_id == user.id, Trip.name == doc.name)
         old_days = select(Day.id).where(Day.trip_id.in_(old))
         await session.execute(delete(Item).where(Item.day_id.in_(old_days)))
-        # Photos before memories (they point at them).
-        for child in (Day, Stay, Travel, TripMember, Photo, Memory):
+        # Photos before memories (they point at them). Every table with a
+        # trip_id is here, or the trip's delete fails its foreign key.
+        for child in (
+            Day,
+            Stay,
+            Travel,
+            PointOfInterest,
+            TripMember,
+            PackingItem,
+            TripDocument,
+            Photo,
+            Memory,
+        ):
             await session.execute(delete(child).where(child.trip_id.in_(old)))
         await session.execute(delete(Trip).where(Trip.id.in_(old)))
         await session.commit()

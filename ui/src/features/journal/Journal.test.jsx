@@ -8,7 +8,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import journalReducer from "@/features/journal/journalSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
-import networkReducer, { setOnline } from "@/shared/networkSlice";
+import networkReducer, { setOnline, setSavedOnly } from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { JournalPage } from "@/features/journal/JournalPage";
@@ -45,7 +45,7 @@ const MEMORIES = [
   memory("m3", "2026-05-12T06:00:00Z", "Asia/Tokyo", { updatedAt: "2026-05-12T07:00:00Z" }),
 ];
 
-function renderAt(path, { online = true } = {}) {
+function renderAt(path, { online = true, savedOnly = false } = {}) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
@@ -55,7 +55,7 @@ function renderAt(path, { online = true } = {}) {
       error: errorReducer,
       notification: notificationReducer,
     },
-    preloadedState: { auth: { token: fakeToken(USER), user: null, status: "idle" }, network: { online } },
+    preloadedState: { auth: { token: fakeToken(USER), user: null, status: "idle" }, network: { online, savedOnly } },
   });
   render(
     <Provider store={store}>
@@ -180,6 +180,32 @@ describe("Journal tab", () => {
     });
     expect(await pending(USER)).toEqual([]);
     await vi.waitFor(() => expect(within(card).queryByText("Waiting to sync")).not.toBeInTheDocument());
+  });
+
+  it("with “Use saved copies only” on: a memory waits on the phone, and goes when it's off", async () => {
+    const user = userEvent.setup();
+    await saveTrip(USER, TRIP);
+    await saveMemories(USER, "trip-1", MEMORIES);
+    apiClient.get.mockRejectedValue(Object.assign(new Error("Saved copies only"), { config: {} }));
+    const store = renderAt("/trips/trip-1/journal", { savedOnly: true });
+    await screen.findByRole("region", { name: "Mon, May 11" });
+    await user.click(screen.getByRole("button", { name: "New memory" }));
+    await user.type(screen.getByLabelText("What happened?"), "Written on roaming");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Written on roaming");
+    expect(apiClient.post).not.toHaveBeenCalled();
+    expect(store.getState().notification.items.map((n) => n.message)).toContain(
+      "Saved on this phone — it’ll sync when “Use saved copies only” is off"
+    );
+    expect(await pending(USER)).toHaveLength(1);
+
+    apiClient.post.mockImplementation(async (url, body) => ({
+      data: { ...body, updatedAt: null, receivedAt: new Date().toISOString(), authorEmail: "user@example.com", mine: true },
+    }));
+    await store.dispatch(setSavedOnly(false));
+    await store.dispatch(syncOutbox());
+    expect(apiClient.post).toHaveBeenCalledTimes(1);
+    expect(await pending(USER)).toEqual([]);
   });
 
   it("a write the server rejects for good is dropped, not retried forever", async () => {

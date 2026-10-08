@@ -21,11 +21,11 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **76**.
+project; the next one is **87**.
 
 ## Stages
 
-All complete unless marked. Current branch: `roles-and-viewers` (Run 17), stacked on `points-of-interest` (Run 16).
+All complete unless marked. Current branch: `analytics` (Runs 18–22).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -51,6 +51,11 @@ All complete unless marked. Current branch: `roles-and-viewers` (Run 17), stacke
 | Run 15 | 67 | New memory in the top bar, Share in the drawer, temperature on Today | [run-15-new-memory-top-bar.md](docs/plan/run-15-new-memory-top-bar.md) |
 | Run 16 | 68–71 | Points of interest, one Filter button, the map's List button | [run-16-points-of-interest.md](docs/plan/run-16-points-of-interest.md) |
 | Run 17 | 72–75 | Quiet offline, making someone an admin, what viewers see (and their map) | [run-17-offline-toasts-roles-viewers.md](docs/plan/run-17-offline-toasts-roles-viewers.md) |
+| Run 18 | 76–78 | Usage analytics (Umami): a per-user switch, page views and Trip tools by role | [run-18-analytics.md](docs/plan/run-18-analytics.md) |
+| Run 19 | 79 | Analytics that survive being offline (our own sender, a queue) | [run-19-offline-analytics.md](docs/plan/run-19-offline-analytics.md) |
+| Run 20 | 80–81 | A "saved copies only" switch (data saver) | [run-20-data-saver.md](docs/plan/run-20-data-saver.md) |
+| Run 21 | 82–84 | Field fixes: trips open on Today, Tonight's check-out, sticky hover, search details, packing offline | [run-21-field-fixes.md](docs/plan/run-21-field-fixes.md) |
+| Run 22 | 85–86 | Light mode (and text size) | [run-22-light-mode.md](docs/plan/run-22-light-mode.md) |
 
 ## Architecture Decisions
 
@@ -166,7 +171,11 @@ All complete unless marked. Current branch: `roles-and-viewers` (Run 17), stacke
   - Offline/PWA — planned as Run stage 1 (Phases 18–19).
 - **Run, much later:** AI-assisted import (let the model do language, not data).
 - Before any real deploy: Alembic and pinned Python dependencies.
-- **Next follow-up (Julian, 2026-10-03):** a text-size preference that also
-  scales the timeline rails and dots.
+- **Field review (2026-10-07):** [docs/ui-review-2026-10-07.md](docs/ui-review-2026-10-07.md).
+  Scheduled in Runs 20–22. **Deferred:** documents offline (airline apps
+  and Google Wallet keep boarding passes), phone numbers on stays and
+  activities. Not taken up yet: map framing, the doubled offline map row,
+  viewers' Currency / Time zones, the Add activity sheet, the Admin table
+  at 375 px, and the "missing things" list.
 - Today tab: show it only while a trip is active (a switch on the whole
   view), once it has been tested.

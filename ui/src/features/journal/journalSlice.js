@@ -5,6 +5,7 @@ import { notify } from "@/shared/notificationSlice";
 import { applyPending, done, enqueue, pending, pendingPhoto, sortMemories } from "@/shared/services/outbox";
 import { readMemories, saveMemories } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
+import { selectMaySend, selectOnline } from "@/shared/networkSlice";
 
 /**
  * One trip's journal, written offline-first.
@@ -169,7 +170,7 @@ export const syncOutbox =
         if (uploads) dispatch(uploadProgress({ done: 0, total: uploads }));
         let uploaded = 0;
         for (const op of ops) {
-          if (getState().network?.online === false) break;
+          if (!selectMaySend(getState())) break;
           try {
             const { data } = await SEND[op.op](op);
             await done(userId, op.entryId ?? op.memoryId);
@@ -214,7 +215,7 @@ export const uploadPhotos = () => async (dispatch, getState) => {
   );
 };
 
-const isOnline = (getState) => getState().network?.online !== false;
+const isOnline = (getState) => selectOnline(getState());
 
 /** Viewers follow along (public memories only) and don't write; the owner and editors do. */
 export const canWriteMemories = (trip) => Boolean(trip) && trip.role !== "viewer";
@@ -264,7 +265,11 @@ export const createMemory =
     dispatch(
       notify({
         type: "success",
-        message: isOnline(getState) ? "Memory saved" : "Saved on this phone — it’ll sync when you’re online",
+        message: isOnline(getState)
+          ? "Memory saved"
+          : getState().network?.savedOnly
+            ? "Saved on this phone — it’ll sync when “Use saved copies only” is off"
+            : "Saved on this phone — it’ll sync when you’re online",
       })
     );
     dispatch(syncOutbox());

@@ -19,7 +19,8 @@ import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
 import { directionsUrl } from "@/shared/utils/mapsLinks";
-import { daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
+import { datePart, daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/utils/time";
+import { selectOnline } from "@/shared/networkSlice";
 
 /**
  * The temperature right now at today's place (before the trip, the first
@@ -28,7 +29,7 @@ import { daysBetween, formatDayHeading, formatTime, zoneLabel } from "@/shared/u
  */
 function WeatherNow({ tripId }) {
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
   const weather = useSelector((s) => (s.weather?.tripId === tripId ? s.weather.data : null));
   useEffect(() => {
     dispatch(fetchWeather(tripId));
@@ -112,7 +113,7 @@ function NextUp({ trip, next, active, now }) {
   );
 }
 
-function Tonight({ trip, night }) {
+function Tonight({ trip, night, date }) {
   const { stay, checkingOut } = night;
   const zoneNote = (zone) => (zone && zone !== trip.timezone ? ` (${zoneLabel(zone)} time)` : "");
   return (
@@ -139,7 +140,17 @@ function Tonight({ trip, night }) {
                 <p className="break-words text-sm text-muted-foreground">{stay.location.address}</p>
               )}
               <p className="mt-1 text-sm">
-                Check-in {formatDayHeading(stay.checkIn)} · {formatTime(stay.checkIn)}
+                {/* The check-in night says when to arrive; once you're staying,
+                    when you have to leave. */}
+                {datePart(stay.checkIn) === date ? (
+                  <>
+                    Check-in {formatDayHeading(stay.checkIn)} · {formatTime(stay.checkIn)}
+                  </>
+                ) : (
+                  <>
+                    Check-out {formatDayHeading(stay.checkOut)} · {formatTime(stay.checkOut)}
+                  </>
+                )}
                 {zoneNote(stay.zone)}
               </p>
               {stay.roomType && <p className="text-sm text-muted-foreground">{stay.roomType}</p>}
@@ -200,7 +211,7 @@ function TodayView({ trip }) {
 
       <section aria-label="Tonight">
         <SectionTitle>Tonight</SectionTitle>
-        <Tonight trip={trip} night={night} />
+        <Tonight trip={trip} night={night} date={ref.date} />
       </section>
 
       <section aria-label="Today’s plan">
@@ -244,7 +255,7 @@ export function TodayPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {

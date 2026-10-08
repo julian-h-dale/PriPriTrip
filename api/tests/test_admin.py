@@ -101,3 +101,72 @@ async def test_only_an_admin_may(
     url = f"/admin/users/{test_user.id}"
     assert (await token_client.patch(url, json={"isSuperuser": True})).status_code == 403
     assert (await anon_client.patch(url, json={"isSuperuser": True})).status_code == 401
+
+
+# ---- the analytics switch (Run stage 18) ----
+
+
+async def test_analytics_start_on_for_users_and_off_for_admins(
+    db: AsyncSession, test_user: UserRecord, admin_user: UserRecord
+) -> None:
+    assert test_user.analytics_enabled is True
+    assert admin_user.analytics_enabled is False
+    user, _ = await users_service.invite(db, "new@example.com", "New")
+    assert user.analytics_enabled is True
+
+
+async def test_an_admin_turns_someones_analytics_off_and_on(
+    admin_client: AsyncClient, test_user: UserRecord
+) -> None:
+    url = f"/admin/users/{test_user.id}"
+    resp = await admin_client.patch(url, json={"analyticsEnabled": False})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["analytics_enabled"] is False
+    assert resp.json()["is_superuser"] is False  # the role is left alone
+    resp = await admin_client.patch(url, json={"analyticsEnabled": True})
+    assert resp.json()["analytics_enabled"] is True
+
+
+async def test_an_admin_can_change_their_own_analytics(
+    admin_client: AsyncClient, admin_user: UserRecord
+) -> None:
+    """Unlike the role: it's how an admin keeps their testing out of the numbers."""
+    url = f"/admin/users/{admin_user.id}"
+    resp = await admin_client.patch(url, json={"analyticsEnabled": True})
+    assert resp.status_code == 200
+    assert resp.json()["analytics_enabled"] is True
+    assert resp.json()["is_superuser"] is True
+
+
+async def test_a_role_change_leaves_analytics_as_they_were(
+    admin_client: AsyncClient, test_user: UserRecord
+) -> None:
+    url = f"/admin/users/{test_user.id}"
+    resp = await admin_client.patch(url, json={"isSuperuser": True})
+    assert resp.json()["analytics_enabled"] is True  # still on: set when made
+    await admin_client.patch(url, json={"analyticsEnabled": False})
+    resp = await admin_client.patch(url, json={"isSuperuser": False})
+    assert resp.json()["analytics_enabled"] is False
+
+
+async def test_a_refused_role_change_changes_nothing(
+    admin_client: AsyncClient, admin_user: UserRecord
+) -> None:
+    resp = await admin_client.patch(
+        f"/admin/users/{admin_user.id}", json={"isSuperuser": False, "analyticsEnabled": True}
+    )
+    assert resp.status_code == 409
+    users = (await admin_client.get("/admin/users")).json()
+    assert next(u for u in users if u["id"] == str(admin_user.id))["analytics_enabled"] is False
+
+
+async def test_people_cant_change_their_own_analytics(
+    token_client: AsyncClient, test_user: UserRecord
+) -> None:
+    """Only an admin flips it: /users/me ignores it, and /admin refuses."""
+    await token_client.patch("/users/me", json={"analytics_enabled": False})
+    assert (await token_client.get("/users/me")).json()["analytics_enabled"] is True
+    resp = await token_client.patch(
+        f"/admin/users/{test_user.id}", json={"analyticsEnabled": False}
+    )
+    assert resp.status_code == 403

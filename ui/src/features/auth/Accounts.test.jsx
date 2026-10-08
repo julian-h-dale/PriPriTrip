@@ -275,7 +275,7 @@ describe("making someone an admin on the Admin page", () => {
     renderAt("/admin", ADMIN, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
     const userRow = (await screen.findByText("user@example.com")).closest("tr");
     const adminRow = screen.getAllByText("admin@example.com")[0].closest("tr");
-    expect(within(adminRow).queryByRole("combobox")).not.toBeInTheDocument();
+    expect(within(adminRow).queryByRole("combobox", { name: /Role for/ })).not.toBeInTheDocument();
     expect(within(adminRow).getByText("You")).toBeInTheDocument();
 
     const role = within(userRow).getByRole("combobox", { name: "Role for user@example.com" });
@@ -314,3 +314,32 @@ describe("making someone an admin on the Admin page", () => {
   });
 });
 
+describe("the analytics switch on the Admin page", () => {
+  it("shows On or Off on every row, your own included, and saves a change straight away", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({
+      data: [
+        { ...ADMIN, analytics_enabled: false },
+        { ...USER, analytics_enabled: true },
+      ],
+    });
+    apiClient.patch.mockResolvedValue({ data: { ...USER, analytics_enabled: false } });
+    renderAt("/admin", ADMIN, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
+    expect(await screen.findByRole("combobox", { name: "Analytics for admin@example.com" })).toHaveValue("off");
+    const theirs = screen.getByRole("combobox", { name: "Analytics for user@example.com" });
+    expect(theirs).toHaveValue("on");
+    await user.selectOptions(theirs, "off");
+    expect(apiClient.patch).toHaveBeenCalledWith("/admin/users/u1", { analyticsEnabled: false }, expect.objectContaining({ silent: true }));
+    await waitFor(() => expect(theirs).toHaveValue("off"));
+  });
+
+  it("changing your own takes effect now, not on the next load", async () => {
+    const user = userEvent.setup();
+    const me = { ...ADMIN, analytics_enabled: false };
+    apiClient.get.mockResolvedValue({ data: [me] });
+    apiClient.patch.mockResolvedValue({ data: { ...me, analytics_enabled: true } });
+    const store = renderAt("/admin", me, [<Route key="a" path="/admin" element={<AdminUsersPage />} />]);
+    await user.selectOptions(await screen.findByRole("combobox", { name: "Analytics for admin@example.com" }), "on");
+    await waitFor(() => expect(store.getState().auth.user.analytics_enabled).toBe(true));
+  });
+});

@@ -38,7 +38,10 @@ test("packing: a quantity, then deleting a whole list", async ({ page }) => {
   await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Packing" }).click();
   await expect(page.getByRole("heading", { name: "Packing" })).toBeVisible();
 
-  // Wait for the list (the first test leaves it started), then open the list if it isn't.
+  // The list may not be started yet (the specs run side by side): start it.
+  const start = page.getByRole("button", { name: "Start from suggestions" });
+  await expect(start.or(page.getByText(/of \d+ packed/))).toBeVisible();
+  if (await start.isVisible()) await start.click();
   await expect(page.getByText(/of \d+ packed/)).toBeVisible();
   const beach = page.getByRole("region", { name: "Beach & outdoors" });
   if (!(await beach.isVisible())) {
@@ -56,4 +59,35 @@ test("packing: a quantity, then deleting a whole list", async ({ page }) => {
   await expect(beach).toHaveCount(0);
   await expect(page.getByRole("region", { name: "More lists" }).getByRole("button", { name: "Beach & outdoors" })).toBeVisible();
   await page.screenshot({ path: screenshotPath("54-packing-list-deleted"), fullPage: true });
+});
+
+test("packing offline: tick and add with no signal; they reach the server once back", async ({ page, context }) => {
+  await login(page);
+  await (await tripLink(page, SAMPLE_TRIP)).click();
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Menu" }).getByRole("link", { name: "Packing" }).click();
+  const start = page.getByRole("button", { name: "Start from suggestions" });
+  const clothes = page.getByRole("region", { name: "Clothes" });
+  await expect(start.or(clothes)).toBeVisible();
+  if (await start.isVisible()) await start.click();
+  await expect(clothes).toBeVisible();
+  await page.waitForTimeout(500); // the list saved on the phone
+
+  await context.setOffline(true);
+  const box = clothes.getByRole("checkbox").first();
+  const was = await box.isChecked();
+  await box.click();
+  const thing = `Offline thing ${Date.now() % 100000}`;
+  await clothes.getByRole("textbox", { name: "Add to Clothes" }).fill(thing);
+  await clothes.getByRole("textbox", { name: "Add to Clothes" }).press("Enter");
+  await expect(clothes.getByRole("checkbox", { name: thing })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Your changes are saved on this phone (2 waiting)");
+  await page.screenshot({ path: screenshotPath("53-packing-offline"), fullPage: true });
+
+  await context.setOffline(false);
+  await expect(page.getByRole("status")).toHaveCount(0, { timeout: 10_000 }); // sent
+  await page.reload();
+  const list = page.getByRole("region", { name: "Clothes" });
+  await expect(list.getByRole("checkbox", { name: thing })).toBeVisible();
+  await expect(list.getByRole("checkbox").first()).toBeChecked({ checked: !was });
 });

@@ -13,6 +13,7 @@ import notificationReducer from "@/shared/notificationSlice";
 import { ClocksPage } from "@/features/clocks/ClocksPage";
 import { compareToPhone, formatUtcOffset, offsetMinutes, phoneZone, readClock } from "@/features/clocks/clock";
 import { tripZones, zoneTitle } from "@/features/clocks/tripZones";
+import { trackEvent } from "@/shared/analytics/umami";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
@@ -20,6 +21,7 @@ import { fakeToken } from "@/test/fakeToken";
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 vi.mock("@/features/clocks/clock", async (original) => ({ ...(await original()), phoneZone: vi.fn(() => "America/Chicago") }));
 
 // Chicago → Okinawa → Taipei → home, as the read model gives it (zones filled in).
@@ -121,6 +123,7 @@ describe("the Time zones page", () => {
     const clocks = within(zones).getAllByRole("region");
     expect(clocks.map((c) => c.getAttribute("aria-label"))).toEqual(["Chicago", "Naha · Onna · +1", "Taipei · Jiufen"]);
     expect(clocks[0]).toHaveTextContent("You’re here · UTC−5");
+    expect(trackEvent.mock.calls).toEqual([["timezones-view", { url: "/trip/timezones", role: "owner" }]]);
     expect(clocks[0]).toHaveTextContent("Tue, Oct 6");
     expect(within(clocks[0]).getByLabelText("3:15 PM")).toBeInTheDocument();
     expect(clocks[1]).toHaveTextContent("14 hours ahead · UTC+9");

@@ -18,7 +18,7 @@ from app.migrate import BASELINE, alembic_config, migrate, reset
 from app.models import Base
 
 # The latest migration: bump it with each new one.
-HEAD = "0013"
+HEAD = "0014"
 
 
 def _url(tmp_path: Path) -> str:
@@ -74,6 +74,9 @@ def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: 
             "INSERT INTO users (id, email, hashed_password, is_active, is_superuser, is_verified,"
             " name, timezone) VALUES ('11111111111111111111111111111111', 'u@x.com', 'x', 1, 0,"
             " 1, '', 'UTC')",
+            "INSERT INTO users (id, email, hashed_password, is_active, is_superuser, is_verified,"
+            " name, timezone) VALUES ('66666666666666666666666666666666', 'a@x.com', 'x', 1, 1,"
+            " 1, '', 'UTC')",
             "INSERT INTO trips (id, user_id, name, start_date, end_date, timezone, is_deleted)"
             " VALUES ('22222222222222222222222222222222', '11111111111111111111111111111111',"
             " 'Okinawa', '2026-10-29', '2026-11-13', 'Asia/Tokyo', 0)",
@@ -104,7 +107,12 @@ def test_a_pre_alembic_database_is_stamped_and_upgraded_with_its_data(tmp_path: 
     assert _run(url, ["SELECT is_public FROM memories"]) == [(0,)]
     assert _run(url, ["SELECT view_code FROM trips"]) == [(None,)]
     # Existing accounts don't have to change their password (Phase 54).
-    assert _run(url, ["SELECT must_change_password FROM users"]) == [(0,)]
+    assert _run(url, ["SELECT must_change_password FROM users"]) == [(0,), (0,)]
+    # Analytics start on, except for admins (Phase 76).
+    assert _run(url, ["SELECT email, analytics_enabled FROM users ORDER BY email"]) == [
+        ("a@x.com", 0),
+        ("u@x.com", 1),
+    ]
     # Existing entries start at version 1, with no editor yet.
     assert _run(url, ["SELECT title, version, updated_by FROM items"]) == [
         ("Kokusai Street", 1, None)

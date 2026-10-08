@@ -40,6 +40,24 @@ export const setAdmin = createAsyncThunk("admin/setAdmin", async ({ userId, admi
   }
 });
 
+/**
+ * Turn someone's usage analytics on or off (anyone's, your own included):
+ * resolves to the updated user.
+ */
+export const setAnalytics = createAsyncThunk("admin/setAnalytics", async ({ userId, enabled }, { rejectWithValue }) => {
+  try {
+    const { data } = await apiClient.patch(`/admin/users/${userId}`, { analyticsEnabled: enabled }, { silent: true });
+    return data;
+  } catch {
+    return rejectWithValue({ message: "Couldn’t change their analytics" });
+  }
+});
+
+function replaceUser(state, action) {
+  const i = state.users.findIndex((u) => u.id === action.payload.id);
+  if (i >= 0) state.users[i] = action.payload;
+}
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: { users: [], status: "idle" },
@@ -59,10 +77,8 @@ const adminSlice = createSlice({
       .addCase(inviteUser.fulfilled, (state, action) => {
         state.users = [...state.users, action.payload.user].sort((a, b) => a.email.localeCompare(b.email));
       })
-      .addCase(setAdmin.fulfilled, (state, action) => {
-        const i = state.users.findIndex((u) => u.id === action.payload.id);
-        if (i >= 0) state.users[i] = action.payload;
-      })
+      .addCase(setAdmin.fulfilled, replaceUser)
+      .addCase(setAnalytics.fulfilled, replaceUser)
       .addCase(resetPassword.fulfilled, (state, action) => {
         const user = state.users.find((u) => u.id === action.payload.userId);
         if (user) user.must_change_password = true;

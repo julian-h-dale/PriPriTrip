@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { selectOnline } from "@/shared/networkSlice";
 
 /**
  * Reload the open trip whenever the app returns to the foreground (online
@@ -10,7 +11,7 @@ import { fetchTrip } from "@/features/timeline/timelineSlice";
 export function useTripRefresh() {
   const dispatch = useDispatch();
   const tripId = useSelector((s) => s.timeline?.tripId);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   useEffect(() => {
     if (!tripId || !online) return undefined;

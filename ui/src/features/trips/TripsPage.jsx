@@ -14,7 +14,9 @@ import { RowMenu } from "@/shared/components/RowMenu";
 import { TopBar } from "@/shared/components/TopBar";
 import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDateRange } from "@/shared/utils/time";
-import { groupTrips } from "@/shared/utils/tripDates";
+import { groupTrips, tripHomePath } from "@/shared/utils/tripDates";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
+import { refreshOnce } from "@/shared/pwa/refreshOnce";
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -39,7 +41,7 @@ function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
   return (
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
       <Link
-        to={`/trips/${trip.id}`}
+        to={tripHomePath(trip)}
         className="flex min-w-0 flex-1 items-start gap-3 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -135,7 +137,9 @@ function TripListSkeleton() {
 export function TripsPage() {
   const dispatch = useDispatch();
   const { items, status, stale, savedAt } = useSelector((s) => s.trips);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
+  const refreshing = useSelector((s) => Boolean(s.network?.refreshing));
   const readOnly = !online || stale;
   const [importOpen, setImportOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -172,7 +176,14 @@ export function TripsPage() {
   return (
     <>
       <TopBar title="PriPriTrip" />
-      <OfflineBar online={online} stale={stale} savedAt={savedAt} />
+      <OfflineBar
+        savedOnly={savedOnly}
+        online={online}
+        stale={stale}
+        savedAt={savedAt}
+        refreshing={refreshing}
+        onRefresh={() => dispatch(refreshOnce())}
+      />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">Trips</h1>
@@ -207,7 +218,7 @@ export function TripsPage() {
           <Card className="flex flex-col items-center gap-3 p-8 text-center">
             <p className="font-medium">Couldn’t load your trips</p>
             <p className="text-sm text-muted-foreground">
-              {online ? "The server didn’t answer." : "You’re offline, and no trips are saved on this device yet."}
+              {online ? "The server didn’t answer." : savedOnly ? "Saved copies only, and no trips are saved on this device yet." : "You’re offline, and no trips are saved on this device yet."}
             </p>
             <Button variant="outline" onClick={() => dispatch(fetchTrips())}>
               Try again

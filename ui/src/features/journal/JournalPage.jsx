@@ -23,6 +23,7 @@ import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { formatDayHeading, zoneLabel } from "@/shared/utils/time";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 function groupHeading(group) {
   if (group.kind === "before") return "Before the trip";
@@ -101,7 +102,8 @@ function UploadBar() {
   const dispatch = useDispatch();
   const { count, bytes } = useSelector(selectWaitingPhotos);
   const upload = useSelector(selectUpload);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
   if (count === 0 && !upload) return null;
   return (
     <Card role="region" aria-label="Photos waiting to upload" className="flex flex-col gap-2 border-warning/40 p-3">
@@ -117,7 +119,11 @@ function UploadBar() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {online ? "Upload when you’re on Wi-Fi." : "You’re offline — upload when you’re back on Wi-Fi."} Photos taken
+        {online
+          ? "Upload when you’re on Wi-Fi."
+          : savedOnly
+            ? "Saved copies only — upload once it’s off, on Wi-Fi."
+            : "You’re offline — upload when you’re back on Wi-Fi."} Photos taken
         here aren’t in your camera roll: open one and tap Save to phone to keep a copy.
       </p>
     </Card>
@@ -230,7 +236,7 @@ export function JournalPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const { trip, status, tripId: loadedId } = useSelector((s) => s.timeline);
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
 
   // Also re-runs when the connection changes (see TripTimelinePage).
   useEffect(() => {

@@ -12,6 +12,7 @@ import {
   updatePackingItem,
 } from "@/features/packing/packingSlice";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
+import { useTrack } from "@/shared/analytics/useAnalytics";
 import { RowMenu } from "@/shared/components/RowMenu";
 import { ToolLayout } from "@/shared/components/ToolLayout";
 import { Button } from "@/shared/components/ui/button";
@@ -20,10 +21,16 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 function ItemRow({ item, tripId, disabled, onEdit }) {
   const dispatch = useDispatch();
+  const track = useTrack();
   const id = useId();
+  function check(checked) {
+    dispatch(updatePackingItem({ tripId, id: item.id, changes: { checked } }));
+    if (checked) track("packing-check");
+  }
   return (
     <li className="flex items-center gap-1">
       <label htmlFor={id} className="flex min-h-11 flex-1 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-accent">
@@ -32,7 +39,7 @@ function ItemRow({ item, tripId, disabled, onEdit }) {
           type="checkbox"
           checked={item.checked}
           disabled={disabled}
-          onChange={(e) => dispatch(updatePackingItem({ tripId, id: item.id, changes: { checked: e.target.checked } }))}
+          onChange={(e) => check(e.target.checked)}
           className="h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
         />
         <span className={cn("break-words text-sm", item.checked && "text-muted-foreground line-through")}>{item.text}</span>
@@ -85,6 +92,7 @@ function QuantityInput({ label, value, onChange, disabled, id }) {
 
 function AddItem({ tripId, category, label, disabled, autoFocus }) {
   const dispatch = useDispatch();
+  const track = useTrack();
   const [text, setText] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
@@ -95,6 +103,7 @@ function AddItem({ tripId, category, label, disabled, autoFocus }) {
     const result = await dispatch(addPackingItem({ tripId, category, text: text.trim(), quantity: toQuantity(quantity) }));
     setBusy(false);
     if (addPackingItem.fulfilled.match(result)) {
+      track("packing-add", { from: "typed" });
       setText("");
       setQuantity("1");
     }
@@ -257,9 +266,11 @@ function StartAList({ categories, onOpen, title }) {
 export function PackingPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
-  const online = useSelector((s) => s.network?.online ?? true);
+  const online = useSelector(selectOnline);
+  const savedOnly = useSelector(selectSavedOnly);
   const { items, status, tripId: loadedId } = useSelector((s) => s.packing);
   const tripName = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip.name : null));
+  const track = useTrack();
   const [hidePacked, setHidePacked] = useState(false);
   const [opened, setOpened] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -277,7 +288,8 @@ export function PackingPage() {
   const visible = CATEGORIES.filter((c) => groups[c.key].length > 0 || opened.includes(c.key));
   const notStarted = CATEGORIES.filter((c) => !visible.includes(c));
   const packed = mine.filter((i) => i.checked).length;
-  const disabled = !online;
+  // Changes work offline (they wait on the phone); only suggestions need the server.
+  const waiting = useSelector((s) => s.packing.waiting);
   const open = (key) => setOpened((keys) => [...keys, key]);
   const close = (key) => setOpened((keys) => keys.filter((k) => k !== key));
   // An empty list just closes; one with things on it asks first.
@@ -288,8 +300,9 @@ export function PackingPage() {
 
   async function suggest() {
     setSuggesting(true);
-    await dispatch(addPackingSuggestions(tripId));
+    const result = await dispatch(addPackingSuggestions(tripId));
     setSuggesting(false);
+    if (addPackingSuggestions.fulfilled.match(result)) track("packing-add", { from: "suggestions" });
   }
 
   return (
@@ -310,9 +323,13 @@ export function PackingPage() {
           </Button>
         )}
       </header>
-      {!online && (
+      {(!online || waiting > 0) && (
         <p role="status" className="rounded-md border border-warning/40 px-3 py-2 text-xs text-warning">
-          You’re offline. Your list shows as it was; ticking and adding need a connection.
+          {online
+            ? `${waiting} ${waiting === 1 ? "change" : "changes"} waiting to sync.`
+            : `${savedOnly ? "Saved copies only." : "You’re offline."} Your changes are saved on this phone${
+                waiting > 0 ? ` (${waiting} waiting)` : ""
+              } and sent ${savedOnly ? "once it’s off" : "when you’re back online"}.`}
         </p>
       )}
       {status === "loading" && loadedId === tripId && (
@@ -324,7 +341,7 @@ export function PackingPage() {
       )}
       {status === "failed" && loadedId === tripId && (
         <p className="text-sm text-muted-foreground">
-          {online ? "Couldn’t load your packing list." : "Your packing list needs a connection. It loads when you’re back online."}
+          {online ? "Couldn’t load your packing list." : savedOnly ? "Your packing list isn’t saved on this phone. Turn off “Use saved copies only” to load it." : "Your packing list needs a connection. It loads when you’re back online."}
         </p>
       )}
       {status === "ready" && (
@@ -336,10 +353,11 @@ export function PackingPage() {
                 <p className="font-semibold">Nothing on your list yet</p>
                 <p className="text-sm text-muted-foreground">Start with the usual things, then add and delete to suit. Only you see your list.</p>
               </div>
-              <Button onClick={suggest} disabled={disabled || suggesting}>
+              <Button onClick={suggest} disabled={!online || suggesting}>
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
                 {suggesting ? "Adding…" : "Start from suggestions"}
               </Button>
+              {!online && <p className="text-xs text-muted-foreground">Suggestions need a connection.</p>}
             </Card>
           )}
           {visible.map((c) => (
@@ -349,7 +367,6 @@ export function PackingPage() {
               items={groups[c.key]}
               tripId={tripId}
               hidePacked={hidePacked}
-              disabled={disabled}
               onEdit={setEditing}
               onDeleteList={deleteList}
               justOpened={opened.includes(c.key) && groups[c.key].length === 0}

@@ -14,8 +14,26 @@ export const apiClient = axios.create({
   baseURL: appConfig.apiBaseUrl,
 });
 
+/**
+ * "Use saved copies only" (Run stage 20): while it's on, nothing leaves the
+ * phone. A request fails here, before it's sent, the same way one with no
+ * connection fails (no `response`), so every page falls back to its saved
+ * copy exactly as offline. "Refresh once" opens it briefly
+ * (`network.refreshing`). Signing in still works (there's nothing saved
+ * for someone signed out), and so does asking who you are right after it.
+ */
+export const SAVED_ONLY = "ERR_SAVED_ONLY";
+function allowedWhileSavedOnly(config, token) {
+  if (!token) return true;
+  return (config.method ?? "get") === "get" && config.url === "/users/me";
+}
+
 apiClient.interceptors.request.use((config) => {
-  const token = store?.getState().auth.token;
+  const state = store?.getState();
+  const token = state?.auth.token;
+  if (state?.network?.savedOnly && !state.network.refreshing && !allowedWhileSavedOnly(config, token)) {
+    return Promise.reject(new axios.AxiosError("Saved copies only", SAVED_ONLY, config));
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -26,6 +44,8 @@ const WRITE_METHODS = ["post", "put", "patch", "delete"];
 
 /** What a write that couldn't reach the server says (a read says nothing). */
 export const OFFLINE_WRITE = "You’re offline, so that wasn’t saved.";
+/** The same, with "Use saved copies only" on. */
+export const SAVED_ONLY_WRITE = "Turn off “Use saved copies only” to save this.";
 
 apiClient.interceptors.response.use(
   (response) => {
@@ -58,7 +78,7 @@ apiClient.interceptors.response.use(
       // changed or removed the entry, see timelineSlice).
     } else if (!error.response) {
       // A write the user made that couldn't go: say so plainly, once.
-      store?.dispatch(setError(OFFLINE_WRITE));
+      store?.dispatch(setError(error.code === SAVED_ONLY ? SAVED_ONLY_WRITE : OFFLINE_WRITE));
     } else {
       const message =
         error.response?.data?.detail || error.message || "Something went wrong";

@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
 import { notify } from "@/shared/notificationSlice";
-import { readTripList, removeTrip, saveTrip, saveTripList } from "@/shared/services/tripCache";
+import { readTripList, removeTrip, saveMemories, saveTrip, saveTripList } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
 import { tripPhase } from "@/shared/utils/tripDates";
 
@@ -19,6 +19,26 @@ async function cacheUnfinishedTrips(userId, summaries) {
     } catch {
       return; // offline or server gone — stop, don't hammer it
     }
+  }
+}
+
+/**
+ * Before "Use saved copies only" goes on (Run stage 20): save the trips list
+ * and every trip that hasn't ended, with its journal, while there's still a
+ * connection. One at a time; the first failure stops it (offline), keeping
+ * whatever was saved.
+ */
+export async function saveTripsForOffline(dispatch, getState) {
+  const userId = userIdFromToken(getState().auth.token);
+  if (!userId) return;
+  const { data: list } = await apiClient.get("/trips", { silent: true, offlineOk: true });
+  await saveTripList(userId, list);
+  for (const summary of list) {
+    if (tripPhase(summary) === "past") continue;
+    const { data: trip } = await apiClient.get(`/trips/${summary.id}`, { silent: true, offlineOk: true });
+    await saveTrip(userId, trip);
+    const { data: memories } = await apiClient.get(`/trips/${summary.id}/memories`, { silent: true, offlineOk: true });
+    await saveMemories(userId, summary.id, memories);
   }
 }
 
@@ -129,7 +149,7 @@ const tripsSlice = createSlice({
         state.status = "idle";
         state.items = action.payload;
         state.stale = false;
-        state.savedAt = null;
+        state.savedAt = new Date().toISOString(); // just saved on the phone
       })
       .addCase(fetchTrips.rejected, (state, action) => {
         const { offline, cached } = action.payload ?? {};

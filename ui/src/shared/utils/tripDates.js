@@ -35,6 +35,18 @@ export function tripPhase(trip, now = new Date()) {
 }
 
 /**
+ * Where a trip opens (Run stage 21): its Today for an owner or editor while
+ * it's active or still to come (before it starts, Today previews Day 1); its
+ * timeline for a past trip (nothing is "today" any more) and for a viewer,
+ * who has no Today tab.
+ */
+export function tripHomePath(trip, now = new Date()) {
+  const timeline = `/trips/${trip.id}`;
+  if (trip.role === "viewer" || tripPhase(trip, now) === "past") return timeline;
+  return `${timeline}/today`;
+}
+
+/**
  * Which date a new entry's form should open on, when nothing more specific
  * says (e.g. adding from the map):
  *   1. `preferred` (e.g. the map's day filter), when it's inside the trip;

@@ -13,6 +13,7 @@ import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { CurrencyPage } from "@/features/currency/CurrencyPage";
+import { trackEvent } from "@/shared/analytics/umami";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
@@ -21,6 +22,7 @@ import { OKINAWA } from "@/features/currency/currency.test";
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 
 const RATES = [
   { date: "2026-10-05", base: "USD", quote: "JPY", rate: 157.93 },
@@ -84,8 +86,11 @@ describe("the Currency page", () => {
     expect(rate).toHaveTextContent("1 USD = 157.93 JPY");
     expect(rate).toHaveTextContent(/100 = \$0\.63/);
 
+    expect(trackEvent).not.toHaveBeenCalled(); // opened isn't used
     await user.type(screen.getByLabelText("Amount in JPY"), "1000");
     expect(within(screen.getByRole("region", { name: "Calculator" })).getByText("$6.33")).toBeInTheDocument();
+    // Once a visit, not per keystroke.
+    expect(trackEvent.mock.calls).toEqual([["currency-convert", { url: "/trip/currency", role: "viewer", currency: "JPY" }]]);
 
     // The other way round.
     await user.click(screen.getByRole("button", { name: "Swap: convert USD to JPY" }));

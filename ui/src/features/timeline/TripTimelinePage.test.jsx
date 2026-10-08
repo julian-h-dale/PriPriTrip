@@ -10,11 +10,13 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { apiClient } from "@/shared/services/apiClient";
+import { trackPageView } from "@/shared/analytics/umami";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackPageView: vi.fn(), trackEvent: vi.fn() }));
 
 // The API's read shape: the document plus ids.
 const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z" };
@@ -100,6 +102,21 @@ describe("TripTimelinePage", () => {
     renderPage();
     expect(await screen.findByText("Trip not found")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute("href", "/trips");
+  });
+
+  it("counts Stays and Travel as views of their own (Plan is the page's own view)", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({ data: { ...TRIP, role: "editor" } });
+    renderPage();
+    await screen.findByRole("heading", { name: TRIP.name, level: 1 });
+    await user.click(screen.getByRole("button", { name: "Stays" }));
+    await user.click(screen.getByRole("button", { name: "Stays" })); // already on it: not again
+    await user.click(screen.getByRole("button", { name: "Travel" }));
+    await user.click(screen.getByRole("button", { name: "Plan" }));
+    expect(trackPageView.mock.calls.map(([v]) => v)).toEqual([
+      { url: "/trip/timeline/stays", title: "Timeline: Stays", role: "editor" },
+      { url: "/trip/timeline/travel", title: "Timeline: Travel", role: "editor" },
+    ]);
   });
 
   it("switches to the stays view and back, and never shows both at once", async () => {

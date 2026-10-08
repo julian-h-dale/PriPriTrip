@@ -13,6 +13,7 @@ import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { WeatherPage } from "@/features/weather/WeatherPage";
+import { trackEvent } from "@/shared/analytics/umami";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll, saveWeather } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
@@ -20,6 +21,7 @@ import { fakeToken } from "@/test/fakeToken";
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 
 const USER = "user-1";
 const FETCHED = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
@@ -123,6 +125,7 @@ describe("the Weather page", () => {
     expect(within(now).getByText(/Feels like 86°/)).toBeInTheDocument();
     expect(screen.getByText(/Typhoon warning · Naha/)).toBeInTheDocument();
     expect(screen.getByText(/Updated 2 hours ago/)).toBeInTheDocument();
+    expect(trackEvent.mock.calls).toEqual([["weather-view", { url: "/trip/weather", role: "viewer" }]]);
 
     const days = within(screen.getByRole("region", { name: "Trip days" })).getAllByRole("listitem");
     expect(days).toHaveLength(3); // the past day is folded into a count
@@ -191,6 +194,19 @@ describe("the drawer's Trip tools", () => {
     expect(within(tools).getByRole("link", { name: "Weather" })).toHaveAttribute("href", "/trips/trip-1/weather");
     expect(within(tools).getByRole("link", { name: "Currency" })).toHaveAttribute("href", "/trips/trip-1/currency");
     expect(within(tools).getByRole("link", { name: "Time zones" })).toHaveAttribute("href", "/trips/trip-1/time");
+  });
+
+  it("counts a tool opened from here", async () => {
+    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
+    await userEvent.click(within(menu).getByRole("link", { name: "Packing" }));
+    expect(trackEvent).toHaveBeenCalledWith("tool-open", { url: "/trip/timeline", role: "owner", tool: "packing" });
+  });
+
+  it("counts Share trip opened", async () => {
+    apiClient.get.mockResolvedValue({ data: [] }); // the Share dialog's members and codes
+    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
+    await userEvent.click(within(menu).getByRole("button", { name: "Share trip" }));
+    expect(trackEvent).toHaveBeenCalledWith("share-open", { url: "/trip/timeline", role: "owner" });
   });
 
   it("lists Currency first, then Weather, Time zones, Packing, Documents, and Share trip for the owner", async () => {

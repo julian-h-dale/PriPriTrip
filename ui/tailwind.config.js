@@ -1,6 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: "class",
+  // hover: styles only where something really hovers (@media (hover: hover)).
+  // On a phone a tap leaves the tapped spot "hovered": tap ☰, pick a tool,
+  // and the tool page's Back button, under the same finger, came up filled
+  // (Run stage 21).
+  future: { hoverOnlyWhenSupported: true },
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {

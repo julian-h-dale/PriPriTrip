@@ -13,6 +13,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PriPriTrip" />
     <title>PriPriTrip</title>
+    <!-- Light or dark (src/shared/theme.js) and the text size
+         (src/shared/textSize.js), chosen on this phone: applied before the
+         first paint so the app never flashes the other one. -->
+    <script>
+      try {
+        if (localStorage.getItem("theme") === "light") {
+          document.documentElement.classList.replace("dark", "light");
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", "#f8f9fb");
+        }
+        var size = { large: "112.5%", larger: "125%" }[localStorage.getItem("textSize")];
+        if (size) document.documentElement.style.fontSize = size;
+      } catch (e) {}
+    </script>
     <!-- Runtime config injected at container start, outside the Vite bundle. -->
     <script src="/runtime-config.js"></script>
   </head>

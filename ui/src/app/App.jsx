@@ -25,6 +25,7 @@ import { PwaUpdate } from "@/shared/pwa/PwaUpdate";
 import { useOutboxSync } from "@/shared/pwa/useOutboxSync";
 import { useTokenRefresh } from "@/shared/pwa/useTokenRefresh";
 import { useTripRefresh } from "@/shared/pwa/useTripRefresh";
+import { useAnalyticsSetup, usePageViews } from "@/shared/analytics/useAnalytics";
 
 export function App() {
   const dispatch = useDispatch();
@@ -34,6 +35,9 @@ export function App() {
   // Stay signed in while the app is used (a sliding 60-day window).
   useTokenRefresh();
   useTripRefresh();
+  // Usage to Umami, for people whose switch is on (Run stage 18).
+  useAnalyticsSetup();
+  usePageViews();
 
   // Hydrate the user on load if a token survived a refresh.
   useEffect(() => {

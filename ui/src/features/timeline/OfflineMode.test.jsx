@@ -16,12 +16,18 @@ import { DayDetailPage } from "@/features/timeline/DayDetailPage";
 import { TripsPage } from "@/features/trips/TripsPage";
 import { MapPage } from "@/features/map/MapPage";
 import { apiClient } from "@/shared/services/apiClient";
+import { loadGoogleMapsLibrary } from "@/shared/services/googleMapsLoader";
 import { clearAll, saveTrip, saveTripList } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+}));
+// A mini map asking for Google's library is a map loading over the network.
+vi.mock("@/shared/services/googleMapsLoader", async (original) => ({
+  ...(await original()),
+  loadGoogleMapsLibrary: vi.fn(() => new Promise(() => {})),
 }));
 
 const USER = "user-1";
@@ -39,7 +45,7 @@ const SUMMARY = {
 };
 const networkError = () => Object.assign(new Error("Network Error"), { config: {} });
 
-function renderAt(path, online = false) {
+function renderAt(path, online = false, savedOnly = false) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
@@ -51,7 +57,7 @@ function renderAt(path, online = false) {
     },
     preloadedState: {
       auth: { token: fakeToken(USER), user: null, status: "idle" },
-      network: { online },
+      network: { online, savedOnly },
     },
   });
   render(
@@ -117,5 +123,41 @@ describe("offline, from the phone's saved copy", () => {
     expect(await screen.findByText(/^Can’t reach the server/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add activity/ })).toBeDisabled();
     expect(store.getState().error.message).toBeFalsy();
+  });
+});
+
+describe("online, with “Use saved copies only” on (Run stage 20)", () => {
+  const savedOnly = (path) => renderAt(path, true, true);
+
+  it("the trips list is the saved copy, and the bar says why", async () => {
+    savedOnly("/trips");
+    expect(await screen.findByText(/^Saved copies only · from/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Import trip/ })).toBeDisabled();
+  });
+
+  it("a day page is read-only, as offline", async () => {
+    savedOnly("/trips/trip-1/days/2026-05-11");
+    await screen.findByRole("heading", { name: "Mon, May 11" });
+    expect(await screen.findByText(/^Saved copies only/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Add activity/ })).toBeDisabled();
+  });
+
+  it("an entry's page loads no place photo and no map", async () => {
+    savedOnly("/trips/trip-1/activities/item-0-0");
+    await screen.findByRole("article");
+    expect(document.querySelector('img[src*="googleusercontent"]')).toBeNull();
+    expect(loadGoogleMapsLibrary).not.toHaveBeenCalled();
+  });
+
+  it("…while online without it, the same page has both", async () => {
+    renderAt("/trips/trip-1/activities/item-0-0", true);
+    await screen.findByRole("article");
+    expect(document.querySelector('img[src*="googleusercontent"]')).not.toBeNull();
+    expect(loadGoogleMapsLibrary).toHaveBeenCalled();
+  });
+
+  it("the map tab is the list", async () => {
+    savedOnly("/trips/trip-1/map");
+    expect(await screen.findByText(/The map needs a connection/)).toBeInTheDocument();
   });
 });

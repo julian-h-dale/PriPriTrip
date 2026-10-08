@@ -15,6 +15,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { DocumentsPage } from "@/features/documents/DocumentsPage";
 import { TopBar } from "@/shared/components/TopBar";
+import { trackEvent } from "@/shared/analytics/umami";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll } from "@/shared/services/tripCache";
 import { saveToPhone } from "@/features/journal/saveToPhone";
@@ -23,6 +24,7 @@ import { fakeToken } from "@/test/fakeToken";
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
+vi.mock("@/shared/analytics/umami", () => ({ trackEvent: vi.fn(), trackPageView: vi.fn() }));
 vi.mock("@/features/journal/saveToPhone", () => ({ saveToPhone: vi.fn(async () => "downloaded") }));
 
 const trip = (role) => ({ id: "trip-1", name: "Okinawa & Taipei", role, days: [], stays: [], travels: [] });
@@ -133,6 +135,7 @@ describe("the Documents page", () => {
     expect(url).toBe("/trips/trip-1/documents");
     expect(form.get("file")).toBe(file);
     expect(await screen.findByText("Hotel")).toBeInTheDocument();
+    expect(trackEvent).toHaveBeenCalledWith("document-upload", { url: "/trip/documents", role: "owner", replacing: false });
   });
 
   it("downloads everything as one zip named after the trip", async () => {
@@ -144,6 +147,7 @@ describe("the Documents page", () => {
     await waitFor(() => expect(saveToPhone).toHaveBeenCalled());
     expect(apiClient.get).toHaveBeenCalledWith("/trips/trip-1/documents.zip", { responseType: "blob", silent: true });
     expect(saveToPhone.mock.calls[0][0].name).toBe("Okinawa & Taipei documents.zip");
+    expect(trackEvent).toHaveBeenCalledWith("document-open", { url: "/trip/documents", role: "owner", all: true });
   });
 
   it("downloads one document by tapping it", async () => {
@@ -154,6 +158,7 @@ describe("the Documents page", () => {
     await waitFor(() => expect(saveToPhone).toHaveBeenCalled());
     expect(apiClient.get).toHaveBeenCalledWith("/trips/trip-1/documents/d2/file", { responseType: "blob", silent: true });
     expect(saveToPhone.mock.calls[0][0].name).toBe("Passport.jpg");
+    expect(trackEvent).toHaveBeenCalledWith("document-open", { url: "/trip/documents", role: "owner" });
   });
 
   it("replaces, renames and deletes from ⋯", async () => {

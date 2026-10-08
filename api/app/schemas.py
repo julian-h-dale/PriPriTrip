@@ -64,6 +64,8 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     timezone: str = "UTC"
     # True while they still have an admin-issued temporary password.
     must_change_password: bool = False
+    # Whether the app sends their usage to Umami; only an admin changes it.
+    analytics_enabled: bool = True
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -390,10 +392,12 @@ class InviteUser(CamelModel):
     name: str = Field(default="", max_length=100)
 
 
-class SetAdmin(CamelModel):
-    """An admin making someone an admin of the app, or a plain user."""
+class AdminUserUpdate(CamelModel):
+    """An admin changing someone's account: an admin of the app or a plain
+    user, and whether their usage is sent to analytics. Either, or both."""
 
-    is_superuser: bool
+    is_superuser: bool | None = None
+    analytics_enabled: bool | None = None
 
 
 class TemporaryPassword(CamelModel):
@@ -432,7 +436,11 @@ PackingQuantity = Annotated[int, Field(ge=1, le=99)]
 
 
 class PackingItemCreate(CamelModel):
+    """A new line. `id` is optional: a phone adding offline makes its own,
+    so the add can be retried without a duplicate (Run stage 21)."""
+
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    id: uuid.UUID | None = None
     category: PackingCategory
     text: PackingText
     quantity: PackingQuantity = 1
