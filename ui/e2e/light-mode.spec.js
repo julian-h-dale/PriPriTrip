@@ -60,3 +60,30 @@ test("light mode: on from the drawer, remembered, and every page in it", async (
   await page.waitForTimeout(1500);
   await page.screenshot({ path: screenshotPath("22n-light-offline") });
 });
+
+test("text size: the timeline's dot stays on its date at every size", async ({ page }) => {
+  await login(page);
+  const offsets = {};
+  for (const [label, scale] of [["Normal", 1], ["Large", 1.125], ["Larger", 1.25]]) {
+    await page.goto("/trips");
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.getByRole("radio", { name: label, exact: true }).click();
+    await page.keyboard.press("Escape");
+    await (await tripLink(page, "Athens Getaway")).click();
+    await page.getByRole("link", { name: "Timeline", exact: true }).click();
+    const row = page.locator('li[id^="day-"]').first();
+    const dot = await row.locator("span.rounded-full").first().boundingBox();
+    const date = await row.getByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), /).first().boundingBox();
+    offsets[label] = (dot.y + dot.height / 2 - (date.y + date.height / 2)) / scale;
+    if (label === "Larger") {
+      await page.screenshot({ path: screenshotPath("22o-larger-timeline") });
+      await page.getByRole("link", { name: "Today", exact: true }).click();
+      await page.waitForTimeout(800);
+      await page.screenshot({ path: screenshotPath("22p-larger-today") });
+    }
+  }
+  // The same place relative to the date, whatever the size (within a pixel or two).
+  expect(Math.abs(offsets.Large - offsets.Normal)).toBeLessThan(2);
+  expect(Math.abs(offsets.Larger - offsets.Normal)).toBeLessThan(2);
+  expect(Math.abs(offsets.Normal)).toBeLessThan(4); // and it's on the date to begin with
+});

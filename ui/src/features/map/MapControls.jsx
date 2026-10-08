@@ -15,7 +15,7 @@ const MAX_TRIP_ROWS = 8;
 
 function SectionHeading({ children }) {
   return (
-    <li role="presentation" className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+    <li role="presentation" className="px-3 pb-1 pt-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
       {children}
     </li>
   );
@@ -42,7 +42,7 @@ function Row({ row, onPick }) {
           {subtitle && <span className="truncate text-xs text-muted-foreground">{subtitle}</span>}
         </span>
         {!isTrip && (
-          <span className="shrink-0 rounded-sm border border-primary/50 px-1.5 text-[11px] font-medium text-primary">
+          <span className="shrink-0 rounded-sm border border-primary/50 px-1.5 text-[0.6875rem] font-medium text-primary">
             New
           </span>
         )}

@@ -14,8 +14,10 @@ import { InstallAppButton } from "@/shared/pwa/InstallAppButton";
 import { useTrack } from "@/shared/analytics/useAnalytics";
 import { saveTripsForOffline } from "@/features/trips/tripsSlice";
 import { Switch } from "@/shared/components/ui/switch";
+import { cn } from "@/shared/utils/cn";
 import { selectSavedOnly, setSavedOnly } from "@/shared/networkSlice";
 import { setTheme, useTheme } from "@/shared/theme";
+import { TEXT_SIZES, setTextSize, useTextSize } from "@/shared/textSize";
 
 const ITEM =
   "flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -102,6 +104,39 @@ function LightModeSwitch() {
         aria-describedby="light-mode-hint"
         onChange={(on) => setTheme(on ? "light" : "dark")}
       />
+    </div>
+  );
+}
+
+/**
+ * Text size (Run stage 22), beside Light mode: Normal, Large or Larger.
+ * A choice for this phone.
+ */
+function TextSizeChoice() {
+  const current = useTextSize();
+  return (
+    <div className="flex flex-col gap-2 px-3 py-3">
+      <span id="text-size-label" className="text-sm">
+        Text size
+      </span>
+      <div role="radiogroup" aria-labelledby="text-size-label" className="grid grid-cols-3 rounded-md border border-border bg-background p-1">
+        {TEXT_SIZES.map((size, i) => (
+          <button
+            key={size.key}
+            type="button"
+            role="radio"
+            aria-checked={current === size.key}
+            onClick={() => setTextSize(size.key)}
+            className={cn(
+              "min-h-9 rounded-sm px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              ["text-xs", "text-sm", "text-base"][i],
+              current === size.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {size.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -238,7 +273,12 @@ export function NavDrawer({ open, onClose }) {
           </Link>
         )}
         <div className="mt-auto border-t border-border pt-2">
-          {pathname === "/trips" && <LightModeSwitch />}
+          {pathname === "/trips" && (
+            <>
+              <LightModeSwitch />
+              <TextSizeChoice />
+            </>
+          )}
           <SavedOnlySwitch />
           <button type="button" onClick={() => setChangingPassword(true)} className={ITEM}>
             <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

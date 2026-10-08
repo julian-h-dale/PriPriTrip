@@ -100,6 +100,19 @@ or off from the drawer on the **All trips** screen.
   updated. E2E `light-mode.spec.js`: on from the drawer, applied on reload
   before the app runs, and screenshots of every page (looked at: trips,
   Today, timeline, stays view, day, entry, dialog, drawer, offline bar).
+- **Phase 86 ✅ (2026-10-07).** Text size (Normal / Large / Larger: 100, 112.5,
+  125%) beside Light mode, per phone, applied before first paint
+  (`shared/textSize.js`, `index.html`). The app is in rem, so type,
+  spacing, rails and dots scale together; the three px-sized labels left
+  (the TODAY badge, the map search's group titles and Google badge) moved
+  to rem. The map's info windows stay in px to match Google's.
+  - Found at Larger: today's row squeezed the cities to a sliver beside the
+    TODAY badge, breaking "Athens" mid-word. A day row's right-hand words
+    now drop under the date when they'd be narrower than 4.5rem
+    (`RowHead` in DayRow.jsx), at any size.
+  - E2E: the dot's offset from its date is the same (within 2px, scaled)
+    at all three sizes; screenshots of the timeline and Today at Larger.
+    `make verify` green (278 API + 576 UI).
 
 ## Open questions
 

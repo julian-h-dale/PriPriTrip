@@ -13,6 +13,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { TopBar } from "@/shared/components/TopBar";
 import { setTheme } from "@/shared/theme";
+import { setTextSize } from "@/shared/textSize";
 import { fakeToken } from "@/test/fakeToken";
 
 vi.mock("@/shared/services/apiClient", () => ({ apiClient: { get: vi.fn(async () => ({ data: [] })) } }));
@@ -45,7 +46,10 @@ beforeEach(() => {
   document.documentElement.className = "dark";
   document.head.innerHTML = '<meta name="theme-color" content="#12151c">';
 });
-afterEach(() => setTheme("dark"));
+afterEach(() => {
+  setTheme("dark");
+  setTextSize("normal");
+});
 
 describe("light mode (Run stage 22)", () => {
   it("is a switch in the All trips drawer, off: dark is the default", async () => {
@@ -73,5 +77,30 @@ describe("light mode (Run stage 22)", () => {
     await userEvent.click(within(menu).getByRole("switch", { name: "Light mode" }));
     expect(html).toHaveClass("dark");
     expect(localStorage.getItem("theme")).toBeNull();
+  });
+});
+
+describe("text size (Run stage 22)", () => {
+  it("is beside Light mode in the All trips drawer: Normal, Large, Larger", async () => {
+    const menu = await openDrawer("/trips");
+    const sizes = within(menu).getByRole("radiogroup", { name: "Text size" });
+    expect(within(sizes).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Normal", "Large", "Larger"]);
+    expect(within(sizes).getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("sets the root size, so everything in rem grows with it, and is remembered", async () => {
+    const menu = await openDrawer("/trips");
+    await userEvent.click(within(menu).getByRole("radio", { name: "Larger" }));
+    expect(document.documentElement.style.fontSize).toBe("125%");
+    expect(localStorage.getItem("textSize")).toBe("larger");
+    expect(within(menu).getByRole("radio", { name: "Larger" })).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(within(menu).getByRole("radio", { name: "Normal" }));
+    expect(document.documentElement.style.fontSize).toBe("");
+    expect(localStorage.getItem("textSize")).toBeNull();
+  });
+
+  it("isn't in a trip's drawer", async () => {
+    const menu = await openDrawer("/trips/trip-1");
+    expect(within(menu).queryByRole("radiogroup", { name: "Text size" })).toBeNull();
   });
 });

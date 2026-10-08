@@ -11,6 +11,10 @@
   - **Phase 85 ✅:** light mode, from the All trips drawer, per phone,
     applied before first paint; contrast checked by a unit test (light text
     7:1, AAA).
+  - **Phase 86 ✅:** text size (Normal / Large / Larger) beside it; day rows'
+    cities drop under the date rather than being squeezed. `make verify`
+    green (278 API + 576 UI). **Run stage 22 is complete. Runs 20–22 are
+    done; nothing is pushed or deployed.**
 - **Run stage 21 (2026-10-07)** on **`analytics`**: field fixes. Plan:
   `docs/plan/run-21-field-fixes.md`.
   - **Phase 82 ✅:** trips open on Today (active and upcoming; past trips and

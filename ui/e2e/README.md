@@ -29,10 +29,13 @@ named by spec (`01-trips-list.png`, `18a-analytics-owner.png`, …).
 | `trip.spec.js` | Trips list, landing, Today, search, timeline, day pages and swiping, entry pages, coverage views, the map (search, filters, List, adding places), sharing, viewers, two editors |
 | `accounts.spec.js` | Invites, temporary passwords, resets, making someone an admin |
 | `tools.spec.js` | Currency, Weather and Time zones from the drawer |
-| `packing.spec.js`, `documents.spec.js` | Packing lists; documents upload and download |
+| `packing.spec.js`, `documents.spec.js` | Packing lists (offline ticks and adds, sent once back); documents upload and download |
 | `journal-*.spec.js` | Memories, location, photos, writing offline |
 | `offline-toasts.spec.js` | Offline in the browser: no error toasts anywhere |
 | `analytics.spec.js` | What goes to Umami (a pretend Umami host, so nothing is counted for real), by role, and offline |
+| `saved-only.spec.js` | "Use saved copies only": no request anywhere but the app's own files, Refresh once, then off again |
+| `field-fixes.spec.js` | Trips open on Today; Tonight's check-out; no sticky hover on touch; search details. Uses the demo trip, so `make seed` on the day |
+| `light-mode.spec.js` | Light mode (remembered, every page photographed); text size keeps the timeline's dots on their dates |
 | `offline.spec.js` | The installed app offline: needs a build (below) |
 
 ## Offline / installable app (`offline.spec.js`)

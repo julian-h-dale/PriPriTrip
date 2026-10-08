@@ -100,7 +100,21 @@ tokens).
   the map's list, and no error toasts for reads.
 - Memories and photos written offline wait in the outbox; photos upload on
   Wi-Fi when you say so.
+- Packing changes wait in their own queue (`services/packingQueue.js`), so
+  a list can be ticked and added to with no signal.
 - Analytics events wait in their own queue and are sent later with their
   time.
+- **"Use saved copies only"** (the drawer) is offline on purpose, to save
+  mobile data: `network.savedOnly`, read through `selectOnline`, and
+  `apiClient` refuses requests before they're sent (except signing in).
+  "Refresh once" on the bar opens it for one round.
+
+## Per-phone settings
+
+Light mode and text size are in the All trips drawer, stored in
+`localStorage` and applied by a small script in `index.html` before the
+first paint (`shared/theme.js`, `shared/textSize.js`). Colours are tokens in
+`src/index.css` (`:root` dark, `:root.light`); `src/test/contrast.test.js`
+checks the key pairs in both themes.
 
 More: [../docs/photos.md](../docs/photos.md) for photos end to end.
