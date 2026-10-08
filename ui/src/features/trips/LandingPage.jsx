@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
 import { fetchTrips } from "@/features/trips/tripsSlice";
-import { pickLandingTrip } from "@/shared/utils/tripDates";
+import { pickLandingTrip, tripHomePath } from "@/shared/utils/tripDates";
 
 /**
  * `/`: open straight onto the trip that matters now — the active one, else
@@ -28,5 +28,5 @@ export function LandingPage() {
   if (!settled) return <div aria-label="Loading" className="h-dvh bg-background" />;
   const trip = pickLandingTrip(items);
   if (!trip) return <Navigate to="/trips" replace />;
-  return <Navigate to={trip.role === "viewer" ? `/trips/${trip.id}` : `/trips/${trip.id}/today`} replace />;
+  return <Navigate to={tripHomePath(trip)} replace />;
 }

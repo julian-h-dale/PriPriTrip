@@ -14,7 +14,7 @@ import { RowMenu } from "@/shared/components/RowMenu";
 import { TopBar } from "@/shared/components/TopBar";
 import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDateRange } from "@/shared/utils/time";
-import { groupTrips } from "@/shared/utils/tripDates";
+import { groupTrips, tripHomePath } from "@/shared/utils/tripDates";
 import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 import { refreshOnce } from "@/shared/pwa/refreshOnce";
 
@@ -41,7 +41,7 @@ function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
   return (
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
       <Link
-        to={`/trips/${trip.id}`}
+        to={tripHomePath(trip)}
         className="flex min-w-0 flex-1 items-start gap-3 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="flex min-w-0 flex-1 flex-col gap-1">

@@ -115,6 +115,14 @@ Like the journal:
     - A tick then untick of the same item sends only the last state.
   - **E2E:** offline, tick and add; online again, the server has them.
 
+## Built
+
+- **Phase 82 ✅ (2026-10-07).** `tripHomePath` (shared/utils/tripDates.js) is
+  the one rule for where a trip opens: trip cards, importing and signing in
+  all use it. Tonight shows "Check-out Mon, Oct 12 · 11:00 AM" after the
+  check-in night. E2E `field-fixes.spec.js` (uses the demo trip, so re-seed
+  on the day).
+
 ## Open questions
 
 - **Q-F1. A past trip's card: Today or the timeline?** Today on a trip that

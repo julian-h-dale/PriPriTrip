@@ -107,6 +107,18 @@ describe("Today tab", () => {
     const tonight = await screen.findByRole("region", { name: "Tonight" });
     expect(within(tonight).getByText(/Check out of/)).toHaveTextContent(`Check out of ${TRIP.stays[0].name} by 10:00`);
     expect(within(tonight).getByText(TRIP.stays[1].name)).toBeInTheDocument();
+    // Tonight is Beausite's check-in night: when to arrive.
+    expect(within(tonight).getByText(/^Check-in /)).toHaveTextContent("Check-in Tue, May 12 · 3:00 PM");
+  });
+
+  it("once you're staying, Tonight says when to check out, not the check-in you've done", async () => {
+    // May 13: the Beausite's second night (checked in May 12, out May 14).
+    vi.useFakeTimers({ now: new Date("2026-05-13T08:00:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    const tonight = await screen.findByRole("region", { name: "Tonight" });
+    expect(within(tonight).getByText(TRIP.stays[1].name)).toBeInTheDocument();
+    expect(within(tonight).getByText(/^Check-out /)).toHaveTextContent("Check-out Thu, May 14 · 10:00 AM");
+    expect(within(tonight).queryByText(/^Check-in /)).toBeNull();
   });
 });
 

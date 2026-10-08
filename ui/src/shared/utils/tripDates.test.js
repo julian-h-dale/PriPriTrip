@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultFormDate, groupTrips, isInTrip, pickLandingTrip, todayIn, tripPhase } from "@/shared/utils/tripDates";
+import { defaultFormDate, groupTrips, isInTrip, pickLandingTrip, todayIn, tripHomePath, tripPhase } from "@/shared/utils/tripDates";
 
 const TRIP = { startDate: "2026-10-29", endDate: "2026-11-13", timezone: "Asia/Tokyo" };
 
@@ -79,5 +79,18 @@ describe("groupTrips and pickLandingTrip", () => {
     expect(pickLandingTrip([later, soon, past1], NOW).id).toBe("u1");
     expect(pickLandingTrip([past1, past2], NOW)).toBeNull();
     expect(pickLandingTrip([], NOW)).toBeNull();
+  });
+});
+
+describe("tripHomePath: where a trip opens", () => {
+  const NOW = new Date("2026-10-07T12:00:00Z");
+  const trip = (startDate, endDate, role = "owner") => ({ id: "t", startDate, endDate, timezone: "UTC", role });
+  it("Today for an owner or editor of an active or upcoming trip", () => {
+    expect(tripHomePath(trip("2026-10-05", "2026-10-12"), NOW)).toBe("/trips/t/today");
+    expect(tripHomePath(trip("2026-10-29", "2026-11-13", "editor"), NOW)).toBe("/trips/t/today");
+  });
+  it("the timeline for a past trip, and for a viewer", () => {
+    expect(tripHomePath(trip("2026-05-10", "2026-05-14"), NOW)).toBe("/trips/t");
+    expect(tripHomePath(trip("2026-10-05", "2026-10-12", "viewer"), NOW)).toBe("/trips/t");
   });
 });

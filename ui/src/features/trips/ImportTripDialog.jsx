@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { tripHomePath } from "@/shared/utils/tripDates";
 
 /**
  * Pick a trip document (.json) and upload it. Every import creates a brand-new
@@ -36,7 +37,8 @@ export function ImportTripDialog({ open, onClose }) {
     if (importTrip.fulfilled.match(result)) {
       setFile(null);
       onClose();
-      navigate(`/trips/${result.payload.id}`);
+      // The importer owns it: Today, unless the trip is already over.
+      navigate(tripHomePath({ ...result.payload, role: "owner" }));
     } else {
       setFailure(result.payload ?? { detail: "Import failed", errors: [] });
     }

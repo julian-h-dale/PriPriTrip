@@ -6,6 +6,10 @@
 
 ## Status
 
+- **Run stage 21 (2026-10-07)** on **`analytics`**: field fixes. Plan:
+  `docs/plan/run-21-field-fixes.md`.
+  - **Phase 82 ✅:** trips open on Today (active and upcoming; past trips and
+    viewers on the timeline); Tonight shows check-out once you're staying.
 - **Run stage 20 (2026-10-07)** on **`analytics`**: "Use saved copies only".
   Plan: `docs/plan/run-20-data-saver.md`.
   - **Phase 80 ✅:** the switch (everyone's drawer, remembered per phone);

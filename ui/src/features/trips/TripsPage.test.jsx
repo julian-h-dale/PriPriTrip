@@ -44,7 +44,8 @@ function renderPage() {
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<TripsPage />} />
-          <Route path="/trips/:tripId" element={<div>trip page</div>} />
+          <Route path="/trips/:tripId" element={<div>timeline page</div>} />
+          <Route path="/trips/:tripId/today" element={<div>trip page</div>} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -63,7 +64,7 @@ describe("TripsPage", () => {
     apiClient.get.mockResolvedValue({ data: [TRIP] });
     renderPage();
     const link = await screen.findByRole("link", { name: /Bern & Wengen/ });
-    expect(link).toHaveAttribute("href", "/trips/t1");
+    expect(link).toHaveAttribute("href", "/trips/t1/today"); // upcoming: Today, for its Day 1 preview
     expect(link).toHaveTextContent("May 10 – 14, 2099 · 4 nights");
     expect(link).toHaveTextContent("2 stays");
     expect(link).toHaveTextContent("4 legs");
