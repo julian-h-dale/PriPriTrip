@@ -13,6 +13,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PriPriTrip" />
     <title>PriPriTrip</title>
+    <!-- Light or dark, chosen on this phone (src/shared/theme.js): applied
+         before the first paint so the app never flashes the other one. -->
+    <script>
+      try {
+        if (localStorage.getItem("theme") === "light") {
+          document.documentElement.classList.replace("dark", "light");
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", "#f8f9fb");
+        }
+      } catch (e) {}
+    </script>
     <!-- Runtime config injected at container start, outside the Vite bundle. -->
     <script src="/runtime-config.js"></script>
   </head>

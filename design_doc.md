@@ -56,7 +56,9 @@ This should produce interfaces that feel crisp and structured rather than layere
 
 Favor a restrained base palette with **strong solid accent colors**.
 
-**Dark mode is the default and only theme.** Set the root element to the `dark` class and design against dark backgrounds; a light theme is not maintained. Use dark neutral backgrounds and high-contrast foreground text as the foundation. Accent and status colors should be clear and saturated enough to be immediately distinguishable against the dark base.
+**Dark mode is the default; light is kept in step.** The root element carries `dark`, or `light` when someone chooses Light mode (the All trips drawer; a choice per phone, applied before first paint in `index.html`). Design against dark backgrounds first, then check the page in light. Use dark neutral backgrounds and high-contrast foreground text as the foundation. Accent and status colors should be clear and saturated enough to be immediately distinguishable against the dark base.
+
+Light exists for reading outdoors in bright sun, so its targets are higher than a usual light theme's: text, *including secondary text* (`muted-foreground`), at least **7:1** against its surface (WCAG AAA); status colors at least 4.5:1 as text; the coverage colors at least 3:1 on a card. Both themes are one set of tokens each in `index.css`, and `src/test/contrast.test.js` checks the key pairs, so a token change that breaks a target fails `make verify`. Every token defined for dark must be defined for light.
 
 Drive color from shadcn's **semantic CSS variable tokens** (`primary`, `destructive`, `muted`, `border`, and so on), defined once in `index.css`. Use the token rather than hardcoding hex values in individual components, so the palette stays consistent and adjustable in one place.
 
@@ -96,7 +98,7 @@ Beyond static styling, keep common behaviors consistent so the application feels
 When starting a new project using this pattern:
 
 - Set the global radius to **4px**
-- Default to dark mode (`dark` class on the root)
+- Default to dark mode (`dark` class on the root); keep any light theme as a second token set, checked for contrast
 - Drive color from semantic theme tokens rather than hardcoded values
 - Prefer visible borders to prominent shadows
 - Keep backgrounds and typography high contrast

@@ -6,6 +6,11 @@
 
 ## Status
 
+- **Run stage 22 (2026-10-07)** on **`analytics`**: light mode and text size.
+  Plan: `docs/plan/run-22-light-mode.md`.
+  - **Phase 85 ✅:** light mode, from the All trips drawer, per phone,
+    applied before first paint; contrast checked by a unit test (light text
+    7:1, AAA).
 - **Run stage 21 (2026-10-07)** on **`analytics`**: field fixes. Plan:
   `docs/plan/run-21-field-fixes.md`.
   - **Phase 82 ✅:** trips open on Today (active and upcoming; past trips and

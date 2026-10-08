@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
-import { Clock, CloudOff, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, UserPlus, X } from "lucide-react";
+import { Clock, CloudOff, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, Sun, UserPlus, X } from "lucide-react";
 import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
 import { ShareTripDialog } from "@/features/sharing/ShareTripDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
@@ -15,6 +15,7 @@ import { useTrack } from "@/shared/analytics/useAnalytics";
 import { saveTripsForOffline } from "@/features/trips/tripsSlice";
 import { Switch } from "@/shared/components/ui/switch";
 import { selectSavedOnly, setSavedOnly } from "@/shared/networkSlice";
+import { setTheme, useTheme } from "@/shared/theme";
 
 const ITEM =
   "flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -73,6 +74,33 @@ function SavedOnlySwitch() {
         disabled={saving}
         aria-describedby="saved-only-hint"
         onChange={(next) => dispatch(setSavedOnly(next, saveTripsForOffline))}
+      />
+    </div>
+  );
+}
+
+/**
+ * Light mode (Run stage 22), on the All trips screen's drawer: for reading
+ * outdoors in bright sun. A choice for this phone; dark is the default.
+ */
+function LightModeSwitch() {
+  const theme = useTheme();
+  return (
+    <div className="flex items-start gap-3 px-3 py-3">
+      <Sun className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <label htmlFor="light-mode" className="text-sm">
+          Light mode
+        </label>
+        <p id="light-mode-hint" className="text-xs text-muted-foreground">
+          Easier to read in bright sun.
+        </p>
+      </div>
+      <Switch
+        id="light-mode"
+        checked={theme === "light"}
+        aria-describedby="light-mode-hint"
+        onChange={(on) => setTheme(on ? "light" : "dark")}
       />
     </div>
   );
@@ -210,6 +238,7 @@ export function NavDrawer({ open, onClose }) {
           </Link>
         )}
         <div className="mt-auto border-t border-border pt-2">
+          {pathname === "/trips" && <LightModeSwitch />}
           <SavedOnlySwitch />
           <button type="button" onClick={() => setChangingPassword(true)} className={ITEM}>
             <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

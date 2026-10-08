@@ -89,6 +89,18 @@ or off from the drawer on the **All trips** screen.
     timeline's dot stays centred on its date at each size.
   - **E2E:** the timeline, a day page and Today at Larger, at 375 px.
 
+## Built
+
+- **Phase 85 ✅ (2026-10-07).** `:root.light` in `index.css` (every dark token,
+  darkened status and coverage colors); `shared/theme.js` (class on
+  `<html>`, `theme-color`, `localStorage`); the pre-paint script in
+  `index.html`; the "Light mode" switch in the All trips drawer (the
+  memory dialog's switch, now `ui/switch.jsx`). `src/test/contrast.test.js`
+  computes the key pairs in both themes (22 checks). design_doc.md
+  updated. E2E `light-mode.spec.js`: on from the drawer, applied on reload
+  before the app runs, and screenshots of every page (looked at: trips,
+  Today, timeline, stays view, day, entry, dialog, drawer, offline bar).
+
 ## Open questions
 
 - **Q-L1. Remembered per phone or per account?**

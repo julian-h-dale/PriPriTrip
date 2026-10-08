@@ -3,9 +3,10 @@
 @tailwind utilities;
 
 /*
- * Dark mode is the default and only theme (see design_doc.md).
- * Color is driven by these semantic tokens — use the token, don't
- * hardcode hex in components. 4px base radius.
+ * Dark is the default theme; light (Run stage 22) is a choice per phone, from
+ * the All trips drawer, kept in step (see design_doc.md). Color is driven by
+ * these semantic tokens — use the token, don't hardcode hex in components.
+ * 4px base radius. src/test/contrast.test.js checks the key pairs in both.
  */
 :root {
   --radius: 0.25rem;
@@ -52,6 +53,55 @@
   --series-6: 120 100% 26%; /* green */
   --series-7: 247 69% 72%; /* violet */
   --series-8: 0 72% 65%; /* red */
+}
+
+/*
+ * Light, for reading outdoors in bright sun: near-white surfaces, near-black
+ * text, and secondary text darker than a usual light theme's (at least 7:1,
+ * WCAG AAA). Status colors keep their meaning, darkened to read as text on
+ * white. `html.light` is set before first paint (index.html).
+ */
+:root.light {
+  --background: 210 20% 98%;
+  --foreground: 222 47% 9%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 9%;
+
+  --primary: 221 83% 40%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 214 22% 90%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 214 22% 93%;
+  --muted-foreground: 215 25% 27%;
+
+  --accent: 214 22% 90%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 0 74% 38%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 142 76% 22%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 28 100% 24%;
+  --warning-foreground: 0 0% 100%;
+
+  --border: 214 16% 72%;
+  --input: 214 16% 62%;
+  --ring: 221 83% 40%;
+
+  /* The same hues, darkened to stand out on white (3:1 at least). */
+  --series-1: 213 77% 42%; /* blue */
+  --series-2: 17 80% 42%; /* orange */
+  --series-3: 165 80% 25%; /* aqua */
+  --series-4: 40 100% 28%; /* yellow */
+  --series-5: 335 65% 42%; /* magenta */
+  --series-6: 120 70% 24%; /* green */
+  --series-7: 254 55% 52%; /* violet */
+  --series-8: 0 72% 45%; /* red */
 }
 
 * {
