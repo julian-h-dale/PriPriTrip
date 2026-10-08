@@ -18,7 +18,8 @@ export const apiClient = axios.create({
  * "Use saved copies only" (Run stage 20): while it's on, nothing leaves the
  * phone. A request fails here, before it's sent, the same way one with no
  * connection fails (no `response`), so every page falls back to its saved
- * copy exactly as offline. Signing in still works (there's nothing saved
+ * copy exactly as offline. "Refresh once" opens it briefly
+ * (`network.refreshing`). Signing in still works (there's nothing saved
  * for someone signed out), and so does asking who you are right after it.
  */
 export const SAVED_ONLY = "ERR_SAVED_ONLY";
@@ -30,7 +31,7 @@ function allowedWhileSavedOnly(config, token) {
 apiClient.interceptors.request.use((config) => {
   const state = store?.getState();
   const token = state?.auth.token;
-  if (state?.network?.savedOnly && !allowedWhileSavedOnly(config, token)) {
+  if (state?.network?.savedOnly && !state.network.refreshing && !allowedWhileSavedOnly(config, token)) {
     return Promise.reject(new axios.AxiosError("Saved copies only", SAVED_ONLY, config));
   }
   if (token) {

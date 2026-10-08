@@ -14,6 +14,9 @@ import notificationReducer from "@/shared/notificationSlice";
 import { TopBar } from "@/shared/components/TopBar";
 import { usePhotoSrc } from "@/features/journal/photoUrls";
 import { loadRates } from "@/features/currency/currencySlice";
+import { OfflineBar } from "@/shared/components/OfflineBar";
+import { refreshOnce } from "@/shared/pwa/refreshOnce";
+import { clearOutbox, enqueue, pending } from "@/shared/services/outbox";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearAll, readMemories, readTrip, readTripList } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
@@ -168,5 +171,59 @@ describe("currency with it on", () => {
     expect(result.type).toBe("currency/load/rejected");
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+});
+
+describe("Refresh once (Phase 81)", () => {
+  it("is on the bar only with saved copies only", () => {
+    const onRefresh = vi.fn();
+    const { rerender } = render(<OfflineBar online={false} savedOnly savedAt="2026-10-07T12:00:00Z" onRefresh={onRefresh} />);
+    screen.getByRole("button", { name: "Refresh once" }).click();
+    expect(onRefresh).toHaveBeenCalled();
+    rerender(<OfflineBar online={false} savedAt="2026-10-07T12:00:00Z" onRefresh={onRefresh} />);
+    expect(screen.queryByRole("button", { name: "Refresh once" })).toBeNull();
+  });
+
+  it("reloads the list and the open trip, sends waiting memories but not photos, then closes again", async () => {
+    await clearOutbox(USER);
+    await enqueue({ userId: USER, tripId: "trip-1", memoryId: "m2", op: "create", body: { text: "Queued", createdAt: "2026-10-07T10:00:00Z", zone: "UTC" } });
+    await enqueue({
+      userId: USER,
+      tripId: "trip-1",
+      memoryId: "m2",
+      entryId: "photo-p1",
+      op: "addPhoto",
+      body: { photoId: "p1", file: { bytes: new ArrayBuffer(3), type: "image/jpeg", name: "a.jpg" } },
+    });
+    apiClient.post.mockImplementation(async (url, body) => ({ data: { ...body, id: "m2", mine: true } }));
+    const store = makeStore({ savedOnly: true });
+    store.dispatch({ type: "timeline/fetchTrip/pending", meta: { arg: "trip-1" } });
+
+    const seen = [];
+    apiClient.get.mockImplementation(async (url) => {
+      seen.push(store.getState().network.refreshing);
+      if (url === "/trips") return { data: [UPCOMING] };
+      if (url.endsWith("/memories")) return { data: [] };
+      return { data: { ...UPCOMING, role: "owner", days: [], stays: [], travels: [] } };
+    });
+    await store.dispatch(refreshOnce());
+
+    // (The list also re-saves upcoming trips in the background: /trips/trip-1 again.)
+    expect([...new Set(apiClient.get.mock.calls.map(([url]) => url))].sort()).toEqual([
+      "/trips",
+      "/trips/trip-1",
+      "/trips/trip-1/memories",
+    ]);
+    expect(seen.every(Boolean)).toBe(true); // each went out during the refresh
+    expect(apiClient.post.mock.calls.map(([url]) => url)).toEqual(["/trips/trip-1/memories"]); // the memory, not the photo
+    expect((await pending(USER)).map((op) => op.op)).toEqual(["addPhoto"]);
+    expect(store.getState().network).toMatchObject({ savedOnly: true, refreshing: false });
+    expect(store.getState().timeline.savedAt).toBeTruthy(); // the bar's "saved copy from" is now
+  });
+
+  it("does nothing offline, or with the switch off", async () => {
+    await makeStore({ savedOnly: true, online: false }).dispatch(refreshOnce());
+    await makeStore().dispatch(refreshOnce());
+    expect(apiClient.get).not.toHaveBeenCalled();
   });
 });

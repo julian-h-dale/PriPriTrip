@@ -234,7 +234,8 @@ const timelineSlice = createSlice({
         state.trip = action.payload;
         state.status = "idle";
         state.stale = false;
-        state.savedAt = null;
+        // Just saved on the phone: what "Saved copies only" shows it from.
+        state.savedAt = new Date().toISOString();
       })
       .addCase(fetchTrip.rejected, (state, action) => {
         if (state.tripId !== action.meta.arg) return;

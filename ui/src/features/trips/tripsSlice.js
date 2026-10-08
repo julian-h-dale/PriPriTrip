@@ -149,7 +149,7 @@ const tripsSlice = createSlice({
         state.status = "idle";
         state.items = action.payload;
         state.stale = false;
-        state.savedAt = null;
+        state.savedAt = new Date().toISOString(); // just saved on the phone
       })
       .addCase(fetchTrips.rejected, (state, action) => {
         const { offline, cached } = action.payload ?? {};

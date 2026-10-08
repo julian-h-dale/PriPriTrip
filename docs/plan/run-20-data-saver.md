@@ -124,6 +124,13 @@ missing later.
     switch on, every page and an entry page, the app coming back to the
     front, and a reload: no request anywhere but the UI's own files.
     Turning it off reloads the trip.
+- **Phase 81 ✅ (2026-10-07).** "Refresh once" on the bar: `network.refreshing`
+  opens the `apiClient` guard for one round (the trips list, the open trip
+  and its journal reload; waiting memories go, photos don't; the analytics
+  queue is sent), then it closes. A successful load now records when it
+  was saved, so the bar shows the new time ("Saved copies only · from Oct 7,
+  7:57 PM"). `make verify` green (277 API + 532 UI); e2e `saved-only.spec.js`
+  with a Refresh once (requests, then none again).
 
 ## Open questions
 

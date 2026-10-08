@@ -5,7 +5,7 @@ import { notify } from "@/shared/notificationSlice";
 import { applyPending, done, enqueue, pending, pendingPhoto, sortMemories } from "@/shared/services/outbox";
 import { readMemories, saveMemories } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
-import { selectOnline } from "@/shared/networkSlice";
+import { selectMaySend, selectOnline } from "@/shared/networkSlice";
 
 /**
  * One trip's journal, written offline-first.
@@ -170,7 +170,7 @@ export const syncOutbox =
         if (uploads) dispatch(uploadProgress({ done: 0, total: uploads }));
         let uploaded = 0;
         for (const op of ops) {
-          if (!selectOnline(getState())) break;
+          if (!selectMaySend(getState())) break;
           try {
             const { data } = await SEND[op.op](op);
             await done(userId, op.entryId ?? op.memoryId);

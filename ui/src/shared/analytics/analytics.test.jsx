@@ -120,6 +120,18 @@ describe("with “Use saved copies only” on", () => {
     await holdAnalytics(false);
     await waitFor(() => expect(sent().map((p) => p.url)).toEqual(["/trip/map"]));
   });
+
+  it("Refresh once sends what waited, and holding carries on after", async () => {
+    await setAnalytics(CONFIG, USER);
+    await holdAnalytics(true);
+    trackPageView({ url: "/trip/map", title: "Map", role: "owner" });
+    await new Promise((r) => setTimeout(r, 30));
+    await flush({ force: true });
+    expect(sent().map((p) => p.url)).toEqual(["/trip/map"]);
+    trackPageView({ url: "/trip/journal", title: "Journal", role: "owner" });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("offline", () => {

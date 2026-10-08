@@ -8,10 +8,10 @@ import { SAVED_ONLY, SAVED_ONLY_WRITE, apiClient, injectStore } from "@/shared/s
 const adapter = vi.fn(async (config) => ({ data: {}, status: 200, statusText: "OK", headers: {}, config }));
 apiClient.defaults.adapter = adapter;
 
-function storeWith({ savedOnly, token = "t" }) {
+function storeWith({ savedOnly, token = "t", refreshing = false }) {
   const store = {
     dispatch: vi.fn(),
-    getState: () => ({ auth: { token }, network: { online: true, savedOnly } }),
+    getState: () => ({ auth: { token }, network: { online: true, savedOnly, refreshing } }),
   };
   injectStore(store);
   return store;
@@ -42,6 +42,12 @@ describe("apiClient with saved copies only", () => {
     storeWith({ savedOnly: true });
     await apiClient.get("/users/me");
     expect(adapter.mock.calls.map(([c]) => c.url)).toEqual(["/auth/login", "/users/me"]);
+  });
+
+  it("lets requests out during a Refresh once", async () => {
+    storeWith({ savedOnly: true, refreshing: true });
+    await apiClient.get("/trips");
+    expect(adapter).toHaveBeenCalledTimes(1);
   });
 
   it("sends as usual with it off", async () => {

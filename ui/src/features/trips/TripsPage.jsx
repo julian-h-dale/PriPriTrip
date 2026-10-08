@@ -16,6 +16,7 @@ import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDateRange } from "@/shared/utils/time";
 import { groupTrips } from "@/shared/utils/tripDates";
 import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
+import { refreshOnce } from "@/shared/pwa/refreshOnce";
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -138,6 +139,7 @@ export function TripsPage() {
   const { items, status, stale, savedAt } = useSelector((s) => s.trips);
   const online = useSelector(selectOnline);
   const savedOnly = useSelector(selectSavedOnly);
+  const refreshing = useSelector((s) => Boolean(s.network?.refreshing));
   const readOnly = !online || stale;
   const [importOpen, setImportOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -174,7 +176,14 @@ export function TripsPage() {
   return (
     <>
       <TopBar title="PriPriTrip" />
-      <OfflineBar savedOnly={savedOnly} online={online} stale={stale} savedAt={savedAt} />
+      <OfflineBar
+        savedOnly={savedOnly}
+        online={online}
+        stale={stale}
+        savedAt={savedAt}
+        refreshing={refreshing}
+        onRefresh={() => dispatch(refreshOnce())}
+      />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">Trips</h1>

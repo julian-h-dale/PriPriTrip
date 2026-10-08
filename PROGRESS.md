@@ -13,7 +13,9 @@
     request but sign-in and `/users/me`; no mini maps, place photos,
     Frankfurter or uncached journal photos; memories and analytics wait.
     `make verify` green (277 API + 527 UI); e2e `saved-only.spec.js`.
-  - **Waiting for Julian's confirmation before Phase 81 (Refresh once).**
+  - Julian: complete all the outstanding phases (81–86) without stopping.
+  - **Phase 81 ✅:** Refresh once on the bar. `make verify` green (277 API
+    + 532 UI). **Run stage 20 is complete.**
 - **Field review and docs (2026-10-07)** on **`analytics`**:
   - Usability review at 375 px, online and offline:
     `docs/ui-review-2026-10-07.md` (unscheduled; in the backlog).

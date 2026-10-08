@@ -131,7 +131,7 @@ describe("online, with “Use saved copies only” on (Run stage 20)", () => {
 
   it("the trips list is the saved copy, and the bar says why", async () => {
     savedOnly("/trips");
-    expect(await screen.findByText(/^Saved copies only · saved copy from/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Saved copies only · from/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Import trip/ })).toBeDisabled();
   });
 

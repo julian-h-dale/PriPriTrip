@@ -49,13 +49,27 @@ test("saved copies only: nothing leaves the phone", async ({ page, baseURL }) =>
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await page.waitForTimeout(1000);
   expect(outside).toEqual([]);
-  await expect(page.getByText(/^Saved copies only · saved copy from/)).toBeVisible();
+  await expect(page.getByText(/^Saved copies only · from/)).toBeVisible();
 
   // Remembered across a reload (only /users/me may go, to know who you are).
   await page.reload();
   await page.waitForTimeout(2000);
   expect(outside.filter((r) => !r.endsWith("/users/me"))).toEqual([]);
   await page.screenshot({ path: screenshotPath("20c-saved-only-after-reload") });
+
+  // Refresh once: one round of requests, then nothing again.
+  await go("");
+  outside.length = 0;
+  await page.getByRole("button", { name: "Refresh once" }).click();
+  await expect(page.getByRole("button", { name: "Refresh once" })).toBeEnabled();
+  expect(outside.some((r) => /\/trips$/.test(r))).toBe(true);
+  expect(outside.some((r) => /\/trips\/[0-9a-f-]{36}$/.test(r))).toBe(true);
+  await page.screenshot({ path: screenshotPath("20d-saved-only-refreshed") });
+  await page.waitForTimeout(1500);
+  outside.length = 0;
+  await go("/journal");
+  await go("");
+  expect(outside).toEqual([]);
 
   // Off again: the trip reloads.
   await go("");

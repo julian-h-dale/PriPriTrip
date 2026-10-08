@@ -28,6 +28,7 @@ const networkSlice = createSlice({
     online: typeof navigator === "undefined" ? true : navigator.onLine !== false,
     savedOnly: readSavedOnly(),
     saving: false, // saving trips to the phone on the way into savedOnly
+    refreshing: false, // "Refresh once": the one moment savedOnly lets requests out
   }),
   reducers: {
     setOnline(state, action) {
@@ -40,14 +41,24 @@ const networkSlice = createSlice({
     savingForSavedOnly(state) {
       state.saving = true;
     },
+    refreshingChanged(state, action) {
+      state.refreshing = action.payload;
+    },
   },
 });
 
-export const { setOnline, savedOnlyChanged, savingForSavedOnly } = networkSlice.actions;
+export const { setOnline, savedOnlyChanged, savingForSavedOnly, refreshingChanged } = networkSlice.actions;
 export default networkSlice.reducer;
 
 /** Whether the app may use the network: online, and not "saved copies only". */
 export const selectOnline = (state) => state.network?.online !== false && !state.network?.savedOnly;
+
+/**
+ * Whether queued writes (memories) may go now: online, and either the switch
+ * is off or a "Refresh once" is under way.
+ */
+export const selectMaySend = (state) =>
+  state.network?.online !== false && (!state.network?.savedOnly || Boolean(state.network?.refreshing));
 
 /** "Use saved copies only" is on. */
 export const selectSavedOnly = (state) => Boolean(state.network?.savedOnly);
