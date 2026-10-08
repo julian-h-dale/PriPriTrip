@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
 import { forgetAnalytics } from "@/shared/analytics/umami";
 import { clearOutbox } from "@/shared/services/outbox";
+import { clearPackingQueue } from "@/shared/services/packingQueue";
 import { clearUser } from "@/shared/services/tripCache";
 import { tokenExpiry, userIdFromToken } from "@/shared/utils/authToken";
 
@@ -53,6 +54,7 @@ export const signOut = createAsyncThunk("auth/signOut", async (_, { dispatch, ge
   const userId = userIdFromToken(getState().auth.token);
   await clearUser(userId);
   await clearOutbox(userId);
+  await clearPackingQueue(userId);
   await forgetAnalytics(userId); // their remembered switch and anything unsent
   dispatch(authSlice.actions.clearAuth());
 });

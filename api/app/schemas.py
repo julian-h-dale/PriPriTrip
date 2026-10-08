@@ -436,7 +436,11 @@ PackingQuantity = Annotated[int, Field(ge=1, le=99)]
 
 
 class PackingItemCreate(CamelModel):
+    """A new line. `id` is optional: a phone adding offline makes its own,
+    so the add can be retried without a duplicate (Run stage 21)."""
+
     model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    id: uuid.UUID | None = None
     category: PackingCategory
     text: PackingText
     quantity: PackingQuantity = 1

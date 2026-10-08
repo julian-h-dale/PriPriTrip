@@ -76,6 +76,11 @@ async def _next_position(
     return 0 if last is None else last + 1
 
 
+class PackingIdTaken(Exception):
+    """The id is already another line's (someone else's, another trip's, or
+    a deleted one)."""
+
+
 async def add_item(
     db: AsyncSession,
     trip_id: uuid.UUID,
@@ -83,9 +88,22 @@ async def add_item(
     category: str,
     text: str,
     quantity: int = 1,
+    item_id: uuid.UUID | None = None,
 ) -> PackingItem:
-    """Add a line to the end of a list."""
+    """Add a line to the end of a list. With the phone's own `item_id`, a
+    retry of the same add hands back the line already saved."""
+    if item_id is not None:
+        existing = await db.get(PackingItem, item_id)
+        if existing is not None:
+            if (
+                existing.user_id == user_id
+                and existing.trip_id == trip_id
+                and not existing.is_deleted
+            ):
+                return existing
+            raise PackingIdTaken()
     item = PackingItem(
+        id=item_id or uuid.uuid4(),
         trip_id=trip_id,
         user_id=user_id,
         category=category,

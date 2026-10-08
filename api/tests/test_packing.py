@@ -146,3 +146,23 @@ async def test_a_viewer_has_no_packing_list(client: AsyncClient, viewer: AsyncCl
     one = f"/trips/{tid}/packing/{mine['id']}"
     assert (await viewer.patch(one, json={"checked": True})).status_code == 403
     assert (await viewer.delete(one)).status_code == 403
+
+
+async def test_an_add_with_the_phones_own_id_can_be_retried(
+    client: AsyncClient, viewer: AsyncClient
+) -> None:
+    """Added offline, sent later, maybe twice (Run stage 21): one line."""
+    tid = await a_trip(client)
+    body = {"id": "11111111-2222-3333-4444-555555555555", "category": "clothes", "text": "Hat"}
+    first = await client.post(f"/trips/{tid}/packing", json=body)
+    assert first.status_code == 201, first.text
+    assert first.json()["id"] == body["id"]
+    again = await client.post(f"/trips/{tid}/packing", json=body)
+    assert again.json() == first.json()
+    assert [i["text"] for i in (await client.get(f"/trips/{tid}/packing")).json()] == ["Hat"]
+
+    # Someone else can't take it, and a deleted line's id isn't reused.
+    trip = await edited_trip(client, viewer)
+    assert (await viewer.post(f"/trips/{trip['id']}/packing", json=body)).status_code == 409
+    await client.delete(f"/trips/{tid}/packing/{body['id']}")
+    assert (await client.post(f"/trips/{tid}/packing", json=body)).status_code == 409

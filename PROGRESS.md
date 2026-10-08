@@ -13,6 +13,9 @@
   - **Phase 83 ✅:** no sticky hover on touch (`hoverOnlyWhenSupported`);
     search results show time and place. `make verify` green (277 API + 540
     UI); e2e `field-fixes.spec.js`.
+  - **Phase 84 ✅:** packing offline (saved list, a queue for every change,
+    `POST` takes the phone's id). `make verify` green (278 API + 548 UI).
+    **Run stage 21 is complete.**
 - **Run stage 20 (2026-10-07)** on **`analytics`**: "Use saved copies only".
   Plan: `docs/plan/run-20-data-saver.md`.
   - **Phase 80 ✅:** the switch (everyone's drawer, remembered per phone);

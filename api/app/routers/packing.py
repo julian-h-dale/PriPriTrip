@@ -5,7 +5,7 @@ services/packing.py."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -35,9 +35,12 @@ async def add_packing_item(
     db: AsyncSession = Depends(get_db),
     user: UserRecord = Depends(current_active_user),
 ) -> PackingItem:
-    return await packing_service.add_item(
-        db, trip.id, user.id, body.category, body.text, body.quantity
-    )
+    try:
+        return await packing_service.add_item(
+            db, trip.id, user.id, body.category, body.text, body.quantity, item_id=body.id
+        )
+    except packing_service.PackingIdTaken:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That id is already taken") from None
 
 
 @router.post("/suggestions", response_model=list[PackingItemRead])

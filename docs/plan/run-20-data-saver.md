@@ -107,8 +107,8 @@ missing later.
     are. Everything else is refused before it's sent.
   - **Trip edits are greyed**, as offline (`selectReadOnly` reads
     `selectOnline`), so the "Turn off saved copies only to save this"
-    message only shows for a write that slips past that (packing ticks,
-    until Phase 84).
+    message only shows for a write that slips past that. (Packing changes
+    queue since Phase 84.)
   - **Journal photos** show only if the phone already has them (the
     service worker's thumbnail and display caches, read directly); no full
     quality or download, since originals are never saved.

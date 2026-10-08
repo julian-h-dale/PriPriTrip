@@ -288,7 +288,8 @@ export function PackingPage() {
   const visible = CATEGORIES.filter((c) => groups[c.key].length > 0 || opened.includes(c.key));
   const notStarted = CATEGORIES.filter((c) => !visible.includes(c));
   const packed = mine.filter((i) => i.checked).length;
-  const disabled = !online;
+  // Changes work offline (they wait on the phone); only suggestions need the server.
+  const waiting = useSelector((s) => s.packing.waiting);
   const open = (key) => setOpened((keys) => [...keys, key]);
   const close = (key) => setOpened((keys) => keys.filter((k) => k !== key));
   // An empty list just closes; one with things on it asks first.
@@ -322,9 +323,13 @@ export function PackingPage() {
           </Button>
         )}
       </header>
-      {!online && (
+      {(!online || waiting > 0) && (
         <p role="status" className="rounded-md border border-warning/40 px-3 py-2 text-xs text-warning">
-          {savedOnly ? "Saved copies only." : "You’re offline."} Your list shows as it was; ticking and adding need a connection.
+          {online
+            ? `${waiting} ${waiting === 1 ? "change" : "changes"} waiting to sync.`
+            : `${savedOnly ? "Saved copies only." : "You’re offline."} Your changes are saved on this phone${
+                waiting > 0 ? ` (${waiting} waiting)` : ""
+              } and sent ${savedOnly ? "once it’s off" : "when you’re back online"}.`}
         </p>
       )}
       {status === "loading" && loadedId === tripId && (
@@ -348,10 +353,11 @@ export function PackingPage() {
                 <p className="font-semibold">Nothing on your list yet</p>
                 <p className="text-sm text-muted-foreground">Start with the usual things, then add and delete to suit. Only you see your list.</p>
               </div>
-              <Button onClick={suggest} disabled={disabled || suggesting}>
+              <Button onClick={suggest} disabled={!online || suggesting}>
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
                 {suggesting ? "Adding…" : "Start from suggestions"}
               </Button>
+              {!online && <p className="text-xs text-muted-foreground">Suggestions need a connection.</p>}
             </Card>
           )}
           {visible.map((c) => (
@@ -361,7 +367,6 @@ export function PackingPage() {
               items={groups[c.key]}
               tripId={tripId}
               hidePacked={hidePacked}
-              disabled={disabled}
               onEdit={setEditing}
               onDeleteList={deleteList}
               justOpened={opened.includes(c.key) && groups[c.key].length === 0}

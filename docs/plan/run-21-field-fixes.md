@@ -129,6 +129,24 @@ Like the journal:
   stays clear; checked both ways (filled without the fix). Search results
   have a second line: "12:15 PM · Altes Tramdepot Brauerei", "2:00 PM ·
   Bern", "5:40 PM · SWISS LX 9"; the matched field still shows under it.
+- **Phase 84 ✅ (2026-10-07).** Packing works with no connection:
+  - The list is saved on the phone (`tripCache`, `packing:<user>:<trip>`) and
+    shows from there first.
+  - **Every** change (tick, add, edit, delete, a whole list) goes through the
+    packing queue (`shared/services/packingQueue.js`), online too, so there's
+    one path; it's sent at once when the app may use the network, and
+    otherwise when the connection comes back or the app returns to the front
+    (with the journal's outbox, `useOutboxSync`). The page notes "N changes
+    waiting".
+  - **API:** `POST /trips/:id/packing` takes an optional `id` (the phone's
+    own), so a retried add is one line; someone else's or a deleted line's
+    id is a 409.
+  - A change the server refuses for good is dropped with a toast and the
+    list reloads; a delete of a line already gone is fine.
+  - With "Use saved copies only" on, changes wait (Q-D6); Refresh once
+    doesn't send them (Q-D7: memories and analytics only).
+  - Sign-out clears the queue. `make verify` green (278 API + 548 UI);
+    e2e `packing.spec.js` (offline tick and add, then online).
 
 ## Open questions
 
