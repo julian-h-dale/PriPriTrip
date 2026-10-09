@@ -97,6 +97,7 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
         db.add_all(
             Item(
                 day_id=day.id,
+                plan=plan,
                 position=j,
                 title=it.title,
                 start=it.start,
@@ -106,7 +107,8 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
                 confirmation_number=it.confirmation_number,
                 notes=it.notes,
             )
-            for j, it in enumerate(d.items)
+            for plan, items in (("a", d.items), ("b", d.plan_b))
+            for j, it in enumerate(items)
         )
     db.add_all(
         PointOfInterest(
@@ -199,6 +201,7 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
             selectinload(Trip.stays.and_(active(Stay))),
             selectinload(Trip.travels.and_(active(Travel))),
             selectinload(Trip.days.and_(active(Day))).selectinload(Day.items.and_(active(Item))),
+            selectinload(Trip.days.and_(active(Day))).selectinload(Day.plan_b.and_(active(Item))),
             selectinload(Trip.points_of_interest.and_(active(PointOfInterest))),
         )
         .execution_options(populate_existing=True)
@@ -209,9 +212,17 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
     # own role so the UI knows whether it may edit.
     trip.role = role
     if role == "viewer":
+        _without_plan_b(trip)
         _without_booking_refs(trip)
         _without_private_places(trip)
     return trip
+
+
+def _without_plan_b(trip: TripRead) -> None:
+    """Plan B is for the people who plan (Run stage 25): a viewer follows the
+    day's plan, so their phone never gets its backup (nor does their export)."""
+    for day in trip.days:
+        day.plan_b = []
 
 
 def _without_booking_refs(trip: TripRead) -> None:
@@ -275,6 +286,9 @@ async def export_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner"
             {
                 **day.model_dump(include={"date", "title", "summary"}, by_alias=True),
                 "items": [_doc_part(ItemDoc, item).model_dump(by_alias=True) for item in day.items],
+                "planB": [
+                    _doc_part(ItemDoc, item).model_dump(by_alias=True) for item in day.plan_b
+                ],
             }
         )
         for day in trip.days
@@ -305,6 +319,7 @@ def _entries(trip: TripRead) -> list[VersionRead]:
         *trip.travels,
         *trip.days,
         *(i for d in trip.days for i in d.items),
+        *(i for d in trip.days for i in d.plan_b),
         *trip.points_of_interest,
     ]
 
@@ -359,7 +374,7 @@ def _with_zones(trip: TripRead) -> TripRead:
             travel.depart, travel.arrive, travel.depart_zone, travel.arrive_zone
         )
     for day in trip.days:
-        for item in day.items:
+        for item in [*day.items, *day.plan_b]:
             item.zone = item_zone(item, day.date, trip.stays, tz)
     return trip
 
@@ -389,9 +404,16 @@ async def _day_for(db: AsyncSession, trip: Trip, day_date: dt.date) -> Day:
     return day
 
 
-async def _next_position(db: AsyncSession, day: Day) -> int:
+def _plan(write: ItemWrite) -> str:
+    return "b" if write.plan_b else "a"
+
+
+async def _next_position(db: AsyncSession, day: Day, plan: str) -> int:
+    """The end of one of the day's plans: positions count within a plan."""
     last = await db.scalar(
-        select(func.max(Item.position)).where(Item.day_id == day.id, active(Item))
+        select(func.max(Item.position)).where(
+            Item.day_id == day.id, Item.plan == plan, active(Item)
+        )
     )
     return 0 if last is None else last + 1
 
@@ -409,9 +431,12 @@ def _apply_item(item: Item, write: ItemWrite) -> None:
 async def create_item(
     db: AsyncSession, trip: Trip, write: ItemWrite, user_id: uuid.UUID
 ) -> TripRead:
-    """Add an activity at the end of its date."""
+    """Add an activity at the end of its date's plan (A, or B)."""
     day = await _day_for(db, trip, write.date)
-    item = Item(day_id=day.id, position=await _next_position(db, day), title=write.title)
+    plan = _plan(write)
+    item = Item(
+        day_id=day.id, plan=plan, position=await _next_position(db, day, plan), title=write.title
+    )
     _apply_item(item, write)
     versions.stamp(item, user_id, new=True)
     db.add(item)
@@ -422,14 +447,16 @@ async def create_item(
 async def replace_item(
     db: AsyncSession, trip: Trip, item: Item, write: ItemWrite, *, expected: int, user_id: uuid.UUID
 ) -> TripRead:
-    """Full replace, from version `expected`. A new date moves the activity to
-    the end of that day."""
+    """Full replace, from version `expected`. A new date, or the other plan,
+    moves the activity to the end of that day's plan."""
     await _check_version(db, trip, item, expected, item.id)
     current_day = await db.get(Day, item.day_id)
-    if current_day is None or current_day.date != write.date:
+    plan = _plan(write)
+    if current_day is None or current_day.date != write.date or item.plan != plan:
         day = await _day_for(db, trip, write.date)
         item.day_id = day.id
-        item.position = await _next_position(db, day)
+        item.plan = plan
+        item.position = await _next_position(db, day, plan)
     _apply_item(item, write)
     versions.stamp(item, user_id)
     await db.commit()
@@ -448,11 +475,14 @@ async def delete_item(
 
 
 async def move_item(db: AsyncSession, trip: Trip, item: Item, direction: str) -> TripRead:
-    """Swap an activity with its neighbour in the day. At either end it stays put."""
+    """Swap an activity with its neighbour in its day's plan (A or B, never
+    across). At either end it stays put."""
     siblings = list(
         (
             await db.scalars(
-                select(Item).where(Item.day_id == item.day_id, active(Item)).order_by(Item.position)
+                select(Item)
+                .where(Item.day_id == item.day_id, Item.plan == item.plan, active(Item))
+                .order_by(Item.position)
             )
         ).all()
     )
@@ -460,7 +490,7 @@ async def move_item(db: AsyncSession, trip: Trip, item: Item, direction: str) ->
     j = i - 1 if direction == "up" else i + 1
     if 0 <= j < len(siblings):
         siblings[i], siblings[j] = siblings[j], siblings[i]
-        # Renumber the whole day: imports and moves can leave gaps or ties.
+        # Renumber the whole plan: imports and moves can leave gaps or ties.
         for position, sibling in enumerate(siblings):
             sibling.position = position
         await db.commit()

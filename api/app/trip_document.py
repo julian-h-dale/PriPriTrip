@@ -247,14 +247,33 @@ class DayDoc(DocModel):
     )
     summary: Markdown | None = None
     items: list[ItemDoc] = Field(default_factory=list)
+    plan_b: list[ItemDoc] = Field(
+        default_factory=list,
+        description=(
+            "Plan B: a backup plan for the day (bad weather, say), hidden until "
+            "someone switches to it. Same shape and rules as items."
+        ),
+    )
+
+    @model_serializer(mode="wrap")
+    def _no_empty_plan_b(
+        self, handler: SerializerFunctionWrapHandler, info: SerializationInfo
+    ) -> dict[str, Any]:
+        """A day with no plan B has no `planB` key, so it reads exactly as days
+        did before plan B existed. (The app's read model, DayRead, always has
+        the list.)"""
+        data: dict[str, Any] = handler(self)
+        if type(self) is DayDoc and not self.plan_b:
+            data.pop("planB", None)
+        return data
 
 
 RULES = (
     "Rules beyond the structure below (an import that breaks any is rejected): "
     "(1) endDate is on or after startDate. "
     "(2) Every day's date is within the trip, and no date appears twice. "
-    "(3) An activity's start, when given, is on its day's date; end requires start "
-    "and is after it. "
+    "(3) An activity's start (in items or planB), when given, is on its day's date; "
+    "end requires start and is after it. "
     "(4) A stay's checkOut is after checkIn; checkIn is within the trip and checkOut "
     "is no later than the day after endDate. "
     "(5) A travel's depart is within the trip; arrive, when given, is after depart and "
@@ -455,6 +474,8 @@ def check_rules(doc: TripDocument) -> list[DocError]:
             seen[day.date] = i
         for j, item in enumerate(day.items):
             errors.extend(check_item(item, day.date, prefix=f"{p}.items[{j}]."))
+        for j, item in enumerate(day.plan_b):
+            errors.extend(check_item(item, day.date, prefix=f"{p}.planB[{j}]."))
 
     frame = TripFrame(start, end, doc.timezone)
     for i, stay in enumerate(doc.stays):
@@ -498,9 +519,11 @@ def validate_trip_document(data: Any) -> TripDocument:
 
 
 class ItemWrite(ItemDoc):
-    """A whole activity plus the date it belongs on (create, or full replace)."""
+    """A whole activity plus the date it belongs on (create, or full replace),
+    and which of the day's plans it's in."""
 
     date: dt.date
+    plan_b: bool = Field(default=False, description="In the day's plan B, not its plan.")
 
 
 class DayWrite(DocModel):

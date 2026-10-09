@@ -6,6 +6,13 @@
 
 ## Status
 
+- **Run stage 25 (2026-10-08)** on **`alternate-days`** (worktree, off `main`
+  at `e04da12`): plan B, a backup plan for a day. Plan:
+  `docs/plan/run-25-plan-b.md`. Q-B1–B4 answered (the recommendations);
+  Julian: build both phases without stopping.
+  - **Phase 91 ✅:** plan B in the API (`Item.plan`, `days[].planB`,
+    `planB: true` on item writes, nothing for viewers), plus seed plan Bs on
+    Bern 13 May and the Athens Hydra day. `make verify` green.
 - **Run stage 23 (2026-10-08)** on **`large-text`**: large text. Plan:
   `docs/plan/run-23-large-text.md`.
   - **Phase 87 ✅:** at Large / Larger, timeline entry rows (day pages and

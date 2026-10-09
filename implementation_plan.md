@@ -25,7 +25,7 @@ project; the next one is **91**.
 
 ## Stages
 
-All complete unless marked. Current branch: `large-text` (Run 23).
+All complete unless marked. Current branch: `alternate-days` (Run 25, planning).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -58,6 +58,7 @@ All complete unless marked. Current branch: `large-text` (Run 23).
 | Run 22 | 85–86 | Light mode (and text size) | [run-22-light-mode.md](docs/plan/run-22-light-mode.md) |
 | Run 23 | 87 | Large text: entry rows stack | [run-23-large-text.md](docs/plan/run-23-large-text.md) |
 | Run 24 | 88–90 | Photos and memories are never dropped: iPhone camera photos (MPO), a stuck-not-dropped outbox, failed phone saves | [run-24-photo-upload-resilience.md](docs/plan/run-24-photo-upload-resilience.md) |
+| Run 25 | 91–92 | **Planning.** Plan B: a hidden backup plan for a day, switched on from the day page | [run-25-plan-b.md](docs/plan/run-25-plan-b.md) |
 
 ## Architecture Decisions
 

@@ -132,6 +132,7 @@ class DayRead(DayDoc, VersionRead):
     model_config = _READ_CONFIG
     id: uuid.UUID
     items: list[ItemRead] = Field(default_factory=list)  # type: ignore[assignment]
+    plan_b: list[ItemRead] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class TripRead(TripDocument):
