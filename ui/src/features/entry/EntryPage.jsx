@@ -7,6 +7,7 @@ import { entryPath, entrySequence, findEntry, neighbours } from "@/features/entr
 import { PULL_THRESHOLD_PX, pullOffset, useEdgePull } from "@/features/entry/useEdgePull";
 import { MODE_ICON, MODE_LABEL, describeEntry } from "@/features/timeline/describeEntry";
 import { ConfirmationNumber, EditedBy, PlaceRow } from "@/features/timeline/EntryDetails";
+import { showsPlanB, usePlanChoices } from "@/features/timeline/planChoice";
 import { fetchTrip, selectIsViewer, selectReadOnly } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Markdown } from "@/shared/components/Markdown";
@@ -144,6 +145,11 @@ export function EntryView({ trip, found, online = true, children }) {
         <span className={cn("relative inline-flex items-center gap-1.5", SECTION_LABEL)}>
           <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
           {head.label}
+          {found.planB && (
+            <span className="ml-1 rounded-sm bg-secondary px-1.5 py-0.5 normal-case tracking-normal text-secondary-foreground">
+              Plan B
+            </span>
+          )}
         </span>
         <h1 className="relative break-words text-2xl font-semibold leading-snug">{head.title}</h1>
         {head.sub && <p className="relative break-words text-sm text-muted-foreground">{head.sub}</p>}
@@ -266,7 +272,21 @@ export function EntryPage({ kind }) {
 
   const current = loadedId === tripId && trip?.id === tripId ? trip : null;
   const found = current ? findEntry(current, kind, id) : null;
-  const steps = useMemo(() => (current ? entrySequence(current) : []), [current]);
+  // Pulling moves through the day as it shows on this phone: plan B's
+  // activities on a day switched to plan B (Run stage 25). An activity's own
+  // day follows the plan it's in, however it was opened.
+  const choices = usePlanChoices();
+  const ownDay = found?.kind === "activity" ? found.date : null;
+  const ownPlanB = Boolean(found?.planB);
+  const steps = useMemo(
+    () =>
+      current
+        ? entrySequence(current, {
+            planB: (d) => (d === ownDay ? ownPlanB : !isViewer && showsPlanB(current.id, d, choices)),
+          })
+        : [],
+    [current, ownDay, ownPlanB, isViewer, choices]
+  );
   const { at, prev, next } = neighbours(steps, kind, id, atKey);
   // ← goes back where you came from; opened directly, to the entry's day.
   const back = found ? `/trips/${tripId}/days/${at?.date ?? found.date}` : `/trips/${tripId}`;

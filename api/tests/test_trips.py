@@ -79,6 +79,11 @@ async def test_round_trip_returns_the_same_document(client: AsyncClient) -> None
     # The read always has its points of interest, even none; a document
     # without any has no `pointsOfInterest` key.
     assert body.pop("pointsOfInterest") == []
+    # Likewise every day's plan B (Run stage 25).
+    assert all("id" in i for d in body["days"] for i in d["planB"])
+    for day in body["days"]:
+        if day["planB"] == []:
+            del day["planB"]
     assert strip_server_fields(body) == load_sample_trip()
 
 

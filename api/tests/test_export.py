@@ -81,13 +81,16 @@ async def test_export_leaves_out_deleted_entries(client: AsyncClient) -> None:
 async def test_a_viewer_can_export_without_confirmation_numbers_or_private_places(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
-    """As their read: no confirmation numbers, and stays' and legs' places
-    only by name and city (Run stage 17)."""
+    """As their read: no confirmation numbers, stays' and legs' places only
+    by name and city (Run stage 17), and no plan B (Run stage 25)."""
     trip = await shared_trip(client, viewer)
     resp = await viewer.get(f"/trips/{trip['id']}/export")
     assert resp.status_code == 200
     expected = load_sample_trip()
     assert "confirmationNumber" in str(expected)  # the sample has some to hide
+    assert any("planB" in d for d in expected["days"])  # and a plan B
+    for day in expected["days"]:
+        day.pop("planB", None)
     for entry in [*expected["stays"], *expected["travels"]] + [
         i for d in expected["days"] for i in d.get("items", [])
     ]:

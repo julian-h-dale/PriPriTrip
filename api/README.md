@@ -108,6 +108,11 @@ routers with the logic in `services/`.
 | Admin | `/admin/users` (list, invite, role, analytics, reset password), `/admin/backup/*` (the Pi) |
 | Schema | `/schema/trip` |
 
+A day's activities come in two lists: `items` (its plan) and `planB` (a
+backup plan, Run stage 25). Plan B items are written through the same
+`items` endpoints with `planB: true`; moves stay within a plan, and a
+viewer's read and export never include plan B.
+
 ## Command-line helpers
 
 ```bash

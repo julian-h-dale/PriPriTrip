@@ -18,6 +18,12 @@ import { addDays, datePart, datesInRange } from "@/shared/utils/time";
  *
  * Wall-clock values are compared as strings: both sides are local times at
  * the place they happen, which is how a reader orders their day.
+ *
+ * Plan B (Run stage 25): `options.planB(date)` says which days show their
+ * backup plan (`day.planB`) instead of their plan (`day.items`). The booking
+ * markers are the same either way. A day with no plan B always shows its
+ * plan. Without the option (Today, search, the trip timeline), every day
+ * shows its plan.
  */
 
 const PHASE_RANK = { "check-out": 0, depart: 1, arrive: 2, "check-in": 3 };
@@ -84,7 +90,7 @@ function composeDay(items, markers) {
   return entries.concat(pending);
 }
 
-export function buildTimeline(trip) {
+export function buildTimeline(trip, { planB = () => false } = {}) {
   const markers = [...stayMarkers(trip.stays ?? []), ...travelMarkers(trip.travels ?? [])];
   const daysByDate = new Map((trip.days ?? []).map((day) => [day.date, day]));
 
@@ -94,8 +100,10 @@ export function buildTimeline(trip) {
 
   return datesInRange(trip.startDate, lastDate).map((date) => {
     const day = daysByDate.get(date) ?? null;
+    const hasPlanB = Boolean(day?.planB?.length);
+    const showingPlanB = hasPlanB && planB(date);
     const entries = composeDay(
-      day?.items ?? [],
+      (showingPlanB ? day.planB : day?.items) ?? [],
       markers.filter((m) => m.date === date)
     );
     return {
@@ -103,6 +111,8 @@ export function buildTimeline(trip) {
       title: day?.title ?? null,
       summary: day?.summary ?? null,
       afterTrip: date > trip.endDate,
+      hasPlanB,
+      showingPlanB,
       entries,
     };
   });

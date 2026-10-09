@@ -23,13 +23,16 @@ export function entryPathFor(tripId, entry) {
 /**
  * The live record for a page, from the loaded trip: `{ kind, record, date }`
  * (`date`: the day it belongs to, where Back goes when there's no history),
- * or null when it isn't in the trip (deleted, or never was).
+ * or null when it isn't in the trip (deleted, or never was). An activity in
+ * its day's plan B (Run stage 25) also has `planB: true`.
  */
 export function findEntry(trip, kind, id) {
   if (kind === "activity") {
     for (const day of trip.days ?? []) {
       const item = day.items?.find((i) => i.id === id);
       if (item) return { kind, record: item, date: day.date };
+      const backup = day.planB?.find((i) => i.id === id);
+      if (backup) return { kind, record: backup, date: day.date, planB: true };
     }
     return null;
   }
@@ -55,10 +58,11 @@ function recordOf(entry) {
  * same page as the row before it on the same day (a leg arriving the day it
  * left). A stay or leg can still come up twice: check-in and check-out, an
  * overnight leg's two ends, each on its own day. `key` tells them apart.
+ * `options` go to buildTimeline: `planB(date)`, the days showing plan B.
  */
-export function entrySequence(trip) {
+export function entrySequence(trip, options) {
   const steps = [];
-  for (const row of buildTimeline(trip)) {
+  for (const row of buildTimeline(trip, options)) {
     for (const entry of row.entries) {
       if (entry.phase === "staying") continue;
       const { kind, id } = recordOf(entry);

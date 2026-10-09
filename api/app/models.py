@@ -178,7 +178,21 @@ class Day(SoftDeleteMixin, VersionedMixin, Base):
     title: Mapped[str | None]  # optional: an untitled day is headed by its date
     summary: Mapped[str | None]
 
-    items: Mapped[list[Item]] = relationship(order_by="Item.position", lazy="raise")
+    # A day's activities are plan A; its backup plan (plan B, Run stage 25)
+    # is the same rows with `plan = "b"`. Read-only views: items are written
+    # by `day_id` (services/trips.py), never through these lists.
+    items: Mapped[list[Item]] = relationship(
+        primaryjoin="and_(Day.id == Item.day_id, Item.plan == 'a')",
+        order_by="Item.position",
+        lazy="raise",
+        viewonly=True,
+    )
+    plan_b: Mapped[list[Item]] = relationship(
+        primaryjoin="and_(Day.id == Item.day_id, Item.plan == 'b')",
+        order_by="Item.position",
+        lazy="raise",
+        viewonly=True,
+    )
 
     __table_args__ = (
         # v1 grew duplicate days from three different writers; the database
@@ -210,12 +224,15 @@ class PointOfInterest(SoftDeleteMixin, VersionedMixin, Base):
 
 
 class Item(SoftDeleteMixin, VersionedMixin, Base):
-    """One planned activity on a day, kept in document order."""
+    """One planned activity on a day (plan A or plan B), kept in document order."""
 
     __tablename__ = "items"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     day_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("days.id"), index=True)
+    # "a": the day's plan. "b": its backup plan, hidden until someone
+    # switches to it on the day page. `position` counts within the plan.
+    plan: Mapped[str] = mapped_column(default="a", server_default="a")
     position: Mapped[int]
     title: Mapped[str]
     start: Mapped[dt.datetime | None] = mapped_column(WallClockColumn)
@@ -224,6 +241,10 @@ class Item(SoftDeleteMixin, VersionedMixin, Base):
     location: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     confirmation_number: Mapped[str | None]
     notes: Mapped[str | None]
+
+    # Day's own lists are filtered views (viewonly), so this is the link that
+    # tells the unit of work a day is inserted before its items.
+    day: Mapped[Day] = relationship(lazy="raise")
 
 
 def _utc_now() -> dt.datetime:

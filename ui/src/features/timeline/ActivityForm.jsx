@@ -13,6 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Select } from "@/shared/components/ui/select";
+import { Switch } from "@/shared/components/ui/switch";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { datesInRange, formatDayHeading } from "@/shared/utils/time";
 
@@ -21,11 +22,12 @@ import { datesInRange, formatDayHeading } from "@/shared/utils/time";
  * gets checked by eye. Times are entered on the chosen day as wall-clock times;
  * an end before the start means the next day. Which clock they're on comes
  * from the place (or, without one, that night's stay). `onSave(payload)`
- * resolves to `{ ok }` or `{ detail, errors }` from the server.
+ * resolves to `{ ok }` or `{ detail, errors }` from the server. `planB`:
+ * the activity is in (or, new, starts in) its day's plan B (Run stage 25).
  */
-export function ActivityForm({ open, onClose, trip, item, date, prefill, onSave }) {
+export function ActivityForm({ open, onClose, trip, item, date, prefill, planB = false, onSave }) {
   const ids = useId();
-  const [values, setValues] = useState(() => toFormValues(item, date, prefill));
+  const [values, setValues] = useState(() => toFormValues(item, date, prefill, planB));
   const [errors, setErrors] = useState({});
   const [problems, setProblems] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -127,6 +129,26 @@ export function ActivityForm({ open, onClose, trip, item, date, prefill, onSave 
           <Field id={fieldId("notes")} label="Notes" error={errors.notes} hint="Markdown supported">
             <Textarea rows={4} {...inputProps("notes")} />
           </Field>
+
+          <div className="flex items-start gap-3">
+            <Switch
+              id={fieldId("planB")}
+              checked={values.planB}
+              onChange={(on) => setValues((v) => ({ ...v, planB: on }))}
+              aria-describedby={`${fieldId("planB")}-hint`}
+              className="mt-0.5"
+            />
+            <div className="flex flex-col gap-0.5">
+              <label htmlFor={fieldId("planB")} className="text-sm font-medium">
+                Plan B
+              </label>
+              <p id={`${fieldId("planB")}-hint`} className="text-xs text-muted-foreground">
+                {values.planB
+                  ? "A backup for this day. It shows when someone switches the day to plan B."
+                  : "Part of the day’s plan."}
+              </p>
+            </div>
+          </div>
 
           <FormProblems problems={problems} />
         </div>

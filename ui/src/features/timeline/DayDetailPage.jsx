@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
-import { ArrowDown, ArrowUp, Pencil, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Split } from "lucide-react";
 import { entryPathFor } from "@/features/entry/entries";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
 import { DayForm } from "@/features/timeline/DayForm";
+import { setShowsPlanB, showsPlanB, usePlanChoices } from "@/features/timeline/planChoice";
 import { runEdit } from "@/features/timeline/runEdit";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
 import { createItem, fetchTrip, moveItem, selectIsViewer, selectReadOnly, updateDay } from "@/features/timeline/timelineSlice";
@@ -49,8 +50,31 @@ function MoveMenu({ entry, busy, readOnly, onMove }) {
   );
 }
 
+/** The plan B button (Run stage 25), at the end of the date line on a day
+ * that has a plan B, for the people who plan: a fork in the road. Pressed,
+ * the day shows its plan B; pressed again, its plan. Only on this phone:
+ * nothing is saved to the trip. */
+function PlanBButton({ tripId, date, showingPlanB }) {
+  return (
+    <button
+      type="button"
+      aria-label="Plan B"
+      aria-pressed={showingPlanB}
+      title={showingPlanB ? "Back to the plan" : "Show plan B"}
+      onClick={() => setShowsPlanB(tripId, date, !showingPlanB)}
+      className={cn(
+        buttonVariants({ variant: showingPlanB ? "default" : "outline", size: "icon" }),
+        "h-10 w-10 shrink-0"
+      )}
+    >
+      <Split className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
+}
+
 /** One day's own timeline: its entries as points on an hour-ordered rail.
- * Each row opens its entry's page (Run stage 13). */
+ * Each row opens its entry's page (Run stage 13). Showing plan B, the
+ * activities are its plan B's; the booking rows are the same. */
 function DayDetail({ trip, row }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -73,6 +97,14 @@ function DayDetail({ trip, row }) {
   const day = trip.days.find((d) => d.date === row.date) ?? null;
   const editable = !row.afterTrip && !isViewer;
   const heading = formatDayHeading(row.date);
+  const planLabel = row.showingPlanB ? `Plan B for ${heading}` : `Plans for ${heading}`;
+
+  // Its plan B is gone (deleted, or moved to plan A): forget the choice, so a
+  // new plan B later starts hidden like any other.
+  const stale = !row.hasPlanB && showsPlanB(trip.id, row.date);
+  useEffect(() => {
+    if (stale) setShowsPlanB(trip.id, row.date, false);
+  }, [stale, trip.id, row.date]);
   const blurb = [row.title && `**${row.title}**`, row.summary].filter(Boolean).join(" — ");
 
   async function move(item, direction) {
@@ -87,7 +119,7 @@ function DayDetail({ trip, row }) {
       size="sm"
       onClick={() => setAdding(true)}
       disabled={readOnly} title={readOnly ? "You’re offline" : undefined}
-      aria-label={`Add activity to ${heading}`}
+      aria-label={row.showingPlanB ? `Add activity to plan B for ${heading}` : `Add activity to ${heading}`}
     >
       <Plus className="h-4 w-4" aria-hidden="true" />
       Add activity
@@ -100,7 +132,19 @@ function DayDetail({ trip, row }) {
   return (
     <div>
       <header className="mb-4 flex flex-col gap-1">
-        <h1 className="break-words text-xl font-semibold leading-snug">{heading}</h1>
+        <div className="flex items-start gap-2">
+          <h1 className="min-w-0 flex-1 break-words text-xl font-semibold leading-snug">{heading}</h1>
+          {row.hasPlanB && !isViewer && (
+            <>
+              {row.showingPlanB && (
+                <span className="mt-1 rounded-sm bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                  Plan B
+                </span>
+              )}
+              <PlanBButton tripId={trip.id} date={row.date} showingPlanB={row.showingPlanB} />
+            </>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           {row.afterTrip ? "The morning after the trip" : `Day ${dayNumber} of ${dayCount}`}
         </p>
@@ -110,7 +154,7 @@ function DayDetail({ trip, row }) {
       {row.entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing planned for this day.</p>
       ) : (
-        <ol aria-label={`Plans for ${heading}`} className="mb-4 flex flex-col">
+        <ol aria-label={planLabel} className="mb-4 flex flex-col">
           {row.entries.map((entry) => (
             <TimelineEntry
               key={entry.key}
@@ -150,6 +194,7 @@ function DayDetail({ trip, row }) {
           trip={trip}
           item={null}
           date={row.date}
+          planB={row.showingPlanB}
           onSave={(payload) => runEdit(dispatch, createItem({ tripId: trip.id, item: payload }))}
         />
       )}
@@ -191,7 +236,14 @@ function DaySwiper({ trip, date }) {
   // Read by the Embla listeners, like rowsRef below.
   const locationRef = useRef(null);
   locationRef.current = useLocation();
-  const rows = useMemo(() => buildTimeline(trip), [trip]);
+  // Each day shows the plan this phone last chose for it (Run stage 25).
+  // A viewer never has a plan B to show.
+  const isViewer = useSelector(selectIsViewer);
+  const choices = usePlanChoices();
+  const rows = useMemo(
+    () => buildTimeline(trip, { planB: (d) => !isViewer && showsPlanB(trip.id, d, choices) }),
+    [trip, isViewer, choices]
+  );
   const index = rows.findIndex((r) => r.date === date);
   const [emblaRef, emblaApi] = useEmblaCarousel({ startIndex: Math.max(index, 0) });
   // Read by the Embla listeners, which outlive a render.

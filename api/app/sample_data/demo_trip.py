@@ -358,6 +358,27 @@ def build_demo_trip(today: date | None = None) -> dict[str, Any]:
                         "end": at(5, "15:30"),
                     },
                 ],
+                # Too windy to swim: the ferries still run, the beach waits.
+                "planB": [
+                    {
+                        "title": "Historical Archives Museum of Hydra",
+                        "start": at(5, "11:00"),
+                        "end": at(5, "12:30"),
+                        "location": {
+                            "name": "Historical Archives Museum of Hydra",
+                            "city": "Hydra",
+                            "lat": 37.3496,
+                            "lng": 23.4668,
+                        },
+                        "notes": "Ship models, sea captains' portraits and the island's "
+                        "part in the War of Independence.",
+                    },
+                    {
+                        "title": "Long lunch by the harbour",
+                        "start": at(5, "13:00"),
+                        "end": at(5, "15:00"),
+                    },
+                ],
             },
             {
                 "date": d(6).isoformat(),
