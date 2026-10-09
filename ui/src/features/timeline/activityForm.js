@@ -35,8 +35,9 @@ export function compact(payload) {
 /**
  * Form state for an existing activity (or a blank one on `date`). A new one can
  * start from `prefill.place` (e.g. picked on the map), titled after it.
+ * `planB`: whether it is (or, new, starts) in the day's plan B.
  */
-export function toFormValues(item, date, prefill) {
+export function toFormValues(item, date, prefill, planB = false) {
   return {
     title: item?.title ?? (prefill?.place?.name || ""),
     date: item?.start ? datePart(item.start) : date,
@@ -46,6 +47,7 @@ export function toFormValues(item, date, prefill) {
     locationUrl: item?.location?.url ?? "",
     confirmationNumber: item?.confirmationNumber ?? "",
     notes: item?.notes ?? "",
+    planB,
   };
 }
 
@@ -70,6 +72,8 @@ export function toPayload(values, original) {
     location: locationFrom(values.place, values.locationUrl),
     confirmationNumber: values.confirmationNumber.trim() || null,
     notes: values.notes.trim() ? values.notes : null,
+    // Left out for plan A, the default: the payload reads as it always did.
+    planB: values.planB ? true : null,
   });
 }
 

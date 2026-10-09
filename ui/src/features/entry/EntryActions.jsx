@@ -81,7 +81,7 @@ export function EntryActions({ trip, found, readOnly }) {
         </Button>
       </div>
 
-      {editing && kind === "activity" && <ActivityForm {...formProps} item={record} />}
+      {editing && kind === "activity" && <ActivityForm {...formProps} item={record} planB={Boolean(found.planB)} />}
       {editing && kind === "stay" && <StayForm {...formProps} stay={record} />}
       {editing && kind === "travel" && <TravelForm {...formProps} travel={record} />}
 

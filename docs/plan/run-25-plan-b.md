@@ -7,7 +7,7 @@ switch to plan B: the plan A activities go and the plan B ones show in
 their place. Things that come from bookings (check in, check out, depart,
 arrive, staying at) show the same under both plans.
 
-**Status: answered; building.** Julian: build both phases without stopping. Branch `alternate-days` (worktree, off `main`
+**Status: complete.** Phases 91–92 built (2026-10-08). Branch `alternate-days` (worktree, off `main`
 at `e04da12`).
 
 ## Where we are
@@ -57,11 +57,8 @@ search, Today, the trip timeline, place suggestions) leaves plan B out
 
 ```
 ┌──────────────────────────────────────────┐
-│ Saturday 14 June                         │
-│ Day 2 of 4                               │
-│ ┌────────────┬────────────┐              │
-│ │  Plan A    │  Plan B    │              │  ← only when the day has plan B
-│ └────────────┴────────────┘              │
+│ Saturday 14 June            Plan B  [⑂]  │  ← fork button: only when the day
+│ Day 2 of 4                               │    has plan B; tag when it's on
 │ ● 10:00 Check out Hotel Bern             │  ← booking rows: both plans
 │ ● 11:30 Train to Wengen                  │
 │ ● 14:00 Alpine Museum          (plan B)  │  ← plan B items replace plan A's
@@ -69,17 +66,18 @@ search, Today, the trip timeline, place suggestions) leaves plan B out
 └──────────────────────────────────────────┘
 ```
 
-- The switch shows only when the day has at least one plan B item. It's
-  always there for editors on that day. Switching is only on this phone
+- The plan B button (a fork icon at the end of the date line) shows
+  only when the day has at least one plan B item. It's always there for
+  editors on that day. Switching is only on this phone
   (nothing is saved to the trip, and nobody else sees it change).
-- Under plan B, the list is `buildTimeline(trip, { plan: "b" })` for that
+- Under plan B, the list is `buildTimeline(trip, { planB })` for that
   date: the same booking rows, with the plan B items merged in by time,
   the same way plan A's are. `buildTimeline` with no options is unchanged.
-- **Adding:** the same activity form, with a **Plan B** checkbox (editors
-  only). "Add activity" while plan B is showing starts with it ticked.
-  Editing an item can untick or tick it, which moves the item to the
+- **Adding:** the same activity form, with a **Plan B** switch (editors
+  only). "Add activity" while plan B is showing starts with it on.
+  Editing an item can turn it on or off, which moves the item to the
   other plan.
-- If the last plan B item is deleted or moved to plan A, the switch goes
+- If the last plan B item is deleted or moved to plan A, the button goes
   and the page shows plan A.
 - **A plan B item's own page** (`EntryPage`): `findEntry` looks in
   `planB` too, and the page says "Plan B". Swiping up and down moves
@@ -89,8 +87,9 @@ search, Today, the trip timeline, place suggestions) leaves plan B out
   search, the map, weather, clocks or currency. Plan B items have no map
   pin.
 
-**Seed data.** One seed day gets a plan B (a Wengen rainy-day option), so
-the switch can be tried and the e2e has something to switch to.
+**Seed data.** Two seed days get a plan B (Wengen in the rain, Hydra in
+the wind), so
+plan B can be tried and the e2e has something to switch to.
 
 ## Phases
 
@@ -116,28 +115,29 @@ the switch can be tried and the e2e has something to switch to.
     - Seed: the plan B day is there after `make seed`, and re-seeding
       doesn't duplicate it.
 - **Phase 92 — plan B on the day page.**
-  - **Scope:** `buildTimeline(trip, { plan })`; the Plan A / Plan B
-    switch on the day page; the Plan B checkbox in `ActivityForm`;
+  - **Scope:** `buildTimeline(trip, { planB })`; the plan B button (a
+    fork) by the date on the day page; the Plan B switch in `ActivityForm`;
     `findEntry`/`entrySequence` know about plan B; the "Plan B" label on
     the entry page. `ui/README.md` is updated.
   - **Tests:**
     - `buildTimeline` with no options = today's output (existing tests
-      stay green). With `{ plan: "b" }`, the day's booking rows are the
+      stay green). With `{ planB }` for a date, that day's booking rows are the
       same and the activities are plan B's, ordered by time.
-    - Day page: no switch on a day without plan B. With plan B: the switch
-      shows, plan A by default; switching shows plan B items and keeps the
-      booking rows; switching back restores plan A.
-    - Viewers see no switch (and plan B never reaches them anyway).
-    - Form: the Plan B box adds to plan B. "Add activity" under plan B
-      starts ticked. Unticking an edited item moves it to plan A.
-    - Deleting the last plan B item → the switch goes and plan A shows.
+    - Day page: no plan B button on a day without plan B. With plan B: the
+      button shows, plan A by default; pressing it shows plan B items and
+      the "Plan B" tag and keeps the booking rows; pressing again restores
+      plan A.
+    - Viewers see no button (and plan B never reaches them anyway).
+    - Form: the Plan B switch adds to plan B. "Add activity" under plan B
+      starts with it on. Turning it off on an edited item moves it to plan A.
+    - Deleting the last plan B item → the button goes and plan A shows.
     - Map, Today, search and the trip timeline don't show plan B items,
       on a trip that has them.
     - Entry page: a plan B item opens, says "Plan B", and swipes stay
       within plan B for that day.
-  - **E2E:** at 375 px, as an editor, on the seeded plan B day: switch to
-    plan B, open an item, swipe, go back, add a plan B item. As a viewer:
-    no switch. Screenshots dark and light, for a human look.
+  - **E2E:** at 375 px, as an editor, on the seeded plan B day: press the
+    plan B button, open an item, swipe, go back, add a plan B item. As a viewer:
+    no button. Screenshots dark and light, for a human look.
 
 ## Built
 
@@ -149,6 +149,21 @@ the switch can be tried and the e2e has something to switch to.
   viewers' reads and exports have no plan B. Seed: Bern's Männlichen day
   (rain: Trümmelbach Falls) and the Athens demo's Hydra day (wind: the
   museum). `tests/test_plan_b.py` (16).
+- **Phase 92 ✅ (2026-10-08).** `buildTimeline(trip, { planB })` (and
+  `entrySequence`), with `hasPlanB` / `showingPlanB` on each row;
+  `planChoice.js` (per phone, per day, `localStorage`, like text size). On
+  the day page, a **plan B button** (lucide `Split`, a fork) at the right
+  end of the date line, for the owner and editors on a day with a plan B.
+  Pressed, it fills with the primary colour, a "Plan B" tag shows beside
+  it, and the day shows plan B; pressed again, plan A. This replaced the
+  "Plan A | Plan B" toggle from Q-B2 (Julian, 2026-10-08: he didn't like
+  the toggle; Q-B5 below). The stored choice is dropped once the day's
+  plan B is gone. "Add activity" under plan B starts with the form's
+  **Plan B** switch on (a switch, as in the memory dialog, rather than a
+  checkbox). A plan B activity's page has a "Plan B" tag, and pulling
+  moves through that day's plan B. Unit: `PlanB.test.jsx` (16). E2E:
+  `plan-b.spec.js` (Bern 13 May, dark and light, plus the viewer;
+  screenshots `25a`–`25e`, looked at).
 
 ## Open questions
 
@@ -163,7 +178,7 @@ the switch can be tried and the e2e has something to switch to.
   - (a) *Recommended:* a two-part toggle, "Plan A | Plan B", under the
     day heading. It always shows which plan you're on.
   - (b) One button, "Show plan B" / "Show plan A".
-  - **Answer:** (a): a two-part "Plan A | Plan B" toggle under the day heading (Julian, 2026-10-08).
+  - **Answer:** (a): a two-part "Plan A | Plan B" toggle under the day heading (Julian, 2026-10-08). **Replaced by Q-B5.**
 - **Q-B3. What's it called?** "Plan B" everywhere (the switch, the form
   checkbox, the entry page label), or "Backup plan"?
   - **Answer:** "Plan B" everywhere (Julian, 2026-10-08).
@@ -172,6 +187,15 @@ the switch can be tried and the e2e has something to switch to.
   Your answer 3 says day page only, so the plan is (a) no tag for now.
   (b) would add the tag, but nothing else.
   - **Answer:** (a): no tag for now (Julian, 2026-10-08).
+- **Q-B5. (After seeing the toggle.) What instead?** Julian: a
+  branch icon next to the date that turns plan B on.
+  - Icon: lucide `Split` (a path forking), not `GitBranch` (reads as git)
+    or a signpost.
+  - Plan B on: the icon fills (primary) and a "Plan B" tag shows beside
+    it. Tap again for plan A.
+  - Where: the right end of the date line (it stays put when the date is
+    long or wraps at large text).
+  - **Answer:** all three as above (Julian, 2026-10-08).
 
 ### Answered (2026-10-08, Julian)
 

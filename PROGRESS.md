@@ -13,6 +13,13 @@
   - **Phase 91 ✅:** plan B in the API (`Item.plan`, `days[].planB`,
     `planB: true` on item writes, nothing for viewers), plus seed plan Bs on
     Bern 13 May and the Athens Hydra day. `make verify` green.
+  - **Phase 92 ✅:** on the day page, a fork button (lucide `Split`) at
+    the end of the date line turns plan B on (filled, with a "Plan B" tag)
+    and off; per phone, per day; owner/editors only. It replaced a Plan
+    A | Plan B toggle Julian didn't like (Q-B5). The form has a Plan B
+    switch, the entry page a "Plan B" tag, and swipes stay within plan B.
+    E2E `plan-b.spec.js` (dark, light, viewer) looked at. **Run stage 25
+    is complete; nothing is pushed.**
 - **Run stage 23 (2026-10-08)** on **`large-text`**: large text. Plan:
   `docs/plan/run-23-large-text.md`.
   - **Phase 87 ✅:** at Large / Larger, timeline entry rows (day pages and

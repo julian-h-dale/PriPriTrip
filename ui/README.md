@@ -119,4 +119,16 @@ checks the key pairs in both themes. At Large and Larger text a timeline
 entry row stacks (time on a top line, the title below at full width):
 `TimelineEntry.jsx` reads `useTextSize()`.
 
+## Plan B
+
+A day can have a backup plan (Run stage 25): the API sends it as
+`day.planB` beside `day.items`. Only the day page reads it. Its plan B
+button (a fork, at the end of the date line) picks which list
+`buildTimeline(trip, { planB })` merges with the booking rows. The choice
+is per phone, per day (`features/timeline/planChoice.js`, in
+`localStorage`), so it holds when you open an activity and come back.
+Everything else (Today, search, the map, clocks, currency) reads
+`day.items` or calls `buildTimeline(trip)` with no options, so it never
+sees plan B. The activity form's Plan B switch sends `planB: true`.
+
 More: [../docs/photos.md](../docs/photos.md) for photos end to end.
