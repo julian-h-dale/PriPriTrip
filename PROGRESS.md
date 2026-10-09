@@ -6,6 +6,12 @@
 
 ## Status
 
+- **Run stage 23 (2026-10-08)** on **`large-text`**: large text. Plan:
+  `docs/plan/run-23-large-text.md`.
+  - **Phase 87 ✅:** at Large / Larger, timeline entry rows (day pages and
+    Today) put icon and time on a top line and the title below at full
+    width; Normal unchanged. E2E `large-text.spec.js`. `make verify` green
+    (278 API + 585 UI).
 - **Run stage 22 (2026-10-07)** on **`analytics`**: light mode and text size.
   Plan: `docs/plan/run-22-light-mode.md`.
   - **Phase 85 ✅:** light mode, from the All trips drawer, per phone,

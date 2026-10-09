@@ -115,6 +115,8 @@ Light mode and text size are in the All trips drawer, stored in
 `localStorage` and applied by a small script in `index.html` before the
 first paint (`shared/theme.js`, `shared/textSize.js`). Colours are tokens in
 `src/index.css` (`:root` dark, `:root.light`); `src/test/contrast.test.js`
-checks the key pairs in both themes.
+checks the key pairs in both themes. At Large and Larger text a timeline
+entry row stacks (time on a top line, the title below at full width):
+`TimelineEntry.jsx` reads `useTextSize()`.
 
 More: [../docs/photos.md](../docs/photos.md) for photos end to end.
