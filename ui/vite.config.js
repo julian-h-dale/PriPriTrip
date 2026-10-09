@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "");
 
   return {
+    // A new id per build: the journal's outbox gives refused writes one more
+    // try after an update (features/journal/journalSlice.js retryAfterUpdate).
+    define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
     plugins: [
       react(),
       // Installable app + offline app shell. The service worker only ever

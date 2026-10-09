@@ -6,7 +6,7 @@ photos" — and then "A photo couldn't be uploaded and was dropped." The same
 picture picked from the library uploads fine. Fix the refusal, and stop the
 phone throwing away anything the server turns down.
 
-**Status: answered; in progress.** Branch `photo-resilience`.
+**Status: complete** (Phases 88–90). Branch `photo-resilience`.
 
 ## Where we are
 
@@ -238,3 +238,31 @@ the numbers after these (Q-P4).
   at full size; the test spies on `draft` and was checked to fail without
   the fix (decoded 8064 x 6048). The test MPO carries EXIF orientation 6 and
   GPS, so it also covers upright copies with no EXIF.
+- **Phases 89–90 (2026-10-08), one commit** (both change the same
+  thunks in `journalSlice.js`). Built as designed, with these differences:
+  - **After an app update**, stuck memory writes are sent at once; stuck
+    photos go back to *waiting for Upload* rather than uploading by
+    themselves (Upload may be on cellular). The build id is
+    `__BUILD_ID__` (`vite.config.js` `define`), compared with
+    `localStorage["pripritrip-last-build"]`; the very first start never
+    retries.
+  - **Deleting a memory** with photos still on the phone warns in the
+    delete dialog and says to open each and tap Save to phone; there's no
+    Save button in the dialog itself.
+  - **Removing a never-uploaded photo in the edit dialog** shows an inline
+    warning with **Keep it** (undo) rather than a second dialog: the removal
+    only happens on Save anyway.
+  - **Removing a stuck memory that never reached the server** removes its
+    waiting photos too (the dialog says so); alone they'd only be refused.
+  - **`fetchMemories` refreshes the counts**, so the Upload and "couldn't
+    upload" bars are right when the app starts offline (before, the counts
+    only came from a sync). It runs after the "what's queued" snapshot, so
+    the race guard from Run 4 keeps its order.
+  - **Phase 90's fallback:** `enqueue` resolves true/false; on false,
+    `keepOrSend` sends the write at once if it may, else marks the memory
+    (or photo) `unsaved` and toasts that it isn't saved anywhere.
+  - Tests: `Stuck.test.jsx` (11), `PhoneFull.test.jsx` (3), outbox unit
+    tests (5), the sign-out warning; the old "dropped" test now asserts
+    kept-and-marked. E2E `journal-stuck-photos.spec.js` with two fixtures:
+    `camera-mpo.jpg` (a real MPO: 201, served as `image/jpeg`) and
+    `not-a-photo.jpg` (a GIF named .jpg: 422, stuck, survives a reload).

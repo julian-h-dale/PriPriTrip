@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { selectPendingMemories, syncOutbox } from "@/features/journal/journalSlice";
+import { retryAfterUpdate, selectPendingMemories, syncOutbox } from "@/features/journal/journalSlice";
 import { syncPacking } from "@/features/packing/packingSlice";
 import { selectOnline } from "@/shared/networkSlice";
 
@@ -12,7 +12,8 @@ const RETRY_MS = 30_000;
  * through: on sign-in/app start, when the connection comes back, when the app
  * returns to the foreground, and every 30 s while anything is waiting. iOS
  * has no background sync for web apps, so this runs while the app is open —
- * which is exactly when someone who just landed opens it.
+ * which is exactly when someone who just landed opens it. After the app
+ * updates, writes the server refused get one more try first (Run stage 24).
  */
 export function useOutboxSync() {
   const dispatch = useDispatch();
@@ -22,7 +23,7 @@ export function useOutboxSync() {
 
   useEffect(() => {
     if (token && online) {
-      dispatch(syncOutbox());
+      dispatch(retryAfterUpdate()).then(() => dispatch(syncOutbox()));
       dispatch(syncPacking());
     }
   }, [dispatch, token, online]);

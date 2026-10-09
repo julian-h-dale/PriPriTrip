@@ -54,8 +54,26 @@ names.
     the phone, use the photo viewer: **Save to phone** while the photo is
     still waiting (the share sheet, `saveToPhone.js`), or **Download
     original** once it's uploaded.
-  - Signing out with photos still waiting warns first, because it would
-    delete them.
+  - Signing out with photos still waiting (or refused) warns first, because
+    it would delete them.
+- **Nothing is dropped for failing** (Run stage 24, `syncOutbox`):
+  - No answer, 401, 403 `PASSWORD_CHANGE_REQUIRED`, 408, 429 or a server
+    error: the entry stays and the pass stops; it's tried again later.
+  - Any other 4xx (the server refused it): the entry stays, marked
+    `stuck: { status, message, at }`, on its memory on screen too, with a
+    "Couldn't upload" badge and the server's reason. It isn't retried
+    automatically. A memory's later writes, its photos included, wait
+    behind a stuck memory.
+  - Sent again by **Try again** (the memory, or the photo in the viewer),
+    **Try all again** (the bar above the journal), **Upload**, and once
+    after the app updates (memories go; photos go back to waiting).
+  - Deleted only by **Remove** (it asks first), deleting the memory (it
+    warns about photos still on the phone), or signing out (it warns).
+- **If the phone can't save a write** (IndexedDB refuses it: out of space),
+  it's sent at once if the app is online. Otherwise the app says so, and the
+  memory shows "Not saved on this phone" instead of "Saved on this phone".
+  The app also asks the browser to keep its storage
+  (`navigator.storage.persist()`), best-effort.
 
 ## 2. Upload and resizing (the server)
 

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { CloudUpload, Eye, MapPin, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, CloudUpload, Eye, MapPin, Pencil, Trash2 } from "lucide-react";
 import { journalDays, memoryTime } from "@/features/journal/journalDays";
 import {
   canWriteMemories,
   deleteMemory,
   fetchMemories,
+  removeStuck,
+  retryStuck,
+  selectStuckCount,
   selectUpload,
   selectWaitingPhotos,
   uploadPhotos,
@@ -31,7 +34,13 @@ function groupHeading(group) {
   return formatDayHeading(group.date);
 }
 
-function MemoryCard({ memory, trip, onEdit, onDelete }) {
+/** Photos on a memory that exist only on this phone (waiting, or refused by the server). */
+const photosOnlyHere = (memory) => (memory?.photos ?? []).filter((p) => p.pending);
+
+function MemoryCard({ memory, trip, onEdit, onDelete, onRemoveStuck }) {
+  const dispatch = useDispatch();
+  const online = useSelector(selectOnline);
+  const stuckPhotos = (memory.photos ?? []).filter((p) => p.stuck);
   const zoneNote = memory.zone !== trip.timezone ? ` · ${zoneLabel(memory.zone)} time` : "";
   // Viewers only ever see public memories, so the badge is for the travelers.
   const showPublic = memory.isPublic && canWriteMemories(trip);
@@ -39,7 +48,11 @@ function MemoryCard({ memory, trip, onEdit, onDelete }) {
     <Card className="flex gap-2 p-3">
       <div className="min-w-0 flex-1">
         <p className="whitespace-pre-wrap break-words text-sm">{memory.text}</p>
-        <PhotoStrip photos={memory.photos} />
+        <PhotoStrip
+          photos={memory.photos}
+          onRetry={(photo) => dispatch(retryStuck([`photo-${photo.id}`]))}
+          onRemove={(photo) => dispatch(removeStuck({ tripId: trip.id, entryId: `photo-${photo.id}` }))}
+        />
         <p className="mt-1.5 text-xs text-muted-foreground">
           {memoryTime(memory)}
           {zoneNote} · {memory.mine ? "You" : memory.authorEmail}
@@ -62,10 +75,44 @@ function MemoryCard({ memory, trip, onEdit, onDelete }) {
             {locationLabel(trip, memory.location)}
           </a>
         )}
-        {memory.pending && (
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
-            <CloudUpload className="h-3.5 w-3.5" aria-hidden="true" />
-            Waiting to sync
+        {memory.unsaved ? (
+          <p role="alert" className="mt-1 flex items-start gap-1 text-xs text-destructive">
+            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Not saved on this phone: copy your words before closing the app.
+          </p>
+        ) : memory.stuck ? (
+          <div className="mt-1 flex flex-col gap-1.5">
+            <p className="flex items-start gap-1 text-xs text-destructive">
+              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Couldn’t upload: {memory.stuck.message}. It’s still on this phone.
+              </span>
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={!online} onClick={() => dispatch(retryStuck([memory.id]))}>
+                Try again
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => onRemoveStuck(memory)}>
+                Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          memory.pending && (
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
+              <CloudUpload className="h-3.5 w-3.5" aria-hidden="true" />
+              Waiting to sync
+            </p>
+          )
+        )}
+        {stuckPhotos.length > 0 && (
+          <p className="mt-1 flex items-start gap-1 text-xs text-destructive">
+            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              {stuckPhotos.length === 1 ? "A photo" : `${stuckPhotos.length} photos`} couldn’t upload:{" "}
+              {stuckPhotos[0].stuck.message}. Open {stuckPhotos.length === 1 ? "it" : "one"} to save a copy, try
+              again or remove it.
+            </span>
           </p>
         )}
       </div>
@@ -130,6 +177,40 @@ function UploadBar() {
   );
 }
 
+/**
+ * Writes the server refused stay on the phone (Run stage 24): this says how
+ * many, and "Try all again" sends them once more (after a fix, say).
+ */
+function StuckBar() {
+  const dispatch = useDispatch();
+  const count = useSelector(selectStuckCount);
+  const online = useSelector(selectOnline);
+  const [busy, setBusy] = useState(false);
+  if (count === 0) return null;
+  async function retryAll() {
+    setBusy(true);
+    await dispatch(retryStuck());
+    setBusy(false);
+  }
+  return (
+    <Card role="region" aria-label="Couldn’t upload" className="flex flex-col gap-2 border-destructive/50 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="inline-flex items-center gap-2 text-sm font-medium">
+          <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
+          {count} couldn’t upload
+        </p>
+        <Button size="sm" variant="outline" onClick={retryAll} disabled={busy || !online}>
+          {busy ? "Trying…" : "Try all again"}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        The server turned {count === 1 ? "it" : "them"} down. {count === 1 ? "It stays" : "They stay"} on this
+        phone until sent or removed, and Upload tries again too.
+      </p>
+    </Card>
+  );
+}
+
 function Journal({ trip }) {
   const dispatch = useDispatch();
   const writer = canWriteMemories(trip);
@@ -141,7 +222,16 @@ function Journal({ trip }) {
   // null | { memory } (edit). A new one is the top bar's New memory.
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [removing, setRemoving] = useState(null); // a stuck memory to give up on
   const [busy, setBusy] = useState(false);
+  const onlyHere = photosOnlyHere(deleting ?? removing).length;
+
+  async function confirmRemove() {
+    setBusy(true);
+    await dispatch(removeStuck({ tripId: trip.id, entryId: removing.id }));
+    setBusy(false);
+    setRemoving(null);
+  }
 
   async function confirmDelete() {
     setBusy(true);
@@ -161,6 +251,7 @@ function Journal({ trip }) {
         </div>
       </header>
 
+      {writer && <StuckBar />}
       {writer && <UploadBar />}
 
       {groups.length === 0 ? (
@@ -196,6 +287,7 @@ function Journal({ trip }) {
                     trip={trip}
                     onEdit={(m) => setEditing({ memory: m })}
                     onDelete={setDeleting}
+                    onRemoveStuck={setRemoving}
                   />
                 </li>
               ))}
@@ -217,7 +309,11 @@ function Journal({ trip }) {
         open={deleting !== null}
         onClose={() => !busy && setDeleting(null)}
         title="Delete memory?"
-        description="It will be removed from the journal for everyone."
+        description={
+          onlyHere > 0
+            ? `It will be removed from the journal for everyone. ${onlyHere === 1 ? "A photo on it hasn’t" : `${onlyHere} photos on it haven’t`} uploaded and will be deleted from this phone: open ${onlyHere === 1 ? "it" : "each"} and tap Save to phone first to keep a copy.`
+            : "It will be removed from the journal for everyone."
+        }
       >
         <DialogFooter>
           <Button variant="outline" onClick={() => setDeleting(null)} disabled={busy}>
@@ -225,6 +321,25 @@ function Journal({ trip }) {
           </Button>
           <Button variant="destructive" onClick={confirmDelete} disabled={busy}>
             {busy ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+      <Dialog
+        open={removing !== null}
+        onClose={() => !busy && setRemoving(null)}
+        title="Remove from this phone?"
+        description={
+          removing?.receivedAt
+            ? "This edit never reached the server. Removing it keeps the memory as it was before."
+            : `This memory never reached the server, so removing it deletes it for good.${onlyHere > 0 ? ` ${onlyHere === 1 ? "Its photo goes" : `Its ${onlyHere} photos go`} too: save ${onlyHere === 1 ? "it" : "them"} to the phone first to keep a copy.` : ""}`
+        }
+      >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setRemoving(null)} disabled={busy}>
+            Keep it
+          </Button>
+          <Button variant="destructive" onClick={confirmRemove} disabled={busy}>
+            {busy ? "Removing…" : "Remove"}
           </Button>
         </DialogFooter>
       </Dialog>

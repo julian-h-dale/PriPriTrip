@@ -21,7 +21,7 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **87**.
+project; the next one is **87** (Run 23), then **91**.
 
 ## Stages
 
@@ -57,7 +57,7 @@ All complete unless marked. Current branch: `photo-resilience` (Run 24).
 | Run 21 | 82–84 | Field fixes: trips open on Today, Tonight's check-out, sticky hover, search details, packing offline | [run-21-field-fixes.md](docs/plan/run-21-field-fixes.md) |
 | Run 22 | 85–86 | Light mode (and text size) | [run-22-light-mode.md](docs/plan/run-22-light-mode.md) |
 | Run 23 | 87– | Large text: entry rows stack (**planned**) | [run-23-large-text.md](docs/plan/run-23-large-text.md) |
-| Run 24 | 88–90 | Photos and memories are never dropped: iPhone camera photos (MPO), a stuck-not-dropped outbox, failed phone saves (**planned**) | [run-24-photo-upload-resilience.md](docs/plan/run-24-photo-upload-resilience.md) |
+| Run 24 | 88–90 | Photos and memories are never dropped: iPhone camera photos (MPO), a stuck-not-dropped outbox, failed phone saves | [run-24-photo-upload-resilience.md](docs/plan/run-24-photo-upload-resilience.md) |
 
 ## Architecture Decisions
 
