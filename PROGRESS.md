@@ -6,6 +6,16 @@
 
 ## Status
 
+- **Run stage 24 (2026-10-08)** on **`photo-resilience`** (off `main` at
+  `7452475`): photos and memories are never dropped. Plan:
+  `docs/plan/run-24-photo-upload-resilience.md`. All questions answered
+  (Q-P1–P5); Run 23 (large text) waits behind it.
+  - **Phase 88 ✅:** iPhone camera photos (Take photo) were refused: they're
+    JPEGs with an HDR gain map, which Pillow reads as `MPO`. Now stored as
+    `jpeg`, byte-for-byte, and decoded small like any JPEG (a 48 MP one was
+    about to be decoded full size). No HDR work (Q-P2). `make verify` green
+    (280 API + 576 UI). Next: Phase 89 (the outbox keeps what the server
+    refused).
 - **Run stage 22 (2026-10-07)** on **`analytics`**: light mode and text size.
   Plan: `docs/plan/run-22-light-mode.md`.
   - **Phase 85 ✅:** light mode, from the All trips drawer, per phone,

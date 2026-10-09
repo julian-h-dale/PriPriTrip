@@ -62,7 +62,10 @@ names.
 - **Upload:** a multipart `POST /trips/<trip>/memories/<memory>/photos`
   (`api/app/routers/photos.py`) carrying the photo's id and file.
 - **Resizing** (`api/app/photos.py`, run by `services/photos.py`) uses Pillow
-  (with `pillow-heif` for iPhone HEIC). From the original it makes:
+  (with `pillow-heif` for iPhone HEIC). A photo taken with the in-app camera
+  on an iPhone is a JPEG with its HDR gain map inside (Pillow calls it MPO):
+  it's kept as a JPEG, gain map and all, and the copies are made from its
+  main image at standard brightness. From the original it makes:
   - **display.jpg:** at most 2560 px on the long edge, JPEG quality 85.
   - **thumb.jpg:** at most 480 px, JPEG quality 80.
   - Both are turned upright and have **no EXIF**, so no GPS location. They
@@ -73,7 +76,7 @@ names.
 - **Memory-careful:** the machine has 512 MB.
   - Only one photo is processed at a time (a lock, plus one gunicorn
     worker).
-  - JPEGs are decoded at reduced size where possible.
+  - JPEGs (camera MPOs too) are decoded at reduced size where possible.
   - Images whose pixel count would be absurd are refused.
   - A 24 MP photo peaks at about 70–100 MB.
 - **Then** the three files are written and a `Photo` row is added to the

@@ -25,7 +25,7 @@ project; the next one is **87**.
 
 ## Stages
 
-All complete unless marked. Current branch: `analytics` (Runs 18–22).
+All complete unless marked. Current branch: `photo-resilience` (Run 24).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -56,6 +56,8 @@ All complete unless marked. Current branch: `analytics` (Runs 18–22).
 | Run 20 | 80–81 | A "saved copies only" switch (data saver) | [run-20-data-saver.md](docs/plan/run-20-data-saver.md) |
 | Run 21 | 82–84 | Field fixes: trips open on Today, Tonight's check-out, sticky hover, search details, packing offline | [run-21-field-fixes.md](docs/plan/run-21-field-fixes.md) |
 | Run 22 | 85–86 | Light mode (and text size) | [run-22-light-mode.md](docs/plan/run-22-light-mode.md) |
+| Run 23 | 87– | Large text: entry rows stack (**planned**) | [run-23-large-text.md](docs/plan/run-23-large-text.md) |
+| Run 24 | 88–90 | Photos and memories are never dropped: iPhone camera photos (MPO), a stuck-not-dropped outbox, failed phone saves (**planned**) | [run-24-photo-upload-resilience.md](docs/plan/run-24-photo-upload-resilience.md) |
 
 ## Architecture Decisions
 
