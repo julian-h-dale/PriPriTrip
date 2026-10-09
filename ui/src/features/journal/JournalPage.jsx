@@ -15,7 +15,7 @@ import {
   uploadPhotos,
 } from "@/features/journal/journalSlice";
 import { MemoryDialog } from "@/features/journal/MemoryDialog";
-import { locationLabel } from "@/features/journal/nearestPlace";
+import { accuracyLabel, locationLabel } from "@/features/journal/nearestPlace";
 import { PhotoStrip } from "@/features/journal/PhotoStrip";
 import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
@@ -72,7 +72,7 @@ function MemoryCard({ memory, trip, onEdit, onDelete, onRemoveStuck }) {
             className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
           >
             <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            {locationLabel(trip, memory.location)}
+            {[locationLabel(trip, memory.location), accuracyLabel(memory.location)].filter(Boolean).join(" · ")}
           </a>
         )}
         {memory.unsaved ? (

@@ -11,18 +11,38 @@ Creating is idempotent on the id, so a retried upload can't duplicate.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import ColumnElement, or_, select, true
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app import google_places_server
 from app.dependencies import active
-from app.models import Memory, UserRecord
-from app.schemas import MemoryLocation, MemoryRead, PhotoRead
+from app.models import Memory, Trip, TripMember, UserRecord
+from app.schemas import MemoryLocation, MemoryLocationRead, MemoryRead, PhotoRead
 from app.services.photos import photos_by_memory
 
+log = logging.getLogger(__name__)
+
 FUTURE_TOLERANCE = dt.timedelta(minutes=10)
+
+
+async def author_ranks(db: AsyncSession, trip_id: uuid.UUID) -> dict[uuid.UUID, int]:
+    """Everyone's place on the trip, for their color in the journal: the
+    owner 0, then members in the order they first joined (people who left
+    keep theirs, so colors never shift)."""
+    owner_id = await db.scalar(select(Trip.user_id).where(Trip.id == trip_id))
+    ranks: dict[uuid.UUID, int] = {owner_id: 0} if owner_id else {}
+    member_ids = await db.scalars(
+        select(TripMember.user_id)
+        .where(TripMember.trip_id == trip_id)
+        .order_by(TripMember.created_at, TripMember.id)
+    )
+    for user_id in member_ids:
+        ranks.setdefault(user_id, len(ranks))
+    return ranks
 
 
 def _read(
@@ -30,6 +50,7 @@ def _read(
     author: UserRecord,
     viewer_id: uuid.UUID,
     photos: list[PhotoRead] | None = None,
+    ranks: dict[uuid.UUID, int] | None = None,
 ) -> MemoryRead:
     return MemoryRead(
         id=memory.id,
@@ -39,12 +60,20 @@ def _read(
         updated_at=memory.updated_at,
         received_at=memory.received_at,
         location=(
-            MemoryLocation(lat=memory.lat, lng=memory.lng, accuracy=memory.accuracy)
+            MemoryLocationRead(
+                lat=memory.lat,
+                lng=memory.lng,
+                accuracy=memory.accuracy,
+                place_name=memory.place_name,
+                place_area=memory.place_area,
+            )
             if memory.lat is not None and memory.lng is not None
             else None
         ),
         photos=photos or [],
         author_email=author.email,
+        author_name=author.name,
+        author_rank=(ranks or {}).get(author.id, 0),
         mine=memory.user_id == viewer_id,
         is_public=memory.is_public,
     )
@@ -76,7 +105,10 @@ async def list_memories(
     )
     rows = result.tuples().all()
     photos = await photos_by_memory(db, [memory.id for memory, _ in rows])
-    return [_read(memory, author, viewer_id, photos.get(memory.id)) for memory, author in rows]
+    ranks = await author_ranks(db, trip_id)
+    return [
+        _read(memory, author, viewer_id, photos.get(memory.id), ranks) for memory, author in rows
+    ]
 
 
 class MemoryIdTaken(Exception):
@@ -121,8 +153,10 @@ async def create_memory(
                 and not existing.is_deleted
             ):
                 photos = await photos_by_memory(db, [existing.id])
+                ranks = await author_ranks(db, trip_id)
                 return Created(
-                    _read(existing, author, author.id, photos.get(existing.id)), new=False
+                    _read(existing, author, author.id, photos.get(existing.id), ranks),
+                    new=False,
                 )
             raise MemoryIdTaken()
     received = dt.datetime.now(dt.UTC)
@@ -142,7 +176,8 @@ async def create_memory(
     db.add(memory)
     await db.commit()
     await db.refresh(memory)
-    return Created(_read(memory, author, author.id), new=True)
+    ranks = await author_ranks(db, trip_id)
+    return Created(_read(memory, author, author.id, ranks=ranks), new=True)
 
 
 async def update_memory(
@@ -160,16 +195,62 @@ async def update_memory(
     memory.text = text
     if clear_location:
         memory.lat = memory.lng = memory.accuracy = None
+        memory.place_name = memory.place_area = None
     if is_public is not None:
         memory.is_public = is_public
     memory.updated_at = dt.datetime.now(dt.UTC)
     await db.commit()
     await db.refresh(memory)
     photos = await photos_by_memory(db, [memory.id])
-    return _read(memory, author, author.id, photos.get(memory.id))
+    ranks = await author_ranks(db, memory.trip_id)
+    return _read(memory, author, author.id, photos.get(memory.id), ranks)
 
 
 async def delete_memory(db: AsyncSession, memory: Memory) -> None:
     memory.is_deleted = True
     memory.deleted_at = dt.datetime.now(dt.UTC)
     await db.commit()
+
+
+# How far to look for a place to name: the phone's own uncertainty, kept
+# between these (a café 300 m away is a guess, not where you were).
+PLACE_RADIUS_MIN_M = 25.0
+PLACE_RADIUS_MAX_M = 150.0
+PLACE_RADIUS_DEFAULT_M = 50.0
+
+
+def place_radius(accuracy: float | None) -> float:
+    radius = PLACE_RADIUS_DEFAULT_M if accuracy is None else accuracy
+    return min(PLACE_RADIUS_MAX_M, max(PLACE_RADIUS_MIN_M, radius))
+
+
+async def name_place(db: AsyncSession, memory: Memory) -> bool:
+    """Look up what's where `memory` was written and store it. Best effort:
+    False (and nothing stored) when there's no location or no answer."""
+    if memory.lat is None or memory.lng is None:
+        return False
+    lat, lng = memory.lat, memory.lng
+    found = await google_places_server.nearby_place(lat, lng, place_radius(memory.accuracy))
+    if found is None:
+        return False
+    await db.refresh(memory)
+    if memory.lat != lat or memory.lng != lng:
+        return False  # the location was removed while we looked
+    memory.place_name = found.name
+    memory.place_area = found.area
+    await db.commit()
+    return True
+
+
+async def name_place_later(
+    session_factory: async_sessionmaker[AsyncSession], memory_id: uuid.UUID
+) -> None:
+    """`name_place` as a background task, after the save has been answered,
+    in its own session. A failure is logged, never raised."""
+    try:
+        async with session_factory() as db:
+            memory = await db.get(Memory, memory_id)
+            if memory is not None and not memory.is_deleted:
+                await name_place(db, memory)
+    except Exception:
+        log.exception("Couldn't name the place for memory %s", memory_id)

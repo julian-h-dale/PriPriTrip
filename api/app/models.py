@@ -306,6 +306,12 @@ class Memory(SoftDeleteMixin, Base):
     lat: Mapped[float | None] = mapped_column(default=None)
     lng: Mapped[float | None] = mapped_column(default=None)
     accuracy: Mapped[float | None] = mapped_column(default=None)
+    # What's there, looked up on the server after the memory is saved (Run
+    # stage 26): the closest named place ("Café Central") and its area
+    # ("Innere Stadt, Vienna"). Either can be missing; both go when the
+    # location is removed.
+    place_name: Mapped[str | None] = mapped_column(default=None)
+    place_area: Mapped[str | None] = mapped_column(default=None)
     # Viewers (people following along) see only public memories; the owner
     # and editors see every one. Private unless its author says otherwise.
     is_public: Mapped[bool] = mapped_column(default=False, server_default="0")

@@ -83,7 +83,8 @@ error. If one does, add that person with the chosen role.
   4 lines.
 - **Author color:** the rail dot plus a 3 px left edge on the tile. Colors
   are handed out per trip in a fixed order: owner `series-1`, then members
-  in the order they joined (`series-2…8`). That way two people on one trip
+  in the order they joined (`series-2…8`). The server sends it as
+  `authorRank` on each memory (0 = owner). That way two people on one trip
   never share a color, and you always have the same one on that trip. A
   small legend under the title ("● You ● PriPri ● Sam") explains them.
 - **States on the tile:** small badges in the corner (waiting to sync,
@@ -171,7 +172,14 @@ Tests:
   switch works. No Join trip button, no codes.
 - Phone width: the Share dialog at 375 px, light and dark.
 
-### Phase 94 — place names for memories (server)
+### Phase 94 — place names for memories (server) ✅
+
+Built 2026-10-08. The place picked is the **most-reviewed** of the ten
+closest within the radius, not the closest: in a live test the closest to
+Café Central was a gym upstairs. Also added for Phase 95: `authorName` and `authorRank` on
+every memory, because viewers can't read the members list and the colors need
+the trip's order of people. The accuracy is now its own "±N m" label beside the
+place, not part of "Location attached".
 
 Scope: migration 0016, the lookup module, the background task on create,
 clearing it on location removal, `MemoryRead` fields, `make

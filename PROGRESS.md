@@ -24,6 +24,23 @@
     the dev data now gives 5.
   - **Dev DB note:** it was at 0014 while `main` needs 0015 (plan B):
     every trip read 500'd (seen as CORS errors) until `make migrate`.
+  - Julian (2026-10-08): build the outstanding phases (94–96) without
+    stopping, unless there are questions.
+  - **Phase 94 ✅:** place names on the server. `memories.place_name` /
+    `place_area` (migration 0016), filled by a background task after a
+    memory with a location is created (`google_places_server.nearby_place`:
+    Places Nearby, radius = accuracy kept to 25–150 m; of the 10 closest
+    real places, the most-reviewed (closest alone named a gym above Café
+    Central); else the area from a 1 km search). Checked live: Café Central,
+    Zytglogge, area-only in the countryside. Areas come in the local
+    language ("Wien"). The lookup runs in its own
+    session (`get_session_factory`, overridden in tests); failures are
+    logged. Removing the location clears them. `make backfill-places` names
+    older memories. `MemoryRead.location` adds `placeName/placeArea`;
+    memories also carry `authorName` and `authorRank` (owner 0, then members
+    by first join) for Phase 95's colors. UI label: trip place → place name
+    · area → "Location attached", with "±N m" beside it. Tests never call
+    Google (an autouse fixture blanks the key).
 - **Run stage 25 (2026-10-08)** on **`alternate-days`** (worktree, off `main`
   at `e04da12`): plan B, a backup plan for a day. Plan:
   `docs/plan/run-25-plan-b.md`. Q-B1–B4 answered (the recommendations);
@@ -345,8 +362,11 @@ Tested with Python 3.12.3, Node 24.14 and npm 11.11.
   only enter wall-clock times. Zones are computed on read
   (`api/app/zones.py`), never stored. Decided 2026-10-02.
 - **Google Places runs in the browser**, with the key from `GET /config`. It's
-  a browser key protected by website and API restrictions in Google's console;
-  the server never calls Google. Decided 2026-10-02.
+  a browser key protected by website and API restrictions in Google's console.
+  Decided 2026-10-02. **Two server exceptions**, both in
+  `api/app/google_places_server.py` with the same key: the photo backfill
+  script, and naming a memory's place after it's saved (a background task;
+  Julian, 2026-10-08, Run 26).
 - **The template workflow:** plan → answer the open questions → one phase at a
   time, `make verify` green, update this file, commit.
 

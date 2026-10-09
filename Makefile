@@ -1,7 +1,7 @@
 # Canonical commands. The agent (and you) should use these rather than
 # reconstructing raw commands. See AGENTS.md for the workflow.
 
-.PHONY: help env setup seed migrate reset-db seed-remote list-trips export-trip pi-backup-install pi-backup-run schema backfill-photos icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
+.PHONY: help env setup seed migrate reset-db seed-remote list-trips export-trip pi-backup-install pi-backup-run schema backfill-photos backfill-places icons dev dev-api dev-ui image run-container test test-api test-ui lint lint-api lint-ui verify worktree worktree-list worktree-rm
 
 help:
 	@echo "Targets:"
@@ -16,6 +16,7 @@ help:
 	@echo "  reset-db      Delete the dev SQLite database and re-seed"
 	@echo "  schema        Regenerate schema/trip.schema.json from the Pydantic models"
 	@echo "  backfill-photos  Backfill imgRef for locations with a place id but no photo"
+	@echo "  backfill-places  Name the places of journal memories saved before lookups"
 	@echo "  icons            Regenerate the PWA icons from docs/brand/logo.svg"
 	@echo "  dev           Run the API and UI together (Ctrl-C stops both)"
 	@echo "  dev-api       Run the API with reload (port from api/.env, default 8000)"
@@ -82,6 +83,9 @@ schema:
 
 backfill-photos:
 	cd api && . .venv/bin/activate && python -m app.backfill_photos
+
+backfill-places:
+	cd api && . .venv/bin/activate && python -m app.backfill_places
 
 # PWA icons from docs/brand/logo.svg (re-run when the logo changes; outputs committed).
 icons:

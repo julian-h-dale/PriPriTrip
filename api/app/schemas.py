@@ -204,6 +204,14 @@ class MemoryLocation(CamelModel):
     accuracy: float | None = Field(default=None, ge=0)
 
 
+class MemoryLocationRead(MemoryLocation):
+    """A memory's location as read back: plus what's there, when the server
+    has looked it up (never sent by the phone)."""
+
+    place_name: str | None = None
+    place_area: str | None = None
+
+
 class MemoryCreate(CamelModel):
     """A new memory, possibly written offline: the phone makes its `id` (so a
     retry can't duplicate it) and its `createdAt` (UTC, when Save was
@@ -250,9 +258,13 @@ class MemoryRead(CamelModel):
     created_at: datetime
     updated_at: datetime | None = None
     received_at: datetime
-    location: MemoryLocation | None = None
+    location: MemoryLocationRead | None = None
     photos: list[PhotoRead] = Field(default_factory=list)
     author_email: str
+    author_name: str = ""
+    # The author's place on the trip, for their color: 0 is the owner, then
+    # members in the order they first joined.
+    author_rank: int = 0
     # True when the caller wrote it — only then may they edit or delete it.
     mine: bool
     # Viewers see only public memories; the owner and editors see all.
