@@ -154,6 +154,10 @@ function usePhotoPicks(existing) {
     dropAdded: (key) => setAdded((a) => a.filter((p) => p.key !== key)),
     dropExisting: (id) => setRemoved((r) => new Set(r).add(id)),
     removedIds: [...removed],
+    // Removed photos that never uploaded: saving deletes the only copy.
+    removedHere: existing.filter((p) => removed.has(p.id) && p.pending).length,
+    keepHere: () =>
+      setRemoved((r) => new Set([...r].filter((id) => !existing.some((p) => p.id === id && p.pending)))),
     files: added.map((p) => p.file),
   };
 }
@@ -326,6 +330,17 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
                   onRemove={() => photos.dropAdded(p.key)}
                 />
               ))}
+            </div>
+          )}
+          {photos.removedHere > 0 && (
+            <div role="alert" className="flex items-center justify-between gap-2 rounded-md border border-destructive/50 p-2 text-xs">
+              <span>
+                {photos.removedHere === 1 ? "A removed photo hasn’t" : `${photos.removedHere} removed photos haven’t`}{" "}
+                uploaded: saving deletes {photos.removedHere === 1 ? "it" : "them"} from this phone for good.
+              </span>
+              <Button type="button" size="sm" variant="outline" onClick={photos.keepHere}>
+                Keep {photos.removedHere === 1 ? "it" : "them"}
+              </Button>
             </div>
           )}
           <div className="flex flex-wrap gap-2">

@@ -12,6 +12,29 @@
     Today) put icon and time on a top line and the title below at full
     width; Normal unchanged. E2E `large-text.spec.js`. `make verify` green
     (278 API + 585 UI).
+- **Run stage 24 (2026-10-08)** on **`photo-resilience`** (off `main` at
+  `7452475`): photos and memories are never dropped. Plan:
+  `docs/plan/run-24-photo-upload-resilience.md`. All questions answered
+  (Q-P1–P5); Run 23 (large text) waits behind it.
+  - **Phase 88 ✅:** iPhone camera photos (Take photo) were refused: they're
+    JPEGs with an HDR gain map, which Pillow reads as `MPO`. Now stored as
+    `jpeg`, byte-for-byte, and decoded small like any JPEG (a 48 MP one was
+    about to be decoded full size). No HDR work (Q-P2). `make verify` green
+    (280 API + 576 UI).
+  - Julian: do all the outstanding phases (89–90) without stopping.
+  - **Phases 89–90 ✅ (one commit; they share `journalSlice.js`):** nothing
+    the server refuses is dropped. A refused write stays in the outbox,
+    marked stuck, and on its memory on screen (badge, reason); a stuck
+    memory holds its photos; a password reset (403
+    `PASSWORD_CHANGE_REQUIRED`) only pauses. Resync: Try again, Try all
+    again, Upload, and once after an app update. Remove, memory delete and
+    sign-out all warn first. If the phone can't save a write, it's sent at
+    once or the app says it isn't saved; `navigator.storage.persist()` is
+    asked. `make verify` green (280 API + 596 UI); e2e
+    `journal-stuck-photos.spec.js` (a real MPO uploads; a refused photo
+    survives a reload; screenshots dark and light at 375 px). **Run stage
+    24 is complete; nothing is pushed or deployed.** Still to do by hand:
+    Take photo on a real iPhone.
 - **Run stage 22 (2026-10-07)** on **`analytics`**: light mode and text size.
   Plan: `docs/plan/run-22-light-mode.md`.
   - **Phase 85 ✅:** light mode, from the All trips drawer, per phone,
