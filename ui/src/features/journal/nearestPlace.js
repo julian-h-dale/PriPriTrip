@@ -27,9 +27,20 @@ export function nearestPlace(trip, point) {
   return best;
 }
 
-/** Where a memory was written, in words: the nearby trip place, else just "attached". */
+/**
+ * Where a memory was written, in words. A trip place close by wins ("Near
+ * Hotel Bern"); then what the server looked up ("Café Central · Innere
+ * Stadt, Vienna", or just the area); else "Location attached" (the lookup
+ * hasn't run yet, or found nothing).
+ */
 export function locationLabel(trip, location) {
   const near = nearestPlace(trip, location);
   if (near) return `Near ${near.title}`;
-  return location.accuracy != null ? `Location attached (±${Math.round(location.accuracy)} m)` : "Location attached";
+  const words = [location.placeName, location.placeArea].filter(Boolean);
+  return words.length ? words.join(" · ") : "Location attached";
+}
+
+/** "±12 m": how sure the phone was of where it was; null when it didn't say. */
+export function accuracyLabel(location) {
+  return location?.accuracy != null ? `±${Math.round(location.accuracy)} m` : null;
 }

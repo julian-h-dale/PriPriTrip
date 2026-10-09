@@ -160,28 +160,23 @@ class TripSummary(CamelModel):
     role: Literal["owner", "editor", "viewer"] = "owner"
 
 
-class JoinTrip(CamelModel):
-    """Join with the trip's view code (as a viewer) or its edit code (as an
-    editor); the server tells them apart. The trip's id (`code`, or `tripId`
-    from older apps) only works for someone already on the trip."""
+class MemberInvite(CamelModel):
+    """Add someone to a trip by their account's email."""
 
-    trip_id: uuid.UUID | None = None
-    code: str | None = Field(default=None, max_length=200)
+    email: str = Field(min_length=1, max_length=320)
+    role: Literal["editor", "viewer"]
+
+
+class MemberRoleChange(CamelModel):
+    role: Literal["editor", "viewer"]
 
 
 class MemberRead(CamelModel):
     user_id: uuid.UUID
     email: str
+    name: str
     role: Literal["editor", "viewer"]
     joined_at: datetime
-
-
-class EditCode(CamelModel):
-    code: str
-
-
-class ViewCode(CamelModel):
-    code: str
 
 
 MEMORY_MAX_CHARS = 2000
@@ -207,6 +202,14 @@ class MemoryLocation(CamelModel):
     lng: float = Field(ge=-180, le=180)
     # The phone's uncertainty radius in metres, as the browser reports it.
     accuracy: float | None = Field(default=None, ge=0)
+
+
+class MemoryLocationRead(MemoryLocation):
+    """A memory's location as read back: plus what's there, when the server
+    has looked it up (never sent by the phone)."""
+
+    place_name: str | None = None
+    place_area: str | None = None
 
 
 class MemoryCreate(CamelModel):
@@ -255,9 +258,13 @@ class MemoryRead(CamelModel):
     created_at: datetime
     updated_at: datetime | None = None
     received_at: datetime
-    location: MemoryLocation | None = None
+    location: MemoryLocationRead | None = None
     photos: list[PhotoRead] = Field(default_factory=list)
     author_email: str
+    author_name: str = ""
+    # The author's place on the trip, for their color: 0 is the owner, then
+    # members in the order they first joined.
+    author_rank: int = 0
     # True when the caller wrote it — only then may they edit or delete it.
     mine: bool
     # Viewers see only public memories; the owner and editors see all.

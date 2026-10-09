@@ -80,7 +80,7 @@ describe("a new memory's location", () => {
     permissionState.mockResolvedValue("granted");
     currentPosition.mockResolvedValue(NEAR_HOTEL);
     renderDialog();
-    expect(await screen.findByText(`Near ${HOTEL.name}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Near ${HOTEL.name} · ±9 m`)).toBeInTheDocument();
     const body = await writeAndSave(user, "Breakfast on the terrace");
     expect(body.location).toEqual(NEAR_HOTEL);
   });
@@ -121,7 +121,7 @@ describe("a new memory's location", () => {
     permissionState.mockResolvedValue("granted");
     currentPosition.mockResolvedValue(NEAR_HOTEL);
     renderDialog();
-    await screen.findByText(`Near ${HOTEL.name}`);
+    await screen.findByText(`Near ${HOTEL.name} · ±9 m`);
     await user.click(screen.getByRole("button", { name: "Don’t add location" }));
     expect(screen.getByRole("button", { name: "Add location" })).toBeInTheDocument();
     const body = await writeAndSave(user, "Private moment");

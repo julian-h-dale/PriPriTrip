@@ -10,6 +10,7 @@ from httpx import AsyncClient
 
 from app.sample_data import load_sample_trip
 from tests.conftest import if_match
+from tests.test_sharing import edited_trip
 
 Json = dict[str, Any]
 
@@ -17,9 +18,7 @@ Json = dict[str, Any]
 async def shared_for_editing(owner: AsyncClient, editor: AsyncClient) -> Json:
     """The sample trip, imported by `owner`, joined by `editor` as an editor,
     and read back."""
-    trip_id = (await owner.post("/trips/import", json=load_sample_trip())).json()["id"]
-    code = (await owner.get(f"/trips/{trip_id}/edit-code")).json()["code"]
-    assert (await editor.post("/trips/join", json={"code": code})).status_code == 200
+    trip_id = (await edited_trip(owner, editor))["id"]
     body: Json = (await owner.get(f"/trips/{trip_id}")).json()
     return body
 

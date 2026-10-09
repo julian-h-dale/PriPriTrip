@@ -13,14 +13,16 @@ from collections.abc import AsyncGenerator
 # Ensure the app can boot without a real .env during tests.
 os.environ.setdefault("JWT_SECRET", "test-secret")
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.database import enable_sqlite_foreign_keys, get_db
+from app.database import enable_sqlite_foreign_keys, get_db, get_session_factory
 from app.main import create_app
 from app.models import Base, UserRecord
+from app.settings import get_app_settings
 from app.users import current_active_user, get_jwt_strategy
 
 test_engine = create_async_engine(
@@ -30,6 +32,13 @@ test_engine = create_async_engine(
 )
 enable_sqlite_foreign_keys(test_engine)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
+
+
+@pytest.fixture(autouse=True)
+def no_google(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never call Google: no key (api/.env may have a real one). A
+    test that wants a lookup fakes `google_places_server.nearby_place`."""
+    monkeypatch.setattr(get_app_settings(), "google_maps_api_key", "")
 
 
 @pytest_asyncio.fixture
@@ -67,6 +76,7 @@ async def client(db: AsyncSession, test_user: UserRecord) -> AsyncGenerator[Asyn
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[current_active_user] = lambda: test_user
+    app.dependency_overrides[get_session_factory] = lambda: TestSessionLocal
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -151,7 +161,14 @@ async def _user(db: AsyncSession, email: str) -> UserRecord:
     return user
 
 
-async def _client_for(db: AsyncSession, user: UserRecord) -> AsyncClient:
+class UserClient(AsyncClient):
+    """A test client signed in as one account; `email` is that account's (for
+    adding them to a trip)."""
+
+    email: str
+
+
+async def _client_for(db: AsyncSession, user: UserRecord) -> UserClient:
     app = create_app()
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -159,7 +176,10 @@ async def _client_for(db: AsyncSession, user: UserRecord) -> AsyncClient:
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[current_active_user] = lambda: user
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    app.dependency_overrides[get_session_factory] = lambda: TestSessionLocal
+    ac = UserClient(transport=ASGITransport(app=app), base_url="http://test")
+    ac.email = user.email
+    return ac
 
 
 @pytest_asyncio.fixture
@@ -168,13 +188,13 @@ async def viewer_user(db: AsyncSession) -> UserRecord:
 
 
 @pytest_asyncio.fixture
-async def viewer(db: AsyncSession, viewer_user: UserRecord) -> AsyncGenerator[AsyncClient, None]:
+async def viewer(db: AsyncSession, viewer_user: UserRecord) -> AsyncGenerator[UserClient, None]:
     async with await _client_for(db, viewer_user) as ac:
         yield ac
 
 
 @pytest_asyncio.fixture
-async def stranger(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def stranger(db: AsyncSession) -> AsyncGenerator[UserClient, None]:
     async with await _client_for(db, await _user(db, "stranger@example.com")) as ac:
         yield ac
 

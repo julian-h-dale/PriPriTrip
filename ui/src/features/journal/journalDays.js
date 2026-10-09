@@ -5,14 +5,18 @@ import { todayIn } from "@/shared/utils/tripDates";
  * date it was written on *where it was written* — its own zone — so a note
  * at 00:30 in Tokyo is that Tokyo date, whatever the date in UTC or on the
  * phone reading it. Memories before the trip's first day or after its last
- * go in their own groups. Inside a group, the server's order (UTC creation
- * time) is kept.
+ * go in their own groups. Inside a group, memories are in the order they
+ * were written (`createdAt`, the phone's stamp, then id) — a memory still
+ * waiting on the phone lands in its place, not at the end.
  *
  *   [{ key, kind: "before" | "day" | "after", date?, memories }]
  */
 export function memoryDate(memory) {
   return todayIn(memory.zone, new Date(memory.createdAt));
 }
+
+const byWritten = (a, b) =>
+  new Date(a.createdAt) - new Date(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 export function journalDays(memories, trip) {
   const before = [];
@@ -28,11 +32,11 @@ export function journalDays(memories, trip) {
     }
   }
   const groups = [];
-  if (before.length) groups.push({ key: "before", kind: "before", memories: before });
+  if (before.length) groups.push({ key: "before", kind: "before", memories: before.sort(byWritten) });
   for (const date of [...byDate.keys()].sort()) {
-    groups.push({ key: date, kind: "day", date, memories: byDate.get(date) });
+    groups.push({ key: date, kind: "day", date, memories: byDate.get(date).sort(byWritten) });
   }
-  if (after.length) groups.push({ key: "after", kind: "after", memories: after });
+  if (after.length) groups.push({ key: "after", kind: "after", memories: after.sort(byWritten) });
   return groups;
 }
 

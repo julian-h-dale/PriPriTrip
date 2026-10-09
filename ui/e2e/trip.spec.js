@@ -594,7 +594,7 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
   }
 });
 
-test("sharing: someone joins with the edit code and can edit", async ({ browser }) => {
+test("sharing: the owner invites someone by email as an editor, and they can edit", async ({ browser }) => {
   const ownerContext = await browser.newContext();
   const editorContext = await browser.newContext();
   const editor = await editorContext.newPage();
@@ -607,17 +607,20 @@ test("sharing: someone joins with the edit code and can edit", async ({ browser 
     // Share is in the drawer, after Documents.
     await owner.getByRole("button", { name: "Open menu" }).click();
     await owner.getByRole("region", { name: "Trip tools" }).getByRole("button", { name: "Share trip" }).click();
-    const canEdit = owner.getByRole("dialog", { name: "Share trip" }).getByRole("region", { name: "Can edit" });
-    const code = (await canEdit.locator(".font-mono").textContent()).trim();
-    expect(code).toHaveLength(20);
-    await owner.screenshot({ path: screenshotPath("21a-share-dialog-codes"), fullPage: true });
+    const share = owner.getByRole("dialog", { name: "Share trip" });
+    // An email with no account is refused.
+    await share.getByLabel("Email").fill("nobody@example.com");
+    await share.getByRole("button", { name: "Invite" }).click();
+    await expect(share.getByRole("alert")).toContainText("No account with that email");
+    await share.getByLabel("Email").fill(SEED_ADMIN.email);
+    await share.getByLabel("Can", { exact: true }).selectOption("editor");
+    await share.getByRole("button", { name: "Invite" }).click();
+    await expect(share.getByLabel(`Role for ${SEED_ADMIN.email}`)).toHaveValue("editor");
+    await owner.screenshot({ path: screenshotPath("21a-share-dialog-invite"), fullPage: true });
 
+    // No code to paste: the trip is just on their list.
     await login(editor, SEED_ADMIN);
-    await editor.getByRole("button", { name: "Join trip" }).click();
-    const join = editor.getByRole("dialog", { name: "Join a trip" });
-    await join.getByLabel("Trip code").fill(code);
-    await join.getByRole("button", { name: "Join", exact: true }).click();
-    await editor.waitForURL(new RegExp(`/trips/${tripId}/today$`));
+    await expect(editor.getByRole("button", { name: "Join trip" })).toHaveCount(0);
     await editor.goto(`/trips/${tripId}/days/2026-05-11`);
     await expect(editor.getByRole("heading", { name: "Mon, May 11" })).toBeVisible();
     await expect(editor.getByRole("button", { name: /Add activity/ })).toBeVisible();
@@ -638,8 +641,8 @@ test("sharing: someone joins with the edit code and can edit", async ({ browser 
 });
 
 test("viewers: Timeline, Journal and Map only; no Stays/Travel views, no Trip tools", async ({ browser }) => {
-  // The seed admin isn't on the sample trip: it joins with the view code,
-  // is checked as a viewer, then leaves again.
+  // The seed admin isn't on the sample trip: the owner adds it as a viewer,
+  // it's checked as a viewer, then leaves again.
   const ownerContext = await browser.newContext();
   const viewerContext = await browser.newContext();
   const viewer = await viewerContext.newPage();
@@ -650,16 +653,15 @@ test("viewers: Timeline, Journal and Map only; no Stays/Travel views, no Trip to
     await (await tripLink(owner, SAMPLE_TRIP)).click();
     tripId = new URL(owner.url()).pathname.split("/")[2];
     const ownerToken = await owner.evaluate(() => localStorage.getItem("auth_token"));
-    const viewCode = (
-      await (await owner.request.get(`${API_URL}/trips/${tripId}/view-code`, { headers: { Authorization: `Bearer ${ownerToken}` } })).json()
-    ).code;
+    const added = await owner.request.post(`${API_URL}/trips/${tripId}/members`, {
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      data: { email: SEED_ADMIN.email, role: "viewer" },
+    });
+    expect(added.ok()).toBe(true);
 
     await login(viewer, SEED_ADMIN);
-    await viewer.getByRole("button", { name: "Join trip" }).click();
-    const join = viewer.getByRole("dialog", { name: "Join a trip" });
-    await join.getByLabel("Trip code").fill(viewCode);
-    await join.getByRole("button", { name: "Join", exact: true }).click();
-    // Joining opens Today, which a viewer doesn't get: the timeline instead.
+    // A trip opens on Today, which a viewer doesn't get: the timeline instead.
+    await viewer.goto(`/trips/${tripId}/today`);
     await viewer.waitForURL(new RegExp(`/trips/${tripId}$`));
     const tabs = viewer.getByRole("navigation", { name: "Trip" }).getByRole("link");
     await expect(tabs).toHaveText(["Timeline", "Journal", "Map"]);
@@ -726,9 +728,9 @@ test("editing: two people change the same activity; the second gets a warning", 
     await (await tripLink(owner, SAMPLE_TRIP)).click();
     tripId = new URL(owner.url()).pathname.split("/")[2];
     original = await dinnerOf(owner);
-    const code = (await (await api(owner, "get", `/trips/${tripId}/edit-code`)).json()).code;
+    const added = await api(owner, "post", `/trips/${tripId}/members`, { body: { email: SEED_ADMIN.email, role: "editor" } });
+    expect(added.ok()).toBe(true);
     await login(editor, SEED_ADMIN);
-    expect((await api(editor, "post", "/trips/join", { body: { code } })).ok()).toBe(true);
 
     // Both open the dinner's edit form.
     const openEdit = async (page) => {

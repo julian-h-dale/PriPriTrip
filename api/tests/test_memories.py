@@ -1,7 +1,7 @@
 """The trip journal: memories by the owner and editors, ordered by the
 server's UTC time, editable and deletable only by their author. (Who sees
 which memory — viewers and public ones — is tests/test_public_memories.py.)
-The `viewer` fixture joins as an editor here, so it can write."""
+The `viewer` fixture is added as an editor here, so it can write."""
 
 from __future__ import annotations
 
@@ -264,11 +264,13 @@ async def test_a_memory_can_carry_where_it_was_written(client: AsyncClient) -> N
             url, json={"text": "Zytglogge chimes", "zone": "Europe/Zurich", "location": here}
         )
     ).json()
-    assert saved["location"] == here
+    # Read back with room for what's there (no lookup here: no Google key).
+    named = {**here, "placeName": None, "placeArea": None}
+    assert saved["location"] == named
     plain = (await client.post(url, json={"text": "no place", "zone": "UTC"})).json()
     assert plain["location"] is None
     listed = {m["text"]: m["location"] for m in (await client.get(url)).json()}
-    assert listed == {"Zytglogge chimes": here, "no place": None}
+    assert listed == {"Zytglogge chimes": named, "no place": None}
 
 
 async def test_a_location_must_be_a_real_place(client: AsyncClient) -> None:
@@ -291,7 +293,7 @@ async def test_an_edit_keeps_or_drops_the_location_but_never_adds_one(client: As
     here = {"lat": 46.9479, "lng": 7.4474, "accuracy": None}
     m = (await client.post(url, json={"text": "a", "zone": "UTC", "location": here})).json()
     kept = (await client.put(f"{url}/{m['id']}", json={"text": "b"})).json()
-    assert kept["location"] == here
+    assert kept["location"] == {**here, "placeName": None, "placeArea": None}
     dropped = (await client.put(f"{url}/{m['id']}", json={"text": "c", "location": None})).json()
     assert dropped["location"] is None
     # Setting one on an edit is ignored: it's where the memory was written.

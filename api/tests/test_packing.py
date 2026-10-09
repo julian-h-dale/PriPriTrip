@@ -79,7 +79,7 @@ async def test_suggestions_fill_only_an_empty_list(client: AsyncClient) -> None:
 async def test_lists_are_personal(
     client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient
 ) -> None:
-    trip = await edited_trip(client, viewer)  # `viewer` joined with the edit code: an editor
+    trip = await edited_trip(client, viewer)  # `viewer` was added as an editor
     tid = trip["id"]
     mine = await add(client, tid, "clothes", "Owner's socks")
     theirs = await add(viewer, tid, "toiletries", "Viewer's toothbrush")

@@ -90,30 +90,6 @@ export const importTrip = createAsyncThunk(
   }
 );
 
-/**
- * Join someone's trip with a code from its owner's Share screen: the view code
- * (the trip's id) makes a viewer, the edit code an editor. Resolves to the
- * trip summary; rejects with a human message (unknown code, or it's already
- * yours).
- */
-export const joinTrip = createAsyncThunk("trips/join", async (code, { dispatch, rejectWithValue }) => {
-  try {
-    const { data } = await apiClient.post("/trips/join", { code }, { silent: true });
-    const how = data.role === "editor" ? " (you can edit it)" : "";
-    dispatch(notify({ type: "success", message: `Joined “${data.name}”${how}` }));
-    return data;
-  } catch (err) {
-    const status = err.response?.status;
-    return rejectWithValue(
-      status === 404 || status === 422
-        ? "No trip has that code. Check it was copied whole."
-        : status === 409
-          ? "That’s already your trip."
-          : "Couldn’t join right now. Try again."
-    );
-  }
-});
-
 /** Stop viewing a trip someone shared with you. */
 export const leaveTrip = createAsyncThunk("trips/leave", async (id, { dispatch, getState }) => {
   await apiClient.delete(`/trips/${id}/membership`, { silent: true });
@@ -161,12 +137,6 @@ const tripsSlice = createSlice({
         }
       })
       .addCase(importTrip.fulfilled, (state, action) => {
-        state.items.push(action.payload);
-        state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
-      })
-      .addCase(joinTrip.fulfilled, (state, action) => {
-        // Joining again with the other code changes the role.
-        state.items = state.items.filter((t) => t.id !== action.payload.id);
         state.items.push(action.payload);
         state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
       })

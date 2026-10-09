@@ -6,6 +6,60 @@
 
 ## Status
 
+- **Run stage 26 (2026-10-08)** on **`journal-redesign`** (off `main` at
+  `de5a6e7`): invite people by email; the journal as a photo timeline.
+  Plan: `docs/plan/run-26-journal-redesign.md`. Q1–4, 7, 8 answered; Q5
+  (no time on the tile) and Q6 (leave the code columns) took the
+  recommendation.
+  - **Phase 93 ✅:** no more join codes. The owner's Share dialog has an
+    email + Can view/edit + Invite form (`POST /trips/{id}/members`: 404 "No
+    account with that email", 409 for your own email, re-invite changes the
+    role) and a role picker on each member (`PATCH …/members/{userId}`).
+    Members show name, then email. `POST /trips/join`, the four code
+    endpoints, `JoinTripDialog` and Join trip are gone; `trips.view_code`/
+    `edit_code` stay in the table, unused. Test clients carry `.email`
+    (`UserClient`) so helpers invite the right account. E2E sharing specs
+    switched to invites. `make verify` green (294 API + 624 UI).
+    **Already failing on `main`, not this change:** the e2e viewer test expects 4 map pins and
+    the dev data now gives 5.
+  - **Dev DB note:** it was at 0014 while `main` needs 0015 (plan B):
+    every trip read 500'd (seen as CORS errors) until `make migrate`.
+  - Julian (2026-10-08): build the outstanding phases (94–96) without
+    stopping, unless there are questions.
+  - **Phase 94 ✅:** place names on the server. `memories.place_name` /
+    `place_area` (migration 0016), filled by a background task after a
+    memory with a location is created (`google_places_server.nearby_place`:
+    Places Nearby, radius = accuracy kept to 25–150 m; of the 10 closest
+    real places, the most-reviewed (closest alone named a gym above Café
+    Central); else the area from a 1 km search). Checked live: Café Central,
+    Zytglogge, area-only in the countryside. Areas come in the local
+    language ("Wien"). The lookup runs in its own
+    session (`get_session_factory`, overridden in tests); failures are
+    logged. Removing the location clears them. `make backfill-places` names
+    older memories. `MemoryRead.location` adds `placeName/placeArea`;
+    memories also carry `authorName` and `authorRank` (owner 0, then members
+    by first join) for Phase 95's colors. UI label: trip place → place name
+    · area → "Location attached", with "±N m" beside it. Tests never call
+    Google (an autouse fixture blanks the key).
+  - **Phases 95–96 ✅ (one commit: the tile links to the page):** the
+    journal is a timeline. A sticky plain divider per day (still a link to
+    the day page), then the day's memories sorted by `createdAt` then id on
+    the client too (`journalDays`), each a `RailDot` in its author's color
+    (`authorColors.js`: `series-(authorRank+1)`, "You"/name/email; a memory
+    still on the phone takes your color) with a legend under the title.
+    `MemoryTile`: the first photo's *thumbnail* (480 px, the copy kept
+    offline) at 4:3 with a black fade and 2 lines of text, "⧉ N" for more
+    photos, badges for waiting/stuck/public; no photo (or none this phone
+    can show) → a text tile on a 10% tint. No time on the tile. Tapping
+    opens `MemoryPage` at `/trips/:id/journal/:memoryId`: swipeable display
+    copies ("1 / 3", tap → `PhotoViewer`), the full text, author + time
+    (+ zone, edited), Where (place · area · ±N m, Open in Maps), sync/stuck
+    banners with Try again / Remove, Edit / Delete for your own. Back restores
+    the journal's scroll; the page keeps its memory on screen while the
+    journal reloads (it used to blink and close an open photo). Journal,
+    Stuck and Photos tests now open the page; journal e2e specs updated and
+    run (location, photos, stuck, offline). Looked at 375 px with mocked
+    multi-day data: dark, light, larger text.
 - **Run stage 25 (2026-10-08)** on **`alternate-days`** (worktree, off `main`
   at `e04da12`): plan B, a backup plan for a day. Plan:
   `docs/plan/run-25-plan-b.md`. Q-B1–B4 answered (the recommendations);
@@ -327,8 +381,11 @@ Tested with Python 3.12.3, Node 24.14 and npm 11.11.
   only enter wall-clock times. Zones are computed on read
   (`api/app/zones.py`), never stored. Decided 2026-10-02.
 - **Google Places runs in the browser**, with the key from `GET /config`. It's
-  a browser key protected by website and API restrictions in Google's console;
-  the server never calls Google. Decided 2026-10-02.
+  a browser key protected by website and API restrictions in Google's console.
+  Decided 2026-10-02. **Two server exceptions**, both in
+  `api/app/google_places_server.py` with the same key: the photo backfill
+  script, and naming a memory's place after it's saved (a background task;
+  Julian, 2026-10-08, Run 26).
 - **The template workflow:** plan → answer the open questions → one phase at a
   time, `make verify` green, update this file, commit.
 

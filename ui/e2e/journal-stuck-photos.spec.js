@@ -33,7 +33,6 @@ test("run 24: a camera photo uploads; a refused one stays on the phone, marked, 
   const stuckBar = page.getByRole("region", { name: "Couldn’t upload" });
   await expect(stuckBar).toContainText("1 couldn’t upload");
   expect(uploads).toEqual([201, 422]); // the camera photo went; the other was refused
-  await expect(card.getByText(/A photo couldn’t upload: Only JPEG, PNG, WebP or HEIC photos/)).toBeVisible();
   await expect(card.getByTitle("Couldn’t upload")).toHaveCount(1);
 
   // Still there after a reload: it's in the outbox, not just on screen.
@@ -42,7 +41,11 @@ test("run 24: a camera photo uploads; a refused one stays on the phone, marked, 
   await expect(stuckBar).toContainText("1 couldn’t upload");
   await page.screenshot({ path: screenshotPath("run24-01-stuck-photo-dark"), fullPage: true });
 
-  await card.getByRole("button", { name: "Photo 2 of 2, couldn’t upload" }).click();
+  // Its page says why.
+  await card.getByRole("link").click();
+  const memoryPage = page.getByRole("article", { name: "Memory" });
+  await expect(memoryPage.getByText(/A photo couldn’t upload: Only JPEG, PNG, WebP or HEIC photos/)).toBeVisible();
+  await memoryPage.getByRole("button", { name: "Photo 2 of 2, couldn’t upload" }).click();
   const viewer = page.getByRole("dialog", { name: "Photo 2 of 2" });
   await expect(viewer.getByRole("button", { name: "Save to phone" })).toBeVisible();
   await expect(viewer.getByText(/Couldn’t upload: Only JPEG/)).toBeVisible();
@@ -51,17 +54,20 @@ test("run 24: a camera photo uploads; a refused one stays on the phone, marked, 
   await page.screenshot({ path: screenshotPath("run24-03-stuck-viewer-confirm"), fullPage: true });
   await page.keyboard.press("Escape");
 
-  // The same journal in light mode.
+  // The same memory in light mode.
   await page.evaluate(() => localStorage.setItem("theme", "light"));
   await page.reload();
-  await expect(card.getByTitle("Couldn’t upload")).toHaveCount(1);
+  await expect(memoryPage.getByTitle("Couldn’t upload")).toHaveCount(1);
   await page.screenshot({ path: screenshotPath("run24-04-stuck-photo-light"), fullPage: true });
   await page.evaluate(() => localStorage.removeItem("theme"));
 
   // Remove asks first, then it's gone from the phone.
-  await card.getByRole("button", { name: "Photo 2 of 2, couldn’t upload" }).click();
+  await memoryPage.getByRole("button", { name: "Photo 2 of 2, couldn’t upload" }).click();
   await viewer.getByRole("button", { name: "Remove" }).click();
   await viewer.getByRole("button", { name: "Delete from this phone" }).click();
+  await expect(memoryPage.getByTitle("Couldn’t upload")).toHaveCount(0);
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(card).toBeVisible();
   await expect(stuckBar).toHaveCount(0);
   await expect(card.getByTitle("Couldn’t upload")).toHaveCount(0);
 

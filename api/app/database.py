@@ -47,3 +47,9 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """For work that outlives a request (background tasks): opens its own
+    sessions. A dependency, so tests can point it at their database."""
+    return AsyncSessionLocal

@@ -21,8 +21,15 @@ test("location: a memory names the place it was written near, pins on the map, a
   await page.screenshot({ path: screenshotPath("26-memory-location"), fullPage: true });
   await dialog.getByRole("button", { name: "Save" }).click();
   const card = page.getByRole("listitem").filter({ hasText: text });
-  await expect(card.getByRole("link", { name: /^Near Hotel/ })).toBeVisible();
+  await expect(card).toBeVisible();
   await expect(card).not.toContainText("Waiting to sync");
+  // The place is on the memory's own page, with the accuracy and Open in Maps.
+  await card.getByRole("link").click();
+  const where = page.getByRole("article", { name: "Memory" }).getByRole("region", { name: "Where" });
+  await expect(where).toContainText(/Near Hotel .* · ±15 m/);
+  await expect(where.getByRole("link", { name: "Open in Maps" })).toBeVisible();
+  await page.screenshot({ path: screenshotPath("26b-memory-page-place"), fullPage: true });
+  await page.getByRole("button", { name: "Back" }).click();
 
   await nav.getByRole("link", { name: "Map" }).click();
   // Memories show only with the Journal filter on: then the memory's own

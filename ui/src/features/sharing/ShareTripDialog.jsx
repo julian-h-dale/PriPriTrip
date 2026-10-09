@@ -1,115 +1,103 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useSelector } from "react-redux";
-import { RefreshCw, UserMinus } from "lucide-react";
-import { CopyField } from "@/shared/components/CopyField";
+import { UserMinus, UserPlus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
+import { Select } from "@/shared/components/ui/select";
 import { apiClient } from "@/shared/services/apiClient";
 import { selectOnline } from "@/shared/networkSlice";
 
-function CodeSection({ title, hint, children, action }) {
-  return (
-    <section aria-label={title} className="flex flex-col gap-1.5">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
-      {children}
-      <p className="text-xs text-muted-foreground">{hint}</p>
-      {action}
-    </section>
-  );
+const ROLE_HINT = {
+  viewer: "Sees the plan, the map and the memories you mark public. No confirmation numbers.",
+  editor: "Can also change days, activities, stays and travel, and sees every memory. Only you can delete the trip or remove people.",
+};
+
+function inviteError(err) {
+  const status = err?.response?.status;
+  if (status === 404) return "No account with that email. An admin can make one.";
+  if (status === 409) return "That’s you: you own this trip.";
+  if (status === 422) return "Enter their email address.";
+  return "Couldn’t add them. Try again.";
 }
 
-/**
- * One of the trip's two codes: loaded when the dialog opens, renewable with
- * a two-tap confirm (the old code stops working; whoever already joined
- * keeps their access).
- */
-function useShareCode(tripId, kind, open) {
-  const [code, setCode] = useState(null); // null while loading
-  const [failed, setFailed] = useState(false);
-  const [renewing, setRenewing] = useState(null); // null | "confirm" | "busy" | "done"
+/** Add someone by their account's email, as a viewer or an editor. */
+function InviteForm({ tripId, online, onAdded }) {
+  const ids = useId();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("viewer");
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    let live = true;
-    setFailed(false);
-    setRenewing(null);
-    apiClient
-      .get(`/trips/${tripId}/${kind}-code`, { silent: true, offlineOk: true })
-      .then(({ data }) => live && setCode(data.code))
-      .catch(() => live && setFailed(true));
-    return () => {
-      live = false;
-    };
-  }, [open, tripId, kind]);
-
-  async function renew() {
-    if (renewing !== "confirm") {
-      setRenewing("confirm");
-      return;
-    }
-    setRenewing("busy");
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!email.includes("@")) return setError("Enter their email address.");
+    setBusy(true);
+    setError(null);
     try {
-      const { data } = await apiClient.post(`/trips/${tripId}/${kind}-code`, null, { silent: true });
-      setCode(data.code);
-      setRenewing("done");
-    } catch {
-      setRenewing(null);
+      const { data } = await apiClient.post(
+        `/trips/${tripId}/members`,
+        { email: email.trim(), role },
+        { silent: true }
+      );
+      setEmail("");
+      onAdded(data);
+    } catch (err) {
+      setError(inviteError(err));
+    } finally {
+      setBusy(false);
     }
   }
 
-  return { code, failed, renewing, renew };
-}
-
-const RENEWED = "New code made. The old one no longer works; anyone who already joined keeps their access.";
-
-/** A code with its copy button and "New … code", in one Share section. */
-function ShareCode({ title, hint, word, share, online }) {
-  const { code, failed, renewing, renew } = share;
   return (
-    <CodeSection
-      title={title}
-      hint={renewing === "done" ? RENEWED : hint}
-      action={
-        code !== null && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="self-start"
-            disabled={!online || renewing === "busy"}
-            onClick={renew}
-            aria-label={renewing === "confirm" ? `Confirm a new ${word} code` : `New ${word} code`}
-          >
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            {renewing === "confirm" ? "Confirm: the old code stops working" : `New ${word} code`}
-          </Button>
-        )
-      }
-    >
-      {failed ? (
-        <p className="text-sm text-muted-foreground">
-          {online ? `Couldn’t load the ${word} code.` : `The ${word} code shows when you’re online.`}
+    <form onSubmit={handleSubmit} noValidate aria-label="Invite" className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${ids}-email`}>Email</Label>
+        <Input
+          id={`${ids}-email`}
+          type="email"
+          autoComplete="off"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${ids}-error` : undefined}
+        />
+      </div>
+      <div className="flex items-end gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <Label htmlFor={`${ids}-role`}>Can</Label>
+          <Select id={`${ids}-role`} value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="viewer">View</option>
+            <option value="editor">Edit</option>
+          </Select>
+        </div>
+        <Button type="submit" disabled={busy || !online || !email.trim()} title={online ? undefined : "You’re offline"}>
+          <UserPlus className="h-4 w-4" aria-hidden="true" />
+          {busy ? "Adding…" : "Invite"}
+        </Button>
+      </div>
+      {error ? (
+        <p id={`${ids}-error`} role="alert" className="text-sm text-destructive">
+          {error}
         </p>
-      ) : code === null ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <CopyField value={code} label={`Copy ${word} code`} />
+        <p className="text-xs text-muted-foreground">{ROLE_HINT[role]}</p>
       )}
-    </CodeSection>
+    </form>
   );
 }
 
 /**
- * The owner's Share screen: two codes to send (the other person pastes one
- * into "Join trip"), each a secret the owner can replace. Below, who has
- * joined and how, each removable.
+ * The owner's Share screen: invite someone by email (they need an account),
+ * then who's on the trip, each with their role (changeable) and Remove.
+ * The trip shows on their trips list the next time it loads.
  */
 export function ShareTripDialog({ trip, open, onClose }) {
   const online = useSelector(selectOnline);
   const [members, setMembers] = useState(null); // null while loading
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState(null); // userId awaiting a second tap
-  const viewCode = useShareCode(trip.id, "view", open);
-  const editCode = useShareCode(trip.id, "edit", open);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -123,6 +111,25 @@ export function ShareTripDialog({ trip, open, onClose }) {
       live = false;
     };
   }, [open, trip.id]);
+
+  // An invite of someone already on the trip changes their role in place.
+  function added(member) {
+    setMembers((list) =>
+      list?.some((m) => m.userId === member.userId)
+        ? list.map((m) => (m.userId === member.userId ? member : m))
+        : [...(list ?? []), member]
+    );
+  }
+
+  async function changeRole(member, role) {
+    const before = member.role;
+    setMembers((list) => list.map((m) => (m.userId === member.userId ? { ...m, role } : m)));
+    try {
+      await apiClient.patch(`/trips/${trip.id}/members/${member.userId}`, { role }, { silent: true });
+    } catch {
+      setMembers((list) => list.map((m) => (m.userId === member.userId ? { ...m, role: before } : m)));
+    }
+  }
 
   async function remove(userId) {
     if (confirming !== userId) {
@@ -139,28 +146,15 @@ export function ShareTripDialog({ trip, open, onClose }) {
       open={open}
       onClose={onClose}
       title="Share trip"
-      description="Send one of these codes. They tap Join trip on their trips list and paste it."
+      description="Add someone by the email they sign in with."
     >
       <div className="flex flex-col gap-4">
-        <ShareCode
-          title="Can view"
-          word="view"
-          hint="Sees the plan, the map and the memories you mark public. No confirmation numbers."
-          share={viewCode}
-          online={online}
-        />
-        <ShareCode
-          title="Can edit"
-          word="edit"
-          hint="Can also change days, activities, stays and travel, and sees every memory. Only you can delete the trip or remove people."
-          share={editCode}
-          online={online}
-        />
+        <InviteForm tripId={trip.id} online={online} onAdded={added} />
         <section aria-label="Shared with" className="flex flex-col gap-2">
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Shared with</h3>
           {failed ? (
             <p className="text-sm text-muted-foreground">
-              {online ? "Couldn’t load who has joined." : "Who has joined shows when you’re online."}
+              {online ? "Couldn’t load who’s on the trip." : "Who’s on the trip shows when you’re online."}
             </p>
           ) : members === null ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
@@ -169,22 +163,34 @@ export function ShareTripDialog({ trip, open, onClose }) {
           ) : (
             <ul className="flex flex-col gap-1">
               {members.map((m) => (
-                <li key={m.userId} className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5">
-                  <span className="min-w-0 flex-1 truncate text-sm">{m.email}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {m.role === "editor" ? "Can edit" : "Can view"}
+                <li key={m.userId} className="flex flex-wrap items-center gap-2 rounded-md border border-border px-3 py-1.5">
+                  <span className="min-w-0 flex-1 basis-40">
+                    <span className="block truncate text-sm">{m.name || m.email}</span>
+                    {m.name && <span className="block truncate text-xs text-muted-foreground">{m.email}</span>}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!online}
-                    onClick={() => remove(m.userId)}
-                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    aria-label={confirming === m.userId ? `Confirm removing ${m.email}` : `Remove ${m.email}`}
-                  >
-                    <UserMinus className="h-4 w-4" aria-hidden="true" />
-                    {confirming === m.userId ? "Confirm" : "Remove"}
-                  </Button>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <Select
+                      aria-label={`Role for ${m.email}`}
+                      value={m.role}
+                      disabled={!online}
+                      onChange={(e) => changeRole(m, e.target.value)}
+                      className="h-9 w-[7.5rem]"
+                    >
+                      <option value="viewer">Can view</option>
+                      <option value="editor">Can edit</option>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!online}
+                      onClick={() => remove(m.userId)}
+                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      aria-label={confirming === m.userId ? `Confirm removing ${m.email}` : `Remove ${m.email}`}
+                    >
+                      <UserMinus className="h-4 w-4" aria-hidden="true" />
+                      {confirming === m.userId ? "Confirm" : "Remove"}
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>

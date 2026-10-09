@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Camera, Eye, ImagePlus, MapPin, MapPinOff, X } from "lucide-react";
 import { MAX_PHOTO_BYTES, MAX_PHOTOS, createMemory, updateMemory } from "@/features/journal/journalSlice";
 import { usePhotoSrc } from "@/features/journal/photoUrls";
-import { locationLabel } from "@/features/journal/nearestPlace";
+import { accuracyLabel, locationLabel } from "@/features/journal/nearestPlace";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Label } from "@/shared/components/ui/label";
@@ -272,7 +272,7 @@ export function MemoryDialog({ open, onClose, tripId, memory = null }) {
     } else {
       const label =
         here.status === "ready"
-          ? locationLabel(trip, here.position)
+          ? [locationLabel(trip, here.position), accuracyLabel(here.position)].filter(Boolean).join(" · ")
           : here.status === "locating"
             ? "Finding your location…"
             : "Location will be added";

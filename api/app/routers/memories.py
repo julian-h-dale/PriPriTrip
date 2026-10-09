@@ -5,10 +5,10 @@ in services/memories.py, access in app/dependencies.py."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.database import get_db
+from app.database import get_db, get_session_factory
 from app.dependencies import ViewableTrip, get_journal_trip, get_own_memory, get_viewable_trip
 from app.models import Memory, UserRecord
 from app.schemas import MemoryCreate, MemoryRead, MemoryUpdate
@@ -33,12 +33,16 @@ async def list_memories(
 async def create_memory(
     body: MemoryCreate,
     response: Response,
+    background: BackgroundTasks,
     viewable: ViewableTrip = Depends(get_journal_trip),
     db: AsyncSession = Depends(get_db),
+    sessions: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
     user: UserRecord = Depends(current_active_user),
 ) -> MemoryRead:
     """Save a memory (201). Sending the same `id` again — a retry from the
-    phone's outbox — returns the saved one (200) instead of a duplicate."""
+    phone's outbox — returns the saved one (200) instead of a duplicate.
+    With a location, what's there is looked up after the answer has gone
+    (the place name shows on the next read)."""
     try:
         created = await memories_service.create_memory(
             db,
@@ -55,6 +59,8 @@ async def create_memory(
         raise HTTPException(status.HTTP_409_CONFLICT, "That memory id is already taken") from None
     if not created.new:
         response.status_code = status.HTTP_200_OK
+    elif created.memory.location is not None:
+        background.add_task(memories_service.name_place_later, sessions, created.memory.id)
     return created.memory
 
 
