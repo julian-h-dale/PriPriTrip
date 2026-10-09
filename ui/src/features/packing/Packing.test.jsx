@@ -7,7 +7,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import journalReducer from "@/features/journal/journalSlice";
-import packingReducer, { syncPacking } from "@/features/packing/packingSlice";
+import packingReducer, { addPackingItem, fetchPacking, syncPacking } from "@/features/packing/packingSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
 import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
@@ -304,6 +304,47 @@ describe("the Packing page", () => {
     store.dispatch(setOnline(true));
     await store.dispatch(syncPacking());
     expect(apiClient.patch.mock.calls).toEqual([["/trips/trip-1/packing/a", { checked: false }, SILENT]]);
+  });
+
+  it("a load that finishes after a newer one doesn't put back its older list", async () => {
+    // CI caught this as a flaky "adds to a list": the page's first load
+    // landed after the one made once the add was sent, and the new line
+    // vanished from the screen.
+    const store = configureStore({
+      reducer: { auth: authReducer, packing: packingReducer, network: networkReducer },
+      preloadedState: { auth: { token: fakeToken("user-1"), user: null, status: "idle" }, network: { online: true } },
+    });
+    let answerFirst;
+    apiClient.get.mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)));
+    const first = store.dispatch(fetchPacking("trip-1"));
+    const added = [...LIST, item("d", "electronics", "Cables", 1, false, 3)];
+    apiClient.get.mockResolvedValueOnce({ data: added });
+    await store.dispatch(fetchPacking("trip-1"));
+    expect(store.getState().packing.items.map((i) => i.text)).toContain("Cables");
+    answerFirst({ data: LIST }); // the older answer, arriving last
+    await first;
+    expect(store.getState().packing.items.map((i) => i.text)).toContain("Cables");
+  });
+
+  it("reloading a list on screen doesn't flash the older saved copy", async () => {
+    // CI's flaky "adds to a list": after the add was sent, the reload showed
+    // the phone's saved copy (from before the add, which had left the queue)
+    // until the server answered, and the new line vanished meanwhile.
+    const store = configureStore({
+      reducer: { auth: authReducer, packing: packingReducer, network: networkReducer },
+      preloadedState: { auth: { token: fakeToken("user-1"), user: null, status: "idle" }, network: { online: true } },
+    });
+    apiClient.get.mockResolvedValueOnce({ data: LIST });
+    await store.dispatch(fetchPacking("trip-1")); // saves LIST on the phone
+    // Add a line: on screen at once, then sent, then the list reloads.
+    apiClient.post.mockResolvedValue({ data: {} });
+    let answer;
+    apiClient.get.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    await store.dispatch(addPackingItem({ tripId: "trip-1", category: "electronics", text: "Cables", quantity: 3 }));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledTimes(2)); // the reload, past its saved-copy step
+    expect(store.getState().packing.items.map((i) => i.text)).toContain("Cables");
+    answer({ data: [...LIST, item("d", "electronics", "Cables", 1, false, 3)] });
+    await waitFor(() => expect(store.getState().packing.items.find((i) => i.text === "Cables")?.waiting).toBeFalsy());
   });
 
   it("suggestions need a connection", async () => {
