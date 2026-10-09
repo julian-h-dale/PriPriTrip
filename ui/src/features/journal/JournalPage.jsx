@@ -1,141 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, CloudUpload, Eye, MapPin, Pencil, Trash2 } from "lucide-react";
-import { journalDays, memoryTime } from "@/features/journal/journalDays";
+import { AlertTriangle, CloudUpload } from "lucide-react";
+import { authorKey, authorStyles, FALLBACK_STYLE } from "@/features/journal/authorColors";
+import { journalDays } from "@/features/journal/journalDays";
 import {
   canWriteMemories,
-  deleteMemory,
   fetchMemories,
-  removeStuck,
   retryStuck,
   selectStuckCount,
   selectUpload,
   selectWaitingPhotos,
   uploadPhotos,
 } from "@/features/journal/journalSlice";
-import { MemoryDialog } from "@/features/journal/MemoryDialog";
-import { accuracyLabel, locationLabel } from "@/features/journal/nearestPlace";
-import { PhotoStrip } from "@/features/journal/PhotoStrip";
-import { mapsUrl } from "@/shared/utils/mapsLinks";
+import { MemoryTile } from "@/features/journal/MemoryTile";
+import { RailDot } from "@/features/timeline/RailDot";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
-import { RowMenu } from "@/shared/components/RowMenu";
 import { Button } from "@/shared/components/ui/button";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
 import { Card } from "@/shared/components/ui/card";
-import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
-import { formatDayHeading, zoneLabel } from "@/shared/utils/time";
+import { cn } from "@/shared/utils/cn";
+import { formatDayHeading } from "@/shared/utils/time";
 import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 
 function groupHeading(group) {
   if (group.kind === "before") return "Before the trip";
   if (group.kind === "after") return "After the trip";
   return formatDayHeading(group.date);
-}
-
-/** Photos on a memory that exist only on this phone (waiting, or refused by the server). */
-const photosOnlyHere = (memory) => (memory?.photos ?? []).filter((p) => p.pending);
-
-function MemoryCard({ memory, trip, onEdit, onDelete, onRemoveStuck }) {
-  const dispatch = useDispatch();
-  const online = useSelector(selectOnline);
-  const stuckPhotos = (memory.photos ?? []).filter((p) => p.stuck);
-  const zoneNote = memory.zone !== trip.timezone ? ` · ${zoneLabel(memory.zone)} time` : "";
-  // Viewers only ever see public memories, so the badge is for the travelers.
-  const showPublic = memory.isPublic && canWriteMemories(trip);
-  return (
-    <Card className="flex gap-2 p-3">
-      <div className="min-w-0 flex-1">
-        <p className="whitespace-pre-wrap break-words text-sm">{memory.text}</p>
-        <PhotoStrip
-          photos={memory.photos}
-          onRetry={(photo) => dispatch(retryStuck([`photo-${photo.id}`]))}
-          onRemove={(photo) => dispatch(removeStuck({ tripId: trip.id, entryId: `photo-${photo.id}` }))}
-        />
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          {memoryTime(memory)}
-          {zoneNote} · {memory.mine ? "You" : memory.authorEmail}
-          {memory.updatedAt && " · edited"}
-        </p>
-        {showPublic && (
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-            Public
-          </p>
-        )}
-        {memory.location && (
-          <a
-            href={mapsUrl(memory.location)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
-          >
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            {[locationLabel(trip, memory.location), accuracyLabel(memory.location)].filter(Boolean).join(" · ")}
-          </a>
-        )}
-        {memory.unsaved ? (
-          <p role="alert" className="mt-1 flex items-start gap-1 text-xs text-destructive">
-            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Not saved on this phone: copy your words before closing the app.
-          </p>
-        ) : memory.stuck ? (
-          <div className="mt-1 flex flex-col gap-1.5">
-            <p className="flex items-start gap-1 text-xs text-destructive">
-              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span>
-                Couldn’t upload: {memory.stuck.message}. It’s still on this phone.
-              </span>
-            </p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={!online} onClick={() => dispatch(retryStuck([memory.id]))}>
-                Try again
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => onRemoveStuck(memory)}>
-                Remove
-              </Button>
-            </div>
-          </div>
-        ) : (
-          memory.pending && (
-            <p className="mt-1 inline-flex items-center gap-1 text-xs text-warning">
-              <CloudUpload className="h-3.5 w-3.5" aria-hidden="true" />
-              Waiting to sync
-            </p>
-          )
-        )}
-        {stuckPhotos.length > 0 && (
-          <p className="mt-1 flex items-start gap-1 text-xs text-destructive">
-            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>
-              {stuckPhotos.length === 1 ? "A photo" : `${stuckPhotos.length} photos`} couldn’t upload:{" "}
-              {stuckPhotos[0].stuck.message}. Open {stuckPhotos.length === 1 ? "it" : "one"} to save a copy, try
-              again or remove it.
-            </span>
-          </p>
-        )}
-      </div>
-      {memory.mine && (
-        <RowMenu
-          label="Memory options"
-          items={[
-            {
-              label: "Edit",
-              icon: <Pencil className="h-4 w-4" aria-hidden="true" />,
-              onSelect: () => onEdit(memory),
-            },
-            {
-              label: "Delete",
-              icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
-              destructive: true,
-              onSelect: () => onDelete(memory),
-            },
-          ]}
-        />
-      )}
-    </Card>
-  );
 }
 
 const megabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -211,44 +103,59 @@ function StuckBar() {
   );
 }
 
+// Where the journal was scrolled to when a memory was opened, per trip, so
+// Back lands on the same spot.
+const savedScroll = new Map();
+const scrollRoot = () => document.querySelector("[data-scroll-root]");
+
+/** "● You ● PriPri ● Sam": what the colors mean. */
+function Legend({ styles }) {
+  if (styles.size < 2) return null;
+  return (
+    <ul aria-label="Who wrote what" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      {[...styles.entries()].map(([key, style]) => (
+        <li key={key} className="inline-flex items-center gap-1.5">
+          <span className={cn("h-2.5 w-2.5 rounded-full", style.dot)} aria-hidden="true" />
+          {style.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The journal as a timeline (Run stage 26): a plain divider for each day
+ * (sticky while you scroll its memories), then that day's memories in the
+ * order they were written, each a point on the rail in its author's color.
+ */
 function Journal({ trip }) {
-  const dispatch = useDispatch();
   const writer = canWriteMemories(trip);
   const { items, tripId, status } = useSelector((s) => s.journal);
-  const groups = useMemo(
-    () => journalDays(tripId === trip.id ? items : [], trip),
-    [items, tripId, trip]
-  );
-  // null | { memory } (edit). A new one is the top bar's New memory.
-  const [editing, setEditing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [removing, setRemoving] = useState(null); // a stuck memory to give up on
-  const [busy, setBusy] = useState(false);
-  const onlyHere = photosOnlyHere(deleting ?? removing).length;
+  const memories = useMemo(() => (tripId === trip.id ? items : []), [items, tripId, trip.id]);
+  const groups = useMemo(() => journalDays(memories, trip), [memories, trip]);
+  const styles = useMemo(() => authorStyles(memories, trip), [memories, trip]);
 
-  async function confirmRemove() {
-    setBusy(true);
-    await dispatch(removeStuck({ tripId: trip.id, entryId: removing.id }));
-    setBusy(false);
-    setRemoving(null);
-  }
-
-  async function confirmDelete() {
-    setBusy(true);
-    await dispatch(deleteMemory({ tripId: trip.id, id: deleting.id }));
-    setBusy(false);
-    setDeleting(null);
-  }
+  // Back from a memory: scroll to where the journal was.
+  const ready = groups.length > 0;
+  useLayoutEffect(() => {
+    const top = savedScroll.get(trip.id);
+    if (!ready || top == null) return;
+    savedScroll.delete(trip.id);
+    const root = scrollRoot();
+    if (root) root.scrollTop = top;
+  }, [ready, trip.id]);
+  const remember = () => savedScroll.set(trip.id, scrollRoot()?.scrollTop ?? 0);
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6">
-      <header className="flex items-center justify-between gap-2">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+      <header className="flex flex-col gap-2">
         <div>
           <h1 className="text-xl font-semibold">Journal</h1>
           <p className="text-sm text-muted-foreground">
             {writer ? "Everyone’s memories from this trip" : "What the travelers have shared"}
           </p>
         </div>
+        <Legend styles={styles} />
       </header>
 
       {writer && <StuckBar />}
@@ -269,80 +176,43 @@ function Journal({ trip }) {
         )
       ) : (
         groups.map((group) => (
-          <section key={group.key} aria-label={groupHeading(group)} className="flex flex-col gap-2">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <section key={group.key} aria-label={groupHeading(group)}>
+            <h2 className="sticky top-0 z-10 -mx-4 flex items-center gap-3 bg-background/95 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground backdrop-blur">
               {group.kind === "day" ? (
-                <Link to={`/trips/${trip.id}/days/${group.date}`} className="hover:text-foreground">
+                <Link to={`/trips/${trip.id}/days/${group.date}`} className="shrink-0 hover:text-foreground">
                   {groupHeading(group)}
                 </Link>
               ) : (
-                groupHeading(group)
+                <span className="shrink-0">{groupHeading(group)}</span>
               )}
+              <span className="h-px flex-1 bg-border" aria-hidden="true" />
             </h2>
-            <ol className="flex flex-col gap-2">
-              {group.memories.map((memory) => (
-                <li key={memory.id}>
-                  <MemoryCard
-                    memory={memory}
-                    trip={trip}
-                    onEdit={(m) => setEditing({ memory: m })}
-                    onDelete={setDeleting}
-                    onRemoveStuck={setRemoving}
-                  />
-                </li>
-              ))}
+            <ol className="pt-1">
+              {group.memories.map((memory) => {
+                const style = styles.get(authorKey(memory)) ?? FALLBACK_STYLE;
+                return (
+                  <li key={memory.id} className="relative pb-3 pl-7">
+                    <RailDot colorClassName={style.dot} />
+                    <MemoryTile
+                      memory={memory}
+                      to={`/trips/${trip.id}/journal/${memory.id}`}
+                      style={style}
+                      showPublic={memory.isPublic && writer}
+                      onOpen={remember}
+                    />
+                    {memory.unsaved && (
+                      <p role="alert" className="mt-1 flex items-start gap-1 text-xs text-destructive">
+                        <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        Not saved on this phone: copy your words before closing the app.
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
             </ol>
           </section>
         ))
       )}
-
-      {editing && (
-        <MemoryDialog
-          key={editing.memory?.id ?? "new"}
-          open
-          onClose={() => setEditing(null)}
-          tripId={trip.id}
-          memory={editing.memory}
-        />
-      )}
-      <Dialog
-        open={deleting !== null}
-        onClose={() => !busy && setDeleting(null)}
-        title="Delete memory?"
-        description={
-          onlyHere > 0
-            ? `It will be removed from the journal for everyone. ${onlyHere === 1 ? "A photo on it hasn’t" : `${onlyHere} photos on it haven’t`} uploaded and will be deleted from this phone: open ${onlyHere === 1 ? "it" : "each"} and tap Save to phone first to keep a copy.`
-            : "It will be removed from the journal for everyone."
-        }
-      >
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setDeleting(null)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={confirmDelete} disabled={busy}>
-            {busy ? "Deleting…" : "Delete"}
-          </Button>
-        </DialogFooter>
-      </Dialog>
-      <Dialog
-        open={removing !== null}
-        onClose={() => !busy && setRemoving(null)}
-        title="Remove from this phone?"
-        description={
-          removing?.receivedAt
-            ? "This edit never reached the server. Removing it keeps the memory as it was before."
-            : `This memory never reached the server, so removing it deletes it for good.${onlyHere > 0 ? ` ${onlyHere === 1 ? "Its photo goes" : `Its ${onlyHere} photos go`} too: save ${onlyHere === 1 ? "it" : "them"} to the phone first to keep a copy.` : ""}`
-        }
-      >
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setRemoving(null)} disabled={busy}>
-            Keep it
-          </Button>
-          <Button variant="destructive" onClick={confirmRemove} disabled={busy}>
-            {busy ? "Removing…" : "Remove"}
-          </Button>
-        </DialogFooter>
-      </Dialog>
     </div>
   );
 }

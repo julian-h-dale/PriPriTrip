@@ -386,6 +386,7 @@ export const createMemory =
       isPublic,
       photos: photos.map((p) => pendingPhoto(p.photoId, p.file)),
       authorEmail: getState().auth?.user?.email ?? "",
+      authorName: getState().auth?.user?.name ?? "",
       mine: true,
       pending: true,
     };

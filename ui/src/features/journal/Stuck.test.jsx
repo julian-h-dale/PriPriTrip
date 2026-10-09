@@ -18,6 +18,7 @@ import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { JournalPage } from "@/features/journal/JournalPage";
+import { MemoryPage } from "@/features/journal/MemoryPage";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearOutbox, enqueue, markStuck, pending } from "@/shared/services/outbox";
 import { clearAll } from "@/shared/services/tripCache";
@@ -92,6 +93,7 @@ function renderJournal() {
       <MemoryRouter initialEntries={["/trips/trip-1/journal"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/trips/:tripId/journal" element={<JournalPage />} />
+          <Route path="/trips/:tripId/journal/:memoryId" element={<MemoryPage />} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -112,6 +114,12 @@ async function queuePhoto(photoId, { stuck = false, memoryId = MEMORY_ID } = {})
     body: { photoId, file: photoFile(`${photoId}.jpg`) },
   });
   if (stuck) await markStuck(USER, `photo-${photoId}`, { status: 422, message: "Only JPEG, PNG, WebP or HEIC photos" });
+}
+
+/** Tap a memory's tile in the journal: its full page opens. */
+async function openMemory(user, text) {
+  await user.click(await screen.findByRole("link", { name: new RegExp(text) }));
+  return screen.findByRole("article", { name: "Memory" });
 }
 
 const messages = (store) => store.getState().notification.items.map((n) => n.message);
@@ -157,8 +165,10 @@ describe("a photo the server refuses", () => {
     // A reload: the saved copy, then the server's list (which never had it).
     await store.dispatch(fetchMemories("trip-1"));
     expect(photos()).toMatchObject([{ id: "p-camera", stuck: { message: "Only JPEG, PNG, WebP or HEIC photos" } }]);
-    expect(screen.getByText(/A photo couldn’t upload: Only JPEG, PNG, WebP or HEIC photos/)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Couldn’t upload" })).toHaveTextContent("1 couldn’t upload");
+    expect(screen.getByRole("link", { name: /Lake Thun/ })).toHaveTextContent("Couldn’t upload");
+    const page = await openMemory(user, "Lake Thun");
+    expect(within(page).getByText(/A photo couldn’t upload: Only JPEG, PNG, WebP or HEIC photos/)).toBeInTheDocument();
 
     // Opened, it says why and offers Save to phone, Try again and Remove.
     await user.click(screen.getByRole("button", { name: "Photo 1 of 1, couldn’t upload" }));
@@ -173,6 +183,8 @@ describe("a photo the server refuses", () => {
     await user.click(within(viewer).getByRole("button", { name: "Delete from this phone" }));
     await waitFor(async () => expect(await pending(USER)).toEqual([]));
     await waitFor(() => expect(photos()).toEqual([]));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await screen.findByRole("link", { name: /Lake Thun/ });
     expect(screen.queryByRole("region", { name: "Couldn’t upload" })).not.toBeInTheDocument();
   });
 
@@ -182,6 +194,7 @@ describe("a photo the server refuses", () => {
     await queuePhoto("p-stuck", { stuck: true });
     await queuePhoto("p-waiting");
     const store = renderJournal();
+    await openMemory(user, "Lake Thun");
     await user.click(await screen.findByRole("button", { name: "Photo 1 of 2, couldn’t upload" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Try again" }));
     await waitFor(async () => expect((await pending(USER)).map((op) => op.entryId)).toEqual(["photo-p-waiting"]));
@@ -204,7 +217,7 @@ describe("a memory the server refuses", () => {
     await user.type(within(dialog).getByLabelText("What happened?"), "Too long, say");
     await user.upload(within(dialog).getByLabelText("Choose photos"), new File([new Uint8Array(10)], "a.jpg", { type: "image/jpeg" }));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await screen.findByText(/Couldn’t upload: A memory is at most 2000 characters/)).toBeInTheDocument();
+    await waitFor(async () => expect((await pending(USER))[0]?.stuck).toBeTruthy());
 
     // Upload tries the memory again (refused again) and holds its photo behind it.
     await user.click(within(screen.getByRole("region", { name: "Photos waiting to upload" })).getByRole("button", { name: "Upload" }));
@@ -217,14 +230,20 @@ describe("a memory the server refuses", () => {
     ]);
     expect(screen.getByText("Too long, say")).toBeInTheDocument();
 
+    // Its page says why.
+    const page = await openMemory(user, "Too long, say");
+    expect(within(page).getByText(/Couldn’t upload: A memory is at most 2000 characters/)).toBeInTheDocument();
+
     // Removing it says it's for good, and takes its waiting photo too.
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await user.click(within(page).getByRole("button", { name: "Remove" }));
     const confirm = screen.getByRole("dialog", { name: "Remove from this phone?" });
     expect(confirm).toHaveTextContent("deletes it for good");
     expect(confirm).toHaveTextContent("Its photo goes too");
     await user.click(within(confirm).getByRole("button", { name: "Remove" }));
     await waitFor(async () => expect(await pending(USER)).toEqual([]));
-    await waitFor(() => expect(screen.queryByText("Too long, say")).not.toBeInTheDocument());
+    // Back on the journal, without it.
+    expect(await screen.findByText("No memories yet")).toBeInTheDocument();
+    expect(screen.queryByText("Too long, say")).not.toBeInTheDocument();
   });
 
   it("an edit to a stuck memory clears its mark and goes again", async () => {
@@ -323,9 +342,8 @@ describe("deleting what never uploaded asks first", () => {
     const user = userEvent.setup();
     await queuePhoto("p-waiting");
     renderJournal();
-    await screen.findByText("Lake Thun");
-    await user.click(screen.getByRole("button", { name: "Memory options" }));
-    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    const page = await openMemory(user, "Lake Thun");
+    await user.click(within(page).getByRole("button", { name: "Delete" }));
     const dialog = screen.getByRole("dialog", { name: "Delete memory?" });
     expect(dialog).toHaveTextContent("A photo on it hasn’t uploaded and will be deleted from this phone");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
@@ -336,9 +354,8 @@ describe("deleting what never uploaded asks first", () => {
     const user = userEvent.setup();
     await queuePhoto("p-waiting");
     renderJournal();
-    await screen.findByText("Lake Thun");
-    await user.click(screen.getByRole("button", { name: "Memory options" }));
-    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+    const page = await openMemory(user, "Lake Thun");
+    await user.click(within(page).getByRole("button", { name: "Edit" }));
     const dialog = screen.getByRole("dialog", { name: "Edit memory" });
     await user.click(within(dialog).getByRole("button", { name: "Remove photo 1" }));
     expect(within(dialog).getByRole("alert")).toHaveTextContent("saving deletes it from this phone for good");

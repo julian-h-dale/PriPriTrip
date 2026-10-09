@@ -41,6 +41,25 @@
     by first join) for Phase 95's colors. UI label: trip place → place name
     · area → "Location attached", with "±N m" beside it. Tests never call
     Google (an autouse fixture blanks the key).
+  - **Phases 95–96 ✅ (one commit: the tile links to the page):** the
+    journal is a timeline. A sticky plain divider per day (still a link to
+    the day page), then the day's memories sorted by `createdAt` then id on
+    the client too (`journalDays`), each a `RailDot` in its author's color
+    (`authorColors.js`: `series-(authorRank+1)`, "You"/name/email; a memory
+    still on the phone takes your color) with a legend under the title.
+    `MemoryTile`: the first photo's *thumbnail* (480 px, the copy kept
+    offline) at 4:3 with a black fade and 2 lines of text, "⧉ N" for more
+    photos, badges for waiting/stuck/public; no photo (or none this phone
+    can show) → a text tile on a 10% tint. No time on the tile. Tapping
+    opens `MemoryPage` at `/trips/:id/journal/:memoryId`: swipeable display
+    copies ("1 / 3", tap → `PhotoViewer`), the full text, author + time
+    (+ zone, edited), Where (place · area · ±N m, Open in Maps), sync/stuck
+    banners with Try again / Remove, Edit / Delete for your own. Back restores
+    the journal's scroll; the page keeps its memory on screen while the
+    journal reloads (it used to blink and close an open photo). Journal,
+    Stuck and Photos tests now open the page; journal e2e specs updated and
+    run (location, photos, stuck, offline). Looked at 375 px with mocked
+    multi-day data: dark, light, larger text.
 - **Run stage 25 (2026-10-08)** on **`alternate-days`** (worktree, off `main`
   at `e04da12`): plan B, a backup plan for a day. Plan:
   `docs/plan/run-25-plan-b.md`. Q-B1–B4 answered (the recommendations);

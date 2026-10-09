@@ -12,6 +12,7 @@ import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { JournalPage } from "@/features/journal/JournalPage";
+import { MemoryPage } from "@/features/journal/MemoryPage";
 import { appConfig } from "@/shared/config/appConfig";
 import { apiClient } from "@/shared/services/apiClient";
 import { clearOutbox, pending } from "@/shared/services/outbox";
@@ -55,6 +56,7 @@ const WITH_PHOTOS = {
 const picture = (name, size = 1000) => new File([new Uint8Array(size)], name, { type: "image/jpeg" });
 
 function renderJournal(memories = []) {
+  // Read at each request, so a test can add to the list as the server saves.
   apiClient.get.mockImplementation(async (url) =>
     url.endsWith("/memories") ? { data: structuredClone(memories) } : { data: TRIP }
   );
@@ -74,6 +76,7 @@ function renderJournal(memories = []) {
       <MemoryRouter initialEntries={["/trips/trip-1/journal"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/trips/:tripId/journal" element={<JournalPage />} />
+          <Route path="/trips/:tripId/journal/:memoryId" element={<MemoryPage />} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -86,6 +89,12 @@ beforeEach(async () => {
   await clearAll();
   await clearOutbox(USER);
 });
+
+/** Tap a memory's tile in the journal: its full page opens. */
+async function openMemory(user, text) {
+  await user.click(await screen.findByRole("link", { name: new RegExp(text) }));
+  return screen.findByRole("article", { name: "Memory" });
+}
 
 describe("adding photos to a memory", () => {
   it("sends the memory at once; its photos wait for Upload, then go in the order picked", async () => {
@@ -128,12 +137,13 @@ describe("adding photos to a memory", () => {
     }
     expect(posts.slice(1).map((p) => p.body.get("file").name)).toEqual(["a.jpg", "b.jpg"]);
     await waitFor(async () => expect(await pending(USER)).toEqual([]));
-    // The strip now shows the uploaded thumbnails from the API.
+    // The tile now shows the first uploaded thumbnail from the API, and says there are two.
     const card = screen.getByText("Two photos").closest("li");
     const imgs = [...card.querySelectorAll("img")]; // decorative (alt=""), so not role "img"
-    expect(imgs.map((i) => i.getAttribute("src"))).toEqual(
-      posts.slice(1).map((p) => `${appConfig.apiBaseUrl}/photos/${p.body.get("id")}/thumb`)
-    );
+    expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
+      `${appConfig.apiBaseUrl}/photos/${posts[1].body.get("id")}/thumb`,
+    ]);
+    expect(within(card).getByText("2 photos")).toBeInTheDocument();
   });
 
   it("an interrupted upload stops, says so, and carries on later without sending a photo twice", async () => {
@@ -207,16 +217,15 @@ describe("adding photos to a memory", () => {
     apiClient.put.mockImplementation(async (url, body) => ({ data: { ...WITH_PHOTOS, ...body } }));
     apiClient.delete.mockResolvedValue({ data: null });
     renderJournal([WITH_PHOTOS]);
-    const card = (await screen.findByText("Lake Thun")).closest("li");
-    await user.click(within(card).getByRole("button", { name: "Memory options" }));
-    await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+    const page = await openMemory(user, "Lake Thun");
+    await user.click(within(page).getByRole("button", { name: "Edit" }));
     const dialog = screen.getByRole("dialog", { name: "Edit memory" });
     await user.click(within(dialog).getByRole("button", { name: "Remove photo 2" }));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(apiClient.delete).toHaveBeenCalledWith("/trips/trip-1/memories/m1/photos/p2", expect.anything())
     );
-    expect(within(card).getAllByRole("button", { name: /^Photo \d of/ })).toHaveLength(1);
+    expect(within(page).getAllByRole("button", { name: /^Photo \d of/ })).toHaveLength(1);
   });
 });
 
@@ -224,6 +233,7 @@ describe("looking at photos", () => {
   it("opens full screen on the display copy, steps through, and loads the original on request", async () => {
     const user = userEvent.setup();
     renderJournal([WITH_PHOTOS]);
+    await openMemory(user, WITH_PHOTOS.text);
     await user.click(await screen.findByRole("button", { name: "Photo 1 of 2" }));
     const viewer = screen.getByRole("dialog", { name: "Photo 1 of 2" });
     const shown = () => viewer.querySelector("img").getAttribute("src");
@@ -245,6 +255,7 @@ describe("closing the viewer with a tap", () => {
   it("a tap on the photo or around it closes; the arrows and a swipe don't", async () => {
     const user = userEvent.setup();
     renderJournal([WITH_PHOTOS]);
+    await openMemory(user, WITH_PHOTOS.text);
     await user.click(await screen.findByRole("button", { name: "Photo 1 of 2" }));
     let viewer = screen.getByRole("dialog", { name: "Photo 1 of 2" });
 
@@ -274,15 +285,20 @@ describe("closing the viewer with a tap", () => {
 
 describe("Save to phone, for a photo still waiting to upload", () => {
   async function openWaitingPhoto(user) {
-    apiClient.post.mockImplementation(async (url, body) => ({
-      data: { ...body, photos: [], mine: true, authorEmail: "user@example.com", receivedAt: body.createdAt },
-    }));
-    renderJournal();
+    // The server lists what it saved (the page reloads the journal).
+    const onServer = [];
+    apiClient.post.mockImplementation(async (url, body) => {
+      const saved = { ...body, photos: [], mine: true, authorEmail: "user@example.com", receivedAt: body.createdAt };
+      onServer.push(saved);
+      return { data: saved };
+    });
+    renderJournal(onServer);
     await user.click(await screen.findByRole("button", { name: "New memory" }));
     const dialog = screen.getByRole("dialog", { name: "New memory" });
     await user.type(within(dialog).getByLabelText("What happened?"), "Sunset");
     await user.upload(within(dialog).getByLabelText("Take a photo"), picture("shot.jpg"));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await openMemory(user, "Sunset");
     await user.click(await screen.findByRole("button", { name: "Photo 1 of 1" }));
     const viewer = screen.getByRole("dialog", { name: "Photo 1 of 1" });
     expect(within(viewer).queryByRole("link", { name: "Download original" })).not.toBeInTheDocument();

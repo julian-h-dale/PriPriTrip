@@ -13,7 +13,7 @@ Also: drop join codes. The owner gets an **Invite** button instead: type
 an email and pick editor or viewer. If no account has that email, show an
 error. If one does, add that person with the chosen role.
 
-**Status: in progress.** Open questions answered 2026-10-08. Branch `journal-redesign` (off `main` at `de5a6e7`).
+**Status: complete.** Phases 93–96 built (2026-10-08). Open questions answered 2026-10-08. Branch `journal-redesign` (off `main` at `de5a6e7`).
 
 ## Where we are
 
@@ -194,7 +194,11 @@ Tests:
   create (same id) doesn't look it up again.
 - `locationLabel` order: trip place, then place name, then "attached".
 
-### Phase 95 — the journal timeline
+### Phase 95 — the journal timeline ✅
+
+Built 2026-10-08 together with 96, in one commit (the tile links to the page).
+The tile uses the photo's 480 px thumbnail, not the display copy: it's
+plenty for a phone-wide tile and it's the copy the phone keeps offline.
 
 Scope: day dividers, the rail, client sort, author colors and legend,
 photo and text tiles, state badges, empty/loading states. Tap → Phase 96's
@@ -209,7 +213,11 @@ Tests:
 - Phone width at 375 px, light and dark, normal and large text, with real
   photos (light and dark ones) to check the overlay is readable.
 
-### Phase 96 — a memory's full view
+### Phase 96 — a memory's full view ✅
+
+Built 2026-10-08. While the journal reloads, the page keeps showing the
+memory it already has (the reload briefly lacked a just-synced memory, which
+used to close an open photo).
 
 Scope: the route and page above. Edit/Delete/Remove and stuck handling move
 here from the card. Back goes to the journal at the same scroll position.

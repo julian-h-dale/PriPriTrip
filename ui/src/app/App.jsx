@@ -8,6 +8,7 @@ import { TripsPage } from "@/features/trips/TripsPage";
 import { MapPage } from "@/features/map/MapPage";
 import { TodayPage } from "@/features/today/TodayPage";
 import { JournalPage } from "@/features/journal/JournalPage";
+import { MemoryPage } from "@/features/journal/MemoryPage";
 import { WeatherPage } from "@/features/weather/WeatherPage";
 import { CurrencyPage } from "@/features/currency/CurrencyPage";
 import { PackingPage } from "@/features/packing/PackingPage";
@@ -89,6 +90,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <JournalPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/journal/:memoryId"
+          element={
+            <ProtectedRoute>
+              <MemoryPage />
             </ProtectedRoute>
           }
         />

@@ -24,7 +24,8 @@ test("photos: added offline, held on the phone until Upload, viewed full screen"
   await dialog.getByRole("button", { name: "Save" }).click();
 
   const card = page.getByRole("listitem").filter({ hasText: text });
-  await expect(card.getByTitle("Waiting to upload")).toHaveCount(2); // shown from the phone's copy
+  await expect(card.getByTitle("Waiting to sync")).toHaveCount(1); // the memory itself is waiting too
+  await expect(card).toContainText("2 photos");
   const uploads = [];
   page.on("response", (r) => {
     if (r.request().method() === "POST" && /\/memories\/[^/]+\/photos$/.test(r.url())) uploads.push(r.status());
@@ -34,17 +35,21 @@ test("photos: added offline, held on the phone until Upload, viewed full screen"
   await expect(card.getByText("Waiting to sync")).toHaveCount(0);
   const bar = page.getByRole("region", { name: "Photos waiting to upload" });
   await expect(bar).toContainText("2 photos waiting");
-  await expect(card.getByTitle("Waiting to upload")).toHaveCount(2);
+  await expect(card.getByTitle("Waiting to upload")).toHaveCount(1);
   expect(uploads).toEqual([]);
   await page.screenshot({ path: screenshotPath("29a-photos-waiting"), fullPage: true });
   await bar.getByRole("button", { name: "Upload" }).click();
   await expect(card.getByTitle("Waiting to upload")).toHaveCount(0);
   await expect(bar).toHaveCount(0);
   expect(uploads).toEqual([201, 201]);
-  await expect(card.locator("img")).toHaveCount(2);
+  await expect(card.locator("img")).toHaveAttribute("src", /\/photos\/[0-9a-f-]{36}\/thumb$/); // the tile: the first photo
   await page.screenshot({ path: screenshotPath("29-journal-photos"), fullPage: true });
 
-  await card.getByRole("button", { name: "Photo 1 of 2" }).click();
+  await card.getByRole("link").click();
+  const memoryPage = page.getByRole("article", { name: "Memory" });
+  await expect(memoryPage.getByRole("button", { name: /^Photo \d of 2$/ })).toHaveCount(2);
+  await page.screenshot({ path: screenshotPath("29b-memory-page-photos"), fullPage: true });
+  await memoryPage.getByRole("button", { name: "Photo 1 of 2" }).click();
   const viewer = page.getByRole("dialog", { name: "Photo 1 of 2" });
   await expect(viewer.locator("img")).toHaveAttribute("src", /\/photos\/[0-9a-f-]{36}\/display$/);
   await page.screenshot({ path: screenshotPath("30-photo-viewer"), fullPage: true });

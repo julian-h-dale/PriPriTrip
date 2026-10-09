@@ -15,6 +15,18 @@ describe("memoryDate and memoryTime", () => {
 });
 
 describe("journalDays", () => {
+  it("puts each day in the order written, whatever order they arrive in (a memory still on the phone too)", () => {
+    const memories = [
+      m("late", "2026-10-30T05:00:00Z", "Asia/Tokyo"),
+      { ...m("waiting", "2026-10-30T02:00:00Z", "Asia/Tokyo"), pending: true },
+      m("early", "2026-10-30T01:00:00Z", "Asia/Tokyo"),
+      m("b-same", "2026-10-30T03:00:00Z", "Asia/Tokyo"),
+      m("a-same", "2026-10-30T03:00:00Z", "Asia/Tokyo"), // same instant: by id
+    ];
+    const [day] = journalDays(memories, TRIP);
+    expect(day.memories.map((x) => x.id)).toEqual(["early", "waiting", "a-same", "b-same", "late"]);
+  });
+
   it("groups by local date in trip order, keeping server order inside a day", () => {
     const memories = [
       m("first", "2026-10-30T01:00:00Z", "Asia/Tokyo"), // Oct 30, 10:00 Tokyo
