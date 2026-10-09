@@ -150,10 +150,15 @@ export const syncPacking = () => (dispatch, getState) => {
 
 const packingSlice = createSlice({
   name: "packing",
-  initialState: { tripId: null, items: [], status: "idle", waiting: 0 },
+  initialState: { tripId: null, items: [], status: "idle", waiting: 0, latestFetch: null },
   reducers: {
     packingLoaded(state, action) {
       if (state.tripId !== action.payload.tripId) return;
+      // The saved copy is for opening the page (and offline). A list already
+      // on screen is as new or newer: a change just sent has left the queue
+      // but isn't in the saved copy yet, so showing it would make that line
+      // vanish until the server answers.
+      if (state.status === "ready") return;
       state.items = action.payload.items;
       state.status = "ready";
     },
@@ -170,6 +175,7 @@ const packingSlice = createSlice({
     const forThisTrip = (state, action) => state.tripId === action.meta.arg.tripId;
     builder
       .addCase(fetchPacking.pending, (state, action) => {
+        state.latestFetch = action.meta.requestId;
         if (state.tripId !== action.meta.arg) {
           state.tripId = action.meta.arg;
           state.items = [];
@@ -177,7 +183,13 @@ const packingSlice = createSlice({
           state.waiting = 0;
         }
       })
-      .addCase(fetchPacking.fulfilled, replaceList)
+      // Loads can finish out of order (each saves to the phone first): one
+      // started before a change was sent can land after the one started
+      // once it was, and would drop that change's line from the screen
+      // until the next load. Only the latest load's list counts.
+      .addCase(fetchPacking.fulfilled, (state, action) => {
+        if (action.meta.requestId === state.latestFetch) replaceList(state, action);
+      })
       .addCase(fetchPacking.rejected, (state, action) => {
         if (state.tripId === action.meta.arg && state.status === "loading") state.status = "failed";
       })
