@@ -101,7 +101,7 @@ async def test_replace_and_delete_a_point_of_interest(client: AsyncClient) -> No
 async def test_a_stale_version_is_a_409_with_theirs(
     client: AsyncClient, viewer: AsyncClient
 ) -> None:
-    trip = await edited_trip(client, viewer)  # `viewer` joined with the edit code: an editor
+    trip = await edited_trip(client, viewer)  # `viewer` was added as an editor
     poi = await add(client, trip["id"])
     url = f"/trips/{trip['id']}/points-of-interest/{poi['id']}"
     resp = await viewer.put(url, json={**MARKET, "notes": "Theirs"}, headers=if_match(1))

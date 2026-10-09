@@ -25,7 +25,7 @@ project; the next one is **93**.
 
 ## Stages
 
-All complete unless marked. Current branch: `alternate-days` (Run 25).
+All complete unless marked. Current branch: `journal-redesign` (Run 26).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -59,6 +59,7 @@ All complete unless marked. Current branch: `alternate-days` (Run 25).
 | Run 23 | 87 | Large text: entry rows stack | [run-23-large-text.md](docs/plan/run-23-large-text.md) |
 | Run 24 | 88–90 | Photos and memories are never dropped: iPhone camera photos (MPO), a stuck-not-dropped outbox, failed phone saves | [run-24-photo-upload-resilience.md](docs/plan/run-24-photo-upload-resilience.md) |
 | Run 25 | 91–92 | Plan B: a hidden backup plan for a day, turned on by a fork button on the day page | [run-25-plan-b.md](docs/plan/run-25-plan-b.md) |
+| Run 26 | 93–96 | **In progress (93 done).** Invite by email (no more join codes); place names for memories; the journal as a photo timeline with a full view | [run-26-journal-redesign.md](docs/plan/run-26-journal-redesign.md) |
 
 ## Architecture Decisions
 

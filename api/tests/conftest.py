@@ -151,7 +151,14 @@ async def _user(db: AsyncSession, email: str) -> UserRecord:
     return user
 
 
-async def _client_for(db: AsyncSession, user: UserRecord) -> AsyncClient:
+class UserClient(AsyncClient):
+    """A test client signed in as one account; `email` is that account's (for
+    adding them to a trip)."""
+
+    email: str
+
+
+async def _client_for(db: AsyncSession, user: UserRecord) -> UserClient:
     app = create_app()
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -159,7 +166,9 @@ async def _client_for(db: AsyncSession, user: UserRecord) -> AsyncClient:
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[current_active_user] = lambda: user
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    ac = UserClient(transport=ASGITransport(app=app), base_url="http://test")
+    ac.email = user.email
+    return ac
 
 
 @pytest_asyncio.fixture
@@ -168,13 +177,13 @@ async def viewer_user(db: AsyncSession) -> UserRecord:
 
 
 @pytest_asyncio.fixture
-async def viewer(db: AsyncSession, viewer_user: UserRecord) -> AsyncGenerator[AsyncClient, None]:
+async def viewer(db: AsyncSession, viewer_user: UserRecord) -> AsyncGenerator[UserClient, None]:
     async with await _client_for(db, viewer_user) as ac:
         yield ac
 
 
 @pytest_asyncio.fixture
-async def stranger(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def stranger(db: AsyncSession) -> AsyncGenerator[UserClient, None]:
     async with await _client_for(db, await _user(db, "stranger@example.com")) as ac:
         yield ac
 

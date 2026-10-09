@@ -6,6 +6,24 @@
 
 ## Status
 
+- **Run stage 26 (2026-10-08)** on **`journal-redesign`** (off `main` at
+  `de5a6e7`): invite people by email; the journal as a photo timeline.
+  Plan: `docs/plan/run-26-journal-redesign.md`. Q1–4, 7, 8 answered; Q5
+  (no time on the tile) and Q6 (leave the code columns) took the
+  recommendation.
+  - **Phase 93 ✅:** no more join codes. The owner's Share dialog has an
+    email + Can view/edit + Invite form (`POST /trips/{id}/members`: 404 "No
+    account with that email", 409 for your own email, re-invite changes the
+    role) and a role picker on each member (`PATCH …/members/{userId}`).
+    Members show name, then email. `POST /trips/join`, the four code
+    endpoints, `JoinTripDialog` and Join trip are gone; `trips.view_code`/
+    `edit_code` stay in the table, unused. Test clients carry `.email`
+    (`UserClient`) so helpers invite the right account. E2E sharing specs
+    switched to invites. `make verify` green (294 API + 624 UI).
+    **Already failing on `main`, not this change:** the e2e viewer test expects 4 map pins and
+    the dev data now gives 5.
+  - **Dev DB note:** it was at 0014 while `main` needs 0015 (plan B):
+    every trip read 500'd (seen as CORS errors) until `make migrate`.
 - **Run stage 25 (2026-10-08)** on **`alternate-days`** (worktree, off `main`
   at `e04da12`): plan B, a backup plan for a day. Plan:
   `docs/plan/run-25-plan-b.md`. Q-B1–B4 answered (the recommendations);

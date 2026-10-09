@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Trash2, Upload, UserPlus, Users } from "lucide-react";
-import { JoinTripDialog } from "@/features/sharing/JoinTripDialog";
+import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Trash2, Upload, Users } from "lucide-react";
 import { countdownParts } from "@/features/trips/countdown";
 import { deleteTrip, fetchTrips, leaveTrip } from "@/features/trips/tripsSlice";
 import { ImportTripDialog } from "@/features/trips/ImportTripDialog";
@@ -145,7 +144,6 @@ export function TripsPage() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [showPast, setShowPast] = useState(false);
-  const [joinOpen, setJoinOpen] = useState(false);
   const [pendingLeave, setPendingLeave] = useState(null);
   const [leaving, setLeaving] = useState(false);
 
@@ -188,16 +186,6 @@ export function TripsPage() {
         <div className="mb-4 flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold">Trips</h1>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setJoinOpen(true)}
-              disabled={readOnly}
-              title={readOnly ? "You’re offline" : undefined}
-            >
-              <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Join trip
-            </Button>
             {items.length > 0 && (
               <Button
                 size="sm"
@@ -265,7 +253,6 @@ export function TripsPage() {
         )}
 
         <ImportTripDialog open={importOpen} onClose={() => setImportOpen(false)} />
-        <JoinTripDialog open={joinOpen} onClose={() => setJoinOpen(false)} />
 
         <Dialog
           open={pendingLeave !== null}
@@ -273,7 +260,7 @@ export function TripsPage() {
           title="Leave trip?"
           description={
             pendingLeave
-              ? `“${pendingLeave.name}” will leave your trips. You can join again with its id.`
+              ? `“${pendingLeave.name}” will leave your trips. Its owner can add you again.`
               : ""
           }
         >

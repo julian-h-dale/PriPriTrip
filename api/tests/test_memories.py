@@ -1,7 +1,7 @@
 """The trip journal: memories by the owner and editors, ordered by the
 server's UTC time, editable and deletable only by their author. (Who sees
 which memory — viewers and public ones — is tests/test_public_memories.py.)
-The `viewer` fixture joins as an editor here, so it can write."""
+The `viewer` fixture is added as an editor here, so it can write."""
 
 from __future__ import annotations
 

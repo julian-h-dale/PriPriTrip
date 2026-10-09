@@ -11,7 +11,7 @@ import { notify } from "@/shared/notificationSlice";
 /**
  * Admins: make an account for someone. The server picks a random temporary
  * password, shown here once to send them; they choose their own when they
- * first sign in. Then they join a trip with its code, as anyone does.
+ * first sign in. A trip's owner then adds them to it by this email.
  */
 export function InviteUserDialog({ open, onClose }) {
   const dispatch = useDispatch();
@@ -56,7 +56,7 @@ export function InviteUserDialog({ open, onClose }) {
         <div className="flex flex-col gap-4">
           <CopyField value={invited.temporaryPassword} label="Copy temporary password" />
           <p className="text-xs text-muted-foreground">
-            To follow a trip, they’ll also need its view code (Share trip, on the trip).
+            To put them on a trip, its owner adds this email under Share trip.
           </p>
           <DialogFooter>
             <Button onClick={close}>Done</Button>

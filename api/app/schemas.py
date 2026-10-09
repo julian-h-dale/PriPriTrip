@@ -160,28 +160,23 @@ class TripSummary(CamelModel):
     role: Literal["owner", "editor", "viewer"] = "owner"
 
 
-class JoinTrip(CamelModel):
-    """Join with the trip's view code (as a viewer) or its edit code (as an
-    editor); the server tells them apart. The trip's id (`code`, or `tripId`
-    from older apps) only works for someone already on the trip."""
+class MemberInvite(CamelModel):
+    """Add someone to a trip by their account's email."""
 
-    trip_id: uuid.UUID | None = None
-    code: str | None = Field(default=None, max_length=200)
+    email: str = Field(min_length=1, max_length=320)
+    role: Literal["editor", "viewer"]
+
+
+class MemberRoleChange(CamelModel):
+    role: Literal["editor", "viewer"]
 
 
 class MemberRead(CamelModel):
     user_id: uuid.UUID
     email: str
+    name: str
     role: Literal["editor", "viewer"]
     joined_at: datetime
-
-
-class EditCode(CamelModel):
-    code: str
-
-
-class ViewCode(CamelModel):
-    code: str
 
 
 MEMORY_MAX_CHARS = 2000

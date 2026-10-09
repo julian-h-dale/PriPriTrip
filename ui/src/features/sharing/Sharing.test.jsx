@@ -18,7 +18,7 @@ import { apiClient } from "@/shared/services/apiClient";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 const TRIP_ID = "3f2b8c1e-1111-4222-8333-444455556666";
@@ -30,8 +30,6 @@ base.days.forEach((d, i) => d.items.forEach((item, j) => (item.id = `item-${i}-$
 const asOwner = { ...base, role: "owner" };
 const asViewer = { ...base, role: "viewer" };
 const asEditor = { ...base, role: "editor" };
-const EDIT_CODE = "Xk3_pQ9vT2mLw8RzA1bC";
-const VIEW_CODE = "VIEWcode_0000000000";
 const summary = (role) => ({
   id: TRIP_ID,
   name: base.name,
@@ -135,76 +133,100 @@ async function openShare(user) {
 
 describe("the owner", () => {
   function ownerApi(members) {
-    apiClient.get.mockImplementation(async (url) =>
-      url.endsWith("/members")
-        ? { data: members }
-        : url.endsWith("/edit-code")
-          ? { data: { code: EDIT_CODE } }
-          : url.endsWith("/view-code")
-            ? { data: { code: VIEW_CODE } }
-            : { data: asOwner }
-    );
+    apiClient.get.mockImplementation(async (url) => (url.endsWith("/members") ? { data: members } : { data: asOwner }));
   }
+  const PRIPRI = { userId: "v1", email: "pripri@example.com", name: "PriPri", role: "editor", joinedAt: "2026-10-03T00:00:00Z" };
+  const FRIEND = { userId: "v2", email: "friend@example.com", name: "", role: "viewer", joinedAt: "2026-10-03T01:00:00Z" };
 
-  it("shares a view code and an edit code, and shows who can do what", async () => {
+  it("shows who's on the trip, by name, with their role, and no codes", async () => {
     const user = userEvent.setup();
-    ownerApi([
-      { userId: "v1", email: "pripri@example.com", role: "editor", joinedAt: "2026-10-03T00:00:00Z" },
-      { userId: "v2", email: "friend@example.com", role: "viewer", joinedAt: "2026-10-03T01:00:00Z" },
-    ]);
+    ownerApi([PRIPRI, FRIEND]);
     renderAt(`/trips/${TRIP_ID}`);
     await openShare(user);
     const dialog = screen.getByRole("dialog", { name: "Share trip" });
-    const view = within(dialog).getByRole("region", { name: "Can view" });
-    expect(await within(view).findByText(VIEW_CODE)).toBeInTheDocument();
-    // The trip's id is in every URL, so it isn't a code any more.
-    expect(within(dialog).queryByText(TRIP_ID)).not.toBeInTheDocument();
-    expect(within(view).getByRole("button", { name: "Copy view code" })).toBeInTheDocument();
-    const edit = within(dialog).getByRole("region", { name: "Can edit" });
-    expect(await within(edit).findByText(EDIT_CODE)).toBeInTheDocument();
-    expect(within(edit).getByRole("button", { name: "Copy edit code" })).toBeInTheDocument();
-
-    const rows = within(dialog).getAllByRole("listitem").map((li) => li.textContent);
-    expect(rows[0]).toContain("pripri@example.com");
-    expect(rows[0]).toContain("Can edit");
-    expect(rows[1]).toContain("friend@example.com");
-    expect(rows[1]).toContain("Can view");
+    const rows = await within(dialog).findAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("PriPri");
+    expect(rows[0]).toHaveTextContent("pripri@example.com");
+    expect(within(dialog).getByLabelText("Role for pripri@example.com")).toHaveValue("editor");
+    expect(rows[1]).toHaveTextContent("friend@example.com");
+    expect(within(dialog).getByLabelText("Role for friend@example.com")).toHaveValue("viewer");
+    expect(within(dialog).queryByText(/code/i)).not.toBeInTheDocument();
   });
 
-  it("makes a new edit code, with a second tap to confirm", async () => {
+  it("invites someone by email as an editor", async () => {
     const user = userEvent.setup();
     ownerApi([]);
-    apiClient.post.mockResolvedValue({ data: { code: "NEWcode_000000000000" } });
+    apiClient.post.mockResolvedValue({ data: { ...PRIPRI } });
     renderAt(`/trips/${TRIP_ID}`);
     await openShare(user);
-    const edit = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can edit" });
-    await within(edit).findByText(EDIT_CODE);
-
-    await user.click(within(edit).getByRole("button", { name: "New edit code" }));
-    expect(apiClient.post).not.toHaveBeenCalled();
-    await user.click(within(edit).getByRole("button", { name: "Confirm a new edit code" }));
-    expect(apiClient.post).toHaveBeenCalledWith(`/trips/${TRIP_ID}/edit-code`, null, { silent: true });
-    expect(await within(edit).findByText("NEWcode_000000000000")).toBeInTheDocument();
-    expect(within(edit).getByText(/The old one no longer works/)).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Share trip" });
+    await within(dialog).findByText("No one yet.");
+    await user.type(within(dialog).getByLabelText("Email"), " pripri@example.com ");
+    await user.selectOptions(within(dialog).getByLabelText("Can"), "editor");
+    await user.click(within(dialog).getByRole("button", { name: "Invite" }));
+    expect(apiClient.post).toHaveBeenCalledWith(
+      `/trips/${TRIP_ID}/members`,
+      { email: "pripri@example.com", role: "editor" },
+      { silent: true }
+    );
+    expect(await within(dialog).findByText("PriPri")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Email")).toHaveValue("");
   });
 
-  it("makes a new view code, with a second tap to confirm", async () => {
+  it("says when no account has that email", async () => {
     const user = userEvent.setup();
     ownerApi([]);
-    apiClient.post.mockResolvedValue({ data: { code: "NEWview_00000000000" } });
+    apiClient.post.mockRejectedValue({ response: { status: 404 } });
     renderAt(`/trips/${TRIP_ID}`);
     await openShare(user);
-    const view = within(screen.getByRole("dialog", { name: "Share trip" })).getByRole("region", { name: "Can view" });
-    await within(view).findByText(VIEW_CODE);
-    await user.click(within(view).getByRole("button", { name: "New view code" }));
-    await user.click(within(view).getByRole("button", { name: "Confirm a new view code" }));
-    expect(apiClient.post).toHaveBeenCalledWith(`/trips/${TRIP_ID}/view-code`, null, { silent: true });
-    expect(await within(view).findByText("NEWview_00000000000")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Share trip" });
+    await user.type(within(dialog).getByLabelText("Email"), "nobody@example.com");
+    await user.click(within(dialog).getByRole("button", { name: "Invite" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("No account with that email");
+    expect(within(dialog).getByText("No one yet.")).toBeInTheDocument();
+  });
+
+  it("re-inviting someone changes their role in place", async () => {
+    const user = userEvent.setup();
+    ownerApi([FRIEND]);
+    apiClient.post.mockResolvedValue({ data: { ...FRIEND, role: "editor" } });
+    renderAt(`/trips/${TRIP_ID}`);
+    await openShare(user);
+    const dialog = screen.getByRole("dialog", { name: "Share trip" });
+    await within(dialog).findByText("friend@example.com");
+    await user.type(within(dialog).getByLabelText("Email"), "friend@example.com");
+    await user.selectOptions(within(dialog).getByLabelText("Can"), "editor");
+    await user.click(within(dialog).getByRole("button", { name: "Invite" }));
+    await vi.waitFor(() => expect(within(dialog).getByLabelText("Role for friend@example.com")).toHaveValue("editor"));
+    expect(within(dialog).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("changes someone's role", async () => {
+    const user = userEvent.setup();
+    ownerApi([FRIEND]);
+    apiClient.patch.mockResolvedValue({ data: { ...FRIEND, role: "editor" } });
+    renderAt(`/trips/${TRIP_ID}`);
+    await openShare(user);
+    const dialog = screen.getByRole("dialog", { name: "Share trip" });
+    await user.selectOptions(await within(dialog).findByLabelText("Role for friend@example.com"), "editor");
+    expect(apiClient.patch).toHaveBeenCalledWith(`/trips/${TRIP_ID}/members/v2`, { role: "editor" }, { silent: true });
+    expect(within(dialog).getByLabelText("Role for friend@example.com")).toHaveValue("editor");
+  });
+
+  it("puts the role back when the change fails", async () => {
+    const user = userEvent.setup();
+    ownerApi([FRIEND]);
+    apiClient.patch.mockRejectedValue({ response: { status: 500 } });
+    renderAt(`/trips/${TRIP_ID}`);
+    await openShare(user);
+    const dialog = screen.getByRole("dialog", { name: "Share trip" });
+    await user.selectOptions(await within(dialog).findByLabelText("Role for friend@example.com"), "editor");
+    await vi.waitFor(() => expect(within(dialog).getByLabelText("Role for friend@example.com")).toHaveValue("viewer"));
   });
 
   it("removes someone, with a second tap to confirm", async () => {
     const user = userEvent.setup();
-    ownerApi([{ userId: "v1", email: "pripri@example.com", role: "viewer", joinedAt: "2026-10-03T00:00:00Z" }]);
+    ownerApi([{ ...FRIEND, email: "pripri@example.com", userId: "v1" }]);
     apiClient.delete.mockResolvedValue({});
     renderAt(`/trips/${TRIP_ID}`);
     await openShare(user);
@@ -217,42 +239,12 @@ describe("the owner", () => {
   });
 });
 
-describe("joining and leaving from the trips list", () => {
-  it("joins with whatever code was pasted, trimmed, and opens the trip", async () => {
-    const user = userEvent.setup();
-    apiClient.get.mockResolvedValue({ data: [] });
-    apiClient.post.mockResolvedValue({ data: summary("viewer") });
+describe("the trips list", () => {
+  it("has no Join trip button any more", async () => {
+    apiClient.get.mockResolvedValue({ data: [summary("owner")] });
     renderAt("/trips");
-    await user.click(await screen.findByRole("button", { name: "Join trip" }));
-    const dialog = screen.getByRole("dialog", { name: "Join a trip" });
-    await user.type(within(dialog).getByLabelText("Trip code"), `  ${TRIP_ID} `);
-    await user.click(within(dialog).getByRole("button", { name: "Join" }));
-    expect(apiClient.post).toHaveBeenCalledWith("/trips/join", { code: TRIP_ID }, { silent: true });
-    expect(await screen.findByText("today page")).toBeInTheDocument();
-  });
-
-  it("joins as an editor with the edit code", async () => {
-    const user = userEvent.setup();
-    apiClient.get.mockResolvedValue({ data: [] });
-    apiClient.post.mockResolvedValue({ data: summary("editor") });
-    const store = renderAt("/trips");
-    await user.click(await screen.findByRole("button", { name: "Join trip" }));
-    await user.type(screen.getByLabelText("Trip code"), EDIT_CODE);
-    await user.click(screen.getByRole("button", { name: "Join" }));
-    expect(apiClient.post).toHaveBeenCalledWith("/trips/join", { code: EDIT_CODE }, { silent: true });
-    expect(await screen.findByText("today page")).toBeInTheDocument();
-    expect(store.getState().trips.items.map((t) => t.role)).toEqual(["editor"]);
-  });
-
-  it("says when no trip has that code", async () => {
-    const user = userEvent.setup();
-    apiClient.get.mockResolvedValue({ data: [] });
-    apiClient.post.mockRejectedValue({ response: { status: 404 } });
-    renderAt("/trips");
-    await user.click(await screen.findByRole("button", { name: "Join trip" }));
-    await user.type(screen.getByLabelText("Trip code"), "wrong");
-    await user.click(screen.getByRole("button", { name: "Join" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("No trip has that code");
+    expect(await screen.findByText(base.name)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Join trip" })).not.toBeInTheDocument();
   });
 
   it("marks a trip you can edit, and offers Leave (not Delete)", async () => {

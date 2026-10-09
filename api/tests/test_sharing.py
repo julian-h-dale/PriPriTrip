@@ -10,101 +10,122 @@ from httpx import AsyncClient
 
 from app.models import UserRecord
 from app.sample_data import load_sample_trip
-from tests.conftest import if_match
+from tests.conftest import UserClient, if_match
+
+PRIPRI = "pripri@example.com"
 
 
-async def view_code(owner: AsyncClient, trip_id: str) -> str:
-    return str((await owner.get(f"/trips/{trip_id}/view-code")).json()["code"])
+async def invite(owner: AsyncClient, trip_id: str, email: str, role: str) -> Any:
+    return await owner.post(f"/trips/{trip_id}/members", json={"email": email, "role": role})
 
 
-async def shared_trip(owner: AsyncClient, viewer: AsyncClient) -> dict[str, Any]:
-    """Import the sample as `owner` and have `viewer` join it with the view code."""
+async def shared_trip(owner: AsyncClient, viewer: UserClient) -> dict[str, Any]:
+    """Import the sample as `owner` and add `viewer` as a viewer."""
     trip = (await owner.post("/trips/import", json=load_sample_trip())).json()
-    resp = await viewer.post("/trips/join", json={"code": await view_code(owner, trip["id"])})
-    assert resp.status_code == 200, resp.text
+    resp = await invite(owner, trip["id"], viewer.email, "viewer")
+    assert resp.status_code == 201, resp.text
     return trip
 
 
-# ---- joining ----
+# ---- adding people by email ----
 
 
-async def test_the_view_code_makes_a_viewer(client: AsyncClient, viewer: AsyncClient) -> None:
+async def test_inviting_as_a_viewer(
+    client: AsyncClient, viewer: AsyncClient, viewer_user: UserRecord
+) -> None:
     trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    code = await view_code(client, trip["id"])
-    assert len(code) == 20 and code != trip["id"]
-    # Made once: asking again gives the same code.
-    assert await view_code(client, trip["id"]) == code
-    resp = await viewer.post("/trips/join", json={"code": f" {code} "})
-    assert resp.status_code == 200
-    assert resp.json()["role"] == "viewer"
-    assert resp.json()["stayCount"] == trip["stayCount"]
+    resp = await invite(client, trip["id"], PRIPRI, "viewer")
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert (body["userId"], body["email"], body["role"]) == (str(viewer_user.id), PRIPRI, "viewer")
+    assert body["name"] == ""
 
     listed = (await viewer.get("/trips")).json()
     assert [(t["id"], t["role"]) for t in listed] == [(trip["id"], "viewer")]
+    assert listed[0]["stayCount"] == trip["stayCount"]
     assert (await viewer.get(f"/trips/{trip['id']}")).json()["role"] == "viewer"
     # The owner's own view is unchanged.
     assert (await client.get(f"/trips/{trip['id']}")).json()["role"] == "owner"
-    assert [t["role"] for t in (await client.get("/trips")).json()] == ["owner"]
 
 
-async def test_joining_twice_changes_nothing(client: AsyncClient, viewer: AsyncClient) -> None:
+async def test_inviting_as_an_editor_ignores_case_and_spaces(
+    client: AsyncClient, viewer: AsyncClient, viewer_user: UserRecord
+) -> None:
+    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
+    tid = trip["id"]
+    resp = await invite(client, tid, "  PriPri@Example.com ", "editor")
+    assert resp.status_code == 201, resp.text
+    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "editor"
+    members = (await client.get(f"/trips/{tid}/members")).json()
+    assert [(m["userId"], m["role"]) for m in members] == [(str(viewer_user.id), "editor")]
+
+
+async def test_an_unknown_email_is_a_404_and_adds_no_one(client: AsyncClient) -> None:
+    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
+    resp = await invite(client, trip["id"], "nobody@example.com", "viewer")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "No account with that email"
+    assert (await client.get(f"/trips/{trip['id']}/members")).json() == []
+
+
+async def test_inviting_needs_an_email_and_a_role(client: AsyncClient) -> None:
+    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
+    assert (await invite(client, trip["id"], "", "viewer")).status_code == 422
+    assert (await invite(client, trip["id"], PRIPRI, "owner")).status_code == 422
+
+
+async def test_the_owner_cannot_invite_themselves(client: AsyncClient) -> None:
+    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
+    assert (await invite(client, trip["id"], "user@example.com", "editor")).status_code == 409
+
+
+async def test_inviting_again_changes_the_role(client: AsyncClient, viewer: AsyncClient) -> None:
     trip = await shared_trip(client, viewer)
-    code = await view_code(client, trip["id"])
-    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 200
-    # The trip's id works for someone already on the trip, and changes nothing.
-    assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).json()[
-        "role"
-    ] == "viewer"
-    assert len((await client.get(f"/trips/{trip['id']}/members")).json()) == 1
+    tid = trip["id"]
+    resp = await invite(client, tid, PRIPRI, "editor")
+    assert resp.status_code == 200
+    assert resp.json()["role"] == "editor"
+    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "editor"
+    # Still one membership.
+    assert len((await client.get(f"/trips/{tid}/members")).json()) == 1
 
 
-async def test_joining_an_unknown_or_deleted_trip_is_a_404(
-    client: AsyncClient, viewer: AsyncClient
-) -> None:
-    assert (await viewer.post("/trips/join", json={"tripId": str(uuid.uuid4())})).status_code == 404
-    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    code = await view_code(client, trip["id"])
-    await client.delete(f"/trips/{trip['id']}")
-    assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).status_code == 404
-    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 404
-
-
-async def test_the_trip_id_no_longer_lets_a_new_person_in(
-    client: AsyncClient, viewer: AsyncClient
-) -> None:
-    """It's in every URL, so it can't be revoked: only the codes let people in."""
-    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    assert (await viewer.post("/trips/join", json={"tripId": trip["id"]})).status_code == 404
-    assert (await viewer.post("/trips/join", json={"code": trip["id"]})).status_code == 404
-    assert (await viewer.get("/trips")).json() == []
-
-
-async def test_a_renewed_view_code_replaces_the_old_one(
-    client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient
+async def test_the_owner_changes_a_role(
+    client: AsyncClient, viewer: AsyncClient, viewer_user: UserRecord
 ) -> None:
     trip = await shared_trip(client, viewer)
     tid = trip["id"]
-    old = await view_code(client, tid)
-    new = (await client.post(f"/trips/{tid}/view-code")).json()["code"]
-    assert new != old and await view_code(client, tid) == new
-    assert (await stranger.post("/trips/join", json={"code": old})).status_code == 404
-    assert (await stranger.post("/trips/join", json={"code": new})).json()["role"] == "viewer"
-    # Whoever already joined stays.
-    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "viewer"
-    # Members can't see or renew it.
-    assert (await viewer.get(f"/trips/{tid}/view-code")).status_code == 403
-    assert (await viewer.post(f"/trips/{tid}/view-code")).status_code == 403
+    url = f"/trips/{tid}/members/{viewer_user.id}"
+    resp = await client.patch(url, json={"role": "editor"})
+    assert resp.status_code == 200 and resp.json()["role"] == "editor"
+    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "editor"
+    assert (await client.patch(url, json={"role": "boss"})).status_code == 422
+    # Not a member: 404.
+    other = f"/trips/{tid}/members/{uuid.uuid4()}"
+    assert (await client.patch(other, json={"role": "viewer"})).status_code == 404
 
 
-async def test_the_owner_cannot_join_their_own_trip(client: AsyncClient) -> None:
+async def test_only_the_owner_adds_people(
+    client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient, viewer_user: UserRecord
+) -> None:
+    trip = await edited_trip(client, viewer)
+    tid = trip["id"]
+    assert (await invite(viewer, tid, "stranger@example.com", "viewer")).status_code == 403
+    assert (await invite(stranger, tid, "stranger@example.com", "editor")).status_code == 404
+    url = f"/trips/{tid}/members/{viewer_user.id}"
+    assert (await viewer.patch(url, json={"role": "viewer"})).status_code == 403
+    assert (await stranger.patch(url, json={"role": "viewer"})).status_code == 404
+    assert (await stranger.get("/trips")).json() == []
+
+
+async def test_the_join_codes_are_gone(client: AsyncClient, viewer: AsyncClient) -> None:
     trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    assert (await client.post("/trips/join", json={"tripId": trip["id"]})).status_code == 409
-    code = await view_code(client, trip["id"])
-    assert (await client.post("/trips/join", json={"code": code})).status_code == 409
-
-
-async def test_a_malformed_id_is_rejected(viewer: AsyncClient) -> None:
-    assert (await viewer.post("/trips/join", json={"tripId": "not-a-uuid"})).status_code == 422
+    tid = trip["id"]
+    for kind in ("view", "edit"):
+        assert (await client.get(f"/trips/{tid}/{kind}-code")).status_code in (404, 405)
+        assert (await client.post(f"/trips/{tid}/{kind}-code")).status_code in (404, 405)
+    assert (await viewer.post("/trips/join", json={"tripId": tid})).status_code in (404, 405)
+    assert (await viewer.get("/trips")).json() == []
 
 
 # ---- what a viewer may do ----
@@ -134,8 +155,7 @@ async def test_a_viewer_can_read_but_every_edit_is_403(
         ("delete", f"/trips/{tid}/travels/{travel['id']}", None),
         ("delete", f"/trips/{tid}", None),
         ("get", f"/trips/{tid}/members", None),
-        ("get", f"/trips/{tid}/edit-code", None),
-        ("post", f"/trips/{tid}/edit-code", None),
+        ("post", f"/trips/{tid}/members", {"email": "stranger@example.com", "role": "viewer"}),
     ]
     for method, url, body in edits:
         kwargs = {"json": body} if body is not None else {}
@@ -149,73 +169,12 @@ async def test_a_viewer_can_read_but_every_edit_is_403(
 # ---- editors ----
 
 
-async def edited_trip(owner: AsyncClient, editor: AsyncClient) -> dict[str, Any]:
-    """Import the sample as `owner` and have `editor` join it with the edit code."""
+async def edited_trip(owner: AsyncClient, editor: UserClient) -> dict[str, Any]:
+    """Import the sample as `owner` and add `editor` as an editor."""
     trip = (await owner.post("/trips/import", json=load_sample_trip())).json()
-    code = (await owner.get(f"/trips/{trip['id']}/edit-code")).json()["code"]
-    resp = await editor.post("/trips/join", json={"code": code})
-    assert resp.status_code == 200, resp.text
+    resp = await invite(owner, trip["id"], editor.email, "editor")
+    assert resp.status_code == 201, resp.text
     return trip
-
-
-async def test_the_edit_code_makes_an_editor(
-    client: AsyncClient, viewer: AsyncClient, viewer_user: UserRecord
-) -> None:
-    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    tid = trip["id"]
-    code = (await client.get(f"/trips/{tid}/edit-code")).json()["code"]
-    assert len(code) == 20
-    assert code != tid
-    # Made once: asking again gives the same code.
-    assert (await client.get(f"/trips/{tid}/edit-code")).json()["code"] == code
-
-    resp = await viewer.post("/trips/join", json={"code": f"  {code} "})  # pasted with spaces
-    assert resp.status_code == 200, resp.text
-    assert resp.json()["role"] == "editor"
-    assert [(t["id"], t["role"]) for t in (await viewer.get("/trips")).json()] == [(tid, "editor")]
-    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "editor"
-    members = (await client.get(f"/trips/{tid}/members")).json()
-    assert [(m["userId"], m["role"]) for m in members] == [(str(viewer_user.id), "editor")]
-
-
-async def test_joining_with_the_other_code_switches_role(
-    client: AsyncClient, viewer: AsyncClient
-) -> None:
-    trip = await shared_trip(client, viewer)
-    tid = trip["id"]
-    code = (await client.get(f"/trips/{tid}/edit-code")).json()["code"]
-    assert (await viewer.post("/trips/join", json={"code": code})).json()["role"] == "editor"
-    vcode = await view_code(client, tid)
-    assert (await viewer.post("/trips/join", json={"code": vcode})).json()["role"] == "viewer"
-    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "viewer"
-    # Still one membership, not one per code.
-    assert len((await client.get(f"/trips/{tid}/members")).json()) == 1
-
-
-async def test_a_renewed_edit_code_replaces_the_old_one(
-    client: AsyncClient, viewer: AsyncClient, stranger: AsyncClient
-) -> None:
-    trip = await edited_trip(client, viewer)
-    tid = trip["id"]
-    old = (await client.get(f"/trips/{tid}/edit-code")).json()["code"]
-    new = (await client.post(f"/trips/{tid}/edit-code")).json()["code"]
-    assert new != old
-    assert (await client.get(f"/trips/{tid}/edit-code")).json()["code"] == new
-    assert (await stranger.post("/trips/join", json={"code": old})).status_code == 404
-    assert (await stranger.post("/trips/join", json={"code": new})).json()["role"] == "editor"
-    # Whoever already joined keeps their role.
-    assert (await viewer.get(f"/trips/{tid}")).json()["role"] == "editor"
-
-
-async def test_joining_needs_a_known_code(client: AsyncClient, viewer: AsyncClient) -> None:
-    assert (await viewer.post("/trips/join", json={})).status_code == 422
-    assert (await viewer.post("/trips/join", json={"code": "  "})).status_code == 422
-    assert (await viewer.post("/trips/join", json={"code": "not-a-code"})).status_code == 404
-    # A deleted trip's edit code no longer works.
-    trip = (await client.post("/trips/import", json=load_sample_trip())).json()
-    code = (await client.get(f"/trips/{trip['id']}/edit-code")).json()["code"]
-    await client.delete(f"/trips/{trip['id']}")
-    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 404
 
 
 async def test_an_editor_changes_days_activities_stays_and_travel(
@@ -302,8 +261,6 @@ async def test_an_editor_cannot_delete_the_trip_or_manage_who_is_on_it(
         ("delete", f"/trips/{tid}"),
         ("get", f"/trips/{tid}/members"),
         ("delete", f"/trips/{tid}/members/{viewer_user.id}"),
-        ("get", f"/trips/{tid}/edit-code"),
-        ("post", f"/trips/{tid}/edit-code"),
     ]
     for method, url in owner_only:
         resp = await getattr(editor, method)(url)
@@ -323,7 +280,6 @@ async def test_a_stranger_gets_404_everywhere(
     assert (await stranger.delete(f"/trips/{tid}")).status_code == 404
     assert (await stranger.get(f"/trips/{tid}/members")).status_code == 404
     assert (await stranger.delete(f"/trips/{tid}/membership")).status_code == 404
-    assert (await stranger.get(f"/trips/{tid}/edit-code")).status_code == 404
     assert (
         await stranger.put(f"/trips/{tid}/days/2026-05-10", json={"title": "x"})
     ).status_code == 404
@@ -350,16 +306,15 @@ async def test_the_owner_sees_and_removes_viewers(
     assert (await client.delete(f"/trips/{tid}/members/{viewer_user.id}")).status_code == 404
 
 
-async def test_a_viewer_can_leave_and_rejoin(client: AsyncClient, viewer: AsyncClient) -> None:
+async def test_a_viewer_can_leave_and_be_invited_again(
+    client: AsyncClient, viewer: AsyncClient
+) -> None:
     trip = await shared_trip(client, viewer)
     tid = trip["id"]
     assert (await viewer.delete(f"/trips/{tid}/membership")).status_code == 204
     assert (await viewer.get(f"/trips/{tid}")).status_code == 404
-    # Leaving soft-deletes the membership, so joining again works (with the
-    # code: after leaving, the trip's id is a stranger's again).
-    assert (await viewer.post("/trips/join", json={"tripId": tid})).status_code == 404
-    code = await view_code(client, tid)
-    assert (await viewer.post("/trips/join", json={"code": code})).status_code == 200
+    # Leaving soft-deletes the membership, so a new invite adds them afresh.
+    assert (await invite(client, tid, PRIPRI, "viewer")).status_code == 201
     assert (await viewer.get(f"/trips/{tid}")).status_code == 200
 
 

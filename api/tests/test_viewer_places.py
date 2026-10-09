@@ -59,7 +59,7 @@ async def test_a_viewer_keeps_the_activities_places(
 
 
 async def test_an_editor_sees_everything(client: AsyncClient, viewer: AsyncClient) -> None:
-    trip = await edited_trip(client, viewer)  # `viewer` joined as an editor
+    trip = await edited_trip(client, viewer)  # `viewer` was added as an editor
     await client.post(f"/trips/{trip['id']}/points-of-interest", json=MARKET)
     seen = (await viewer.get(f"/trips/{trip['id']}")).json()
     assert len(seen["pointsOfInterest"]) == 1

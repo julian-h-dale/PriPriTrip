@@ -2,7 +2,7 @@
 memory; viewers (people following the trip) see only public ones, can't write
 any, and never see a booking's confirmation number.
 
-Here `viewer` (pripri@) joins as an editor and `stranger` joins as a viewer —
+Here `viewer` (pripri@) is an editor and `stranger` a viewer —
 the in-laws."""
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from httpx import AsyncClient
 
 from app.settings import get_app_settings
 from tests.test_photos import _upload, jpeg
-from tests.test_sharing import edited_trip, view_code
+from tests.test_sharing import edited_trip, invite
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +28,7 @@ def photo_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 async def _trip(owner: AsyncClient, editor: AsyncClient, follower: AsyncClient) -> str:
     """The sample trip, with an editor and a viewer (`follower`) on it."""
     tid = str((await edited_trip(owner, editor))["id"])
-    resp = await follower.post("/trips/join", json={"code": await view_code(owner, tid)})
+    resp = await invite(owner, tid, follower.email, "viewer")
     assert resp.json()["role"] == "viewer"
     return tid
 
