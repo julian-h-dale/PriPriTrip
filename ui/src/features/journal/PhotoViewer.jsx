@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { ChevronLeft, ChevronRight, Download, Maximize2, Save, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, Maximize2, RotateCw, Save, Trash2, X } from "lucide-react";
 import { photoSrc, usePhotoSrc } from "@/features/journal/photoUrls";
 import { saveToPhone } from "@/features/journal/saveToPhone";
 import { notify } from "@/shared/notificationSlice";
@@ -16,14 +16,16 @@ const TAP_SLOP_PX = 10; // a finger that moved further was swiping or panning
  * Full-screen photos: the display copy (fast), swipe or arrows between them,
  * "Full quality" to load the original — then pinch-zoom as on any page —
  * and "Download original". A photo still waiting to upload has "Save to
- * phone" instead: one taken in the app isn't in the camera roll. Tapping the
- * photo closes it.
+ * phone" instead: one taken in the app isn't in the camera roll. One the
+ * server refused (stuck) says why, with Try again and Remove (which asks
+ * first: it may be the only copy). Tapping the photo closes it.
  */
-export function PhotoViewer({ photos, start = 0, onClose }) {
+export function PhotoViewer({ photos, start = 0, onClose, onRetry, onRemove }) {
   const dispatch = useDispatch();
   const userId = useSelector((s) => userIdFromToken(s.auth?.token));
   const [index, setIndex] = useState(start);
   const [full, setFull] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   // Saved copies only: originals are never saved on the phone, so no full
   // quality or download, and the display copy only if it's saved.
   const savedOnly = useSelector(selectSavedOnly);
@@ -36,6 +38,7 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
   const go = (delta) => {
     setIndex((i) => Math.min(photos.length - 1, Math.max(0, i + delta)));
     setFull(false);
+    setConfirmRemove(false);
   };
 
   useEffect(() => {
@@ -151,6 +154,43 @@ export function PhotoViewer({ photos, start = 0, onClose }) {
           </button>
         )}
       </div>
+      {photo.stuck && (
+        <div role="status" className="flex flex-col gap-2 p-3 text-sm text-white">
+          <p className="flex items-start gap-1.5">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+            <span>
+              Couldn’t upload: {photo.stuck.message}. It’s only on this phone: tap Save to phone to keep a copy.
+            </span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {onRetry && (
+              <button type="button" onClick={() => onRetry(photo)} className={`${button} flex items-center gap-1.5 text-sm`}>
+                <RotateCw className="h-4 w-4" aria-hidden="true" />
+                Try again
+              </button>
+            )}
+            {onRemove &&
+              (confirmRemove ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRemove(photo);
+                    onClose();
+                  }}
+                  className={`${button} flex items-center gap-1.5 bg-destructive text-sm hover:bg-destructive/80`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  Delete from this phone
+                </button>
+              ) : (
+                <button type="button" onClick={() => setConfirmRemove(true)} className={`${button} flex items-center gap-1.5 text-sm`}>
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  Remove
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

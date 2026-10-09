@@ -208,18 +208,34 @@ describe("Journal tab", () => {
     expect(await pending(USER)).toEqual([]);
   });
 
-  it("a write the server rejects for good is dropped, not retried forever", async () => {
-    apiClient.post.mockRejectedValue({ response: { status: 404 } });
+  it("a write the server rejects is kept, marked, and not retried until asked", async () => {
+    apiClient.post.mockRejectedValue({ response: { status: 404, data: { detail: "Not found" } } });
     const store = renderAt("/trips/trip-1/journal");
     await screen.findByRole("region", { name: "Mon, May 11" });
     await userEvent.click(screen.getByRole("button", { name: "New memory" }));
-    await userEvent.type(screen.getByLabelText("What happened?"), "lost");
+    await userEvent.type(screen.getByLabelText("What happened?"), "kept");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    await vi.waitFor(async () => expect(await pending(USER)).toEqual([]));
+    await vi.waitFor(async () => expect((await pending(USER))[0]?.stuck).toMatchObject({ status: 404, message: "Not found" }));
     expect(store.getState().notification.items.map((n) => n.message)).toContain(
-      "A memory couldn’t be saved and was dropped."
+      "A memory couldn’t be saved. It’s still on this phone."
     );
-    expect(screen.queryByText("lost")).not.toBeInTheDocument();
+    expect(screen.getByText("kept")).toBeInTheDocument();
+    expect(await screen.findByText(/Couldn’t upload: Not found/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Couldn’t upload" })).toHaveTextContent("1 couldn’t upload");
+
+    // The next automatic pass leaves it alone.
+    const calls = apiClient.post.mock.calls.length;
+    await store.dispatch(syncOutbox());
+    expect(apiClient.post.mock.calls.length).toBe(calls);
+
+    // Try again sends it; accepted, it's done.
+    apiClient.post.mockImplementation(async (url, body) => ({
+      data: { ...body, photos: [], mine: true, authorEmail: "", receivedAt: body.createdAt },
+    }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await vi.waitFor(async () => expect(await pending(USER)).toEqual([]));
+    expect(screen.queryByRole("region", { name: "Couldn’t upload" })).not.toBeInTheDocument();
+    expect(screen.getByText("kept")).toBeInTheDocument();
   });
 });
 
@@ -406,6 +422,30 @@ describe("signing out with memories still waiting", () => {
     expect(warning).toHaveTextContent("3 photos haven’t been uploaded yet");
     expect(warning).toHaveTextContent("aren’t saved anywhere else");
     expect(store.getState().auth.token).not.toBeNull();
+  });
+
+  it("warns about writes the server turned down, too (they're kept on the phone)", async () => {
+    const user = userEvent.setup();
+    const { TopBar } = await import("@/shared/components/TopBar");
+    const store = configureStore({
+      reducer: { auth: authReducer, journal: journalReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
+      preloadedState: {
+        auth: { token: fakeToken(USER), user: { email: "u@x.com", is_superuser: false }, status: "idle" },
+        journal: { tripId: null, items: [], status: "idle", stale: false, pendingCount: 0, waitingPhotos: { count: 0, bytes: 0 }, stuckCount: 2, upload: null },
+      },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <TopBar title="Trip" />
+        </MemoryRouter>
+      </Provider>
+    );
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
+    const warning = screen.getByRole("dialog", { name: "Sign out anyway?" });
+    expect(warning).toHaveTextContent("2 items the server turned down haven’t gone through yet. Signing out deletes them");
+    expect(warning).toHaveTextContent("aren’t saved anywhere else");
   });
 });
 

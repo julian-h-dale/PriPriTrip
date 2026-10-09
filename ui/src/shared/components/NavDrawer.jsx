@@ -7,7 +7,7 @@ import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
 import { ShareTripDialog } from "@/features/sharing/ShareTripDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
 import { signOut } from "@/features/auth/authSlice";
-import { selectPendingMemories, selectWaitingPhotos } from "@/features/journal/journalSlice";
+import { selectPendingMemories, selectStuckCount, selectWaitingPhotos } from "@/features/journal/journalSlice";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { InstallAppButton } from "@/shared/pwa/InstallAppButton";
@@ -23,12 +23,13 @@ const ITEM =
   "flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** What signing out would lose: memories not yet synced, photos not yet uploaded. */
-function signOutWarning(memories, photos) {
+function signOutWarning(memories, photos, stuck = 0) {
   const parts = [];
   if (memories > 0) parts.push(`${memories} ${memories === 1 ? "memory hasn’t" : "memories haven’t"} synced`);
   if (photos > 0) parts.push(`${photos} ${photos === 1 ? "photo hasn’t" : "photos haven’t"} been uploaded`);
+  if (stuck > 0) parts.push(`${stuck} ${stuck === 1 ? "item the server turned down hasn’t" : "items the server turned down haven’t"} gone through`);
   const lost = `${parts.join(" and ")} yet. Signing out deletes them from this phone.`;
-  return photos > 0
+  return photos > 0 || stuck > 0
     ? `${lost} Photos taken in the app aren’t saved anywhere else. Upload them from the Journal first.`
     : `${lost} Get online first to keep them.`;
 }
@@ -157,6 +158,7 @@ export function NavDrawer({ open, onClose }) {
   const isViewer = trip?.role === "viewer";
   const unsynced = useSelector(selectPendingMemories);
   const { count: photos } = useSelector(selectWaitingPhotos);
+  const stuck = useSelector(selectStuckCount);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const track = useTrack();
   // A Trip tool opened from here (its page view says it was opened at all).
@@ -167,7 +169,7 @@ export function NavDrawer({ open, onClose }) {
 
   function handleSignOut() {
     // Signing out forgets memories and photos still waiting in the outbox: say so first.
-    if (unsynced > 0 || photos > 0) setConfirmSignOut(true);
+    if (unsynced > 0 || photos > 0 || stuck > 0) setConfirmSignOut(true);
     else dispatch(signOut());
   }
   const panelRef = useRef(null);
@@ -301,7 +303,7 @@ export function NavDrawer({ open, onClose }) {
         open={confirmSignOut}
         onClose={() => setConfirmSignOut(false)}
         title="Sign out anyway?"
-        description={signOutWarning(unsynced, photos)}
+        description={signOutWarning(unsynced, photos, stuck)}
       >
         <DialogFooter>
           <Button variant="outline" onClick={() => setConfirmSignOut(false)}>

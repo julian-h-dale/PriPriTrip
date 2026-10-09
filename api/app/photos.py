@@ -27,7 +27,12 @@ THUMB_EDGE = 480
 THUMB_QUALITY = 80
 # Refuse "decompression bombs": tiny files that decode to enormous images.
 MAX_PIXELS = 120_000_000
-FORMATS = {"JPEG": "jpeg", "PNG": "png", "WEBP": "webp", "HEIF": "heic"}
+# Pillow's format name -> how the original is stored. An iPhone camera photo
+# (taken in the app, not picked from the library) is a JPEG carrying a second
+# image, its HDR gain map, which Pillow calls "MPO": it's stored as a JPEG,
+# byte-for-byte, and the copies are made from its main image.
+FORMATS = {"JPEG": "jpeg", "MPO": "jpeg", "PNG": "png", "WEBP": "webp", "HEIF": "heic"}
+JPEG_FORMATS = {"JPEG", "MPO"}
 ORIENTATION = 0x0112  # the EXIF tag
 
 
@@ -69,13 +74,13 @@ def _display(img: Image.Image) -> Image.Image:
 
     The production machine has 512 MB, and a decoded photo is width x height x 3
     bytes (72 MB at 24 MP), so the order matters:
-    - a JPEG is decoded at 1/2, 1/4 or 1/8 scale where that still leaves at
+    - a JPEG (an MPO too) is decoded at 1/2, 1/4 or 1/8 scale where that still leaves at
       least DISPLAY_EDGE px (`draft`), so the full-size pixels never exist;
     - it's shrunk in place (no full-size copy kept), *then* turned upright, so
       the rotation copies a display-size image, not the original.
     Measured on a 24 MP JPEG: about 70 MB at peak, down from about 340 MB.
     """
-    if img.format == "JPEG":
+    if img.format in JPEG_FORMATS:
         # The size it will fit to, e.g. 2560 x 1920; a 2560 x 2560 box would
         # stop any non-square photo from being decoded smaller.
         scale = min(DISPLAY_EDGE / img.width, DISPLAY_EDGE / img.height, 1)

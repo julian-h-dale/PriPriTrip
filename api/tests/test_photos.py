@@ -155,6 +155,62 @@ async def test_heic_from_an_iphone_is_accepted(client: AsyncClient) -> None:
     assert (await client.get(resp.json()["displayUrl"])).headers["content-type"] == "image/jpeg"
 
 
+def mpo(width: int = 4032, height: int = 3024, *, orientation: int | None = None) -> bytes:
+    """An iPhone camera photo as the in-app camera hands it over: a JPEG with
+    a second, smaller image (the HDR gain map) — what Pillow calls MPO."""
+    main = Image.new("RGB", (width, height), (200, 120, 40))
+    gain_map = Image.new("L", (width // 4, height // 4), 128).convert("RGB")
+    exif = Image.Exif()
+    if orientation:
+        exif[0x0112] = orientation
+    exif[0x8825] = {1: "N", 2: (46.0, 57.0, 0.0), 3: "E", 4: (7.0, 26.0, 0.0)}
+    out = io.BytesIO()
+    main.save(out, "MPO", save_all=True, append_images=[gain_map], exif=exif, quality=90)
+    return out.getvalue()
+
+
+async def test_an_iphone_camera_photo_is_kept_whole_as_a_jpeg(client: AsyncClient) -> None:
+    data = mpo(orientation=6)
+    assert Image.open(io.BytesIO(data)).format == "MPO"
+    tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
+    memory = await _memory(client, tid)
+    resp = await _upload(client, tid, memory["id"], data)
+    assert resp.status_code == 201, resp.text
+    photo = resp.json()
+    assert (photo["width"], photo["height"]) == (3024, 4032)  # upright
+
+    original = await client.get(photo["originalUrl"])
+    assert original.headers["content-type"] == "image/jpeg"
+    assert original.content == data  # byte-for-byte: gain map and EXIF kept
+
+    display = Image.open(io.BytesIO((await client.get(photo["displayUrl"])).content))
+    assert display.format == "JPEG"
+    assert display.size == (1920, 2560)  # upright, display size
+    assert not display.getexif()  # no GPS on the copies
+
+
+def test_an_iphone_camera_photo_is_decoded_small(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Like any JPEG, so a 48 MP camera photo never exists at full size."""
+    from PIL import JpegImagePlugin
+
+    from app import photos
+
+    drafted: list[tuple[int, int]] = []
+    real_draft = JpegImagePlugin.JpegImageFile.draft
+
+    def spy(self: Any, mode: Any, size: Any) -> Any:
+        result = real_draft(self, mode, size)
+        drafted.append(self.size)
+        return result
+
+    monkeypatch.setattr(JpegImagePlugin.JpegImageFile, "draft", spy)
+    processed = photos.process(mpo(8064, 6048))
+    # Decoded at half size, never at 8064 x 6048 (Pillow's own thumbnail()
+    # drafts too, but for a size that would leave this photo full size).
+    assert drafted and set(drafted) == {(4032, 3024)}
+    assert (processed.format, processed.width, processed.height) == ("jpeg", 8064, 6048)
+
+
 async def test_what_isnt_a_photo_or_is_too_big_is_refused(client: AsyncClient) -> None:
     tid = (await client.post("/trips/import", json=load_sample_trip())).json()["id"]
     memory = await _memory(client, tid)

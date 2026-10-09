@@ -22,7 +22,14 @@ import { createStore, del, entries, get, set } from "idb-keyval";
  * Only a memory's author can change it, so there's nothing to merge with
  * anyone else's edits.
  *
- * Best-effort like tripCache: without IndexedDB every call resolves quietly.
+ * An entry the server refused (a 4xx that isn't "try later") is never
+ * dropped: it's marked `stuck: { status, message, at }` and kept until the
+ * user removes it (Run stage 24). Stuck entries are left out of the
+ * automatic retry; `unstick` puts them back in line. A new write to a stuck
+ * memory clears its mark, since the edit may be the fix.
+ *
+ * Best-effort like tripCache: without IndexedDB every call resolves quietly,
+ * except that `enqueue` says whether the write was kept.
  */
 
 let store;
@@ -41,6 +48,13 @@ async function safely(fn, fallback = null) {
 }
 
 const key = (userId, entryId) => `${userId}:${entryId}`;
+
+/** A copy without its `stuck` mark. */
+function unmarked(entry) {
+  const copy = { ...entry };
+  delete copy.stuck;
+  return copy;
+}
 const entryOf = (write) => write.entryId ?? write.memoryId;
 
 /** Merge one more write for a memory into its pending entry (pure). */
@@ -48,12 +62,14 @@ export function mergeOp(existing, next) {
   if (!existing) return next;
   if (existing.op === "addPhoto" && next.op === "removePhoto") return null; // never uploaded
   if (next.op === "addPhoto" || next.op === "removePhoto") return next;
+  // A new write to a stuck memory clears its mark: the edit may be the fix.
+  const kept = unmarked(existing);
   if (existing.op === "create") {
     if (next.op === "delete") return null; // never reached the server: nothing to do
-    return { ...existing, body: { ...existing.body, ...next.body } }; // still a create
+    return { ...kept, body: { ...existing.body, ...next.body } }; // still a create
   }
   if (next.op === "delete") return { ...next, queuedAt: existing.queuedAt };
-  return { ...existing, op: next.op, body: { ...existing.body, ...next.body } };
+  return { ...kept, op: next.op, body: { ...existing.body, ...next.body } };
 }
 
 // Strictly increasing queue times, so writes queued in the same millisecond
@@ -64,12 +80,32 @@ function nextQueuedAt() {
   return new Date(lastQueued).toISOString();
 }
 
+let askedToKeep = false;
+/**
+ * Ask the browser not to clear this site's storage when the phone runs low
+ * (the outbox can hold the only copy of a photo). Once per app start;
+ * best-effort — a browser may say no, or not have the call at all.
+ */
+export async function askToKeepStorage() {
+  if (askedToKeep) return;
+  askedToKeep = true;
+  try {
+    if (typeof navigator !== "undefined" && navigator.storage?.persist) {
+      if (!(await navigator.storage.persisted?.())) await navigator.storage.persist();
+    }
+  } catch {
+    // Refused or unsupported: the outbox works the same, just without the promise.
+  }
+}
+
 /**
  * Queue a write ({ userId, tripId, memoryId, op, body, entryId? }). Deleting
- * a memory also drops any of its photos still waiting to upload.
+ * a memory also drops any of its photos still waiting to upload. Resolves
+ * true once the write is kept on the phone, false if it couldn't be (no
+ * IndexedDB, or it refused: the phone is out of space).
  */
 export function enqueue(write) {
-  if (!write.userId) return Promise.resolve();
+  if (!write.userId) return Promise.resolve(false);
   return safely(async () => {
     const entryId = entryOf(write);
     const k = key(write.userId, entryId);
@@ -82,10 +118,38 @@ export function enqueue(write) {
       );
       await Promise.all(photos.map(([k2]) => del(k2, db())));
     }
+    askToKeepStorage();
+    return true;
+  }, false);
+}
+
+/** Mark a write the server refused ({ status, message }); it stays queued. */
+export function markStuck(userId, entryId, { status, message }) {
+  if (!userId) return Promise.resolve();
+  return safely(async () => {
+    const k = key(userId, entryId);
+    const entry = await get(k, db());
+    if (entry) await set(k, { ...entry, stuck: { status, message, at: new Date().toISOString() } }, db());
   });
 }
 
-/** This user's pending writes, oldest first. */
+/**
+ * Put stuck writes back in line to be sent: these entries, or all of this
+ * user's when `entryIds` is left out. Resolves to how many were stuck.
+ */
+export function unstick(userId, entryIds) {
+  if (!userId) return Promise.resolve(0);
+  return safely(async () => {
+    const wanted = entryIds ? new Set(entryIds) : null;
+    const stuck = (await entries(db())).filter(
+      ([, v]) => v.userId === userId && v.stuck && (!wanted || wanted.has(entryOf(v)))
+    );
+    await Promise.all(stuck.map(([k, v]) => set(k, unmarked(v), db())));
+    return stuck.length;
+  }, 0);
+}
+
+/** This user's pending writes, oldest first (stuck ones included, marked). */
 export function pending(userId) {
   if (!userId) return Promise.resolve([]);
   return safely(async () => {
@@ -139,7 +203,7 @@ export function applyPending(memories, ops, tripId) {
     const current = byId.get(op.memoryId);
     if (op.op === "update" && !current) continue; // gone on the server meanwhile
     byId.set(op.memoryId, {
-      ...(current ?? {
+      ...(current ? unmarked(current) : {
         id: op.memoryId,
         zone: op.body.zone,
         createdAt: op.body.createdAt,
@@ -153,13 +217,14 @@ export function applyPending(memories, ops, tripId) {
       updatedAt: op.op === "update" ? op.queuedAt : (current?.updatedAt ?? null),
       photos: current?.photos ?? [],
       pending: true,
+      ...(op.stuck ? { stuck: op.stuck } : {}),
     });
   }
   for (const op of photoOps) {
     const memory = byId.get(op.memoryId);
     if (!memory) continue;
     const photos = (memory.photos ?? []).filter((p) => p.id !== op.body.photoId);
-    if (op.op === "addPhoto") photos.push(pendingPhoto(op.body.photoId, op.body.file));
+    if (op.op === "addPhoto") photos.push(pendingPhoto(op.body.photoId, op.body.file, op.stuck));
     byId.set(op.memoryId, { ...memory, photos });
   }
   return sortMemories([...byId.values()]);
@@ -174,15 +239,25 @@ export function sortMemories(memories) {
 
 /**
  * A photo still waiting to upload, shown from the phone's own copy. Its URLs
- * are object URLs (blob:) made from the stored bytes.
+ * are object URLs (blob:) made from the stored bytes. `stuck` when the
+ * server refused it.
  */
-export function pendingPhoto(photoId, file) {
+export function pendingPhoto(photoId, file, stuck = null) {
   let url = null;
   try {
     url = URL.createObjectURL(new Blob([file.bytes], { type: file.type }));
   } catch {
     // No object URLs (some test environments): it shows as a placeholder.
   }
-  return { id: photoId, pending: true, thumbUrl: url, displayUrl: url, originalUrl: url, width: null, height: null };
+  return {
+    id: photoId,
+    pending: true,
+    ...(stuck ? { stuck } : {}),
+    thumbUrl: url,
+    displayUrl: url,
+    originalUrl: url,
+    width: null,
+    height: null,
+  };
 }
 
