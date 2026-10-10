@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { accuracyLabel, distanceMetres, locationLabel, nearestPlace } from "@/features/journal/nearestPlace";
+import { accuracyLabel, locationLabel, nearestPlace } from "@/features/journal/nearestPlace";
+import { distanceMetres } from "@/shared/utils/distance";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 const TRIP = structuredClone(sampleTrip);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { CloudOff, Navigation } from "lucide-react";
 import { fetchMemories } from "@/features/journal/journalSlice";
 import { buildMapMarkers } from "@/features/map/buildMapMarkers";
@@ -10,6 +10,7 @@ import { MapControls } from "@/features/map/MapControls";
 import { MapInfoContent } from "@/features/map/MapInfoContent";
 import { MarkerList } from "@/features/map/MarkerList";
 import { filterMarkers, viewFor } from "@/features/map/mapFilters";
+import { FOCUS_PARAM } from "@/features/map/mapFocus";
 import { colorFor, directionsUrl, glyphSrcFor, iconFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import { isArea } from "@/features/map/placeActions";
 import { PointOfInterestForm } from "@/features/pointsOfInterest/PointOfInterestForm";
@@ -146,6 +147,8 @@ function TripMap({ trip }) {
   const viewKeyRef = useRef(null);
   const infoWindowRef = useRef(null);
   const entriesRef = useRef([]); // [{ element, data }]
+  // The trip marker whose info window is open, so a rebuild can re-anchor it.
+  const openMarkerIdRef = useRef(null);
   const resultMarkerRef = useRef(null); // the search result's AdvancedMarkerElement
   const libsRef = useRef(null); // { AdvancedMarkerElement, PinElement }, set once the map is ready
   // The InfoWindow's content node; React renders into it through a portal.
@@ -176,6 +179,9 @@ function TripMap({ trip }) {
   const meRef = useRef(null);
   const [locating, setLocating] = useState(false);
   const stayCov = useMemo(() => stayCoverage(trip), [trip]);
+  // ?focus=<marker id>: opened from another page at one pin (mapFocus.js).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusId = searchParams.get(FOCUS_PARAM);
 
   useEffect(() => {
     getClientConfig()
@@ -183,9 +189,16 @@ function TripMap({ trip }) {
       .catch(() => setError("Couldn’t load map configuration."));
   }, []);
 
+  function closeInfoWindow() {
+    infoWindowRef.current?.close();
+    openMarkerIdRef.current = null;
+    setInfo(null);
+  }
+
   function openInfoWindow(next, anchor) {
     if (!infoWindowRef.current || !mapRef.current) return;
     setInfo(next);
+    openMarkerIdRef.current = next.kind === "trip" ? next.marker.id : null;
     infoWindowRef.current.setContent(infoNode);
     infoWindowRef.current.open({ map: mapRef.current, anchor });
   }
@@ -203,13 +216,23 @@ function TripMap({ trip }) {
 
         // The initial view: the trip's destinations (viewFor with no
         // filters), not travel's endpoints, which are often a continent away.
-        const map = new Map(containerRef.current, { mapId: config.googleMapsMapId, center: { lat: 0, lng: 0 }, zoom: 2 });
+        // Opened at one pin (?focus=), start there instead: a fit made now
+        // lands after the focus below and would undo it.
+        const focused = focusId && markers.find((m) => m.id === focusId);
+        const map = new Map(containerRef.current, {
+          mapId: config.googleMapsMapId,
+          center: focused ? { lat: focused.lat, lng: focused.lng } : { lat: 0, lng: 0 },
+          zoom: focused ? 15 : 2,
+        });
         mapRef.current = map;
         viewKeyRef.current = null;
         const infoWindow = new InfoWindow();
-        infoWindow.addListener("closeclick", () => setInfo(null));
+        infoWindow.addListener("closeclick", () => {
+          openMarkerIdRef.current = null;
+          setInfo(null);
+        });
         infoWindowRef.current = infoWindow;
-        showView(map, viewFor(markers), { singleZoom: 12, padding: 0 });
+        if (!focused) showView(map, viewFor(markers), { singleZoom: 12, padding: 0 });
 
         libsRef.current = { AdvancedMarkerElement, PinElement, Circle };
         if (live) setReady(true);
@@ -266,6 +289,10 @@ function TripMap({ trip }) {
       advanced.addListener("click", () => openInfoWindow({ kind: "trip", marker }, advanced));
       return { element: advanced, data: marker };
     });
+    // A rebuild (memories arriving, a trip reload) replaces the element an
+    // open info window hangs from; hang it from the new one.
+    const open = entriesRef.current.find((e) => e.data.id === openMarkerIdRef.current);
+    if (open) infoWindowRef.current?.open({ map, anchor: open.element });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openInfoWindow closes over refs/setters only
   }, [ready, markers, only, date]);
 
@@ -284,6 +311,22 @@ function TripMap({ trip }) {
     showView(mapRef.current, viewFor(markers, { only, date: date || null }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markers only matter at the moment a filter changes
   }, [ready, only, date]);
+
+  // Opened at one pin: go to it once the pins are up, then drop the
+  // parameter so a reload or coming Back doesn't jump there again.
+  useEffect(() => {
+    if (!ready || !focusId) return;
+    const marker = markers.find((m) => m.id === focusId);
+    if (marker) selectMarker(marker);
+    setSearchParams(
+      (params) => {
+        params.delete(FOCUS_PARAM);
+        return params;
+      },
+      { replace: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per focus, after the pins effect above
+  }, [ready, focusId]);
 
   const visibleMarkers = useMemo(
     () => filterMarkers(markers, { only, date: date || null }),
@@ -378,8 +421,7 @@ function TripMap({ trip }) {
     resultMarkerRef.current = null;
     setResult(null);
     if (info?.kind === "place") {
-      infoWindowRef.current?.close();
-      setInfo(null);
+      closeInfoWindow();
     }
   }
 
@@ -395,8 +437,7 @@ function TripMap({ trip }) {
     // A city or region is for orientation only: pan there, nothing to add.
     if (isArea(types)) {
       setResult(null);
-      infoWindowRef.current?.close();
-      setInfo(null);
+      closeInfoWindow();
       map.panTo(position);
       map.setZoom(12);
       return;
@@ -439,8 +480,7 @@ function TripMap({ trip }) {
   const poiFor = (marker) => (trip.pointsOfInterest ?? []).find((p) => p.id === marker.entryId) ?? null;
 
   function closeInfo() {
-    infoWindowRef.current?.close();
-    setInfo(null);
+    closeInfoWindow();
   }
 
   function editPoi(marker) {

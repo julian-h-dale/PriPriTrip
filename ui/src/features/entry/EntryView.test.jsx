@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { EntryView } from "@/features/entry/EntryPage";
 import { describeEntry } from "@/features/timeline/describeEntry";
 
@@ -30,7 +31,11 @@ const flight = {
 };
 
 function view(found) {
-  return render(<EntryView trip={TRIP} found={{ date: "2026-10-30", ...found }} />);
+  return render(
+    <MemoryRouter>
+      <EntryView trip={TRIP} found={{ date: "2026-10-30", ...found }} />
+    </MemoryRouter>
+  );
 }
 
 /** Where things sit on the page, by document position. */
@@ -94,5 +99,92 @@ describe("the hero photo", () => {
   it("is absent without a photo", () => {
     view({ kind: "activity", record: { title: "Walk", notes: "Easy" } });
     expect(screen.queryByTestId("hero-fade")).not.toBeInTheDocument();
+  });
+});
+
+describe("nearby points of interest", () => {
+  const MUSEUM = { name: "Beitou Hot Spring Museum", lat: 25.1365694, lng: 121.50715, placeId: "museum" };
+  const poi = (id, name, lat, lng, category = "sight") => ({ id, name, category, location: { name, lat, lng } });
+  const VALLEY = poi("valley", "Thermal Valley", 25.1377, 121.5113);
+  const SPRING = poi("spring", "Millennium Hot Spring", 25.1369, 121.5079, "other");
+  const FAR = poi("101", "Taipei 101", 25.0339, 121.5645);
+  const activity = { id: "a1", title: "Beitou Park, Hot Spring Museum, Thermal Valley", location: MUSEUM };
+
+  function nearbyView(found, pointsOfInterest) {
+    return render(
+      <MemoryRouter>
+        <EntryView trip={{ ...TRIP, pointsOfInterest }} found={{ date: "2026-11-11", ...found }} online={false} />
+      </MemoryRouter>
+    );
+  }
+
+  it("an activity lists them closest first, with the distance, each opening the map at its pin", () => {
+    nearbyView({ kind: "activity", record: activity }, [FAR, VALLEY, SPRING]);
+    const section = screen.getByRole("region", { name: "Nearby" });
+    const links = within(section).getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual([
+      expect.stringMatching(/^Millennium Hot SpringOther0\.1 mi$/),
+      expect.stringMatching(/^Thermal ValleySight0\.3 mi$/),
+    ]);
+    expect(links[1]).toHaveAttribute("href", "/trips/t/map?focus=poi-valley");
+  });
+
+  it("a stay has them too; travel doesn't", () => {
+    const { unmount } = nearbyView({ kind: "stay", record: { ...stay, location: MUSEUM } }, [VALLEY]);
+    expect(screen.getByRole("region", { name: "Nearby" })).toBeInTheDocument();
+    unmount();
+    nearbyView({ kind: "travel", record: { ...flight, to: MUSEUM } }, [VALLEY]);
+    expect(screen.queryByRole("region", { name: "Nearby" })).not.toBeInTheDocument();
+  });
+
+  it("nothing near, or a place without coordinates: no section", () => {
+    const { unmount } = nearbyView({ kind: "activity", record: activity }, [FAR]);
+    expect(screen.queryByRole("region", { name: "Nearby" })).not.toBeInTheDocument();
+    unmount();
+    nearbyView({ kind: "activity", record: { ...activity, location: { name: "Beitou" } } }, [VALLEY]);
+    expect(screen.queryByRole("region", { name: "Nearby" })).not.toBeInTheDocument();
+  });
+
+  it("shows 8, then Show all", () => {
+    const many = Array.from({ length: 10 }, (_, i) => poi(`p${i}`, `Stall ${i}`, MUSEUM.lat + i * 0.0003, MUSEUM.lng, "market"));
+    nearbyView({ kind: "activity", record: activity }, many);
+    const section = screen.getByRole("region", { name: "Nearby" });
+    expect(within(section).getAllByRole("link")).toHaveLength(8);
+    fireEvent.click(within(section).getByRole("button", { name: "Show all 10" }));
+    expect(within(section).getAllByRole("link")).toHaveLength(10);
+    expect(within(section).queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("the mini map opens the trip's map at that place", () => {
+  const mapLink = (name) => screen.queryByRole("link", { name: `Show ${name} on the map` });
+
+  it("an activity, a stay, and each end of a leg link to their own pin", () => {
+    const { unmount } = view({ kind: "activity", record: { id: "a1", title: "Rose garden", location: stay.location } });
+    expect(mapLink("Hotel Royal")).toHaveAttribute("href", "/trips/t/map?focus=item-a1");
+    unmount();
+    const second = view({ kind: "stay", record: { ...stay, id: "s1" } });
+    expect(mapLink("Hotel Royal")).toHaveAttribute("href", "/trips/t/map?focus=stay-s1");
+    second.unmount();
+    view({ kind: "travel", record: { ...flight, id: "l1" } });
+    expect(mapLink("O'Hare (ORD)")).toHaveAttribute("href", "/trips/t/map?focus=travel-l1-from");
+    expect(mapLink("Taoyuan (TPE)")).toHaveAttribute("href", "/trips/t/map?focus=travel-l1-to");
+  });
+
+  it("a plan B activity has no pin, so its map is just a picture", () => {
+    view({ kind: "activity", planB: true, record: { id: "b1", title: "Museum", location: stay.location } });
+    expect(mapLink("Hotel Royal")).not.toBeInTheDocument();
+  });
+
+  it("no link without coordinates, or offline (no map at all)", () => {
+    const { unmount } = view({ kind: "stay", record: { ...stay, id: "s1", location: { name: "Hotel Royal" } } });
+    expect(mapLink("Hotel Royal")).not.toBeInTheDocument();
+    unmount();
+    render(
+      <MemoryRouter>
+        <EntryView trip={TRIP} found={{ date: "2026-10-30", kind: "stay", record: { ...stay, id: "s1" } }} online={false} />
+      </MemoryRouter>
+    );
+    expect(mapLink("Hotel Royal")).not.toBeInTheDocument();
   });
 });
