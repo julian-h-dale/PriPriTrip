@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, BedDouble } from "lucide-react";
 import { EntryActions } from "@/features/entry/EntryActions";
 import { entryPath, entrySequence, findEntry, neighbours } from "@/features/entry/entries";
 import { PULL_THRESHOLD_PX, pullOffset, useEdgePull } from "@/features/entry/useEdgePull";
+import { entryMarkerId, mapFocusPath } from "@/features/map/mapFocus";
 import { NearbyPointsOfInterest } from "@/features/pointsOfInterest/NearbyPointsOfInterest";
 import { MODE_ICON, MODE_LABEL, describeEntry } from "@/features/timeline/describeEntry";
 import { ConfirmationNumber, EditedBy, PlaceRow } from "@/features/timeline/EntryDetails";
@@ -124,6 +125,27 @@ function heading({ kind, record }, d) {
   return { label: MODE_LABEL[record.mode] ?? "Travel", icon: MODE_ICON[record.mode] ?? MODE_ICON.other, title: record.title, sub: carrier || null };
 }
 
+const MINI_MAP = "h-40 w-full overflow-hidden rounded-md border border-border";
+
+/**
+ * A place's mini map: tapping it opens the trip's map zoomed in on that pin
+ * (Run stage 27). With no pin (a plan B activity) it's just a picture. The
+ * link covers the map, so Google's own map never takes the tap.
+ */
+function EntryMiniMap({ trip, markerId, loc }) {
+  if (!markerId) return <MiniMap lat={loc.lat} lng={loc.lng} className={MINI_MAP} />;
+  return (
+    <Link
+      to={mapFocusPath(trip.id, markerId)}
+      aria-label={`Show ${loc.name} on the map`}
+      className="relative block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <MiniMap lat={loc.lat} lng={loc.lng} className={MINI_MAP} />
+      <span className="absolute inset-0" aria-hidden="true" />
+    </Link>
+  );
+}
+
 /**
  * Everything about one activity, stay or leg (`found`, from findEntry): the
  * photo, the confirmation number first (it's what a desk asks for), when,
@@ -186,7 +208,7 @@ export function EntryView({ trip, found, online = true, children }) {
           <div key={label} className="flex flex-col gap-2">
             <PlaceRow label={label} loc={loc} />
             {online && loc.lat != null && loc.lng != null && (
-              <MiniMap lat={loc.lat} lng={loc.lng} className="h-40 w-full overflow-hidden rounded-md border border-border" />
+              <EntryMiniMap trip={trip} markerId={entryMarkerId(found, label)} loc={loc} />
             )}
           </div>
         ))}

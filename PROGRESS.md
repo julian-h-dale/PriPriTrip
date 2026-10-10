@@ -10,7 +10,7 @@
   `main` at `2d0e63f`): nearby points of interest on an entry's page.
   Plan: `docs/plan/run-27-nearby-points-of-interest.md` (Julian: "go with
   your suggestions").
-  - **Phase 97 ✅ (waiting for Julian):** an activity's or stay's page has a
+  - **Phase 97 ✅:** an activity's or stay's page has a
     **Nearby** section: the trip's points of interest within 0.5 mi of its
     place, closest first, with the category and miles; 8, then "Show all
     N". Same Google place as the entry is left out; no coordinates or none
@@ -20,7 +20,12 @@
     rebuilt (memories arriving). `distanceMetres` moved to
     `shared/utils/distance.js`. Frontend only. `make verify` green (309 API
     + 646 UI); e2e `nearby.spec.js` (screenshots `27a`, `27b`).
-  - **Next: Phase 98**, tapping the mini map opens the map there.
+  - **Phase 98 ✅ (waiting for Julian):** tapping an entry's mini map opens
+    the map at its own pin (`entryMarkerId`: `item-`, `stay-`,
+    `travel-…-from|to`); plan B activities' mini maps stay pictures. E2E
+    screenshot `27c`.
+  - **Asked, not planned yet:** a per-trip radius (the trip has no settings
+    screen yet; see the backlog's trip-header editing).
 
 - **Run stage 26 (2026-10-08)** on **`journal-redesign`** (off `main` at
   `de5a6e7`): invite people by email; the journal as a photo timeline.

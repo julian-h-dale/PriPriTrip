@@ -15,7 +15,8 @@ const POIS = [
 /**
  * Nearby points of interest (Run stage 27): an activity's page lists the
  * trip's points of interest within half a mile, closest first; a row opens
- * the map at that pin. Dark and light at 375 px.
+ * the map at that pin. The mini map opens the map at the activity's own
+ * pin (Phase 98). Dark and light at 375 px.
  */
 // Both themes add to the same sample trip: one at a time.
 test.describe.configure({ mode: "serial" });
@@ -59,6 +60,13 @@ for (const theme of ["dark", "light"]) {
       await expect(page).toHaveURL(new RegExp(`/trips/${tripId}/map$`));
       await expect(page.locator(".gm-style-iw").getByText("Bundesplatz market")).toBeVisible();
       await page.screenshot({ path: screenshotPath(`27b-nearby-map-${theme}`) });
+
+      // Phase 98: tapping the activity's mini map opens the map at its own pin.
+      await page.goBack();
+      await page.getByRole("link", { name: "Show Kornhauskeller on the map" }).click();
+      await expect(page).toHaveURL(new RegExp(`/trips/${tripId}/map$`));
+      await expect(page.locator(".gm-style-iw").getByText(DINNER)).toBeVisible();
+      await page.screenshot({ path: screenshotPath(`27c-mini-map-${theme}`) });
     } finally {
       await clear();
     }

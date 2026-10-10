@@ -11,7 +11,7 @@ themselves.
 Also asked: tapping the mini map on an entry's page should open the map,
 zoomed in on that place (Phase 98).
 
-**Status:** Phase 97 built, waiting for Julian. Branch
+**Status: complete.** Phases 97–98 built (2026-10-09). Branch
 `nearby-points-of-interest` (off `main` at `2d0e63f`).
 
 ## Where we are
@@ -105,6 +105,16 @@ section at 375 px dark and light, then a row opens the map on that pin
 - **Info windows survive a pin rebuild:** memories arriving rebuild the
   pins, which used to leave an open info window on a removed marker; it's
   now re-anchored to the new one (`openMarkerIdRef`).
+
+### Phase 98 (2026-10-09): tapping the mini map opens the map there
+
+`make verify` green (309 API + 649 UI tests). E2E `nearby.spec.js` now also taps Kornhauskeller's
+mini map and checks the map opens on the dinner's pin (screenshot `27c`).
+- `entryMarkerId(found, label)` in `mapFocus.js`; `EntryMiniMap` in
+  `EntryPage.jsx` wraps the map in a link labelled "Show <place> on the
+  map", with a transparent cover so Google's map never takes the tap.
+- A plan B activity's mini map stays a picture (no pin on the map). No
+  coordinates, or offline: no mini map, so no link.
 
 ## Later
 

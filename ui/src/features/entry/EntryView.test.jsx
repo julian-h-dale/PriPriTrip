@@ -31,7 +31,11 @@ const flight = {
 };
 
 function view(found) {
-  return render(<EntryView trip={TRIP} found={{ date: "2026-10-30", ...found }} />);
+  return render(
+    <MemoryRouter>
+      <EntryView trip={TRIP} found={{ date: "2026-10-30", ...found }} />
+    </MemoryRouter>
+  );
 }
 
 /** Where things sit on the page, by document position. */
@@ -149,5 +153,38 @@ describe("nearby points of interest", () => {
     fireEvent.click(within(section).getByRole("button", { name: "Show all 10" }));
     expect(within(section).getAllByRole("link")).toHaveLength(10);
     expect(within(section).queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("the mini map opens the trip's map at that place", () => {
+  const mapLink = (name) => screen.queryByRole("link", { name: `Show ${name} on the map` });
+
+  it("an activity, a stay, and each end of a leg link to their own pin", () => {
+    const { unmount } = view({ kind: "activity", record: { id: "a1", title: "Rose garden", location: stay.location } });
+    expect(mapLink("Hotel Royal")).toHaveAttribute("href", "/trips/t/map?focus=item-a1");
+    unmount();
+    const second = view({ kind: "stay", record: { ...stay, id: "s1" } });
+    expect(mapLink("Hotel Royal")).toHaveAttribute("href", "/trips/t/map?focus=stay-s1");
+    second.unmount();
+    view({ kind: "travel", record: { ...flight, id: "l1" } });
+    expect(mapLink("O'Hare (ORD)")).toHaveAttribute("href", "/trips/t/map?focus=travel-l1-from");
+    expect(mapLink("Taoyuan (TPE)")).toHaveAttribute("href", "/trips/t/map?focus=travel-l1-to");
+  });
+
+  it("a plan B activity has no pin, so its map is just a picture", () => {
+    view({ kind: "activity", planB: true, record: { id: "b1", title: "Museum", location: stay.location } });
+    expect(mapLink("Hotel Royal")).not.toBeInTheDocument();
+  });
+
+  it("no link without coordinates, or offline (no map at all)", () => {
+    const { unmount } = view({ kind: "stay", record: { ...stay, id: "s1", location: { name: "Hotel Royal" } } });
+    expect(mapLink("Hotel Royal")).not.toBeInTheDocument();
+    unmount();
+    render(
+      <MemoryRouter>
+        <EntryView trip={TRIP} found={{ date: "2026-10-30", kind: "stay", record: { ...stay, id: "s1" } }} online={false} />
+      </MemoryRouter>
+    );
+    expect(mapLink("Hotel Royal")).not.toBeInTheDocument();
   });
 });
