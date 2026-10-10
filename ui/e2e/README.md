@@ -38,6 +38,7 @@ named by spec (`01-trips-list.png`, `18a-analytics-owner.png`, …).
 | `light-mode.spec.js` | Light mode (remembered, every page photographed); text size keeps the timeline's dots on their dates |
 | `large-text.spec.js` | At Larger, timeline entry rows (a day page as an editor, Today) give the title the card's width, dark and light |
 | `plan-b.spec.js` | Plan B on a day page: the fork button, open an activity and come back, add; a viewer has no button. Dark and light |
+| `nearby.spec.js` | Nearby points of interest on an activity's page (adds three by API, removes them after), then a row opens the map at that pin. Dark and light |
 | `offline.spec.js` | The installed app offline: needs a build (below) |
 
 ## Offline / installable app (`offline.spec.js`)

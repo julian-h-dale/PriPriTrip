@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import journalReducer from "@/features/journal/journalSlice";
@@ -124,7 +124,12 @@ const fakeSearch = {
   pick: vi.fn(async (s) => ({ ...[CAFE, BERN].find((p) => p.placeId === s.placeId) })),
 };
 
-function renderMap({ online = true } = {}) {
+/** The router's current query string, so a test can see the map drop ?focus. */
+function SearchProbe() {
+  return <output data-testid="search">{useLocation().search}</output>;
+}
+
+function renderMap({ online = true, path = "/trips/trip-1/map" } = {}) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
@@ -138,9 +143,17 @@ function renderMap({ online = true } = {}) {
   });
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={["/trips/trip-1/map"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          <Route path="/trips/:tripId/map" element={<MapPage />} />
+          <Route
+            path="/trips/:tripId/map"
+            element={
+              <>
+                <MapPage />
+                <SearchProbe />
+              </>
+            }
+          />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -539,6 +552,23 @@ describe("points of interest on the map", () => {
       expect(fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc).map((m) => m.content.glyphSrc)).toEqual([MARKET_GLYPH])
     );
     expect(screen.getByRole("button", { name: "Filter the map: Points of interest" })).toBeInTheDocument();
+  });
+
+  it("opened at its pin (?focus=): zooms there, opens its info window, then drops the parameter", async () => {
+    serveTrip(withPoi());
+    renderMap({ path: "/trips/trip-1/map?focus=poi-poi-1" });
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+    expect(fake.map.setZoom).toHaveBeenLastCalledWith(15);
+    expect(fake.map.setCenter).toHaveBeenLastCalledWith({ lat: MARKET.location.lat, lng: MARKET.location.lng });
+    expect(within(fake.infoWindow.node).getByText("Bundesplatz market")).toBeInTheDocument();
+    expect(fake.map.fitBounds).not.toHaveBeenCalled(); // no trip-wide fit landing on top of it
+  });
+
+  it("an unknown ?focus= leaves the usual view and is dropped", async () => {
+    serveTrip(withPoi());
+    renderMap({ path: "/trips/trip-1/map?focus=poi-gone" });
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+    expect(fake.map.setZoom).not.toHaveBeenCalledWith(15);
   });
 
   it("on no day: picking a day hides it", async () => {

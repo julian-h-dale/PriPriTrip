@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, BedDouble } from "lucide-react";
 import { EntryActions } from "@/features/entry/EntryActions";
 import { entryPath, entrySequence, findEntry, neighbours } from "@/features/entry/entries";
 import { PULL_THRESHOLD_PX, pullOffset, useEdgePull } from "@/features/entry/useEdgePull";
+import { NearbyPointsOfInterest } from "@/features/pointsOfInterest/NearbyPointsOfInterest";
 import { MODE_ICON, MODE_LABEL, describeEntry } from "@/features/timeline/describeEntry";
 import { ConfirmationNumber, EditedBy, PlaceRow } from "@/features/timeline/EntryDetails";
 import { showsPlanB, usePlanChoices } from "@/features/timeline/planChoice";
@@ -126,7 +127,8 @@ function heading({ kind, record }, d) {
 /**
  * Everything about one activity, stay or leg (`found`, from findEntry): the
  * photo, the confirmation number first (it's what a desk asks for), when,
- * then the facts, notes and places with their maps. `children`: actions.
+ * then the facts, notes and places with their maps, and (for an activity or
+ * a stay) the points of interest nearby. `children`: actions.
  * Not `online` (offline, or "Use saved copies only"): no place photo and no
  * maps, which are Google's and would load over the network.
  */
@@ -188,6 +190,10 @@ export function EntryView({ trip, found, online = true, children }) {
             )}
           </div>
         ))}
+
+        {found.kind !== "travel" && (
+          <NearbyPointsOfInterest trip={trip} location={found.record.location} labelClassName={SECTION_LABEL} />
+        )}
 
         {children}
         {d.edited && <EditedBy edited={d.edited} />}

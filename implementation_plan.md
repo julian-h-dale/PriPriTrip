@@ -21,11 +21,11 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **97**.
+project; the next one is **99**.
 
 ## Stages
 
-All complete unless marked. Current branch: `journal-redesign` (Run 26).
+All complete unless marked. Current branch: `nearby-points-of-interest` (Run 27).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -60,6 +60,7 @@ All complete unless marked. Current branch: `journal-redesign` (Run 26).
 | Run 24 | 88–90 | Photos and memories are never dropped: iPhone camera photos (MPO), a stuck-not-dropped outbox, failed phone saves | [run-24-photo-upload-resilience.md](docs/plan/run-24-photo-upload-resilience.md) |
 | Run 25 | 91–92 | Plan B: a hidden backup plan for a day, turned on by a fork button on the day page | [run-25-plan-b.md](docs/plan/run-25-plan-b.md) |
 | Run 26 | 93–96 | Invite by email (no more join codes); place names for memories; the journal as a photo timeline with a full view | [run-26-journal-redesign.md](docs/plan/run-26-journal-redesign.md) |
+| Run 27 | 97–98 | Nearby points of interest on an entry's page; the mini map opens the map | [run-27-nearby-points-of-interest.md](docs/plan/run-27-nearby-points-of-interest.md) |
 
 ## Architecture Decisions
 
