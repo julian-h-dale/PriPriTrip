@@ -61,6 +61,7 @@ All complete unless marked. Current branch: `nearby-points-of-interest` (Run 27)
 | Run 25 | 91–92 | Plan B: a hidden backup plan for a day, turned on by a fork button on the day page | [run-25-plan-b.md](docs/plan/run-25-plan-b.md) |
 | Run 26 | 93–96 | Invite by email (no more join codes); place names for memories; the journal as a photo timeline with a full view | [run-26-journal-redesign.md](docs/plan/run-26-journal-redesign.md) |
 | Run 27 | 97–98 | Nearby points of interest on an entry's page; the mini map opens the map | [run-27-nearby-points-of-interest.md](docs/plan/run-27-nearby-points-of-interest.md) |
+| Run 28 | 99 | Tapping one of Google's places on the map opens our card, with the Add buttons | [run-28-tap-a-place-on-the-map.md](docs/plan/run-28-tap-a-place-on-the-map.md) |
 
 ## Architecture Decisions
 
