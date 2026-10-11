@@ -16,6 +16,10 @@ python -m app.migrate
 # from auto-stop. Seed on purpose instead: `make seed-remote` (once on a
 # fresh volume, so there are accounts to sign in with).
 
+# nginx serves the API under /api and strips the prefix; the API needs to
+# know it, or its docs (/api/docs) ask for /openapi.json, which is the UI.
+export ROOT_PATH=/api
+
 # nginx in the background; the API in the foreground so the container's
 # lifecycle tracks the API process.
 nginx -g 'daemon off;' &

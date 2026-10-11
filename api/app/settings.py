@@ -25,6 +25,10 @@ class AppSettings(BaseSettings):
     document_dir: str = "./data/documents"
     # Comma-separated list of allowed CORS origins.
     cors_origins: str = "http://localhost:3000"
+    # The prefix a reverse proxy serves the API under, after stripping it:
+    # "/api" in the container (deploy/nginx.conf, set by deploy/start.sh),
+    # empty in dev. The docs at /api/docs need it to find /api/openapi.json.
+    root_path: str = ""
 
     # Seed users — credentials come from env, never hardcoded secrets.
     seed_user_email: str = "user@example.com"
