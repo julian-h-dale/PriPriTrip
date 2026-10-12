@@ -7,9 +7,9 @@ import { loadGoogleMapsLibrary, GoogleMapsUnavailable } from "@/shared/services/
  *   suggestion: { placeId, primary, secondary }
  *   place:      { placeId, name, address, city, lat, lng, imgRef }
  *
- * `pick()` also returns the place's Google `types` on the same object. A trip
- * location has no such field (the API rejects unknown ones), so anything that
- * stores the place drops `types` first.
+ * `pick()` and `placeDetails()` also return the place's Google `types` on the
+ * same object. A trip location has no such field (the API rejects unknown
+ * ones), so anything that stores the place drops `types` first.
  *
  * The browser key comes from GET /config. It is public by design and protected
  * by its restrictions in the Google console (our websites; Maps JavaScript +
@@ -23,6 +23,34 @@ export const PlacesUnavailable = GoogleMapsUnavailable;
 function cityComponent(components = []) {
   const find = (type) => components.find((c) => c.types.includes(type))?.longText;
   return find("locality") ?? find("postal_town") ?? undefined;
+}
+
+// What a picked or tapped place is looked up with.
+const PLACE_FIELDS = ["id", "displayName", "formattedAddress", "addressComponents", "location", "photos", "types"];
+
+/** Google's Place (fields fetched) as our plain place object, with `types`. */
+function ourPlace(place, fallbackName) {
+  return {
+    placeId: place.id,
+    name: place.displayName ?? fallbackName,
+    address: place.formattedAddress ?? undefined,
+    city: cityComponent(place.addressComponents),
+    lat: place.location.lat(),
+    lng: place.location.lng(),
+    imgRef: place.photos?.[0]?.getURI({ maxWidth: 800 }) ?? undefined,
+    types: place.types ?? [],
+  };
+}
+
+/**
+ * One place's details by its Google place id (one of Google's own places
+ * tapped on the map): the same object as a search's `pick()`.
+ */
+export async function placeDetails(placeId) {
+  const { Place } = await loadGoogleMapsLibrary("places");
+  const place = new Place({ id: placeId });
+  await place.fetchFields({ fields: PLACE_FIELDS });
+  return ourPlace(place);
 }
 
 /**
@@ -67,20 +95,9 @@ export async function createPlacesSearch() {
      */
     async pick(suggestion) {
       const place = predictions.get(suggestion.placeId).toPlace();
-      await place.fetchFields({
-        fields: ["id", "displayName", "formattedAddress", "addressComponents", "location", "photos", "types"],
-      });
+      await place.fetchFields({ fields: PLACE_FIELDS });
       sessionToken = new places.AutocompleteSessionToken();
-      return {
-        placeId: place.id,
-        name: place.displayName ?? suggestion.primary,
-        address: place.formattedAddress ?? undefined,
-        city: cityComponent(place.addressComponents),
-        lat: place.location.lat(),
-        lng: place.location.lng(),
-        imgRef: place.photos?.[0]?.getURI({ maxWidth: 800 }) ?? undefined,
-        types: place.types ?? [],
-      };
+      return ourPlace(place, suggestion.primary);
     },
   };
 }

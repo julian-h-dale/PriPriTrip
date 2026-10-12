@@ -13,6 +13,7 @@ import { filterMarkers, viewFor } from "@/features/map/mapFilters";
 import { FOCUS_PARAM } from "@/features/map/mapFocus";
 import { colorFor, directionsUrl, glyphSrcFor, iconFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import { isArea } from "@/features/map/placeActions";
+import { markerForPlace } from "@/features/map/tappedPlace";
 import { PointOfInterestForm } from "@/features/pointsOfInterest/PointOfInterestForm";
 import { POI_CATEGORY_LABEL } from "@/features/pointsOfInterest/pointsOfInterest";
 import { ActivityForm } from "@/features/timeline/ActivityForm";
@@ -37,6 +38,7 @@ import { Card } from "@/shared/components/ui/card";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { getClientConfig } from "@/shared/services/clientConfig";
 import { loadGoogleMapsLibrary } from "@/shared/services/googleMapsLoader";
+import { placeDetails } from "@/shared/services/googlePlaces";
 import { permissionState, watchPosition } from "@/shared/services/geolocation";
 import { notify } from "@/shared/notificationSlice";
 import { defaultFormDate } from "@/shared/utils/tripDates";
@@ -105,6 +107,10 @@ function OfflinePlaces({ trip, markers }) {
 // under the search bar instead of behind it.
 const FOCUS_OFFSET_PX = 140;
 
+// How far below the map's top a tapped place needs to be for its card (photo
+// and all) to open under the search bar and filters, not behind them.
+const TAP_CARD_ROOM_PX = 380;
+
 // Which form an Add action opens, and with the picked place at which end.
 const ACTION_FORM = {
   activity: { kind: "activity" },
@@ -151,6 +157,10 @@ function TripMap({ trip }) {
   const openMarkerIdRef = useRef(null);
   const resultMarkerRef = useRef(null); // the search result's AdvancedMarkerElement
   const libsRef = useRef(null); // { AdvancedMarkerElement, PinElement }, set once the map is ready
+  // The map's click listener calls the latest onMapClick, which closes over state.
+  const mapClickRef = useRef(null);
+  // Counts taps on Google's places, so a lookup that lands after a newer tap is dropped.
+  const tapRef = useRef(0);
   // The InfoWindow's content node; React renders into it through a portal.
   const [infoNode] = useState(() => document.createElement("div"));
   const [config, setConfig] = useState(null);
@@ -195,12 +205,18 @@ function TripMap({ trip }) {
     setInfo(null);
   }
 
-  function openInfoWindow(next, anchor) {
+  /** Open the info window on `anchor` (a marker), or at `position` when there's none. */
+  function openInfoWindow(next, anchor, position) {
     if (!infoWindowRef.current || !mapRef.current) return;
     setInfo(next);
     openMarkerIdRef.current = next.kind === "trip" ? next.marker.id : null;
     infoWindowRef.current.setContent(infoNode);
-    infoWindowRef.current.open({ map: mapRef.current, anchor });
+    if (anchor) {
+      infoWindowRef.current.open({ map: mapRef.current, anchor });
+    } else {
+      infoWindowRef.current.setPosition(position);
+      infoWindowRef.current.open({ map: mapRef.current });
+    }
   }
 
   useEffect(() => {
@@ -232,6 +248,7 @@ function TripMap({ trip }) {
           setInfo(null);
         });
         infoWindowRef.current = infoWindow;
+        map.addListener("click", (event) => mapClickRef.current?.(event));
         if (!focused) showView(map, viewFor(markers), { singleZoom: 12, padding: 0 });
 
         libsRef.current = { AdvancedMarkerElement, PinElement, Circle };
@@ -425,8 +442,12 @@ function TripMap({ trip }) {
     }
   }
 
-  /** A Google place picked from search: drop the search-result marker there and open its info window. */
-  function showPlace(picked) {
+  /**
+   * A Google place picked from search, or tapped on the map: drop the
+   * search-result marker there and open its info window. A search pick
+   * zooms in to it; a tap (`zoom: false`) is already where you're looking.
+   */
+  function showPlace(picked, { zoom = true } = {}) {
     const { types = [], ...place } = picked;
     const map = mapRef.current;
     if (!map || !libsRef.current) return;
@@ -438,6 +459,7 @@ function TripMap({ trip }) {
     if (isArea(types)) {
       setResult(null);
       closeInfoWindow();
+      if (!zoom) return;
       map.panTo(position);
       map.setZoom(12);
       return;
@@ -454,9 +476,55 @@ function TripMap({ trip }) {
     marker.addListener("click", () => openInfoWindow({ kind: "place", place, types }, marker));
     resultMarkerRef.current = marker;
     setResult({ place, types });
-    focus(position);
+    if (zoom) focus(position);
     openInfoWindow({ kind: "place", place, types }, marker);
   }
+
+  /**
+   * A tap on the map. On one of Google's own places (a café, a station) it
+   * opens our card, not Google's popup: the trip's own pin if the place is
+   * on the trip, otherwise the place, looked up, with its Add actions.
+   * On empty map it closes the card.
+   */
+  async function onMapClick(event) {
+    const tap = ++tapRef.current;
+    if (!event.placeId) {
+      if (info) closeInfoWindow();
+      return;
+    }
+    event.stop(); // no Google popup
+    const marker = markerForPlace(markers, visibleMarkers, event.placeId);
+    if (marker) {
+      const entry = entriesRef.current.find((e) => e.data.id === marker.id);
+      openInfoWindow({ kind: "trip", marker }, entry?.element, { lat: marker.lat, lng: marker.lng });
+      makeRoomAbove(event);
+      return;
+    }
+    let place;
+    try {
+      place = await placeDetails(event.placeId);
+    } catch {
+      if (tap === tapRef.current) dispatch(notify({ type: "error", message: "Couldn’t load that place." }));
+      return;
+    }
+    if (tap !== tapRef.current) return;
+    showPlace(place, { zoom: false });
+    makeRoomAbove(event);
+  }
+
+  /**
+   * A tap near the top of the map: move the map down just enough for the
+   * card to open below our controls. Google's own auto-pan only keeps it
+   * inside the map, where the search bar covers it.
+   */
+  function makeRoomAbove(event) {
+    const y = event.domEvent?.clientY;
+    const top = containerRef.current?.getBoundingClientRect().top;
+    if (y == null || top == null) return;
+    const below = y - top;
+    if (below < TAP_CARD_ROOM_PX) mapRef.current.panBy(0, below - TAP_CARD_ROOM_PX);
+  }
+  mapClickRef.current = onMapClick;
 
   function startAdd(action) {
     if (!info || info.kind !== "place") return;

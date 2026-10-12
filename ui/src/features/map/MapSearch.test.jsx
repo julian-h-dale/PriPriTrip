@@ -12,7 +12,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { MapPage } from "@/features/map/MapPage";
 import { apiClient } from "@/shared/services/apiClient";
-import { createPlacesSearch } from "@/shared/services/googlePlaces";
+import { createPlacesSearch, placeDetails } from "@/shared/services/googlePlaces";
 import { glyphSrcFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
@@ -27,6 +27,7 @@ vi.mock("@/shared/services/geolocation", () => ({
 }));
 vi.mock("@/shared/services/googlePlaces", () => ({
   createPlacesSearch: vi.fn(),
+  placeDetails: vi.fn(),
   PlacesUnavailable: class PlacesUnavailable extends Error {},
 }));
 
@@ -41,6 +42,10 @@ vi.mock("@/shared/services/googleMapsLoader", () => {
       this.setCenter = vi.fn();
       this.setZoom = vi.fn();
       this.fitBounds = vi.fn();
+      this.listeners = {};
+    }
+    addListener(type, fn) {
+      this.listeners[type] = fn;
     }
     getBounds() {
       return { toJSON: () => ({ north: 47, south: 46, east: 8, west: 7 }) };
@@ -56,6 +61,9 @@ vi.mock("@/shared/services/googleMapsLoader", () => {
     setContent(node) {
       this.node = node;
       if (!node.isConnected) document.body.appendChild(node);
+    }
+    setPosition(position) {
+      this.position = position;
     }
     open() {}
     close() {}
@@ -683,5 +691,120 @@ describe("a viewer's map", () => {
     await waitFor(() => expect(fake.markers.some((m) => m.map !== null && m.content?.glyphSrc === activity)).toBe(true));
     const kinds = new Set(fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc).map((m) => m.content.glyphSrc));
     expect(kinds).toEqual(new Set([activity]));
+  });
+});
+
+describe("tapping one of Google's places on the map", () => {
+  /** Tap the map: on a Google place (its id) or on empty map (no id). */
+  async function tapMap(placeId, clientY = 500) {
+    const event = { placeId, latLng: {}, domEvent: { clientY }, stop: vi.fn() };
+    // Not awaiting the handler: a lookup may still be pending (as on a phone).
+    await act(async () => {
+      fake.map.listeners.click(event);
+    });
+    return event;
+  }
+
+  async function mapReady() {
+    renderMap();
+    await screen.findByRole("combobox", { name: "Search trip or places" });
+  }
+
+  it("opens our card, not Google's, with the Add actions, and doesn't zoom", async () => {
+    placeDetails.mockResolvedValue({ ...CAFE });
+    await mapReady();
+    fake.map.setZoom.mockClear();
+    const event = await tapMap("cafe-1");
+
+    expect(event.stop).toHaveBeenCalled();
+    expect(placeDetails).toHaveBeenCalledWith("cafe-1");
+    expect(await screen.findByText("Not in this trip")).toBeInTheDocument();
+    expect(screen.getByText(CAFE.name)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add activity" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Google Maps" })).toBeInTheDocument();
+    expect(fake.markers.at(-1).content.glyphSrc).toBe(NEW_PLACE_GLYPH_SRC);
+    expect(fake.map.setZoom).not.toHaveBeenCalled();
+  });
+
+  it("a tap near the top moves the map down so the card clears the search bar", async () => {
+    placeDetails.mockResolvedValue({ ...CAFE });
+    await mapReady();
+    fake.map.panBy.mockClear();
+    await tapMap("cafe-1", 500); // low enough: the map stays put
+    await screen.findByText("Not in this trip");
+    expect(fake.map.panBy).not.toHaveBeenCalled();
+    await tapMap("cafe-1", 100); // jsdom's map starts at the top: 280 px short
+    await waitFor(() => expect(fake.map.panBy).toHaveBeenCalledWith(0, -280));
+  });
+
+  it("Add point of interest from a tapped place opens the form with it", async () => {
+    placeDetails.mockResolvedValue({ ...CAFE });
+    await mapReady();
+    await tapMap("cafe-1");
+    await userEvent.click(await screen.findByRole("button", { name: "Point of interest" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add point of interest" });
+    expect(within(dialog).getByLabelText("Name")).toHaveValue(CAFE.name);
+  });
+
+  it("a place already on the trip opens its own pin's card, with no lookup", async () => {
+    await mapReady();
+    const event = await tapMap("saved-0");
+    expect(event.stop).toHaveBeenCalled();
+    expect(placeDetails).not.toHaveBeenCalled();
+    expect(await screen.findByRole("link", { name: "Details" })).toHaveAttribute("href", "/trips/trip-1/stays/stay-0");
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
+  });
+
+  it("a failed lookup says so", async () => {
+    placeDetails.mockRejectedValue(new Error("network"));
+    const store = renderMap();
+    await screen.findByRole("combobox", { name: "Search trip or places" });
+    await tapMap("cafe-1");
+    await waitFor(() =>
+      expect(store.getState().notification.items).toContainEqual(
+        expect.objectContaining({ message: "Couldn’t load that place." })
+      )
+    );
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
+  });
+
+  it("two quick taps: the first answer, arriving last, doesn't replace the second", async () => {
+    let answerFirst;
+    placeDetails
+      .mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)))
+      .mockResolvedValueOnce({ ...CAFE });
+    await mapReady();
+    await tapMap("museum-1");
+    await tapMap("cafe-1");
+    expect(await screen.findByText(CAFE.name)).toBeInTheDocument();
+    await act(async () => answerFirst({ ...CAFE, placeId: "museum-1", name: "Bern Museum" }));
+    expect(screen.queryByText("Bern Museum")).not.toBeInTheDocument();
+    expect(screen.getByText(CAFE.name)).toBeInTheDocument();
+  });
+
+  it("a tap on empty map closes the card", async () => {
+    placeDetails.mockResolvedValue({ ...CAFE });
+    await mapReady();
+    await tapMap("cafe-1");
+    expect(await screen.findByText("Not in this trip")).toBeInTheDocument();
+    const event = await tapMap(undefined);
+    expect(event.stop).not.toHaveBeenCalled();
+    expect(screen.queryByText("Not in this trip")).not.toBeInTheDocument();
+  });
+
+  it("a viewer gets our card without the Add actions", async () => {
+    placeDetails.mockResolvedValue({ ...CAFE });
+    apiClient.get.mockImplementation(async (url) => {
+      if (url === "/config") return { data: { googleMapsApiKey: "k", googleMapsMapId: "m" } };
+      if (url === "/trips/trip-1") return { data: { ...structuredClone(TRIP), role: "viewer" } };
+      if (url === "/timezone") return { data: { timezone: "Europe/Zurich" } };
+      if (url === "/trips/trip-1/memories") return { data: MEMORIES };
+      throw new Error(`unexpected GET ${url}`);
+    });
+    await mapReady();
+    await tapMap("cafe-1");
+    expect(await screen.findByText("Not in this trip")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add activity" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Directions" })).toBeInTheDocument();
   });
 });

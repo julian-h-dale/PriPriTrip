@@ -6,6 +6,19 @@
 
 ## Status
 
+- **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
+  at `4d9cbd0`): tapping one of Google's places on the map opens our card.
+  Plan: `docs/plan/run-28-tap-a-place-on-the-map.md` (Julian: "go with your
+  suggestions").
+  - **Phase 99 ✅ (waiting for Julian):** a tap on a Google place stops
+    Google's popup and opens our card ("Not in this trip", the Add actions,
+    Directions, and a new Google Maps link), with no zoom; a place already
+    on the trip opens its own pin's card; viewers get no Add actions; a
+    failed lookup toasts "Couldn’t load that place."; a tap near the top
+    pans so the card clears the search bar; tapping empty map closes the
+    card. Frontend only. `make verify` green (309 API + 664 UI); e2e `map-tap.spec.js`
+    (screenshots `28a`, `28b`).
+
 - **Run stage 27 (2026-10-09)** on **`nearby-points-of-interest`** (off
   `main` at `2d0e63f`): nearby points of interest on an entry's page.
   Plan: `docs/plan/run-27-nearby-points-of-interest.md` (Julian: "go with

@@ -29,6 +29,25 @@ describe("MapInfoContent", () => {
     expect(screen.getByRole("button", { name: "Add stay" })).toBeDisabled();
   });
 
+  it("a new place links to directions and to Google's own page for it", () => {
+    renderInfo({ info: { kind: "place", place: HOTEL, types: ["lodging"] } });
+    expect(screen.getByRole("link", { name: "Directions" })).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/dir/?api=1&destination=46.9,7.4&destination_place_id=h1"
+    );
+    expect(screen.getByRole("link", { name: "Google Maps" })).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/search/?api=1&query=46.9,7.4&query_place_id=h1"
+    );
+  });
+
+  it("a viewer sees a new place's links but no Add actions", () => {
+    renderInfo({ info: { kind: "place", place: HOTEL, types: ["lodging"] }, canAdd: false });
+    expect(screen.getByText("Not in this trip")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Google Maps" })).toBeInTheDocument();
+  });
+
   it("a trip marker links to its own page and its day (in-app), and to directions", () => {
     const marker = { id: "stay-s1", entryId: "s1", kind: "stay", title: "Hotel Goldener Schlüssel", day: "2026-05-11", lat: 46.9, lng: 7.4 };
     renderInfo({ info: { kind: "trip", marker } });

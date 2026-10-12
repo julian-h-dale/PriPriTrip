@@ -39,6 +39,7 @@ named by spec (`01-trips-list.png`, `18a-analytics-owner.png`, …).
 | `large-text.spec.js` | At Larger, timeline entry rows (a day page as an editor, Today) give the title the card's width, dark and light |
 | `plan-b.spec.js` | Plan B on a day page: the fork button, open an activity and come back, add; a viewer has no button. Dark and light |
 | `nearby.spec.js` | Nearby points of interest on an activity's page (adds three by API, removes them after), then a row opens the map at that pin; the mini map opens the map at the activity's pin. Dark and light |
+| `map-tap.spec.js` | Tapping one of Google's places on the map opens our card (not Google's), and Point of interest opens the form with it. Uses the first trip, saves nothing. Dark and light |
 | `offline.spec.js` | The installed app offline: needs a build (below) |
 
 ## Offline / installable app (`offline.spec.js`)

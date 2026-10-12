@@ -4,6 +4,7 @@ import { entryPath } from "@/features/entry/entries";
 import { ACTION_LABEL, placeActions } from "@/features/map/placeActions";
 import { POI_CATEGORY_LABEL } from "@/features/pointsOfInterest/pointsOfInterest";
 import { directionsUrl } from "@/features/map/mapStyle";
+import { mapsUrl } from "@/shared/utils/mapsLinks";
 import { formatDayHeading } from "@/shared/utils/time";
 
 // The InfoWindow's own chrome is always a plain white card, whatever this
@@ -57,9 +58,10 @@ function ActionButton({ action, onAction, disabled }) {
 }
 
 /**
- * A place found through Google search, not on the trip yet: photo, name,
- * address, a "Not in this trip" label, then the Add actions that fit the
- * place (`placeActions`), with the rest behind "More…".
+ * A Google place not on the trip yet (found through search, or tapped on
+ * the map): photo, name, address, a "Not in this trip" label, then the Add
+ * actions that fit the place (`placeActions`), with the rest behind
+ * "More…", and Directions and Google's own page for it (reviews, hours).
  */
 function NewPlaceInfo({ place, types, onAction, readOnly, canAdd }) {
   const [showMore, setShowMore] = useState(false);
@@ -85,9 +87,14 @@ function NewPlaceInfo({ place, types, onAction, readOnly, canAdd }) {
           )}
         </div>
       )}
-      <a href={directionsUrl(place)} target="_blank" rel="noopener noreferrer" className={`block ${LINK}`}>
-        Directions
-      </a>
+      <div className="flex gap-3">
+        <a href={directionsUrl(place)} target="_blank" rel="noopener noreferrer" className={LINK}>
+          Directions
+        </a>
+        <a href={mapsUrl(place)} target="_blank" rel="noopener noreferrer" className={LINK}>
+          Google Maps
+        </a>
+      </div>
     </>
   );
 }
