@@ -28,7 +28,11 @@
     link", no Change password, no ⋯; a rotated guest lands on
     `/link-ended`, not sign-in. `make verify` green (338 API + 732 UI);
     e2e `share-link.spec.js` on :8010/:3010 (screenshots `31a`–`31c`).
-  - Next: the doc (`docs/testing-dates-and-time-zones.md`).
+  - **The doc ✅:** `docs/testing-dates-and-time-zones.md` (DevTools,
+    `faketime`, the Pi's clock over VNC, gotchas, a checklist), linked
+    from `ui/e2e/README.md`.
+  - **Run 31 complete.** Needs a human: a link sent to a real phone, and
+    Today left open across an entry's time.
 
 - **Run stage 30 (2026-10-12)** on **`grey-out-past-entries`** (off
   `main` at `e8e0d06`, after Run 29 merged): entries fade once their time

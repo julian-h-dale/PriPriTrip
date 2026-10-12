@@ -11,7 +11,8 @@ Julian (2026-10-12):
 4. A document on overriding a device's time and time zone, to test the
    example trips as if you were there.
 
-**Status: answered; building.** On branch `grey-out-past-entries` (Run
+**Status: complete.** Phases 105–107 built, and the doc written
+(2026-10-12). On branch `grey-out-past-entries` (Run
 30, not merged yet), as Julian asked: no new branch.
 
 ## Where we are
@@ -302,6 +303,23 @@ work (screenshots `31a`–`31c`).
   - The link page itself is never redirected on a 401.
   - Found in the e2e run: the dead link showed a "Not found" error toast.
     The session request now `handles: [404]`.
+
+### The doc (2026-10-12)
+
+`docs/testing-dates-and-time-zones.md`, linked from `ui/e2e/README.md`.
+It covers:
+- which clock each part of the app reads;
+- the example trips' useful moments (Athens moves with `make seed`);
+- DevTools Sensors (time zone only);
+- `faketime` for one Chromium and the dev API (`TZ=` plus the local time
+  there);
+- `timedatectl` for the whole Pi over VNC, and how to put it back;
+- the gotchas: certificates outside their window look like offline,
+  tokens, the Pi photo backup, writes keep the fake time;
+- a checklist.
+
+Prod is on Fly (`seed-remote`), so moving the Pi's clock doesn't touch it;
+the Pi photo backup does run on the Pi.
 
 ## Open questions — answered (Julian, 2026-10-12)
 
