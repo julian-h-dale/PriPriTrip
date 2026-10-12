@@ -194,8 +194,9 @@ On its own and frontend only, so it goes first.
 
 - `PATCH /trips/{trip_id}` (`name`, `coverEmoji`, `coverPhotoId`),
   `TripUpdate`, `update_trip` in `services/trips.py`.
-- Migration 0017: `cover_emoji`, `cover_photo_id` (FK to `photos`,
-  nullable).
+- Migration 0017: `cover_emoji`, `cover_photo_id` (nullable; no foreign
+  key, for the same reason `updated_by` has none: SQLite can't add one to
+  `trips` without a rebuild its children's keys forbid).
 - `TripSummary` / `TripRead`: `coverEmoji`, `coverThumbUrl` (null when the
   photo is gone or its memory isn't public).
 - `tripsSlice`: `updateTrip` updates the list entry. The timeline slice's
@@ -291,6 +292,25 @@ same spot of the screen (screenshot `29b`).
   `{ center, zoom, only, date }` from the map (`filtersRef` for the
   filters as of then).
 - The trips list's `forgetPlaces` (Phase 100) already clears it.
+
+### Phase 101 (2026-10-12): renaming and the cover, on the server
+
+`make verify` green (328 API + 677 UI).
+- `PATCH /trips/{id}` (`TripUpdate`: `name`, `coverEmoji`, `coverPhotoId`;
+  `extra="forbid"`; `name: null` and both covers at once are 422). The
+  role in the reply is the caller's (owner or editor).
+- `is_one_emoji` in `schemas.py`: one pictograph, a flag, a keycap, or a
+  ZWJ sequence, with skin tones and variation selectors. It's not a full
+  grapheme check, but it rejects words and two emoji.
+- `_shown_cover_photo`: a live photo on this trip, on a live public memory.
+  Used to accept a cover (else 422 "Pick a photo from a memory everyone can
+  see."), and again on every read, so `coverThumbUrl` goes null when the
+  photo or memory is deleted or made private. The list uses it as a
+  correlated subquery.
+- `updateTrip` (`tripsSlice`): updates the list and the open trip
+  (`timelineSlice`), and both saved copies (trip and list), then shows the
+  "Saved" toast. Rejected with the server's message.
+- One change from the plan: no foreign key on `cover_photo_id` (above).
 
 ## Open questions
 

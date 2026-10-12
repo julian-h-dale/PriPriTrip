@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/shared/services/apiClient";
 import { notify } from "@/shared/notificationSlice";
-import { readTripList, removeTrip, saveMemories, saveTrip, saveTripList } from "@/shared/services/tripCache";
+import { readTrip, readTripList, removeTrip, saveMemories, saveTrip, saveTripList } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
 import { tripPhase } from "@/shared/utils/tripDates";
 
@@ -90,6 +90,37 @@ export const importTrip = createAsyncThunk(
   }
 );
 
+/** The fields a trip's settings change (Run stage 29), as the server sent them. */
+const SETTINGS_FIELDS = ["name", "coverEmoji", "coverThumbUrl"];
+const settingsOf = (summary) => Object.fromEntries(SETTINGS_FIELDS.map((k) => [k, summary[k] ?? null]));
+
+/**
+ * Rename a trip or set its cover: `changes` is `{ name }`, `{ coverEmoji }`
+ * or `{ coverPhotoId }` (null clears a cover). The trips list, the open trip
+ * and the phone's saved copies all take the result. Rejected with the
+ * server's message, for the page to show.
+ */
+export const updateTrip = createAsyncThunk(
+  "trips/update",
+  async ({ id, changes }, { dispatch, getState, rejectWithValue }) => {
+    let summary;
+    try {
+      ({ data: summary } = await apiClient.patch(`/trips/${id}`, changes, { silent: true }));
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      const message = typeof detail === "string" ? detail : Array.isArray(detail) ? detail[0]?.msg : null;
+      return rejectWithValue(message?.replace(/^Value error, /, "") ?? "Couldn’t save. Try again.");
+    }
+    const userId = userIdFromToken(getState().auth.token);
+    const saved = await readTrip(userId, id);
+    if (saved) await saveTrip(userId, { ...saved.data, ...settingsOf(summary) });
+    const list = await readTripList(userId);
+    if (list) await saveTripList(userId, list.data.map((t) => (t.id === id ? { ...t, ...summary } : t)));
+    dispatch(notify({ type: "success", message: "Saved" }));
+    return summary;
+  }
+);
+
 /** Stop viewing a trip someone shared with you. */
 export const leaveTrip = createAsyncThunk("trips/leave", async (id, { dispatch, getState }) => {
   await apiClient.delete(`/trips/${id}/membership`, { silent: true });
@@ -139,6 +170,10 @@ const tripsSlice = createSlice({
       .addCase(importTrip.fulfilled, (state, action) => {
         state.items.push(action.payload);
         state.items.sort((a, b) => a.startDate.localeCompare(b.startDate));
+      })
+      .addCase(updateTrip.fulfilled, (state, action) => {
+        const i = state.items.findIndex((t) => t.id === action.payload.id);
+        if (i >= 0) state.items[i] = { ...state.items[i], ...action.payload };
       })
       .addCase(leaveTrip.fulfilled, (state, action) => {
         state.items = state.items.filter((t) => t.id !== action.payload);

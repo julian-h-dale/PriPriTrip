@@ -23,7 +23,12 @@
     (saved as it closes; no trip-wide fit on return). `?focus=` wins over
     it. `make verify` green (311 API + 674 UI); e2e `map-place.spec.js`
     (screenshot `29b`).
-  - Next: 101–103 (trip settings).
+  - **Phase 101 ✅:** `PATCH /trips/{id}` renames (owner/editor) and sets
+    the card's cover: one emoji, or a photo from a public memory (checked
+    on write and on every read). Migration 0017 (`trips.cover_emoji`,
+    `cover_photo_id`, no FK). `updateTrip` thunk updates list, open trip
+    and saved copies. `make verify` green (328 API + 677 UI).
+  - Next: 102 (the settings page), 103 (on this phone).
 
 - **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
   at `4d9cbd0`): tapping one of Google's places on the map opens our card.
