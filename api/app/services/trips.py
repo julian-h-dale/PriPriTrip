@@ -17,8 +17,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import Role, active
-from app.models import Day, Item, PointOfInterest, Stay, Travel, Trip, TripMember, UserRecord
-from app.schemas import TripRead, TripSummary, VersionRead
+from app.models import (
+    Day,
+    Item,
+    Memory,
+    Photo,
+    PointOfInterest,
+    Stay,
+    Travel,
+    Trip,
+    TripMember,
+    UserRecord,
+)
+from app.schemas import TripRead, TripSummary, TripUpdate, VersionRead
 from app.services import versions
 from app.trip_document import (
     DayDoc,
@@ -126,7 +137,40 @@ async def import_trip(db: AsyncSession, user_id: uuid.UUID, doc: TripDocument) -
     return _summary(trip, stay_count=len(doc.stays), travel_count=len(doc.travels))
 
 
-def _summary(trip: Trip, *, stay_count: int, travel_count: int, role: str = "owner") -> TripSummary:
+def _shown_cover_photo(trip_id: Any, photo_id: Any) -> Any:
+    """The cover photo's id while it can still be shown: a live photo on this
+    trip, on a live memory everyone can see (viewers see the card too)."""
+    return (
+        select(Photo.id)
+        .join(Memory, Memory.id == Photo.memory_id)
+        .where(
+            Photo.id == photo_id,
+            Photo.trip_id == trip_id,
+            active(Photo),
+            active(Memory),
+            Memory.is_public.is_(True),
+        )
+    )
+
+
+def _thumb_url(photo_id: uuid.UUID | None) -> str | None:
+    return f"/photos/{photo_id}/thumb" if photo_id else None
+
+
+async def _cover_thumb_url(db: AsyncSession, trip: Trip) -> str | None:
+    if trip.cover_photo_id is None:
+        return None
+    return _thumb_url(await db.scalar(_shown_cover_photo(trip.id, trip.cover_photo_id)))
+
+
+def _summary(
+    trip: Trip,
+    *,
+    stay_count: int,
+    travel_count: int,
+    role: str = "owner",
+    cover_thumb_url: str | None = None,
+) -> TripSummary:
     return TripSummary(
         id=trip.id,
         name=trip.name,
@@ -137,6 +181,8 @@ def _summary(trip: Trip, *, stay_count: int, travel_count: int, role: str = "own
         travel_count=travel_count,
         created_at=trip.created_at,
         role=role,
+        cover_emoji=trip.cover_emoji,
+        cover_thumb_url=cover_thumb_url,
     )
 
 
@@ -161,8 +207,9 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
         .correlate(Trip)
         .scalar_subquery()
     )
+    cover_photo = _shown_cover_photo(Trip.id, Trip.cover_photo_id).correlate(Trip).scalar_subquery()
     result = await db.execute(
-        select(Trip, stay_count, travel_count, member_role)
+        select(Trip, stay_count, travel_count, member_role, cover_photo)
         .where(or_(Trip.user_id == user_id, member_role.is_not(None)), active(Trip))
         .order_by(Trip.start_date, Trip.created_at)
     )
@@ -172,8 +219,9 @@ async def list_trips(db: AsyncSession, user_id: uuid.UUID) -> list[TripSummary]:
             stay_count=sc,
             travel_count=tc,
             role="owner" if trip.user_id == user_id else "editor" if role == "editor" else "viewer",
+            cover_thumb_url=_thumb_url(cover),
         )
-        for trip, sc, tc, role in result.all()
+        for trip, sc, tc, role, cover in result.all()
     ]
 
 
@@ -185,7 +233,13 @@ async def trip_summary(db: AsyncSession, trip: Trip, role: Role) -> TripSummary:
     travels = await db.scalar(
         select(func.count(Travel.id)).where(Travel.trip_id == trip.id, active(Travel))
     )
-    return _summary(trip, stay_count=stays or 0, travel_count=travels or 0, role=role)
+    return _summary(
+        trip,
+        stay_count=stays or 0,
+        travel_count=travels or 0,
+        role=role,
+        cover_thumb_url=await _cover_thumb_url(db, trip),
+    )
 
 
 async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -> TripRead:
@@ -206,7 +260,9 @@ async def get_trip(db: AsyncSession, trip_id: uuid.UUID, role: Role = "owner") -
         )
         .execution_options(populate_existing=True)
     )
-    trip = _with_zones(TripRead.model_validate(result.scalar_one()))
+    row = result.scalar_one()
+    trip = _with_zones(TripRead.model_validate(row))
+    trip.cover_thumb_url = await _cover_thumb_url(db, row)
     await _with_editor_names(db, trip)
     # Edits return the trip as "owner" by default; reads pass the caller's
     # own role so the UI knows whether it may edit.
@@ -377,6 +433,31 @@ def _with_zones(trip: TripRead) -> TripRead:
         for item in [*day.items, *day.plan_b]:
             item.zone = item_zone(item, day.date, trip.stays, tz)
     return trip
+
+
+class CoverPhotoNotAllowed(Exception):
+    """The photo isn't on this trip, is gone, or its memory isn't public."""
+
+
+async def update_trip(db: AsyncSession, trip: Trip, update: TripUpdate, role: Role) -> TripSummary:
+    """Rename a trip or set its card's cover (Run stage 29). Only the fields
+    sent change. The last write wins: there's no version on the trip itself."""
+    fields = update.model_fields_set
+    if "name" in fields and update.name is not None:
+        trip.name = update.name
+    if "cover_photo_id" in fields:
+        if update.cover_photo_id is not None:
+            if await db.scalar(_shown_cover_photo(trip.id, update.cover_photo_id)) is None:
+                raise CoverPhotoNotAllowed
+            trip.cover_emoji = None
+        trip.cover_photo_id = update.cover_photo_id
+    if "cover_emoji" in fields:
+        if update.cover_emoji is not None:
+            trip.cover_photo_id = None
+        trip.cover_emoji = update.cover_emoji
+    await db.commit()
+    await db.refresh(trip)
+    return await trip_summary(db, trip, role)
 
 
 async def delete_trip(db: AsyncSession, trip: Trip) -> None:

@@ -20,6 +20,7 @@ const PAGES = [
   { path: "/trips/:tripId/time", url: "/trip/timezones", title: "Time zones" },
   { path: "/trips/:tripId/packing", url: "/trip/packing", title: "Packing" },
   { path: "/trips/:tripId/documents", url: "/trip/documents", title: "Documents" },
+  { path: "/trips/:tripId/settings", url: "/trip/settings", title: "Trip settings" },
   { path: "/admin", url: "/admin", title: "Admin" },
 ];
 

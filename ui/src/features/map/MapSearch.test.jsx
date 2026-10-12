@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
@@ -11,6 +11,7 @@ import networkReducer from "@/shared/networkSlice";
 import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { MapPage } from "@/features/map/MapPage";
+import { forgetPlaces, savedPlace } from "@/shared/tripPlaces";
 import { apiClient } from "@/shared/services/apiClient";
 import { createPlacesSearch, placeDetails } from "@/shared/services/googlePlaces";
 import { glyphSrcFor, NEW_PLACE_GLYPH_SRC } from "@/features/map/mapStyle";
@@ -32,11 +33,18 @@ vi.mock("@/shared/services/googlePlaces", () => ({
 }));
 
 // --- A fake Google Maps: just enough of maps/marker for MapPage. -----------
-const fake = vi.hoisted(() => ({ markers: [], circles: [], map: null, infoWindow: null }));
+const fake = vi.hoisted(() => ({
+  markers: [],
+  circles: [],
+  map: null,
+  infoWindow: null,
+  view: { center: { lat: 46.95, lng: 7.45 }, zoom: 12 },
+}));
 vi.mock("@/shared/services/googleMapsLoader", () => {
   class FakeMap {
-    constructor() {
+    constructor(_el, options) {
       fake.map = this;
+      this.options = options;
       this.panTo = vi.fn();
       this.panBy = vi.fn();
       this.setCenter = vi.fn();
@@ -49,6 +57,14 @@ vi.mock("@/shared/services/googleMapsLoader", () => {
     }
     getBounds() {
       return { toJSON: () => ({ north: 47, south: 46, east: 8, west: 7 }) };
+    }
+    // Where the map is now: a test sets fake.view to "pan" it.
+    getCenter() {
+      const { lat, lng } = fake.view.center;
+      return { lat: () => lat, lng: () => lng };
+    }
+    getZoom() {
+      return fake.view.zoom;
     }
   }
   class FakeInfoWindow {
@@ -183,6 +199,8 @@ beforeEach(() => {
   };
   fake.markers = [];
   fake.circles = [];
+  fake.view = { center: { lat: 46.95, lng: 7.45 }, zoom: 12 };
+  forgetPlaces("trip-1"); // each test opens the map fresh
   document.body.innerHTML = "";
   createPlacesSearch.mockResolvedValue(fakeSearch);
   apiClient.get.mockImplementation(async (url) => {
@@ -806,5 +824,52 @@ describe("tapping one of Google's places on the map", () => {
     expect(await screen.findByText("Not in this trip")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add activity" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Directions" })).toBeInTheDocument();
+  });
+});
+
+describe("the map keeps its place (Run stage 29)", () => {
+  const STAY_GLYPH = glyphSrcFor({ kind: "stay" });
+  const shownGlyphs = () => fake.markers.filter((m) => m.map !== null && m.content?.glyphSrc).map((m) => m.content.glyphSrc);
+
+  /** Open the map, filter to Stays, "pan" it, then leave. */
+  async function leaveAfterPanning(user) {
+    renderMap();
+    await waitFor(() => expect(shownGlyphs()).toContain(STAY_GLYPH));
+    await user.click(screen.getByRole("button", { name: /^Filter the map/ }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Stays" }));
+    fake.view = { center: { lat: 46.6, lng: 7.9 }, zoom: 15 };
+    cleanup();
+  }
+
+  it("comes back to the same center, zoom and filter, with no fit to the trip", async () => {
+    const user = userEvent.setup();
+    await leaveAfterPanning(user);
+    expect(savedPlace("map", "trip-1")).toEqual({ center: { lat: 46.6, lng: 7.9 }, zoom: 15, only: "stays", date: "" });
+
+    renderMap();
+    await waitFor(() => expect(shownGlyphs()).toContain(STAY_GLYPH));
+    expect(fake.map.options).toMatchObject({ center: { lat: 46.6, lng: 7.9 }, zoom: 15 });
+    expect(screen.getByRole("button", { name: "Filter the map: Stays" })).toBeInTheDocument();
+    expect(fake.map.fitBounds).not.toHaveBeenCalled();
+    expect(fake.map.setZoom).not.toHaveBeenCalled();
+  });
+
+  it("opened at a pin (?focus=), the pin wins over the saved place", async () => {
+    const user = userEvent.setup();
+    await leaveAfterPanning(user);
+    renderMap({ path: "/trips/trip-1/map?focus=stay-stay-0" });
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+    expect(fake.map.options.zoom).toBe(15);
+    expect(fake.map.options.center).toEqual({ lat: TRIP.stays[0].location.lat, lng: TRIP.stays[0].location.lng });
+    expect(screen.getByRole("button", { name: "Filter the map" })).toBeInTheDocument(); // no saved filter
+  });
+
+  it("forgotten (the trip opened from the trips list): the trip-wide fit again", async () => {
+    const user = userEvent.setup();
+    await leaveAfterPanning(user);
+    forgetPlaces("trip-1");
+    renderMap();
+    await waitFor(() => expect(fake.map.fitBounds).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Filter the map" })).toBeInTheDocument();
   });
 });

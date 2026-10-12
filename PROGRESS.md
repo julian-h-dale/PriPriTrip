@@ -6,6 +6,46 @@
 
 ## Status
 
+- **Run stage 29 (2026-10-12)** on **`trip-settings`** (off `main` at
+  `3bf166b`): the timeline and map keep their place; trip settings.
+  Plan: `docs/plan/run-29-trip-settings.md` (Julian: all suggestions taken).
+  Baseline green before work (311 API + 664 UI).
+  - **Phase 100 ✅ (waiting for Julian):** the timeline remembers its view
+    (Plan / Stays / Travel) and scroll per trip, in memory
+    (`shared/tripPlaces.js`), when left any way and restored on return.
+    Opening a trip from the trips list forgets it; tapping Timeline while
+    on it goes to the top of the plan. A viewer always sees the plan.
+    Frontend only. `make verify` green (311 API + 671 UI); e2e
+    `timeline-place.spec.js` (screenshot `29a`).
+  - Julian (2026-10-12): build the outstanding phases without stopping;
+    stop and raise anything that deviates from the plan.
+  - **Phase 100b ✅:** the map keeps its center, zoom and filters per trip
+    (saved as it closes; no trip-wide fit on return). `?focus=` wins over
+    it. `make verify` green (311 API + 674 UI); e2e `map-place.spec.js`
+    (screenshot `29b`).
+  - **Phase 101 ✅:** `PATCH /trips/{id}` renames (owner/editor) and sets
+    the card's cover: one emoji, or a photo from a public memory (checked
+    on write and on every read). Migration 0017 (`trips.cover_emoji`,
+    `cover_photo_id`, no FK). `updateTrip` thunk updates list, open trip
+    and saved copies. `make verify` green (328 API + 677 UI).
+  - **Phase 102 ✅:** the Trip settings page (`/trips/:id/settings`, owner
+    and editor), from ⋯ on the trips list: Cover (emoji grid / type one /
+    public photos / remove), Name, People (owner; `MembersPanel` shared
+    with the Share dialog), Export (download `<slug>.json`), Delete /
+    Leave. Cards show the cover. `make verify` green (328 API + 690 UI);
+    e2e `trip-settings.spec.js` (screenshots `29c`, `29d`).
+  - **Your dev API on :8000 is still on 2026-10-07 code** (no `--reload`),
+    so restart it to get `PATCH /trips/{id}`. E2E ran on :8010/:3010 via
+    `E2E_API_PORT` / `E2E_UI_PORT`.
+  - **Phase 103 ✅ (waiting for Julian):** "On this phone" on Trip
+    settings: Opens on (Today / Timeline / Map, per trip; `tripHomePath`
+    follows it; a finished trip set to Today opens the timeline),
+    Distances (miles / km, every trip), and the Nearby radius (¼–2 mi or
+    0.5–3 km, per trip; ½ mi default = 1 km). All in
+    `shared/phoneSettings.js`. Nearby says its radius. `make verify` green
+    (328 API + 700 UI); e2e green on :8010/:3010.
+  - **Run 29 complete.** Needs a human check on a phone at 375 px.
+
 - **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
   at `4d9cbd0`): tapping one of Google's places on the map opens our card.
   Plan: `docs/plan/run-28-tap-a-place-on-the-map.md` (Julian: "go with your

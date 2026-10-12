@@ -5,6 +5,7 @@ import { readTrip, removeTrip, saveTrip } from "@/shared/services/tripCache";
 import { userIdFromToken } from "@/shared/utils/authToken";
 import { formatAgo } from "@/shared/utils/time";
 import { selectOnline } from "@/shared/networkSlice";
+import { updateTrip } from "@/features/trips/tripsSlice";
 
 /**
  * Stale-while-revalidate, like the trips list: the phone's saved copy (if
@@ -248,6 +249,11 @@ const timelineSlice = createSlice({
         // A trip that's really gone (404) mustn't linger from the cache.
         if (action.payload === "notFound") state.trip = null;
       });
+    // Renamed or a new cover on the settings page: the open trip shows it too.
+    builder.addCase(updateTrip.fulfilled, (state, action) => {
+      const { id, name, coverEmoji = null, coverThumbUrl = null } = action.payload;
+      if (state.trip?.id === id) Object.assign(state.trip, { name, coverEmoji, coverThumbUrl });
+    });
     EDITS.forEach((edit) =>
       builder.addCase(edit.fulfilled, (state, action) => {
         if (state.tripId === action.payload.id) state.trip = action.payload;

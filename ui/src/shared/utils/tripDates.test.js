@@ -93,4 +93,15 @@ describe("tripHomePath: where a trip opens", () => {
     expect(tripHomePath(trip("2026-05-10", "2026-05-14"), NOW)).toBe("/trips/t");
     expect(tripHomePath(trip("2026-10-05", "2026-10-12", "viewer"), NOW)).toBe("/trips/t");
   });
+  it("this phone's choice (Run stage 29), except Today once the trip is over", () => {
+    const active = trip("2026-10-05", "2026-10-12");
+    const past = trip("2026-05-10", "2026-05-14");
+    expect(tripHomePath(active, NOW, "map")).toBe("/trips/t/map");
+    expect(tripHomePath(active, NOW, "timeline")).toBe("/trips/t");
+    expect(tripHomePath(active, NOW, "today")).toBe("/trips/t/today");
+    expect(tripHomePath(past, NOW, "map")).toBe("/trips/t/map");
+    expect(tripHomePath(past, NOW, "today")).toBe("/trips/t");
+    // A viewer can't choose: always the timeline.
+    expect(tripHomePath(trip("2026-10-05", "2026-10-12", "viewer"), NOW, "map")).toBe("/trips/t");
+  });
 });

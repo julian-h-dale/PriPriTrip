@@ -29,7 +29,7 @@ from app.dependencies import (
     if_match_version,
 )
 from app.models import Item, PointOfInterest, Stay, Travel, Trip, UserRecord
-from app.schemas import CamelModel, TripRead, TripSummary
+from app.schemas import CamelModel, TripRead, TripSummary, TripUpdate
 from app.services import trips as trips_service
 from app.trip_document import (
     DayWrite,
@@ -173,6 +173,24 @@ async def export_trip(
         doc.model_dump(mode="json", by_alias=True, exclude_none=True),
         headers={"Content-Disposition": f'attachment; filename="{slug}.json"'},
     )
+
+
+@router.patch("/{trip_id}", response_model=TripSummary)
+async def update_trip(
+    body: TripUpdate,
+    trip: Trip = Depends(get_editable_trip),
+    db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(current_active_user),
+) -> TripSummary:
+    """Rename the trip or set its card's cover (owner or editor)."""
+    role: Literal["owner", "editor"] = "owner" if trip.user_id == user.id else "editor"
+    try:
+        return await trips_service.update_trip(db, trip, body, role)
+    except trips_service.CoverPhotoNotAllowed:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Pick a photo from a memory everyone can see.",
+        ) from None
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)

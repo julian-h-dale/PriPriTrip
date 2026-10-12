@@ -111,6 +111,12 @@ class Trip(SoftDeleteMixin, Base):
     # renewed like the edit code. (The trip's id used to be the viewer code;
     # it's in every URL, so it now only works for people already on the trip.)
     view_code: Mapped[str | None] = mapped_column(default=None)
+    # The trips list's card picture (Run stage 29): one emoji, or a photo on
+    # this trip from a public memory, never both. The photo has no foreign
+    # key for the same reason as `updated_by` (VersionedMixin); a photo that
+    # goes away, or whose memory stops being public, just shows no cover.
+    cover_emoji: Mapped[str | None] = mapped_column(default=None)
+    cover_photo_id: Mapped[uuid.UUID | None] = mapped_column(default=None)
 
     __table_args__ = (
         Index("uq_trips_edit_code", "edit_code", unique=True),

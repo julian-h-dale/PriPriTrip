@@ -14,8 +14,10 @@ function envValue(file, key, fallback) {
     return fallback;
   }
 }
-const UI_PORT = envValue(".env", "VITE_UI_PORT", "3000");
-const API_PORT = envValue("../api/.env", "API_PORT", "8000");
+// E2E_UI_PORT / E2E_API_PORT point a run at other servers, e.g. this
+// branch's beside a dev server that's still running older code.
+const UI_PORT = process.env.E2E_UI_PORT ?? envValue(".env", "VITE_UI_PORT", "3000");
+const API_PORT = process.env.E2E_API_PORT ?? envValue("../api/.env", "API_PORT", "8000");
 export const API_URL = `http://localhost:${API_PORT}`;
 
 /**

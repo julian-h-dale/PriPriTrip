@@ -46,6 +46,9 @@ export function BottomNav({ tripId }) {
           <Link
             key={label}
             to={to(tripId)}
+            // Tapping Timeline while on it goes back to the top of the plan
+            // (TripTimelinePage); anywhere else it comes back to where you were.
+            state={label === "Timeline" && pathname === to(tripId) ? { timelineTop: true } : undefined}
             aria-current={isActive ? "page" : undefined}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors",

@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { mapFocusPath } from "@/features/map/mapFocus";
-import { NEARBY_SHOWN, milesLabel, nearbyPointsOfInterest } from "@/features/pointsOfInterest/nearby";
+import { NEARBY_SHOWN, nearbyPointsOfInterest } from "@/features/pointsOfInterest/nearby";
 import { POI_CATEGORY_LABEL, POI_ICON } from "@/features/pointsOfInterest/pointsOfInterest";
+import { distanceLabel, useDistanceUnit, useNearbyRadius } from "@/shared/phoneSettings";
 
 /**
  * "Nearby" on an activity's or stay's page (Run stage 27): the trip's points
- * of interest within half a mile of its place, closest first. Each row opens
- * the map at that pin. Nothing at all when none are near.
+ * of interest near its place, closest first. Each row opens the map at that
+ * pin. Nothing at all when none are near. How near, and miles or km, are
+ * this phone's choices on the Trip settings page (Run stage 29); the label
+ * says which.
  */
 export function NearbyPointsOfInterest({ trip, location, labelClassName }) {
   const [all, setAll] = useState(false);
-  const nearby = nearbyPointsOfInterest(trip, location);
+  const unit = useDistanceUnit();
+  const radius = useNearbyRadius(trip.id);
+  const nearby = nearbyPointsOfInterest(trip, location, radius.metres);
   if (nearby.length === 0) return null;
   const shown = all ? nearby : nearby.slice(0, NEARBY_SHOWN);
   return (
     <section aria-label="Nearby" className="flex flex-col gap-1">
-      <span className={labelClassName}>Nearby</span>
+      <span className={labelClassName}>Nearby · within {radius.label}</span>
       <ul className="-mx-2 flex flex-col">
         {shown.map(({ poi, metres }) => {
           const Icon = POI_ICON[poi.category] ?? POI_ICON.other;
@@ -31,7 +36,7 @@ export function NearbyPointsOfInterest({ trip, location, labelClassName }) {
                   <span className="break-words text-sm">{poi.name}</span>
                   <span className="text-xs text-muted-foreground">{POI_CATEGORY_LABEL[poi.category] ?? "Other"}</span>
                 </span>
-                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{milesLabel(metres)}</span>
+                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{distanceLabel(metres, unit)}</span>
               </Link>
             </li>
           );

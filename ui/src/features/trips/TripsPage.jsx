@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
-import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Trash2, Upload, Users } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Settings, Trash2, Upload, Users } from "lucide-react";
 import { countdownParts } from "@/features/trips/countdown";
+import { TripCover } from "@/features/trips/TripCover";
+import { hasCover } from "@/features/trips/tripSettings";
 import { deleteTrip, fetchTrips, leaveTrip } from "@/features/trips/tripsSlice";
 import { ImportTripDialog } from "@/features/trips/ImportTripDialog";
 import { Button } from "@/shared/components/ui/button";
@@ -13,6 +15,7 @@ import { RowMenu } from "@/shared/components/RowMenu";
 import { TopBar } from "@/shared/components/TopBar";
 import { cn } from "@/shared/utils/cn";
 import { daysBetween, formatDateRange } from "@/shared/utils/time";
+import { forgetPlaces } from "@/shared/tripPlaces";
 import { groupTrips, tripHomePath } from "@/shared/utils/tripDates";
 import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 import { refreshOnce } from "@/shared/pwa/refreshOnce";
@@ -32,6 +35,7 @@ function useNow(intervalMs = 30_000) {
 }
 
 function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
+  const navigate = useNavigate();
   const shared = trip.role === "viewer" || trip.role === "editor";
   const nights = daysBetween(trip.startDate, trip.endDate);
   // Until the first day begins on this phone's clock (so it can still show
@@ -41,8 +45,11 @@ function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
     <Card className="flex items-stretch transition-colors hover:border-primary/60">
       <Link
         to={tripHomePath(trip)}
+        // Opening a trip starts fresh, not where you last were in it.
+        onClick={() => forgetPlaces(trip.id)}
         className="flex min-w-0 flex-1 items-start gap-3 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
+        {hasCover(trip) && <TripCover trip={trip} />}
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="break-words font-semibold leading-snug">{trip.name}</span>
           {shared && (
@@ -76,12 +83,22 @@ function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
           </span>
         )}
       </Link>
-      {/* Delete (or Leave, for a shared trip) lives behind ⋯, away from the
-          card's main tap target. */}
+      {/* Trip settings, and Delete (or Leave, for a shared trip), live
+          behind ⋯, away from the card's main tap target. A viewer gets no
+          settings (Run stage 29). */}
       <div className="flex items-start p-1.5">
         <RowMenu
           label={`More for ${trip.name}`}
           items={[
+            ...(trip.role === "viewer"
+              ? []
+              : [
+                  {
+                    label: "Trip settings",
+                    icon: <Settings className="h-4 w-4" aria-hidden="true" />,
+                    onSelect: () => navigate(`/trips/${trip.id}/settings`),
+                  },
+                ]),
             shared
               ? {
                   label: "Leave trip",

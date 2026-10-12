@@ -1,3 +1,5 @@
+import { openOn } from "@/shared/phoneSettings";
+
 /**
  * Date lookups relative to a trip: where "today" is, whether a date falls in
  * the trip, and the trip's phase. One place for these so today-aware features
@@ -38,11 +40,16 @@ export function tripPhase(trip, now = new Date()) {
  * Where a trip opens (Run stage 21): its Today for an owner or editor while
  * it's active or still to come (before it starts, Today previews Day 1); its
  * timeline for a past trip (nothing is "today" any more) and for a viewer,
- * who has no Today tab.
+ * who has no Today tab. An owner or editor can choose otherwise for this
+ * phone (`choice`: "today" | "timeline" | "map" | null).
  */
-export function tripHomePath(trip, now = new Date()) {
+export function tripHomePath(trip, now = new Date(), choice = openOn(trip.id)) {
   const timeline = `/trips/${trip.id}`;
-  if (trip.role === "viewer" || tripPhase(trip, now) === "past") return timeline;
+  if (trip.role === "viewer") return timeline;
+  // This phone's choice on Trip settings (Run stage 29). Today has nothing
+  // to show once a trip is over, so then it's the timeline after all.
+  if (choice === "map") return `${timeline}/map`;
+  if (choice === "timeline" || tripPhase(trip, now) === "past") return timeline;
   return `${timeline}/today`;
 }
 

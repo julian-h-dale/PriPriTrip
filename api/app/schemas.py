@@ -12,7 +12,15 @@ from datetime import date, datetime, time
 from typing import Annotated, Literal
 
 from fastapi_users import schemas
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    model_validator,
+)
 from pydantic.alias_generators import to_camel
 
 from app.trip_document import (
@@ -146,6 +154,9 @@ class TripRead(TripDocument):
     travels: list[TravelRead] = Field(default_factory=list)  # type: ignore[assignment]
     days: list[DayRead] = Field(default_factory=list)  # type: ignore[assignment]
     points_of_interest: list[PointOfInterestRead] = Field(default_factory=list)  # type: ignore[assignment]
+    # The card's picture (Run stage 29): an emoji, or a photo's thumbnail.
+    cover_emoji: str | None = None
+    cover_thumb_url: str | None = None
 
 
 class TripSummary(CamelModel):
@@ -158,6 +169,102 @@ class TripSummary(CamelModel):
     travel_count: int
     created_at: datetime
     role: Literal["owner", "editor", "viewer"] = "owner"
+    cover_emoji: str | None = None
+    cover_thumb_url: str | None = None
+
+
+TRIP_NAME_MAX_CHARS = 120
+
+# What may make up one emoji: pictographs and symbols, plus the pieces that
+# join or adjust them (zero-width joiner, variation selector, skin tones,
+# keycaps, flag tags). Regional indicators pair into flags.
+_EMOJI_RANGES = (
+    (0x1F000, 0x1FAFF),  # pictographs, emoticons, transport, skin tones, …
+    (0x2190, 0x21FF),  # arrows
+    (0x2300, 0x23FF),  # technical (⌚ ⏰)
+    (0x2600, 0x27BF),  # symbols and dingbats (☀ ✈)
+    (0x2B00, 0x2BFF),  # (⭐)
+    (0xE0020, 0xE007F),  # flag tags
+)
+_EMOJI_SINGLES = {0x00A9, 0x00AE, 0x203C, 0x2049, 0x2122, 0x2139, 0x3030, 0x303D, 0x3297, 0x3299}
+_ZWJ, _VS16, _KEYCAP = 0x200D, 0xFE0F, 0x20E3
+_REGIONAL = (0x1F1E6, 0x1F1FF)
+_SKIN = (0x1F3FB, 0x1F3FF)
+
+
+def _is_emoji_char(cp: int) -> bool:
+    return cp in _EMOJI_SINGLES or any(lo <= cp <= hi for lo, hi in _EMOJI_RANGES)
+
+
+def is_one_emoji(value: str) -> bool:
+    """Whether `value` is exactly one emoji, as a person sees it: a single
+    pictograph, a flag, a keycap, or a sequence joined by zero-width joiners
+    ("👩‍👩‍👧"). Not a full Unicode grapheme check, but it keeps out words,
+    two emoji side by side, and anything that isn't an emoji at all."""
+    cps = [ord(c) for c in value]
+    if not cps or len(cps) > 16:
+        return False
+    if len(cps) == 2 and all(_REGIONAL[0] <= cp <= _REGIONAL[1] for cp in cps):
+        return True  # a flag
+    if len(cps) in (2, 3) and chr(cps[0]) in "0123456789#*" and cps[-1] == _KEYCAP:
+        return True  # a keycap (1️⃣)
+    for part in _split(cps, _ZWJ):
+        bases = [
+            cp
+            for cp in part
+            if cp != _VS16 and not _SKIN[0] <= cp <= _SKIN[1] and not 0xE0020 <= cp <= 0xE007F
+        ]
+        if (
+            len(bases) != 1
+            or not _is_emoji_char(bases[0])
+            or _REGIONAL[0] <= bases[0] <= _REGIONAL[1]
+        ):
+            return False
+    return True
+
+
+def _split(cps: list[int], sep: int) -> list[list[int]]:
+    parts: list[list[int]] = [[]]
+    for cp in cps:
+        if cp == sep:
+            parts.append([])
+        else:
+            parts[-1].append(cp)
+    return parts
+
+
+def _trip_name(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("A trip needs a name")
+    if len(value) > TRIP_NAME_MAX_CHARS:
+        raise ValueError(f"A trip's name is at most {TRIP_NAME_MAX_CHARS} characters")
+    return value
+
+
+def _cover_emoji(value: str | None) -> str | None:
+    if value is not None and not is_one_emoji(value):
+        raise ValueError("The cover must be one emoji")
+    return value
+
+
+class TripUpdate(CamelModel):
+    """Changing a trip's own fields (Run stage 29): its name, and its card's
+    cover. Leave a field out to keep it; send `null` to clear a cover. An
+    emoji and a photo are never both set: setting one clears the other."""
+
+    model_config = ConfigDict(extra="forbid", alias_generator=to_camel, populate_by_name=True)
+    name: Annotated[str, AfterValidator(_trip_name)] | None = None
+    cover_emoji: Annotated[str | None, AfterValidator(_cover_emoji)] = None
+    cover_photo_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _one_cover_and_a_name(self) -> TripUpdate:
+        if "name" in self.model_fields_set and self.name is None:
+            raise ValueError("A trip needs a name")
+        if self.cover_emoji is not None and self.cover_photo_id is not None:
+            raise ValueError("A cover is an emoji or a photo, not both")
+        return self
 
 
 class MemberInvite(CamelModel):

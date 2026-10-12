@@ -44,6 +44,7 @@ import { notify } from "@/shared/notificationSlice";
 import { defaultFormDate } from "@/shared/utils/tripDates";
 import { formatDayHeading } from "@/shared/utils/time";
 import { selectOnline } from "@/shared/networkSlice";
+import { rememberPlace, savedPlace } from "@/shared/tripPlaces";
 
 function MissingConfig({ message }) {
   return (
@@ -166,9 +167,18 @@ function TripMap({ trip }) {
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
+  // ?focus=<marker id>: opened from another page at one pin (mapFocus.js).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusId = searchParams.get(FOCUS_PARAM);
+  // Coming back to the map: where it was left (tripPlaces.js), filters and
+  // all. Opened at one pin (?focus=), that pin wins.
+  const [saved] = useState(() => (focusId ? null : savedPlace("map", trip.id)));
   // The "what" filter (the Filter menu): null (everything), "stays", "pois" or "memories".
-  const [only, setOnly] = useState(null);
-  const [date, setDate] = useState("");
+  const [only, setOnly] = useState(saved?.only ?? null);
+  const [date, setDate] = useState(saved?.date ?? "");
+  // The filters as of now, for saving the map's place as it closes.
+  const filtersRef = useRef({ only, date });
+  filtersRef.current = { only, date };
   // null | { kind: "trip", marker } | { kind: "place", place, types }
   const [info, setInfo] = useState(null);
   // The picked Google place on the map: null | { place, types }
@@ -189,9 +199,6 @@ function TripMap({ trip }) {
   const meRef = useRef(null);
   const [locating, setLocating] = useState(false);
   const stayCov = useMemo(() => stayCoverage(trip), [trip]);
-  // ?focus=<marker id>: opened from another page at one pin (mapFocus.js).
-  const [searchParams, setSearchParams] = useSearchParams();
-  const focusId = searchParams.get(FOCUS_PARAM);
 
   useEffect(() => {
     getClientConfig()
@@ -233,12 +240,13 @@ function TripMap({ trip }) {
         // The initial view: the trip's destinations (viewFor with no
         // filters), not travel's endpoints, which are often a continent away.
         // Opened at one pin (?focus=), start there instead: a fit made now
-        // lands after the focus below and would undo it.
+        // lands after the focus below and would undo it. Coming back, start
+        // where it was left, with no fit.
         const focused = focusId && markers.find((m) => m.id === focusId);
         const map = new Map(containerRef.current, {
           mapId: config.googleMapsMapId,
-          center: focused ? { lat: focused.lat, lng: focused.lng } : { lat: 0, lng: 0 },
-          zoom: focused ? 15 : 2,
+          center: focused ? { lat: focused.lat, lng: focused.lng } : (saved?.center ?? { lat: 0, lng: 0 }),
+          zoom: focused ? 15 : (saved?.zoom ?? 2),
         });
         mapRef.current = map;
         viewKeyRef.current = null;
@@ -249,7 +257,7 @@ function TripMap({ trip }) {
         });
         infoWindowRef.current = infoWindow;
         map.addListener("click", (event) => mapClickRef.current?.(event));
-        if (!focused) showView(map, viewFor(markers), { singleZoom: 12, padding: 0 });
+        if (!focused && !saved) showView(map, viewFor(markers), { singleZoom: 12, padding: 0 });
 
         libsRef.current = { AdvancedMarkerElement, PinElement, Circle };
         if (live) setReady(true);
@@ -263,6 +271,14 @@ function TripMap({ trip }) {
 
     return () => {
       live = false;
+      const center = mapRef.current?.getCenter?.();
+      if (center) {
+        rememberPlace("map", trip.id, {
+          center: { lat: center.lat(), lng: center.lng() },
+          zoom: mapRef.current.getZoom(),
+          ...filtersRef.current,
+        });
+      }
       entriesRef.current.forEach(({ element }) => (element.map = null));
       entriesRef.current = [];
       stopWatching();
