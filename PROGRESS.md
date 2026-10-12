@@ -37,7 +37,14 @@
   - **Your dev API on :8000 is still on 2026-10-07 code** (no `--reload`),
     so restart it to get `PATCH /trips/{id}`. E2E ran on :8010/:3010 via
     `E2E_API_PORT` / `E2E_UI_PORT`.
-  - Next: 103 (on this phone: opens on, distances, nearby radius).
+  - **Phase 103 ✅ (waiting for Julian):** "On this phone" on Trip
+    settings: Opens on (Today / Timeline / Map, per trip; `tripHomePath`
+    follows it; a finished trip set to Today opens the timeline),
+    Distances (miles / km, every trip), and the Nearby radius (¼–2 mi or
+    0.5–3 km, per trip; ½ mi default = 1 km). All in
+    `shared/phoneSettings.js`. Nearby says its radius. `make verify` green
+    (328 API + 700 UI); e2e green on :8010/:3010.
+  - **Run 29 complete.** Needs a human check on a phone at 375 px.
 
 - **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
   at `4d9cbd0`): tapping one of Google's places on the map opens our card.

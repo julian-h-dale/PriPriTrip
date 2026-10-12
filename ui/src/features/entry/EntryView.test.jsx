@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { EntryView } from "@/features/entry/EntryPage";
+import { setDistanceUnit, setNearbyRadius } from "@/shared/phoneSettings";
 import { describeEntry } from "@/features/timeline/describeEntry";
 
 const TRIP = { id: "t", timezone: "Asia/Tokyo" };
@@ -143,6 +144,38 @@ describe("nearby points of interest", () => {
     unmount();
     nearbyView({ kind: "activity", record: { ...activity, location: { name: "Beitou" } } }, [VALLEY]);
     expect(screen.queryByRole("region", { name: "Nearby" })).not.toBeInTheDocument();
+  });
+
+  describe("how far, and in what unit (Run stage 29: this phone's choice)", () => {
+    // About 1.3 km (0.8 mi) north of the museum.
+    const LIBRARY = poi("library", "Beitou Library", 25.1481694, 121.50715);
+    const names = () =>
+      within(screen.getByRole("region", { name: "Nearby" }))
+        .getAllByRole("link")
+        .map((l) => l.textContent);
+    beforeEach(() => localStorage.clear());
+
+    it("½ mi by default, said in the label; 1 mi reaches further", () => {
+      const { unmount } = nearbyView({ kind: "activity", record: activity }, [VALLEY, LIBRARY]);
+      expect(screen.getByText("Nearby · within ½ mi")).toBeInTheDocument();
+      expect(names()).toEqual([expect.stringMatching(/^Thermal Valley/)]);
+      unmount();
+      setNearbyRadius("t", 1609.344);
+      nearbyView({ kind: "activity", record: activity }, [VALLEY, LIBRARY]);
+      expect(screen.getByText("Nearby · within 1 mi")).toBeInTheDocument();
+      expect(names()).toEqual([expect.stringMatching(/^Thermal Valley/), expect.stringMatching(/^Beitou LibrarySight0\.8 mi$/)]);
+    });
+
+    it("in kilometres: metres, km, and the radius's nearest km step", () => {
+      setDistanceUnit("km");
+      setNearbyRadius("t", 2000);
+      nearbyView({ kind: "activity", record: activity }, [VALLEY, LIBRARY]);
+      expect(screen.getByText("Nearby · within 2 km")).toBeInTheDocument();
+      expect(names()).toEqual([
+        expect.stringMatching(/^Thermal ValleySight\d{3} m$/),
+        expect.stringMatching(/^Beitou LibrarySight1\.3 km$/),
+      ]);
+    });
   });
 
   it("shows 8, then Show all", () => {

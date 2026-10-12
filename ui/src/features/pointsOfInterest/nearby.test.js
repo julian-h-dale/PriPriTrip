@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { milesLabel, nearbyPointsOfInterest, NEARBY_METRES } from "@/features/pointsOfInterest/nearby";
+import { nearbyPointsOfInterest } from "@/features/pointsOfInterest/nearby";
+import { DEFAULT_RADIUS } from "@/shared/phoneSettings";
 
 // Beitou: the Hot Spring Museum, with Thermal Valley and Millennium Hot
 // Spring a few hundred metres away, and Taipei 101 well outside half a mile.
@@ -15,7 +16,7 @@ describe("nearbyPointsOfInterest", () => {
     const near = nearbyPointsOfInterest(TRIP, MUSEUM);
     expect(near.map(({ poi }) => poi.id)).toEqual(["spring", "valley"]);
     expect(near[0].metres).toBeLessThan(near[1].metres);
-    expect(near[1].metres).toBeLessThan(NEARBY_METRES);
+    expect(near[1].metres).toBeLessThan(DEFAULT_RADIUS);
   });
 
   it("leaves out the entry's own place", () => {
@@ -28,13 +29,5 @@ describe("nearbyPointsOfInterest", () => {
     expect(nearbyPointsOfInterest(TRIP, { name: "Somewhere" })).toEqual([]);
     expect(nearbyPointsOfInterest(TRIP, null)).toEqual([]);
     expect(nearbyPointsOfInterest({}, MUSEUM)).toEqual([]);
-  });
-});
-
-describe("milesLabel", () => {
-  it("one decimal, and <0.1 mi for anything closer", () => {
-    expect(milesLabel(483)).toBe("0.3 mi");
-    expect(milesLabel(805)).toBe("0.5 mi");
-    expect(milesLabel(40)).toBe("<0.1 mi");
   });
 });

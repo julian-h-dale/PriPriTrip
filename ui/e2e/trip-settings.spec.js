@@ -6,8 +6,9 @@ const SAMPLE_TRIP = "Bern & Wengen Long Weekend";
 const RENAMED = "Bern & Wengen (renamed)";
 
 /**
- * Trip settings (Run stage 29, Phase 102): from the trips list's ⋯, rename
- * the trip and give it an emoji cover; the card shows both. Put back after.
+ * Trip settings (Run stage 29, Phases 102–103): from the trips list's ⋯,
+ * rename the trip, give it an emoji cover and make it open on the map; the
+ * card shows the name and cover, and opens the map. Put back after.
  * Dark and light at 375 px.
  */
 test.describe.configure({ mode: "serial" });
@@ -44,6 +45,10 @@ for (const theme of ["dark", "light"]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
       await page.screenshot({ path: screenshotPath(`29c-trip-settings-${theme}`), fullPage: true });
 
+      // On this phone: open the trip on its map from now on.
+      const phone = page.getByRole("region", { name: "On this phone" });
+      await phone.getByRole("radiogroup", { name: "Opens on" }).getByRole("radio", { name: "Map" }).click();
+
       await page.getByRole("button", { name: "Use 🏔️" }).click();
       await expect(page.getByRole("button", { name: "Use 🏔️" })).toHaveAttribute("aria-pressed", "true");
       const name = page.getByLabel("Trip name");
@@ -57,6 +62,10 @@ for (const theme of ["dark", "light"]) {
       await expect(card).toBeVisible();
       await expect(card).toContainText("🏔️");
       await page.screenshot({ path: screenshotPath(`29d-trip-card-cover-${theme}`) });
+
+      // Opening the trip from its card now goes to the map.
+      await card.click();
+      await expect(page).toHaveURL(new RegExp(`/trips/${tripId}/map$`));
     } finally {
       await restore();
     }

@@ -18,7 +18,7 @@ Julian (2026-10-12, second pass):
 Julian (2026-10-12, third pass): "I will take all of your suggestions"
 (Q1–9 below).
 
-**Status: answered (every question took its suggestion); building.** Branch
+**Status: complete.** Phases 100–103 built (2026-10-12). Branch
 `trip-settings` (off `main` at `3bf166b`).
 
 ## Where we are
@@ -74,9 +74,9 @@ Owners and editors (Q2: not viewers). The ⋯ menu gets **Trip settings**
    - **Distances:** Miles · Kilometres. It applies to the whole phone,
      every trip (Q3).
    - **Nearby points of interest:** "Show places within…" ¼ · ½ · 1 · 2
-     mi, or 0.5 · 1 · 2 · 3 km when Distances is km. The default is ½ mi
-     (0.8 km). The radius is stored in metres, so switching units picks the
-     nearest step.
+     mi, or 0.5 · 1 · 2 · 3 km when Distances is km. The default is ½ mi,
+     which is 1 km in km (the nearest step to 0.8 km). The radius is stored
+     in metres, so switching units picks the nearest step.
 4. **People** (owner only, since the members list is owner-only on the
    server). The same invite form and member list as the Share dialog,
    moved into a shared component so both use it. Share trip stays in the
@@ -99,14 +99,14 @@ Owners and editors (Q2: not viewers). The ⋯ menu gets **Trip settings**
 
 ### Distances
 
-- `shared/units.js`: `useDistanceUnit()` (`"mi"` | `"km"`, stored under
+- `shared/phoneSettings.js`: `useDistanceUnit()` (`"mi"` | `"km"`, stored under
   the key `distanceUnit`, default `"mi"`) and `distanceLabel(metres, unit)`
   ("0.3 mi" / "<0.1 mi", "450 m" / "1.2 km"). `milesLabel` is replaced
   by it. Weather keeps its own units: temperature isn't a distance (Q3).
 
 ### Opens on
 
-- `trips/openOn.js`: `{ [tripId]: "today" | "timeline" | "map" }` under
+- `shared/phoneSettings.js`: `{ [tripId]: "today" | "timeline" | "map" }` under
   `openOn`. `tripHomePath(trip)` reads it. With no choice made, today's
   rule stands (Today, or the timeline once a trip is over). A trip that's
   over still opens where you chose, except Today, which falls back to the
@@ -241,9 +241,9 @@ On its own and frontend only, so it goes first.
 
 ### Phase 103 — on this phone: opens on, distances, nearby radius
 
-- `trips/openOn.js` + `tripHomePath`. `shared/units.js`
-  (`useDistanceUnit`, `distanceLabel`). `pointsOfInterest/nearbyRadius.js`
-  (`useNearbyRadius(tripId)`), read by `NearbyPointsOfInterest`, whose
+- `shared/phoneSettings.js` (`useOpenOn`, `useDistanceUnit`,
+  `distanceLabel`, `useNearbyRadius(tripId)`) + `tripHomePath`. The radius
+  is read by `NearbyPointsOfInterest`, whose
   heading says the radius ("Nearby · within 1 mi").
 - The "On this phone" section on the settings page.
 
@@ -344,6 +344,26 @@ rename, Back, and the card shows both; put back after (screenshots `29c`,
   `playwright.config.js`. The headless Chromium on the Pi has no colour
   emoji font, so emoji show as boxes in the screenshots. Phones render
   them.
+
+### Phase 103 (2026-10-12): on this phone
+
+`make verify` green (328 API + 700 UI). E2E `trip-settings.spec.js` now
+also sets Opens on: Map, and the card then opens the map. `nearby.spec.js`
+and `timeline-place.spec.js` still pass.
+- One module, `shared/phoneSettings.js`, holds all three (the plan named
+  separate files). `tripHomePath` lives in `shared/` and reads "opens on",
+  so the store had to be in `shared/` too, and the radius depends on the
+  unit. Same localStorage pattern as `planChoice.js`: per-trip JSON objects,
+  an in-memory fallback when storage throws, `useSyncExternalStore`.
+- "Opens on" shows the trip's current default (Today, or Timeline once
+  it's over) until a choice is made. `tripHomePath(trip, now, choice)`:
+  viewer gives the timeline; Map gives the map; Timeline, or a trip that's
+  over, gives the timeline; otherwise Today.
+- The radius: only the eight steps count (else ½ mi). Shown as the nearest
+  step in the current unit. ½ mi in km is **1 km** (the plan said "0.8 km",
+  which isn't one of the km steps).
+- Nearby's label: "Nearby · within ½ mi" (the region's name stays
+  "Nearby"). Distances use `distanceLabel`.
 
 ## Open questions
 

@@ -19,6 +19,7 @@ import { apiClient } from "@/shared/services/apiClient";
 import { saveToPhone } from "@/features/journal/saveToPhone";
 import { clearAll } from "@/shared/services/tripCache";
 import { fakeToken } from "@/test/fakeToken";
+import { nearbyRadius, openOn } from "@/shared/phoneSettings";
 
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -96,6 +97,7 @@ const section = (name) => screen.findByRole("region", { name });
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  localStorage.clear();
   await clearAll();
   apiClient.patch.mockImplementation(async (_url, changes) => ({ data: { ...TRIP, coverEmoji: null, coverThumbUrl: null, ...changes } }));
 });
@@ -107,7 +109,7 @@ describe("TripSettingsPage (Run stage 29)", () => {
     const names = screen
       .getAllByRole("region")
       .map((r) => r.getAttribute("aria-label") ?? document.getElementById(r.getAttribute("aria-labelledby")).textContent);
-    expect(names).toEqual(["Cover", "Name", "People", "Shared with", "Export", "Delete trip"]);
+    expect(names).toEqual(["Cover", "Name", "On this phone", "People", "Shared with", "Export", "Delete trip"]);
     expect(await screen.findByText("PriPri")).toBeInTheDocument();
   });
 
@@ -184,6 +186,28 @@ describe("TripSettingsPage (Run stage 29)", () => {
     await user.click(screen.getByRole("button", { name: "Remove cover" }));
     expect(apiClient.patch).toHaveBeenLastCalledWith("/trips/t1", { coverEmoji: null, coverPhotoId: null }, { silent: true });
     await waitFor(() => expect(screen.queryByRole("button", { name: "Remove cover" })).not.toBeInTheDocument());
+  });
+
+  it("on this phone: opens on, distances and the radius, offline too, saved on the phone only", async () => {
+    const user = userEvent.setup();
+    renderPage({ online: false });
+    const phone = await section("On this phone");
+    const group = (name) => within(phone).getByRole("radiogroup", { name });
+    // An upcoming trip opens on Today until this phone says otherwise.
+    expect(within(group("Opens on")).getByRole("radio", { name: "Today" })).toHaveAttribute("aria-checked", "true");
+    await user.click(within(group("Opens on")).getByRole("radio", { name: "Map" }));
+    expect(openOn("t1")).toBe("map");
+    expect(within(group("Opens on")).getByRole("radio", { name: "Map" })).toHaveAttribute("aria-checked", "true");
+
+    const radius = () => group("Nearby points of interest, within");
+    expect(within(radius()).getByRole("radio", { name: "½ mi" })).toHaveAttribute("aria-checked", "true");
+    await user.click(within(radius()).getByRole("radio", { name: "1 mi" }));
+    expect(nearbyRadius("t1", "mi").label).toBe("1 mi");
+
+    // Kilometres: the radius's steps change with it, to the nearest one.
+    await user.click(within(group("Distances (every trip)")).getByRole("radio", { name: "Kilometres" }));
+    expect(within(radius()).getByRole("radio", { name: "2 km" })).toHaveAttribute("aria-checked", "true");
+    expect(apiClient.patch).not.toHaveBeenCalled();
   });
 
   it("downloads the trip as a file named after it", async () => {

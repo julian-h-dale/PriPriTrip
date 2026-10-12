@@ -17,9 +17,21 @@ import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { notify } from "@/shared/notificationSlice";
+import {
+  DISTANCE_UNITS,
+  OPEN_ON,
+  RADIUS_STEPS,
+  setDistanceUnit,
+  setNearbyRadius,
+  setOpenOn,
+  useDistanceUnit,
+  useNearbyRadius,
+  useOpenOn,
+} from "@/shared/phoneSettings";
 import { selectOnline } from "@/shared/networkSlice";
 import { apiClient } from "@/shared/services/apiClient";
 import { cn } from "@/shared/utils/cn";
+import { tripPhase } from "@/shared/utils/tripDates";
 
 const NAME_MAX = 120;
 
@@ -240,6 +252,65 @@ function CoverSection({ trip, disabled }) {
   );
 }
 
+/** One choice of a few, as a row of segments (like Text size in the drawer). */
+function Choice({ label, options, value, onChange }) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span id={id} className="text-sm">
+        {label}
+      </span>
+      <div
+        role="radiogroup"
+        aria-labelledby={id}
+        className="grid rounded-md border border-border bg-background p-1"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
+        {options.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            role="radio"
+            aria-checked={value === o.key}
+            onClick={() => onChange(o.key)}
+            className={cn(
+              "min-h-10 rounded-sm px-1 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              value === o.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * What this phone does with the trip, nothing saved to the server: so it
+ * works offline and needs no Save. Distances are for every trip.
+ */
+function PhoneSection({ trip }) {
+  const unit = useDistanceUnit();
+  const radius = useNearbyRadius(trip.id);
+  const chosen = useOpenOn(trip.id);
+  // With no choice made, what the trip opens on now.
+  const opensOn = chosen ?? (tripPhase(trip) === "past" ? "timeline" : "today");
+  const steps = RADIUS_STEPS[unit];
+  return (
+    <Section title="On this phone" description="Only on this phone: these don’t change the trip for anyone else.">
+      <Choice label="Opens on" options={OPEN_ON} value={opensOn} onChange={(key) => setOpenOn(trip.id, key)} />
+      <Choice label="Distances (every trip)" options={DISTANCE_UNITS} value={unit} onChange={setDistanceUnit} />
+      <Choice
+        label="Nearby points of interest, within"
+        options={steps.map((s) => ({ key: String(s.metres), label: s.label }))}
+        value={String(radius.metres)}
+        onChange={(key) => setNearbyRadius(trip.id, Number(key))}
+      />
+    </Section>
+  );
+}
+
 function ExportSection({ trip, online }) {
   const dispatch = useDispatch();
   const [busy, setBusy] = useState(false);
@@ -321,8 +392,8 @@ function DangerSection({ trip, online }) {
 
 /**
  * Trip settings (Run stage 29), from the ⋯ menu on the trips list: the
- * trip's cover and name (saved for everyone), who's on it (the owner), an
- * export, and Delete or Leave. Owners and editors only (NotForViewers).
+ * trip's cover and name (saved for everyone), what this phone does with it,
+ * who's on it (the owner), an export, and Delete or Leave. Owners and editors only (NotForViewers).
  */
 export function TripSettingsPage() {
   const { tripId } = useParams();
@@ -343,6 +414,7 @@ export function TripSettingsPage() {
         <>
           <CoverSection trip={current} disabled={disabled} />
           <NameSection key={current.name} trip={current} disabled={disabled} />
+          <PhoneSection trip={current} />
           {current.role === "owner" && (
             <Section title="People" description="Add someone by the email they sign in with.">
               <MembersPanel tripId={current.id} />
