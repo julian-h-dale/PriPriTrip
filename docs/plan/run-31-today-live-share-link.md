@@ -218,6 +218,23 @@ Frontend only.
   in a fresh browser (no account), see the trip as a viewer; rotate, and
   the old link shows the dead-link page. A human sends a link to a phone.
 
+## Built
+
+### Phase 105 (2026-10-12): Today keeps up; Share leaves the drawer
+
+`make verify` green (328 API + 717 UI).
+- `TodayView`: `useNow(60_000)` → `now` (a `Date`) for `referenceDay`,
+  `nextUp`, `untilLabel` and the fading. Tests move a faked clock with the
+  trip preloaded: Next up's countdown runs, it moves past lunch at 12:16,
+  and at 00:01 the page is about the next day.
+- The drawer's Share trip, `ShareTripDialog`, and the drawer's
+  `share-open` analytics event are gone. The owner tests run against
+  `MembersPanel`; the e2e sharing tests use Trip settings → People.
+- **Already failing, not this change:** e2e `trip.spec.js` "the owner
+  shares, the viewer reads…" times out in the viewer's half. It fails the
+  same with this phase stashed. The owner's half (People lists the viewer)
+  passes.
+
 ## Open questions — answered (Julian, 2026-10-12)
 
 1. **A guest account behind the link** → yes.

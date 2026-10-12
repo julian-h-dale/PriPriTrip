@@ -202,21 +202,11 @@ describe("the drawer's Trip tools", () => {
     expect(trackEvent).toHaveBeenCalledWith("tool-open", { url: "/trip/timeline", role: "owner", tool: "packing" });
   });
 
-  it("counts Share trip opened", async () => {
-    apiClient.get.mockResolvedValue({ data: [] }); // the Share dialog's members and codes
-    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
-    await userEvent.click(within(menu).getByRole("button", { name: "Share trip" }));
-    expect(trackEvent).toHaveBeenCalledWith("share-open", { url: "/trip/timeline", role: "owner" });
-  });
-
-  it("lists Currency first, then Weather, Time zones, Packing, Documents, and Share trip for the owner", async () => {
-    apiClient.get.mockResolvedValue({ data: [] }); // the Share dialog's members and codes
+  it("lists Currency first, then Weather, Time zones, Packing and Documents; no Share trip (Run stage 31)", async () => {
     const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
     const tools = within(menu).getByRole("region", { name: "Trip tools" });
     const names = [...tools.querySelectorAll("a, button")].map((el) => el.textContent.trim());
-    expect(names).toEqual(["Currency", "Weather", "Time zones", "Packing", "Documents", "Share trip"]);
-    await userEvent.click(within(tools).getByRole("button", { name: "Share trip" }));
-    expect(await screen.findByRole("dialog", { name: "Share trip" })).toBeInTheDocument();
+    expect(names).toEqual(["Currency", "Weather", "Time zones", "Packing", "Documents"]);
   });
 
   it("an editor gets Documents but not Share trip", async () => {

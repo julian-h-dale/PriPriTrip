@@ -6,6 +6,16 @@
 
 ## Status
 
+- **Run stage 31 (2026-10-12)**, still on **`grey-out-past-entries`**
+  (Julian: no new branch until Run 30 merges). Plan:
+  `docs/plan/run-31-today-live-share-link.md` (all suggestions taken, except
+  no in-app clock: a doc on DevTools and the Pi over VNC instead).
+  - **Phase 105 ✅:** Today runs on one live clock (Next up, its
+    countdown, the day itself, the fading). Share trip is out of the
+    drawer (`ShareTripDialog` deleted). `make verify` green (328 API + 717
+    UI). E2E "owner shares, viewer reads" already failed before this.
+  - Next: 106 (secret link API), 107 (secret link app), then the doc.
+
 - **Run stage 30 (2026-10-12)** on **`grey-out-past-entries`** (off
   `main` at `e8e0d06`, after Run 29 merged): entries fade once their time
   has passed. Plan: `docs/plan/run-30-grey-out-past-entries.md` (Julian:

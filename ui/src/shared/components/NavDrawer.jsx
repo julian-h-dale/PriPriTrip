@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation } from "react-router-dom";
 import { Clock, CloudOff, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, Sun, UserPlus, X } from "lucide-react";
 import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
-import { ShareTripDialog } from "@/features/sharing/ShareTripDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
 import { signOut } from "@/features/auth/authSlice";
 import { selectPendingMemories, selectStuckCount, selectWaitingPhotos } from "@/features/journal/journalSlice";
@@ -147,14 +146,11 @@ export function NavDrawer({ open, onClose }) {
   const tripId = useOpenTripId();
   const { pathname } = useLocation();
   const [inviting, setInviting] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const user = useSelector((s) => s.auth.user);
   // Documents are for the owner and editors (the server refuses viewers).
   const trip = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip : null));
   const canEditTrip = Boolean(trip) && trip.role !== "viewer";
-  // Only the owner shares (the server enforces it too).
-  const isOwner = trip?.role === "owner";
   const isViewer = trip?.role === "viewer";
   const unsynced = useSelector(selectPendingMemories);
   const { count: photos } = useSelector(selectWaitingPhotos);
@@ -245,19 +241,6 @@ export function NavDrawer({ open, onClose }) {
                 Documents
               </Link>
             )}
-            {isOwner && (
-              <button
-                type="button"
-                onClick={() => {
-                  track("share-open");
-                  setSharing(true);
-                }}
-                className={ITEM}
-              >
-                <UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                Share trip
-              </button>
-            )}
           </section>
         )}
         <InstallAppButton variant="ghost" className="h-auto w-full justify-start gap-3 px-3 py-3 font-normal" />
@@ -293,7 +276,6 @@ export function NavDrawer({ open, onClose }) {
         </div>
       </nav>
       <InviteUserDialog open={inviting} onClose={() => setInviting(false)} />
-      {isOwner && <ShareTripDialog trip={trip} open={sharing} onClose={() => setSharing(false)} />}
       <Dialog open={changingPassword} onClose={() => setChangingPassword(false)} title="Change password">
         {changingPassword && (
           <ChangePasswordForm onDone={() => setChangingPassword(false)} onCancel={() => setChangingPassword(false)} />
