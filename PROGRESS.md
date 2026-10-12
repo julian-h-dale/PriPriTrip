@@ -17,7 +17,13 @@
     on it goes to the top of the plan. A viewer always sees the plan.
     Frontend only. `make verify` green (311 API + 671 UI); e2e
     `timeline-place.spec.js` (screenshot `29a`).
-  - Next: 100b (the map keeps its place), 101–103 (trip settings).
+  - Julian (2026-10-12): build the outstanding phases without stopping;
+    stop and raise anything that deviates from the plan.
+  - **Phase 100b ✅:** the map keeps its center, zoom and filters per trip
+    (saved as it closes; no trip-wide fit on return). `?focus=` wins over
+    it. `make verify` green (311 API + 674 UI); e2e `map-place.spec.js`
+    (screenshot `29b`).
+  - Next: 101–103 (trip settings).
 
 - **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
   at `4d9cbd0`): tapping one of Google's places on the map opens our card.

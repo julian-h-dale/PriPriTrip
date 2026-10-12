@@ -280,6 +280,18 @@ Plan (screenshot `29a`).
   doesn't need to: it's only reached when the app starts, and memory is
   empty then.
 
+### Phase 100b (2026-10-12): the map keeps its place
+
+`make verify` green (311 API + 674 UI). E2E `map-place.spec.js`: Stays,
+drag the map, Timeline, Map, then the same filter with a hotel's pin on the
+same spot of the screen (screenshot `29b`).
+- `MapPage` reads `savedPlace("map", …)` once, unless opened with
+  `?focus=`, to start its filters and the map's center and zoom, and skips
+  the first `showView`. The init effect's cleanup saves
+  `{ center, zoom, only, date }` from the map (`filtersRef` for the
+  filters as of then).
+- The trips list's `forgetPlaces` (Phase 100) already clears it.
+
 ## Open questions
 
 Answered (Julian, 2026-10-12): last updated, dropped. Viewers don't get
