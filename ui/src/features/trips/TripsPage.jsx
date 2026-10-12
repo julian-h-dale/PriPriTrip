@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { BedDouble, ChevronDown, Hourglass, LogOut, Plane, Settings, Trash2, Upload, Users } from "lucide-react";
+import { selectGuestTripId } from "@/features/auth/authSlice";
 import { countdownParts } from "@/features/trips/countdown";
 import { TripCover } from "@/features/trips/TripCover";
 import { hasCover } from "@/features/trips/tripSettings";
@@ -28,6 +29,7 @@ function plural(n, word) {
 
 function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
   const navigate = useNavigate();
+  const isGuest = Boolean(useSelector(selectGuestTripId));
   const shared = trip.role === "viewer" || trip.role === "editor";
   const nights = daysBetween(trip.startDate, trip.endDate);
   // Until the first day begins on this phone's clock (so it can still show
@@ -78,39 +80,41 @@ function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
       {/* Trip settings, and Delete (or Leave, for a shared trip), live
           behind ⋯, away from the card's main tap target. A viewer gets no
           settings (Run stage 29). */}
-      <div className="flex items-start p-1.5">
-        <RowMenu
-          label={`More for ${trip.name}`}
-          items={[
-            ...(trip.role === "viewer"
-              ? []
-              : [
-                  {
-                    label: "Trip settings",
-                    icon: <Settings className="h-4 w-4" aria-hidden="true" />,
-                    onSelect: () => navigate(`/trips/${trip.id}/settings`),
+      {!isGuest && (
+        <div className="flex items-start p-1.5">
+          <RowMenu
+            label={`More for ${trip.name}`}
+            items={[
+              ...(trip.role === "viewer"
+                ? []
+                : [
+                    {
+                      label: "Trip settings",
+                      icon: <Settings className="h-4 w-4" aria-hidden="true" />,
+                      onSelect: () => navigate(`/trips/${trip.id}/settings`),
+                    },
+                  ]),
+              shared
+                ? {
+                    label: "Leave trip",
+                    icon: <LogOut className="h-4 w-4" aria-hidden="true" />,
+                    destructive: true,
+                    disabled: readOnly,
+                    title: readOnly ? "You’re offline" : undefined,
+                    onSelect: () => onLeave(trip),
+                  }
+                : {
+                    label: "Delete trip",
+                    icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+                    destructive: true,
+                    disabled: readOnly,
+                    title: readOnly ? "You’re offline" : undefined,
+                    onSelect: () => onDelete(trip),
                   },
-                ]),
-            shared
-              ? {
-                  label: "Leave trip",
-                  icon: <LogOut className="h-4 w-4" aria-hidden="true" />,
-                  destructive: true,
-                  disabled: readOnly,
-                  title: readOnly ? "You’re offline" : undefined,
-                  onSelect: () => onLeave(trip),
-                }
-              : {
-                  label: "Delete trip",
-                  icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
-                  destructive: true,
-                  disabled: readOnly,
-                  title: readOnly ? "You’re offline" : undefined,
-                  onSelect: () => onDelete(trip),
-                },
-          ]}
-        />
-      </div>
+            ]}
+          />
+        </div>
+      )}
     </Card>
   );
 }

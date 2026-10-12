@@ -5,7 +5,7 @@ import { Link, matchPath, useLocation } from "react-router-dom";
 import { Clock, CloudOff, CloudSun, Coins, FileText, KeyRound, List, LogOut, Luggage, Shield, Sun, UserPlus, X } from "lucide-react";
 import { InviteUserDialog } from "@/features/admin/InviteUserDialog";
 import { ChangePasswordForm } from "@/features/auth/ChangePasswordForm";
-import { signOut } from "@/features/auth/authSlice";
+import { selectGuestTripId, signOut } from "@/features/auth/authSlice";
 import { selectPendingMemories, selectStuckCount, selectWaitingPhotos } from "@/features/journal/journalSlice";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogFooter } from "@/shared/components/ui/dialog";
@@ -148,6 +148,9 @@ export function NavDrawer({ open, onClose }) {
   const [inviting, setInviting] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const user = useSelector((s) => s.auth.user);
+  // Signed in through a trip's secret link (Run stage 31): no password, and
+  // coming back needs the link.
+  const isGuest = Boolean(useSelector(selectGuestTripId));
   // Documents are for the owner and editors (the server refuses viewers).
   const trip = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip : null));
   const canEditTrip = Boolean(trip) && trip.role !== "viewer";
@@ -200,7 +203,11 @@ export function NavDrawer({ open, onClose }) {
         <div className="mb-2 flex items-center justify-between gap-2 px-3">
           <div className="min-w-0">
             <p className="font-semibold">PriPriTrip</p>
-            {user?.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
+            {isGuest ? (
+              <p className="truncate text-xs text-muted-foreground">Viewing through a shared link</p>
+            ) : (
+              user?.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            )}
           </div>
           <button
             type="button"
@@ -265,13 +272,22 @@ export function NavDrawer({ open, onClose }) {
             </>
           )}
           <SavedOnlySwitch />
-          <button type="button" onClick={() => setChangingPassword(true)} className={ITEM}>
-            <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            Change password
-          </button>
-          <button type="button" onClick={handleSignOut} className={ITEM}>
+          {!isGuest && (
+            <button type="button" onClick={() => setChangingPassword(true)} className={ITEM}>
+              <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              Change password
+            </button>
+          )}
+          <button type="button" onClick={handleSignOut} className={ITEM} aria-describedby={isGuest ? "guest-sign-out" : undefined}>
             <LogOut className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            Sign out
+            <span className="flex flex-col items-start text-left">
+              Sign out
+              {isGuest && (
+                <span id="guest-sign-out" className="text-xs text-muted-foreground">
+                  You’ll need the link again to come back.
+                </span>
+              )}
+            </span>
           </button>
         </div>
       </nav>

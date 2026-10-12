@@ -7,6 +7,19 @@ import { clearUser } from "@/shared/services/tripCache";
 import { tokenExpiry, userIdFromToken } from "@/shared/utils/authToken";
 
 const TOKEN_KEY = "auth_token";
+// Set while signed in through a trip's secret link (Run stage 31), so a 401
+// (the link rotated or turned off) can say the link ended rather than show a
+// sign-in page a guest has no password for. Known before /users/me answers.
+export const GUEST_KEY = "auth_guest";
+
+/** Whether this browser's sign-in came from a secret link. */
+export function signedInByLink() {
+  try {
+    return localStorage.getItem(GUEST_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The password just typed at sign-in, kept in this module only (never in
@@ -129,6 +142,14 @@ const authSlice = createSlice({
       state.token = null;
       state.user = null;
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(GUEST_KEY);
+    },
+    /** Signed in through a trip's secret link (Run stage 31): the link guest's token. */
+    tokenAdopted(state, action) {
+      state.token = action.payload;
+      state.user = null;
+      localStorage.setItem(TOKEN_KEY, action.payload);
+      localStorage.setItem(GUEST_KEY, "1");
     },
     /** The server said this account must change its password first (403 PASSWORD_CHANGE_REQUIRED). */
     passwordChangeRequired(state) {
@@ -143,6 +164,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.status = "idle";
         state.token = action.payload;
+        localStorage.removeItem(GUEST_KEY);
       })
       .addCase(login.rejected, (state) => {
         state.status = "idle";
@@ -173,8 +195,10 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuth, passwordChangeRequired } = authSlice.actions;
+export const { clearAuth, passwordChangeRequired, tokenAdopted } = authSlice.actions;
 
 /** True while the signed-in account still has a temporary password. */
 export const selectMustChangePassword = (state) => Boolean(state.auth.user?.must_change_password);
+/** A link guest (Run stage 31): the trip its secret link opens, else null. */
+export const selectGuestTripId = (state) => state.auth.user?.guest_trip_id ?? null;
 export default authSlice.reducer;

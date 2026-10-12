@@ -20,11 +20,14 @@ import { selectSavedOnly } from "@/shared/networkSlice";
 // only where it lands.
 const SETTLE_MS = 300;
 
-/** The signed-in person's role on the trip on screen, or "none" outside one. */
+/** The signed-in person's role on the trip on screen ("guest" through a secret link), or "none" outside one. */
 function roleOn(state, tripId) {
   if (!tripId) return "none";
   const trip = state.timeline?.trip;
-  return trip && trip.id === tripId ? trip.role : null; // null: not loaded yet
+  if (!trip || trip.id !== tripId) return null; // null: not loaded yet
+  // Someone in through the trip's secret link (Run stage 31) is a viewer,
+  // counted apart: family following along.
+  return trip.role === "viewer" && state.auth?.user?.guest_trip_id ? "guest" : trip.role;
 }
 
 /**

@@ -21,7 +21,14 @@
     guest off (401 on its next request). Guests hidden from Admin, members
     and invites; no password changes. `make verify` green (337 API + 717
     UI).
-  - Next: 107 (secret link app), then the doc.
+  - **Phase 107 ✅ (waiting for Julian):** the link in the app: `/s/:secret`
+    signs in as the guest and opens the trip (asks first if you're signed
+    in as someone not on it); Trip settings → People → Link sharing
+    (switch, copy, new link, off); guests see "Viewing through a shared
+    link", no Change password, no ⋯; a rotated guest lands on
+    `/link-ended`, not sign-in. `make verify` green (338 API + 732 UI);
+    e2e `share-link.spec.js` on :8010/:3010 (screenshots `31a`–`31c`).
+  - Next: the doc (`docs/testing-dates-and-time-zones.md`).
 
 - **Run stage 30 (2026-10-12)** on **`grey-out-past-entries`** (off
   `main` at `e8e0d06`, after Run 29 merged): entries fade once their time

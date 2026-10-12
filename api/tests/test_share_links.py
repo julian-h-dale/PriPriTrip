@@ -31,6 +31,14 @@ async def _as_guest(anon: AsyncClient, secret: str) -> AsyncClient:
     return anon
 
 
+async def test_the_session_says_which_trip(client: AsyncClient, anon_client: AsyncClient) -> None:
+    tid = await _trip(client)
+    secret = (await client.post(f"/trips/{tid}/link")).json()["secret"]
+    body = (await _session(anon_client, secret)).json()
+    assert body["trip_id"] == tid
+    assert body["token_type"] == "bearer"
+
+
 async def test_off_until_the_owner_turns_it_on(client: AsyncClient) -> None:
     tid = await _trip(client)
     assert (await client.get(f"/trips/{tid}/link")).json() == {"enabled": False, "secret": None}

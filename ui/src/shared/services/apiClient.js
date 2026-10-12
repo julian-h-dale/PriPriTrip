@@ -2,7 +2,7 @@ import axios from "axios";
 import { appConfig } from "@/shared/config/appConfig";
 import { notify } from "@/shared/notificationSlice";
 import { setError } from "@/shared/errorSlice";
-import { clearAuth, passwordChangeRequired } from "@/features/auth/authSlice";
+import { clearAuth, passwordChangeRequired, signedInByLink } from "@/features/auth/authSlice";
 
 // The store is injected in main.jsx to avoid a circular import.
 let store;
@@ -58,9 +58,14 @@ apiClient.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     if (status === 401) {
+      // Signed in through a secret link that's since been rotated or turned
+      // off (Run stage 31): say the link ended; a guest has no password.
+      const target = signedInByLink() ? "/link-ended" : "/login";
       store?.dispatch(clearAuth());
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.assign("/login");
+      const path = typeof window !== "undefined" ? window.location.pathname : target;
+      // The link page handles its own answers.
+      if (path !== target && !path.startsWith("/s/")) {
+        window.location.assign(target);
       }
     } else if (status === 403 && error.response?.data?.detail === "PASSWORD_CHANGE_REQUIRED") {
       // A temporary password (an invite or a reset): the app shows the

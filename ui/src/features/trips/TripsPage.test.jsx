@@ -28,7 +28,7 @@ const TRIP = {
   createdAt: "2026-10-02T05:24:40Z",
 };
 
-function renderPage() {
+function renderPage(user = { email: "u@x.com", is_superuser: false }) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
@@ -37,7 +37,7 @@ function renderPage() {
       notification: notificationReducer,
     },
     preloadedState: {
-      auth: { token: "t", user: { email: "u@x.com", is_superuser: false }, status: "idle" },
+      auth: { token: "t", user, status: "idle" },
     },
   });
   render(
@@ -99,6 +99,13 @@ describe("TripsPage", () => {
     expect(items).toEqual(["Trip settings", "Delete trip"]);
     await user.click(screen.getByRole("menuitem", { name: "Trip settings" }));
     expect(await screen.findByText("settings page")).toBeInTheDocument();
+  });
+
+  it("a link guest's card has no ⋯ (Run stage 31: leaving would lock them out)", async () => {
+    apiClient.get.mockResolvedValue({ data: [{ ...TRIP, role: "viewer" }] });
+    renderPage({ email: "link-1@guest.example.com", guest_trip_id: "t1" });
+    await screen.findByRole("link", { name: /Bern & Wengen/ });
+    expect(screen.queryByRole("button", { name: /^More for/ })).not.toBeInTheDocument();
   });
 
   it("a card shows the trip's cover", async () => {

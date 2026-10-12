@@ -267,6 +267,42 @@ Frontend only.
   takes its link with it; owner-only; hidden from Admin, members and
   invites; no password or profile changes.
 
+### Phase 107 (2026-10-12): the secret link, in the app
+
+`make verify` green (338 API + 732 UI). E2E `share-link.spec.js` (dark and
+light, with the API and UI for this branch on :8010/:3010): the owner turns
+the link on; a fresh browser with no account opens it and lands on the
+trip's viewer timeline, with the guest's drawer; Make a new link; the
+guest's reload lands on `/link-ended`, and the old link says it doesn't
+work (screenshots `31a`–`31c`).
+- `/s/:secret` (`LinkPage`, outside `ProtectedRoute`):
+  - `POST /links/{secret}/session`, then `tokenAdopted` and the trip's
+    timeline. A 404 shows "This link doesn't work any more"; a network
+    failure shows "Couldn't open the link" with Try again.
+  - Someone signed in who's on the trip just goes there. Anyone else gets
+    "Open as a guest? You'll be signed out of <email>."; Open as a guest
+    signs out first.
+- Trip settings → People → **Link sharing** (`LinkSharing`, owner): the
+  switch, the link (`<origin>/s/<secret>`) with Copy, Make a new link
+  (confirmed), and off (confirmed).
+- The guest's app:
+  - the drawer says "Viewing through a shared link" (never the hidden
+    email), with no Change password, and Sign out notes "You'll need the
+    link again to come back";
+  - `/` goes straight to their trip, and their trip card has no ⋯;
+  - analytics role "guest".
+- **Additions the plan didn't spell out:**
+  - The session answer also carries `trip_id`, so the app knows where to
+    go without a second request.
+  - A guest whose link is rotated mid-visit isn't sent to sign-in: a
+    guest has no password. The 401 handler sends them to `/link-ended`
+    instead (the same message). A localStorage flag (`auth_guest`, set by
+    `tokenAdopted`, cleared by sign-in and `clearAuth`) says the sign-in
+    came from a link; it's known before `/users/me` answers.
+  - The link page itself is never redirected on a 401.
+  - Found in the e2e run: the dead link showed a "Not found" error toast.
+    The session request now `handles: [404]`.
+
 ## Open questions — answered (Julian, 2026-10-12)
 
 1. **A guest account behind the link** → yes.

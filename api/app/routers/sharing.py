@@ -12,6 +12,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import JSONResponse
 from fastapi_users.authentication import Strategy
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -152,9 +153,13 @@ async def link_session(
     db: AsyncSession = Depends(get_db),
     strategy: Strategy = Depends(auth_backend.get_strategy),
 ) -> Response:
-    """Sign in as the trip's link guest, with the same answer as
-    /auth/login. 404 for any secret that isn't a live trip's current one."""
+    """Sign in as the trip's link guest: /auth/login's answer plus the
+    trip's id (`trip_id`), so the app knows where to go. 404 for any secret
+    that isn't a live trip's current one."""
     guest = await share_links.guest_for(db, secret)
     if guest is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    return await auth_backend.login(strategy, guest)
+    token = await strategy.write_token(guest)
+    return JSONResponse(
+        {"access_token": token, "token_type": "bearer", "trip_id": str(guest.guest_trip_id)}
+    )

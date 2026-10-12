@@ -5,6 +5,7 @@ import { Download, ImageOff, LogOut, Trash2 } from "lucide-react";
 import { fetchMemories } from "@/features/journal/journalSlice";
 import { photoSrc } from "@/features/journal/photoUrls";
 import { saveToPhone } from "@/features/journal/saveToPhone";
+import { LinkSharing } from "@/features/sharing/LinkSharing";
 import { MembersPanel } from "@/features/sharing/MembersPanel";
 import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { TripCover } from "@/features/trips/TripCover";
@@ -418,6 +419,7 @@ export function TripSettingsPage() {
           {current.role === "owner" && (
             <Section title="People" description="Add someone by the email they sign in with.">
               <MembersPanel tripId={current.id} />
+              <LinkSharing tripId={current.id} />
             </Section>
           )}
           <ExportSection trip={current} online={online} />
