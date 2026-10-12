@@ -6,6 +6,19 @@
 
 ## Status
 
+- **Run stage 30 (2026-10-12)** on **`grey-out-past-entries`** (off
+  `main` at `e8e0d06`, after Run 29 merged): entries fade once their time
+  has passed. Plan: `docs/plan/run-30-grey-out-past-entries.md` (Julian:
+  each entry's own place's clock, like Next up; start-only activities fade
+  at their start; untimed stay bright all day; day rows unchanged).
+  Baseline green (328 API + 700 UI).
+  - **Phase 104 ✅ (waiting for Julian):** `isDone` (`timeline/
+    entryDone.js`) fades day-page and Today's-plan rows (opacity, muted
+    dot), checked each minute (`shared/hooks/useNow.js`). Timed entries
+    go by their own instant only (a flight still in the air past
+    midnight trip-time stays bright). Frontend only. `make verify` green
+    (328 API + 715 UI); e2e `done-entries.spec.js` (screenshot `30a`).
+
 - **Run stage 29 (2026-10-12)** on **`trip-settings`** (off `main` at
   `3bf166b`): the timeline and map keep their place; trip settings.
   Plan: `docs/plan/run-29-trip-settings.md` (Julian: all suggestions taken).

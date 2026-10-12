@@ -62,8 +62,11 @@ function TimeLine({ d, tripZone }) {
  * chevron on a top line, then the title, subtitle and warning across the
  * full width, instead of squeezed into what the time column leaves. An
  * untimed row keeps its text beside the icon.
+ *
+ * `done` (Run stage 30, `isDone`) fades a row whose time has passed, the
+ * way a past day fades on the timeline. It still opens.
  */
-export function TimelineEntry({ entry, trip, menu }) {
+export function TimelineEntry({ entry, trip, menu, done = false }) {
   const d = describeEntry(entry, trip);
   const Icon = d.icon;
   const stacked = useTextSize() !== "normal";
@@ -98,9 +101,11 @@ export function TimelineEntry({ entry, trip, menu }) {
   const linkClass =
     "flex min-w-0 flex-1 px-3 py-2.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
   return (
-    <li id={`entry-${entry.key}`} className="relative scroll-mt-16 pb-3 pl-7">
-      <RailDot colorClassName={entry.kind === "activity" ? "bg-primary" : "bg-warning"} />
-      <Card className="flex items-start overflow-hidden">
+    <li id={`entry-${entry.key}`} data-done={done || undefined} className="relative scroll-mt-16 pb-3 pl-7">
+      <RailDot
+        colorClassName={done ? "bg-muted-foreground/40" : entry.kind === "activity" ? "bg-primary" : "bg-warning"}
+      />
+      <Card className={cn("flex items-start overflow-hidden", done && "opacity-55")}>
         <Link
           to={entryPathFor(trip.id, entry)}
           state={{ atKey: entry.key }}

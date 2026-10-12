@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { Moon, Smartphone, Sun } from "lucide-react";
@@ -8,18 +8,10 @@ import { fetchTrip } from "@/features/timeline/timelineSlice";
 import { ToolLayout } from "@/shared/components/ToolLayout";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { useNow } from "@/shared/hooks/useNow";
 import { zoneLabel } from "@/shared/utils/time";
 import { useTrackOnce } from "@/shared/analytics/useAnalytics";
 
-/** Now, moving on every second while the page is open. */
-function useNow() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
 
 function Clock({ title, zone, now, here, mine, phoneOffset }) {
   const clock = readClock(zone, now);
@@ -59,7 +51,8 @@ export function ClocksPage() {
   const { tripId } = useParams();
   const dispatch = useDispatch();
   const trip = useSelector((s) => (s.timeline?.trip?.id === tripId ? s.timeline.trip : null));
-  const now = useNow();
+  // Now, moving on every second while the page is open.
+  const now = new Date(useNow(1000));
 
   useEffect(() => {
     dispatch(fetchTrip(tripId));

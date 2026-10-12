@@ -19,20 +19,12 @@ import { forgetPlaces } from "@/shared/tripPlaces";
 import { groupTrips, tripHomePath } from "@/shared/utils/tripDates";
 import { selectOnline, selectSavedOnly } from "@/shared/networkSlice";
 import { refreshOnce } from "@/shared/pwa/refreshOnce";
+import { useNow } from "@/shared/hooks/useNow";
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-/** "Now" that moves on every 30 seconds while the list is open: one timer for every countdown. */
-function useNow(intervalMs = 30_000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
 
 function TripCard({ trip, onDelete, onLeave, readOnly, now }) {
   const navigate = useNavigate();

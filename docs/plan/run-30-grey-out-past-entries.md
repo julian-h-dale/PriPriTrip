@@ -4,7 +4,7 @@ Julian (2026-10-12): grey out a day's entries once their time has passed,
 judged in the trip's time zone. For example, on the Athens trip at 11:30
 in Athens, an 11:00 check-out shows greyed out.
 
-**Status: answered; building.** Branch `grey-out-past-entries` (off `main`
+**Status: complete.** Phase 104 built (2026-10-12). Branch `grey-out-past-entries` (off `main`
 at `e8e0d06`, after Run 29's merge).
 
 ## Where we are
@@ -45,8 +45,12 @@ at 11:30 Athens time, the 11:00 check-out is done.
 | Departure, same day (it shows the arrival too) | the arrival has passed |
 | Departure, overnight | the departure has passed |
 | Arrival | the arrival has passed |
-| Untimed activity, "Staying at" | only once the whole day is over |
-| Anything on a day before today | done |
+| Untimed activity, "Staying at" | only once the whole day is over (on the trip's calendar) |
+
+A timed entry goes by its own time only, never by the day. So a flight
+home that lands in Chicago after midnight Athens time stays bright until
+it lands. Everything on an earlier day is done anyway, because its time
+has passed.
 
 "Staying at" rows are already muted and don't change.
 
@@ -104,6 +108,34 @@ Frontend only.
 **Effort:** small. One phase: about a 40-line helper and its tests, a prop
 on `TimelineEntry`, two call sites, and moving `useNow`. No server change,
 no migration.
+
+## Built
+
+### Phase 104 (2026-10-12): done entries fade
+
+`make verify` green (328 API + 715 UI). E2E `done-entries.spec.js` (dark
+and light, `page.clock` fixed at May 11, 11:30 in Zurich): the landing and
+the airport train are faded; lunch, the walk, check-in and dinner aren't
+(screenshot `30a`).
+- `timeline/entryDone.js`: `isDone(entry, date, trip, now)`. A timed entry
+  is done once its end (in `endZone`) or else its start has passed, as an
+  instant, with `<` so at exactly its time it isn't done yet (matching
+  "Next up"). An untimed entry is done once `date` is before today on the
+  trip's calendar.
+- **One change from the table, found by a test:** "anything on an earlier
+  day is done" would have faded a flight still in the air (Athens 13:00 →
+  Chicago 17:30, which is past midnight in Athens). Timed entries now go by
+  their own time only.
+- `TimelineEntry` takes `done`: the card at `opacity-55`, a muted rail dot,
+  and `data-done` on the row. It still opens.
+- `DayDetailPage` and `TodayPage` use `useNow(60_000)`. Today passes
+  `done` only while the trip is under way (`ref.active`).
+- `shared/hooks/useNow.js` (ms) replaces the copies in `TripsPage` and
+  `ClocksPage` (which wraps it in a `Date`, every second).
+- Seen, not changed: Today's "Next up" still works from the time the page
+  opened (`useState(() => new Date())`), while its plan now fades
+  minute by minute. They can disagree if the page stays open past an
+  entry's time.
 
 ## Open questions — answered (Julian, 2026-10-12)
 

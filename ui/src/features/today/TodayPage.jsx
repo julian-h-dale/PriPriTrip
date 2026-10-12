@@ -13,6 +13,8 @@ import { fetchWeather } from "@/features/weather/weatherSlice";
 import { entryPath, entryPathFor } from "@/features/entry/entries";
 import { ConfirmationNumber } from "@/features/timeline/EntryDetails";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
+import { isDone } from "@/features/timeline/entryDone";
+import { useNow } from "@/shared/hooks/useNow";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Markdown } from "@/shared/components/Markdown";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
@@ -175,6 +177,8 @@ function Tonight({ trip, night, date }) {
 function TodayView({ trip }) {
   // "Now" is read once per visit; reopening the tab refreshes it.
   const [now] = useState(() => new Date());
+  // What's already happened today fades (Run stage 30), checked each minute.
+  const clock = useNow(60_000);
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const ref = useMemo(() => referenceDay(trip, now), [trip, now]);
   const next = useMemo(() => nextUp(trip, ref, now), [trip, ref, now]);
@@ -219,7 +223,13 @@ function TodayView({ trip }) {
         {row && row.entries.length > 0 ? (
           <ol className="flex flex-col">
             {row.entries.map((entry) => (
-              <TimelineEntry key={entry.key} entry={entry} trip={trip} />
+              <TimelineEntry
+                key={entry.key}
+                entry={entry}
+                trip={trip}
+                // The Day 1 preview (before the trip) has nothing done yet.
+                done={ref.active && isDone(entry, row.date, trip, clock)}
+              />
             ))}
           </ol>
         ) : (

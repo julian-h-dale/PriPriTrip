@@ -122,6 +122,45 @@ describe("Today tab", () => {
   });
 });
 
+describe("Today's plan: what's happened fades (Run stage 30)", () => {
+  /** Each row of Today's plan: [its title, whether it's faded]. */
+  const rows = () =>
+    [...within(screen.getByRole("region", { name: "Today’s plan" })).getAllByRole("listitem")].map((li) => [
+      li.querySelector("span.break-words.text-sm")?.textContent,
+      li.dataset.done === "true",
+    ]);
+
+  it("fades by each entry's time", async () => {
+    // May 11, 11:30 in Zurich: landed, off the 10:28 train (arrived 11:28);
+    // lunch at 12:15 still to come. The walk has no time: bright all day.
+    vi.useFakeTimers({ now: new Date("2026-05-11T09:30:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { name: "Today" });
+    expect(rows()).toEqual([
+      [expect.stringMatching(/^Arrive/), true],
+      ["Zürich Airport → Bern", true],
+      ["Lunch at Altes Tramdepot", false],
+      ["Old Town & Zytglogge walk", false],
+      ["Check in · Hotel Goldener Schlüssel", false],
+      ["Dinner at Kornhauskeller", false],
+    ]);
+  });
+
+  it("13:31: lunch (until 13:30) has faded too", async () => {
+    vi.useFakeTimers({ now: new Date("2026-05-11T11:31:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { name: "Today" });
+    expect(rows().map(([, faded]) => faded)).toEqual([true, true, true, false, false, false]);
+  });
+
+  it("the Day 1 preview fades nothing", async () => {
+    vi.useFakeTimers({ now: new Date("2026-04-01T12:00:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { name: "Day 1 preview" });
+    expect(rows().some(([, faded]) => faded)).toBe(false);
+  });
+});
+
 describe("timeline: past days", () => {
   it("greys past days and marks today", async () => {
     vi.useFakeTimers({ now: new Date("2026-05-12T09:00:00Z"), toFake: ["Date"] });
