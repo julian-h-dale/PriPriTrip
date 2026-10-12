@@ -25,7 +25,7 @@ project; the next one is **104**.
 
 ## Stages
 
-All complete unless marked. Current branch: `trip-settings` (Run 29).
+All complete unless marked. Current branch: `grey-out-past-entries` (Run 30).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -63,6 +63,7 @@ All complete unless marked. Current branch: `trip-settings` (Run 29).
 | Run 27 | 97–98 | Nearby points of interest on an entry's page; the mini map opens the map | [run-27-nearby-points-of-interest.md](docs/plan/run-27-nearby-points-of-interest.md) |
 | Run 28 | 99 | Tapping one of Google's places on the map opens our card, with the Add buttons | [run-28-tap-a-place-on-the-map.md](docs/plan/run-28-tap-a-place-on-the-map.md) |
 | Run 29 | 100–103 | The timeline and map keep their place; trip settings (name, cover, people, export, delete; opens on, distances, nearby radius) | [run-29-trip-settings.md](docs/plan/run-29-trip-settings.md) |
+| Run 30 | 104 | Entries grey out once their time has passed, on their own place's clock | [run-30-grey-out-past-entries.md](docs/plan/run-30-grey-out-past-entries.md) |
 
 ## Architecture Decisions
 
