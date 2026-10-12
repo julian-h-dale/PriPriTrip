@@ -25,7 +25,7 @@ project; the next one is **105**.
 
 ## Stages
 
-All complete unless marked. Current branch: `grey-out-past-entries` (Run 30).
+All complete unless marked. Current branch: `grey-out-past-entries` (Runs 30–31).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -64,6 +64,7 @@ All complete unless marked. Current branch: `grey-out-past-entries` (Run 30).
 | Run 28 | 99 | Tapping one of Google's places on the map opens our card, with the Add buttons | [run-28-tap-a-place-on-the-map.md](docs/plan/run-28-tap-a-place-on-the-map.md) |
 | Run 29 | 100–103 | The timeline and map keep their place; trip settings (name, cover, people, export, delete; opens on, distances, nearby radius) | [run-29-trip-settings.md](docs/plan/run-29-trip-settings.md) |
 | Run 30 | 104 | Entries grey out once their time has passed, on their own place's clock | [run-30-grey-out-past-entries.md](docs/plan/run-30-grey-out-past-entries.md) |
+| Run 31 | 105–107 | Today keeps up; Share moves to Trip settings; a secret view-only link for family | [run-31-today-live-share-link.md](docs/plan/run-31-today-live-share-link.md) |
 
 ## Architecture Decisions
 
