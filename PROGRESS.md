@@ -6,6 +6,19 @@
 
 ## Status
 
+- **Run stage 29 (2026-10-12)** on **`trip-settings`** (off `main` at
+  `3bf166b`): the timeline and map keep their place; trip settings.
+  Plan: `docs/plan/run-29-trip-settings.md` (Julian: all suggestions taken).
+  Baseline green before work (311 API + 664 UI).
+  - **Phase 100 ✅ (waiting for Julian):** the timeline remembers its view
+    (Plan / Stays / Travel) and scroll per trip, in memory
+    (`shared/tripPlaces.js`), when left any way and restored on return.
+    Opening a trip from the trips list forgets it; tapping Timeline while
+    on it goes to the top of the plan. A viewer always sees the plan.
+    Frontend only. `make verify` green (311 API + 671 UI); e2e
+    `timeline-place.spec.js` (screenshot `29a`).
+  - Next: 100b (the map keeps its place), 101–103 (trip settings).
+
 - **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
   at `4d9cbd0`): tapping one of Google's places on the map opens our card.
   Plan: `docs/plan/run-28-tap-a-place-on-the-map.md` (Julian: "go with your

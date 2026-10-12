@@ -257,6 +257,29 @@ On its own and frontend only, so it goes first.
   the default.
 - `make verify` green; a human checks it on a phone.
 
+## Built
+
+### Phase 100 (2026-10-12): the timeline keeps its place
+
+`make verify` green (311 API + 671 UI). E2E `timeline-place.spec.js` (dark
+and light, 375 × 520 so five days scroll): Stays, scroll to the bottom, Map,
+Timeline, then Stays at the same scroll; Timeline again, then the top of
+Plan (screenshot `29a`).
+- `shared/tripPlaces.js`: `rememberPlace` / `savedPlace` / `forgetPlaces`,
+  keyed by screen and trip, for the map's place in 100b too.
+- `TripTimeline` tracks the scroll root's `scrollTop` while it scrolls (the
+  root belongs to the page being left, so it can't be read at unmount) and
+  saves `{ view, scrollTop }` on unmount.
+- Timeline tab while on the timeline: the link carries
+  `state.timelineTop`, acted on only for a navigation after mount, so Back
+  to that history entry later doesn't reset it.
+- Found while testing: a trip read that turns you into a viewer while a
+  saved place says Stays left the rows in Stays mode with no buttons. Now
+  a viewer's view is always the plan.
+- The trip card's link forgets the trip's places. The landing page (`/`)
+  doesn't need to: it's only reached when the app starts, and memory is
+  empty then.
+
 ## Open questions
 
 Answered (Julian, 2026-10-12): last updated, dropped. Viewers don't get

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { Link, MemoryRouter, Routes, Route } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/features/auth/authSlice";
 import timelineReducer from "@/features/timeline/timelineSlice";
@@ -11,6 +11,7 @@ import notificationReducer from "@/shared/notificationSlice";
 import { TripTimelinePage } from "@/features/timeline/TripTimelinePage";
 import { apiClient } from "@/shared/services/apiClient";
 import { trackPageView } from "@/shared/analytics/umami";
+import { forgetPlaces } from "@/shared/tripPlaces";
 import sampleTrip from "../../../../api/app/sample_data/sample_trip.json";
 
 vi.mock("@/shared/services/apiClient", () => ({
@@ -39,6 +40,7 @@ function renderPage(url = "/trips/trip-1") {
         <Routes>
           <Route path="/trips/:tripId" element={<TripTimelinePage />} />
           <Route path="/trips/:tripId/days/:date" element={<p>day page</p>} />
+          <Route path="/trips/:tripId/map" element={<Link to="/trips/trip-1">back to timeline</Link>} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -57,6 +59,7 @@ function dayLink(date) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  forgetPlaces("trip-1"); // each test opens the trip fresh
   apiClient.get.mockResolvedValue({ data: TRIP });
 });
 
@@ -146,5 +149,61 @@ describe("TripTimelinePage", () => {
     expect(plan).toHaveAttribute("aria-pressed", "true");
     expect(travel).toHaveAttribute("aria-pressed", "false");
     expect(day("2026-05-12")).toHaveTextContent("Tue, May 12Bern → Wengen");
+  });
+
+  describe("keeps its place (Run stage 29)", () => {
+    const scrollRoot = () => document.querySelector("[data-scroll-root]");
+
+    async function openStaysScrolled(user) {
+      await screen.findByRole("heading", { name: TRIP.name, level: 1 });
+      await user.click(screen.getByRole("button", { name: "Stays" }));
+      scrollRoot().scrollTop = 480;
+      fireEvent.scroll(scrollRoot());
+    }
+
+    it("comes back from the map to the same view and scroll", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await openStaysScrolled(user);
+      await user.click(screen.getByRole("link", { name: "Map" }));
+      await user.click(await screen.findByRole("link", { name: "back to timeline" }));
+      await screen.findByRole("heading", { name: TRIP.name, level: 1 });
+      expect(screen.getByRole("button", { name: "Stays" })).toHaveAttribute("aria-pressed", "true");
+      expect(scrollRoot().scrollTop).toBe(480);
+    });
+
+    it("the Timeline tab, tapped while on the timeline, goes to the top of the plan", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await openStaysScrolled(user);
+      await user.click(screen.getByRole("link", { name: "Timeline" }));
+      expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-pressed", "true");
+      expect(scrollRoot().scrollTop).toBe(0);
+    });
+
+    it("opens fresh once the trip's places are forgotten (opened from the trips list)", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await openStaysScrolled(user);
+      await user.click(screen.getByRole("link", { name: "Map" }));
+      forgetPlaces("trip-1");
+      await user.click(await screen.findByRole("link", { name: "back to timeline" }));
+      await screen.findByRole("heading", { name: TRIP.name, level: 1 });
+      expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-pressed", "true");
+      expect(scrollRoot().scrollTop).toBe(0);
+    });
+
+    it("a viewer comes back to the plan (they have no Stays view)", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await openStaysScrolled(user);
+      await user.click(screen.getByRole("link", { name: "Map" }));
+      apiClient.get.mockResolvedValue({ data: { ...TRIP, role: "viewer" } });
+      await user.click(await screen.findByRole("link", { name: "back to timeline" }));
+      await screen.findByRole("heading", { name: TRIP.name, level: 1 });
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Stays" })).not.toBeInTheDocument());
+      // Plan rows: a date opens its day page, not a stay.
+      expect(dayLink("2026-05-11")).toHaveAttribute("href", "/trips/trip-1/days/2026-05-11");
+    });
   });
 });

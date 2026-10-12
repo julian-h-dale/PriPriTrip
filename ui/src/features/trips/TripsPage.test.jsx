@@ -10,6 +10,7 @@ import errorReducer from "@/shared/errorSlice";
 import notificationReducer from "@/shared/notificationSlice";
 import { TripsPage } from "@/features/trips/TripsPage";
 import { apiClient } from "@/shared/services/apiClient";
+import { rememberPlace, savedPlace } from "@/shared/tripPlaces";
 
 vi.mock("@/shared/services/apiClient", () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -68,6 +69,18 @@ describe("TripsPage", () => {
     expect(link).toHaveTextContent("May 10 – 14, 2099 · 4 nights");
     expect(link).toHaveTextContent("2 stays");
     expect(link).toHaveTextContent("4 legs");
+  });
+
+  it("opening a trip starts fresh: its timeline and map places are forgotten", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({ data: [TRIP] });
+    rememberPlace("timeline", "t1", { view: "stays", scrollTop: 400 });
+    rememberPlace("map", "t1", { zoom: 14 });
+    renderPage();
+    await user.click(await screen.findByRole("link", { name: /Bern & Wengen/ }));
+    expect(await screen.findByText("trip page")).toBeInTheDocument();
+    expect(savedPlace("timeline", "t1")).toBeNull();
+    expect(savedPlace("map", "t1")).toBeNull();
   });
 
   it("shows an empty state with an import action", async () => {

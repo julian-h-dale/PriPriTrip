@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Home, List, Plane } from "lucide-react";
 import { entryPath } from "@/features/entry/entries";
 import { buildTimeline } from "@/features/timeline/buildTimeline";
@@ -25,6 +25,7 @@ import { todayIn } from "@/shared/utils/tripDates";
 import { useTrackView } from "@/shared/analytics/useAnalytics";
 import { timelineViewPage } from "@/shared/analytics/pages";
 import { selectOnline } from "@/shared/networkSlice";
+import { rememberPlace, savedPlace } from "@/shared/tripPlaces";
 
 // Plan | Stays | Travel: exactly one at a time. (Was two unlabeled House/
 // Plane icon toggles; labeled segments are easier to find — ui_review §4.)
@@ -51,7 +52,38 @@ function TripTimeline({ trip }) {
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   // Past days are greyed, judged on the trip's own calendar.
   const today = todayIn(trip.timezone);
-  const [view, setView] = useState("plan");
+  // Coming back (from the map, an entry, …): the view and scroll you left.
+  const [initial] = useState(() => savedPlace("timeline", trip.id));
+  const [chosenView, setView] = useState(initial?.view ?? "plan");
+  const view = isViewer ? "plan" : chosenView;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const headerRef = useRef(null);
+  useLayoutEffect(() => {
+    const root = headerRef.current?.closest("[data-scroll-root]");
+    if (!root) return undefined;
+    if (initial?.scrollTop) root.scrollTop = initial.scrollTop;
+    // Tracked as it scrolls: by the time this unmounts, the page it scrolled
+    // in may already be gone.
+    let top = root.scrollTop;
+    const onScroll = () => {
+      top = root.scrollTop;
+    };
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      root.removeEventListener("scroll", onScroll);
+      rememberPlace("timeline", trip.id, { view: viewRef.current, scrollTop: top });
+    };
+  }, [initial, trip.id]);
+  // The Timeline tab tapped while already here: back to the top of the plan.
+  const location = useLocation();
+  const firstKey = useRef(location.key);
+  useEffect(() => {
+    if (location.key === firstKey.current || !location.state?.timelineTop) return;
+    setView("plan");
+    const root = headerRef.current?.closest("[data-scroll-root]");
+    if (root) root.scrollTop = 0;
+  }, [location.key, location.state]);
   const trackView = useTrackView();
   function chooseView(v) {
     if (v === view) return;
@@ -96,7 +128,7 @@ function TripTimeline({ trip }) {
 
   return (
     <>
-      <header className="mb-4 flex flex-col gap-3">
+      <header ref={headerRef} className="mb-4 flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="break-words text-xl font-semibold leading-snug">{trip.name}</h1>
           <p className="text-sm text-muted-foreground">{formatDateRange(trip.startDate, trip.endDate)}</p>
