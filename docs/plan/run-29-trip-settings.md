@@ -312,6 +312,39 @@ same spot of the screen (screenshot `29b`).
   "Saved" toast. Rejected with the server's message.
 - One change from the plan: no foreign key on `cover_photo_id` (above).
 
+### Phase 102 (2026-10-12): the Trip settings page
+
+`make verify` green (328 API + 690 UI). E2E `trip-settings.spec.js` (dark
+and light): ⋯ → Trip settings on the sample trip (under Past), pick 🏔️,
+rename, Back, and the card shows both; put back after (screenshots `29c`,
+`29d`).
+- `TripSettingsPage` (`features/trips/`), at `/trips/:tripId/settings`
+  inside `NotForViewers`, in `ToolLayout`. Sections are cards with headings
+  (regions): Cover, Name, People (owner), Export, Delete / Leave. "On this
+  phone" comes in Phase 103, between Name and People.
+- Cover: Emoji | Photo toggle. 24 travel emoji plus "Or type one" (the
+  server checks it's one emoji). The photo grid comes from the journal
+  (`fetchMemories`): public, uploaded photos only. Remove cover sends both
+  as null. Each pick saves at once (no Save button).
+- `MembersPanel` (`features/sharing/`) is the Share dialog's body, pulled
+  out; `ShareTripDialog` wraps it. Its tests still run through the dialog.
+- Export: `GET /trips/{id}/export` as a blob, then `saveToPhone` (the share
+  sheet on a phone, else a download) as `<slug>.json`, the server's slug.
+- Delete / Leave: the same confirm wording as the trips list, then
+  `/trips`.
+- The card: `TripCover` (48 px tile, emoji or `usePhotoSrc` thumbnail) left
+  of the name. ⋯ has Trip settings above Delete / Leave, but not for a
+  viewer.
+- Also: the page counts in analytics as "Trip settings"
+  (`/trip/settings`), like every other page.
+- **Testing note:** Julian's own dev API on :8000 had been running since
+  2026-10-07 without `--reload`, so it didn't have `PATCH /trips/{id}`. It
+  was left alone. E2E ran against this branch's servers on :8010 / :3010,
+  through new `E2E_API_PORT` / `E2E_UI_PORT` overrides in
+  `playwright.config.js`. The headless Chromium on the Pi has no colour
+  emoji font, so emoji show as boxes in the screenshots. Phones render
+  them.
+
 ## Open questions
 
 Answered (Julian, 2026-10-12): last updated, dropped. Viewers don't get

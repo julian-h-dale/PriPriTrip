@@ -47,6 +47,7 @@ function renderPage() {
           <Route path="/" element={<TripsPage />} />
           <Route path="/trips/:tripId" element={<div>timeline page</div>} />
           <Route path="/trips/:tripId/today" element={<div>trip page</div>} />
+          <Route path="/trips/:tripId/settings" element={<div>settings page</div>} />
         </Routes>
       </MemoryRouter>
     </Provider>
@@ -81,6 +82,32 @@ describe("TripsPage", () => {
     expect(await screen.findByText("trip page")).toBeInTheDocument();
     expect(savedPlace("timeline", "t1")).toBeNull();
     expect(savedPlace("map", "t1")).toBeNull();
+  });
+
+  it("⋯ has Trip settings for the owner and an editor, not a viewer", async () => {
+    const user = userEvent.setup();
+    apiClient.get.mockResolvedValue({
+      data: [TRIP, { ...TRIP, id: "t2", name: "Athens", role: "editor" }, { ...TRIP, id: "t3", name: "Lisbon", role: "viewer" }],
+    });
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "More for Lisbon" }));
+    expect(screen.queryByRole("menuitem", { name: "Trip settings" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More for Athens" }));
+    expect(screen.getByRole("menuitem", { name: "Trip settings" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More for Bern & Wengen Long Weekend" }));
+    const items = screen.getAllByRole("menuitem").map((i) => i.textContent);
+    expect(items).toEqual(["Trip settings", "Delete trip"]);
+    await user.click(screen.getByRole("menuitem", { name: "Trip settings" }));
+    expect(await screen.findByText("settings page")).toBeInTheDocument();
+  });
+
+  it("a card shows the trip's cover", async () => {
+    apiClient.get.mockResolvedValue({
+      data: [{ ...TRIP, coverEmoji: "🏔️" }, { ...TRIP, id: "t2", name: "Athens", coverThumbUrl: "/photos/p1/thumb" }],
+    });
+    renderPage();
+    expect(await screen.findByRole("link", { name: /Bern & Wengen/ })).toHaveTextContent("🏔️");
+    expect(screen.getByRole("link", { name: /Athens/ }).querySelector("img").getAttribute("src")).toMatch(/\/photos\/p1\/thumb$/);
   });
 
   it("shows an empty state with an import action", async () => {

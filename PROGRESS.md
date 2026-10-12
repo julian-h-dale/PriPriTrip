@@ -28,7 +28,16 @@
     on write and on every read). Migration 0017 (`trips.cover_emoji`,
     `cover_photo_id`, no FK). `updateTrip` thunk updates list, open trip
     and saved copies. `make verify` green (328 API + 677 UI).
-  - Next: 102 (the settings page), 103 (on this phone).
+  - **Phase 102 ✅:** the Trip settings page (`/trips/:id/settings`, owner
+    and editor), from ⋯ on the trips list: Cover (emoji grid / type one /
+    public photos / remove), Name, People (owner; `MembersPanel` shared
+    with the Share dialog), Export (download `<slug>.json`), Delete /
+    Leave. Cards show the cover. `make verify` green (328 API + 690 UI);
+    e2e `trip-settings.spec.js` (screenshots `29c`, `29d`).
+  - **Your dev API on :8000 is still on 2026-10-07 code** (no `--reload`),
+    so restart it to get `PATCH /trips/{id}`. E2E ran on :8010/:3010 via
+    `E2E_API_PORT` / `E2E_UI_PORT`.
+  - Next: 103 (on this phone: opens on, distances, nearby radius).
 
 - **Run stage 28 (2026-10-10)** on **`map-place-info-window`** (off `main`
   at `4d9cbd0`): tapping one of Google's places on the map opens our card.

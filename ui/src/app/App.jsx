@@ -5,6 +5,7 @@ import { fetchMe } from "@/features/auth/authSlice";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { LandingPage } from "@/features/trips/LandingPage";
 import { TripsPage } from "@/features/trips/TripsPage";
+import { TripSettingsPage } from "@/features/trips/TripSettingsPage";
 import { MapPage } from "@/features/map/MapPage";
 import { TodayPage } from "@/features/today/TodayPage";
 import { JournalPage } from "@/features/journal/JournalPage";
@@ -177,6 +178,16 @@ export function App() {
             <ProtectedRoute>
               <NotForViewers>
                 <DocumentsPage />
+              </NotForViewers>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trips/:tripId/settings"
+          element={
+            <ProtectedRoute>
+              <NotForViewers>
+                <TripSettingsPage />
               </NotForViewers>
             </ProtectedRoute>
           }
