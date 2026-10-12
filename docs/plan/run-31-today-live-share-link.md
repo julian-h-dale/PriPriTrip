@@ -89,7 +89,7 @@ work as they do for a viewer.
 
 - The guest is **hidden**: not in Admin → Users, not in the trip's member
   list (the link has its own row instead), and its email
-  (`link-<id>@guest.invalid`) is never shown. Its password is a random
+  (`link-<id>@guest.example.com`) is never shown. Its password is a random
   value nobody knows, so it can't sign in with a password.
 - **The guest's app:**
   - The trips list shows only that trip, and opening the app (`/`) goes
@@ -234,6 +234,38 @@ Frontend only.
   shares, the viewer reads…" times out in the viewer's half. It fails the
   same with this phase stashed. The owner's half (People lists the viewer)
   passes.
+
+### Phase 106 (2026-10-12): the secret link, on the server
+
+`make verify` green (337 API + 717 UI).
+- Migration 0018: `users.guest_trip_id`. The secret is in `trips.view_code`.
+- `services/share_links.py`: `enable` (idempotent), `rotate`, `disable`,
+  `guest_for(secret)`, and `forget` (called by `delete_trip`). A guest is
+  an active, verified non-admin with an unknown random password, named
+  "Anyone with the link", plus a viewer `TripMember`. Retiring sets
+  `is_active = False` and ends the membership.
+- Routes, owner only (`get_owned_trip`): `GET /trips/{id}/link`,
+  `POST /trips/{id}/link` (on), `POST /trips/{id}/link/rotate`,
+  `DELETE /trips/{id}/link`; all answer `{ enabled, secret }`. The app
+  builds the URL from its own origin, because the API doesn't know it.
+  `POST /links/{secret}/session` (no sign-in, `links_router`) is
+  `auth_backend.login` as the guest, or 404.
+- Guests are left out of `list_users` (Admin), `list_members` and
+  `user_by_email` (can't be invited). `/auth/change-password` and `PATCH
+  /users/me` are 403 for a guest (`UserManager.update`). `UserRead` has
+  `guest_trip_id`.
+- **Small changes from the plan:**
+  - rotate is its own route, not a body flag;
+  - the API returns the secret, not the URL;
+  - the guest email is `link-<hex>@guest.example.com`, because the
+    account library refuses `.invalid`. example.com is reserved, so it's
+    never a real mailbox.
+- Tests (`test_share_links.py`, real tokens for the guest): a viewer's
+  read (no confirmation numbers, no plan B, only public memories, just
+  that trip, writes 403); rotate and off give 401 for the signed-in guest,
+  including `/auth/refresh`, and 404 for the old secret; a deleted trip
+  takes its link with it; owner-only; hidden from Admin, members and
+  invites; no password or profile changes.
 
 ## Open questions — answered (Julian, 2026-10-12)
 

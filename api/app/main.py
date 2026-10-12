@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     # their upload/delete routes themselves: serving is login-free.)
     password_ok = [Depends(require_password_ok)]
     application.include_router(sharing.router, dependencies=password_ok)
+    application.include_router(sharing.links_router)
     application.include_router(trips.router, dependencies=password_ok)
     application.include_router(memories.router, dependencies=password_ok)
     application.include_router(photos.router)

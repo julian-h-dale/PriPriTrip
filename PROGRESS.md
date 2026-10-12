@@ -14,7 +14,14 @@
     countdown, the day itself, the fading). Share trip is out of the
     drawer (`ShareTripDialog` deleted). `make verify` green (328 API + 717
     UI). E2E "owner shares, viewer reads" already failed before this.
-  - Next: 106 (secret link API), 107 (secret link app), then the doc.
+  - **Phase 106 ✅:** the secret link on the server: a hidden guest
+    viewer account per link (`users.guest_trip_id`, migration 0018; secret
+    in `trips.view_code`); owner-only on / rotate / off; `POST
+    /links/{secret}/session` signs in as the guest; rotate/off turn the
+    guest off (401 on its next request). Guests hidden from Admin, members
+    and invites; no password changes. `make verify` green (337 API + 717
+    UI).
+  - Next: 107 (secret link app), then the doc.
 
 - **Run stage 30 (2026-10-12)** on **`grey-out-past-entries`** (off
   `main` at `e8e0d06`, after Run 29 merged): entries fade once their time

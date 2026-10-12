@@ -30,7 +30,7 @@ from app.models import (
     UserRecord,
 )
 from app.schemas import TripRead, TripSummary, TripUpdate, VersionRead
-from app.services import versions
+from app.services import share_links, versions
 from app.trip_document import (
     DayDoc,
     DayWrite,
@@ -464,6 +464,7 @@ async def delete_trip(db: AsyncSession, trip: Trip) -> None:
     """Soft-delete the trip. Its children are only reachable through it."""
     trip.is_deleted = True
     trip.deleted_at = datetime.now(UTC)
+    await share_links.forget(db, trip)
     await db.commit()
 
 

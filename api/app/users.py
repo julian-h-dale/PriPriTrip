@@ -5,8 +5,8 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends, HTTPException, status
-from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
+from fastapi import Depends, HTTPException, Request, status
+from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
@@ -34,6 +34,19 @@ class UserManager(UUIDIDMixin, BaseUserManager[UserRecord, uuid.UUID]):
     @property
     def verification_token_secret(self) -> str:  # type: ignore[override]
         return get_auth_settings().jwt_secret
+
+    async def update(
+        self,
+        user_update: schemas.BaseUserUpdate,
+        user: UserRecord,
+        safe: bool = False,
+        request: Request | None = None,
+    ) -> UserRecord:
+        """PATCH /users/me: a link guest (Run stage 31) has no profile or
+        password to change."""
+        if user.guest_trip_id is not None:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "A link guest can't change the account")
+        return await super().update(user_update, user, safe=safe, request=request)
 
 
 async def get_user_manager(
