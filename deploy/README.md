@@ -76,6 +76,9 @@ setting one restarts the machine):
 on a fresh volume, or on purpose to replant the sample trips (deleting their
 journals).
 
+To wipe production back to a clean slate (no backup), see
+[reset-prod.md](reset-prod.md).
+
 ## Installable app (PWA) and offline
 
 The UI is a PWA: it can be installed on a phone, and trips work offline (the
