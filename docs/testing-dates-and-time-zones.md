@@ -112,6 +112,9 @@ Good for: when you want everything on the Pi at that moment, with the
 least setup. It's also the most disruptive, so read the gotchas first.
 
 ```bash
+# First: pause the photo backup (see Gotchas).
+sudo systemctl stop pripri-backup.timer
+
 # Stop the network time sync, set the zone (optional: it moves "This phone"
 # too), then the date and time, which is read in the zone just set:
 sudo timedatectl set-ntp false
@@ -123,6 +126,8 @@ timedatectl                                          # check
 # Put it all back:
 sudo timedatectl set-timezone America/Chicago
 sudo timedatectl set-ntp true                        # the clock corrects itself within a minute
+timedatectl                                          # wait for "System clock synchronized: yes"
+sudo systemctl start pripri-backup.timer             # then the backup again
 ```
 
 Restart the dev API after changing the clock (Ctrl+C, then `make dev`), so
@@ -146,6 +151,9 @@ desktop at `http://localhost:3000`.
 - **The Pi photo backup** (`make pi-backup-install`) runs on the Pi's
   clock. With option 3, its schedule and its HTTPS calls to the live app
   are affected while the clock is moved. Options 1 and 2 leave it alone.
+  Pause it before changing the clock and start it after (`sudo systemctl
+  stop pripri-backup.timer`, then `start`); see
+  [scripts/pi-backup/README.md](../scripts/pi-backup/README.md#4-stopping-and-starting-it).
 - **Writes keep the fake time.** A memory written while the clock is moved
   is stamped with that time and zone, and so is the server's "received".
   Test with the seed data on the dev server, not the live app.
