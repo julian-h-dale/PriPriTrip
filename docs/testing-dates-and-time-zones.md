@@ -6,8 +6,7 @@ countdowns the way you will on a trip. Three ways, from least to most
 disruptive:
 
 1. **Chrome DevTools**: the time zone only, for one tab.
-2. **`faketime`** on the Pi: the date and time for one Chromium and the dev
-   API, nothing else.
+2. **`faketime`** on the Pi: the date and time for the dev API only.
 3. **The Pi's own clock**, over VNC: everything on the Pi, the browser and
    the dev API together.
 
@@ -65,41 +64,47 @@ in the Console.
 that. For it, use 2 or 3 below (or Playwright's `page.clock`, which the
 e2e specs use; see `ui/e2e/done-entries.spec.js`).
 
-## 2. `faketime`: one browser and the dev API, nothing else
+## 2. `faketime`: the dev API only
 
-Good for: being at a particular moment on a trip, with the server agreeing,
-while the rest of the Pi (and the photo backup) keeps the real time.
-Install it once:
+Good for: the server agreeing about "now" (when a memory was received, the
+weather cache), while the rest of the Pi keeps the real time. Install it
+once:
 
 ```bash
 sudo apt install faketime
 ```
 
-Then, in two terminals on the Pi (over VNC, or SSH for the API):
+Then run the dev API under it (stop the normal one first):
 
 ```bash
-# The dev API, starting at 11:30 on Oct 17 in Athens and ticking on:
+# Starting at 11:30 on Oct 17 in Athens, and ticking on from there:
 cd ~/development/PriPriTrip/api
-TZ=Europe/Athens faketime -f '@2026-10-17 11:30:00' .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# A Chromium of its own, at the same moment, as a phone in Athens
-# (its own profile, so your normal one is untouched):
-TZ=Europe/Athens faketime -f '@2026-10-17 11:30:00' chromium --user-data-dir=/tmp/chromium-faketime http://localhost:3000
+TZ=Europe/Athens faketime -m -f '@2026-10-17 11:30:00' .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+- It prints its start-up lines and then nothing, so it can look as if it
+  has hung. It hasn't: `curl localhost:8000/health` answers. Stop it with
+  Ctrl+C.
 - `@` means "start at this time and keep ticking". Without it the clock
   stands still.
 - `faketime` reads the time in the command's own zone, so give `TZ=` and
-  the time there together: here, 11:30 in Athens. `TZ=` also becomes the
-  browser's zone ("This phone"). To be a Chicago phone at that moment,
-  use `TZ=America/Chicago` and `'@2026-10-17 03:30:00'`.
-- The UI dev server (`make dev-ui`) doesn't need it: it only serves files.
+  the time there together (here, 11:30 in Athens).
+- `-m` uses the multi-threaded version of the library.
 - The examples use the Athens trip seeded on 2026-10-12: it runs Oct
   10–17, so check-out day is Oct 17. Seeded on another day, use that
   trip's own dates (its timeline shows them).
-- If Chromium ignores it (its sandboxed processes can drop the preload),
-  try adding `--no-zygote`. Only use that for this throwaway profile.
-- Stop both with Ctrl+C and restart them normally (`make dev`) to go back.
+
+**Not for Chromium** (tested on this Pi, 2026-10-12):
+- Under `faketime`, Chromium hangs on this app. Without `-m` it hangs on
+  any page. With `-m` a plain page works, but the app (the Vite dev
+  server's many module requests and its live-reload connection) never
+  finishes loading.
+- For the browser, use the Pi's own clock (3, below) or a Playwright
+  window started at a chosen moment (the same clock the e2e specs use).
+- Chromium's terminal message `registration_request ... DEPRECATED_ENDPOINT`
+  is harmless. It's Chromium failing to register for Google's push
+  messages (this Chromium has no Google API keys), and has nothing to do
+  with the time.
 
 ## 3. The Pi's own clock, over VNC
 
