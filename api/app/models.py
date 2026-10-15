@@ -84,6 +84,11 @@ class UserRecord(SQLAlchemyBaseUserTableUUID, Base):
         default=lambda ctx: not ctx.get_current_parameters().get("is_superuser", False),
         server_default="1",
     )
+    # Set on a link guest (Run stage 31): the hidden viewer account that a
+    # trip's secret link signs you in as (services/share_links.py). Never
+    # listed, never signs in with a password. No foreign key, for the same
+    # reason as `updated_by` (VersionedMixin).
+    guest_trip_id: Mapped[uuid.UUID | None] = mapped_column(default=None)
 
 
 # A wall-clock column: naive on purpose (see module docstring).

@@ -50,6 +50,7 @@ function serve(trip) {
     if (url === "/trips/t1") return { data: trip };
     if (url === "/trips/t1/memories") return { data: MEMORIES };
     if (url === "/trips/t1/members") return { data: MEMBERS };
+    if (url === "/trips/t1/link") return { data: { enabled: false, secret: null } };
     if (url === "/trips/t1/export") return { data: new Blob(["{}"]) };
     throw new Error(`unexpected GET ${url}`);
   });
@@ -109,7 +110,7 @@ describe("TripSettingsPage (Run stage 29)", () => {
     const names = screen
       .getAllByRole("region")
       .map((r) => r.getAttribute("aria-label") ?? document.getElementById(r.getAttribute("aria-labelledby")).textContent);
-    expect(names).toEqual(["Cover", "Name", "On this phone", "People", "Shared with", "Export", "Delete trip"]);
+    expect(names).toEqual(["Cover", "Name", "On this phone", "People", "Shared with", "Link sharing", "Export", "Delete trip"]);
     expect(await screen.findByText("PriPri")).toBeInTheDocument();
   });
 
@@ -208,6 +209,37 @@ describe("TripSettingsPage (Run stage 29)", () => {
     await user.click(within(group("Distances (every trip)")).getByRole("radio", { name: "Kilometres" }));
     expect(within(radius()).getByRole("radio", { name: "2 km" })).toHaveAttribute("aria-checked", "true");
     expect(apiClient.patch).not.toHaveBeenCalled();
+  });
+
+  it("the secret link: on, copy, a new link, off (Run stage 31)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const sharing = await screen.findByRole("region", { name: "Link sharing" });
+    const toggle = await within(sharing).findByRole("switch", { name: "Anyone with the link can view" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+
+    apiClient.post.mockResolvedValueOnce({ data: { enabled: true, secret: "s3cret" } });
+    await user.click(toggle);
+    expect(apiClient.post).toHaveBeenCalledWith("/trips/t1/link");
+    expect(await within(sharing).findByText(`${window.location.origin}/s/s3cret`)).toBeInTheDocument();
+    expect(within(sharing).getByRole("button", { name: "Copy link" })).toBeInTheDocument();
+
+    // A new link, after saying what happens to the old one.
+    await user.click(within(sharing).getByRole("button", { name: "Make a new link" }));
+    const rotate = screen.getByRole("dialog", { name: "Make a new link?" });
+    expect(rotate).toHaveTextContent("The current link stops working");
+    apiClient.post.mockResolvedValueOnce({ data: { enabled: true, secret: "fresh" } });
+    await user.click(within(rotate).getByRole("button", { name: "Make a new link" }));
+    expect(apiClient.post).toHaveBeenLastCalledWith("/trips/t1/link/rotate");
+    expect(await within(sharing).findByText(`${window.location.origin}/s/fresh`)).toBeInTheDocument();
+
+    // Off, also confirmed.
+    await user.click(within(sharing).getByRole("switch"));
+    apiClient.delete.mockResolvedValueOnce({});
+    await user.click(within(screen.getByRole("dialog", { name: "Turn off the link?" })).getByRole("button", { name: "Turn off" }));
+    expect(apiClient.delete).toHaveBeenCalledWith("/trips/t1/link");
+    await waitFor(() => expect(within(sharing).getByRole("switch")).toHaveAttribute("aria-checked", "false"));
+    expect(within(sharing).queryByText(/\/s\//)).not.toBeInTheDocument();
   });
 
   it("downloads the trip as a file named after it", async () => {

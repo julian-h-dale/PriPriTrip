@@ -10,6 +10,8 @@ import { DayForm } from "@/features/timeline/DayForm";
 import { setShowsPlanB, showsPlanB, usePlanChoices } from "@/features/timeline/planChoice";
 import { runEdit } from "@/features/timeline/runEdit";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
+import { isDone } from "@/features/timeline/entryDone";
+import { useNow } from "@/shared/hooks/useNow";
 import { createItem, fetchTrip, moveItem, selectIsViewer, selectReadOnly, updateDay } from "@/features/timeline/timelineSlice";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Markdown } from "@/shared/components/Markdown";
@@ -77,6 +79,8 @@ function PlanBButton({ tripId, date, showingPlanB }) {
  * activities are its plan B's; the booking rows are the same. */
 function DayDetail({ trip, row }) {
   const dispatch = useDispatch();
+  // Entries whose time has passed fade (Run stage 30), checked each minute.
+  const now = useNow(60_000);
   const navigate = useNavigate();
   const location = useLocation();
   const [adding, setAdding] = useState(false);
@@ -160,6 +164,7 @@ function DayDetail({ trip, row }) {
               key={entry.key}
               entry={entry}
               trip={trip}
+              done={isDone(entry, row.date, trip, now)}
               menu={
                 editable && entry.kind === "activity" && entry.count > 1 ? (
                   <MoveMenu entry={entry} busy={busy} readOnly={readOnly} onMove={(direction) => move(entry.item, direction)} />

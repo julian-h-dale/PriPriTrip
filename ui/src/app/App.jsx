@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMe } from "@/features/auth/authSlice";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { LinkEndedPage, LinkPage } from "@/features/sharing/LinkPage";
 import { LandingPage } from "@/features/trips/LandingPage";
 import { TripsPage } from "@/features/trips/TripsPage";
 import { TripSettingsPage } from "@/features/trips/TripSettingsPage";
@@ -52,6 +53,9 @@ export function App() {
     <>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* A trip's secret link (Run stage 31): no sign-in needed. */}
+        <Route path="/s/:secret" element={<LinkPage />} />
+        <Route path="/link-ended" element={<LinkEndedPage />} />
         <Route
           path="/"
           element={

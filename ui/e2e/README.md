@@ -21,6 +21,9 @@ with the `.env.example` defaults otherwise. If you've changed a seed
 password locally, source `api/.env` as above or sign-in fails. The ports
 come from `api/.env` and `ui/.env`, so a worktree's own are used.
 
+To test at another date, time or time zone (by hand, or with a spec's
+`page.clock`), see [docs/testing-dates-and-time-zones.md](../../docs/testing-dates-and-time-zones.md).
+
 Screenshots land in `e2e/screenshots/` (git-ignored), overwritten each run,
 named by spec (`01-trips-list.png`, `18a-analytics-owner.png`, …).
 

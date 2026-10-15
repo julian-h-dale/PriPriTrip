@@ -222,13 +222,16 @@ function Harness() {
   return null;
 }
 
-function renderAt(path, { analytics = true, user = true, trip = { id: TRIP, role: "editor" } } = {}) {
+function renderAt(path, { analytics = true, user = true, guest = false, trip = { id: TRIP, role: "editor" } } = {}) {
   const timeline = createSlice({
     name: "timeline",
     initialState: { trip },
     reducers: { setTrip: (state, action) => ({ ...state, trip: action.payload }) },
   });
-  const auth = { token: fakeToken(USER), user: user ? { id: USER, analytics_enabled: analytics } : null };
+  const auth = {
+    token: fakeToken(USER),
+    user: user ? { id: USER, analytics_enabled: analytics, guest_trip_id: guest ? TRIP : null } : null,
+  };
   const store = configureStore({ reducer: { auth: (state = auth) => state, timeline: timeline.reducer } });
   render(
     <Provider store={store}>
@@ -265,6 +268,12 @@ describe("page views", () => {
     setTrip({ id: TRIP, role: "owner" });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(sent()[0]).toMatchObject({ url: "/trip/journal", tag: "owner" });
+  });
+
+  it("someone in through the trip's secret link counts as a guest, not a viewer (Run stage 31)", async () => {
+    renderAt(`/trips/${TRIP}/map`, { guest: true, trip: { id: TRIP, role: "viewer" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(sent()[0]).toMatchObject({ url: "/trip/map", tag: "guest", data: { role: "guest" } });
   });
 
   it("outside a trip have the role none", async () => {

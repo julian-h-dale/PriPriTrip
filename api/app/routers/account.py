@@ -25,6 +25,8 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
     strategy: Strategy = Depends(auth_backend.get_strategy),
 ) -> Response:
+    if user.guest_trip_id is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "A link guest has no password")
     try:
         ok = await users_service.change_password(db, user, body.current_password, body.new_password)
     except users_service.WeakPassword as exc:

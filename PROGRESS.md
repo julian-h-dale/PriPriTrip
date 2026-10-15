@@ -6,6 +6,47 @@
 
 ## Status
 
+- **Run stage 31 (2026-10-12)**, still on **`grey-out-past-entries`**
+  (Julian: no new branch until Run 30 merges). Plan:
+  `docs/plan/run-31-today-live-share-link.md` (all suggestions taken, except
+  no in-app clock: a doc on DevTools and the Pi over VNC instead).
+  - **Phase 105 ✅:** Today runs on one live clock (Next up, its
+    countdown, the day itself, the fading). Share trip is out of the
+    drawer (`ShareTripDialog` deleted). `make verify` green (328 API + 717
+    UI). E2E "owner shares, viewer reads" already failed before this.
+  - **Phase 106 ✅:** the secret link on the server: a hidden guest
+    viewer account per link (`users.guest_trip_id`, migration 0018; secret
+    in `trips.view_code`); owner-only on / rotate / off; `POST
+    /links/{secret}/session` signs in as the guest; rotate/off turn the
+    guest off (401 on its next request). Guests hidden from Admin, members
+    and invites; no password changes. `make verify` green (337 API + 717
+    UI).
+  - **Phase 107 ✅ (waiting for Julian):** the link in the app: `/s/:secret`
+    signs in as the guest and opens the trip (asks first if you're signed
+    in as someone not on it); Trip settings → People → Link sharing
+    (switch, copy, new link, off); guests see "Viewing through a shared
+    link", no Change password, no ⋯; a rotated guest lands on
+    `/link-ended`, not sign-in. `make verify` green (338 API + 732 UI);
+    e2e `share-link.spec.js` on :8010/:3010 (screenshots `31a`–`31c`).
+  - **The doc ✅:** `docs/testing-dates-and-time-zones.md` (DevTools,
+    `faketime`, the Pi's clock over VNC, gotchas, a checklist), linked
+    from `ui/e2e/README.md`.
+  - **Run 31 complete.** Needs a human: a link sent to a real phone, and
+    Today left open across an entry's time.
+
+- **Run stage 30 (2026-10-12)** on **`grey-out-past-entries`** (off
+  `main` at `e8e0d06`, after Run 29 merged): entries fade once their time
+  has passed. Plan: `docs/plan/run-30-grey-out-past-entries.md` (Julian:
+  each entry's own place's clock, like Next up; start-only activities fade
+  at their start; untimed stay bright all day; day rows unchanged).
+  Baseline green (328 API + 700 UI).
+  - **Phase 104 ✅ (waiting for Julian):** `isDone` (`timeline/
+    entryDone.js`) fades day-page and Today's-plan rows (opacity, muted
+    dot), checked each minute (`shared/hooks/useNow.js`). Timed entries
+    go by their own instant only (a flight still in the air past
+    midnight trip-time stays bright). Frontend only. `make verify` green
+    (328 API + 715 UI); e2e `done-entries.spec.js` (screenshot `30a`).
+
 - **Run stage 29 (2026-10-12)** on **`trip-settings`** (off `main` at
   `3bf166b`): the timeline and map keep their place; trip settings.
   Plan: `docs/plan/run-29-trip-settings.md` (Julian: all suggestions taken).

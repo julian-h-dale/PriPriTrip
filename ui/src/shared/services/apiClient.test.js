@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OFFLINE_WRITE, apiClient, injectStore } from "@/shared/services/apiClient";
 
 // The response interceptor's error handler, called directly.
@@ -60,5 +60,42 @@ describe("apiClient offline handling", () => {
     window.history.pushState({}, "", "/login"); // already there: no jsdom navigation
     await onError({ config: { offlineOk: true }, response: { status: 401 } });
     expect(store.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "auth/clearAuth" }));
+  });
+});
+
+describe("a 401 for someone in through a secret link (Run stage 31)", () => {
+  const store = { dispatch: vi.fn(), getState: () => ({ auth: { token: "t" } }) };
+  const real = window.location;
+  function at(pathname) {
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", { configurable: true, value: { pathname, assign } });
+    return assign;
+  }
+  beforeEach(() => {
+    store.dispatch.mockClear();
+    injectStore(store);
+    localStorage.clear();
+  });
+  afterEach(() => Object.defineProperty(window, "location", { configurable: true, value: real }));
+
+  it("goes to the link-ended page, not the sign-in a guest has no password for", async () => {
+    localStorage.setItem("auth_guest", "1");
+    const assign = at("/trips/t1");
+    await onError({ config: {}, response: { status: 401 } });
+    expect(store.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "auth/clearAuth" }));
+    expect(assign).toHaveBeenCalledWith("/link-ended");
+  });
+
+  it("anyone else still goes to sign-in", async () => {
+    const assign = at("/trips/t1");
+    await onError({ config: {}, response: { status: 401 } });
+    expect(assign).toHaveBeenCalledWith("/login");
+  });
+
+  it("the link page itself is never sent away: it says what happened", async () => {
+    localStorage.setItem("auth_guest", "1");
+    const assign = at("/s/old-secret");
+    await onError({ config: {}, response: { status: 401 } });
+    expect(assign).not.toHaveBeenCalled();
   });
 });

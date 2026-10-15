@@ -1,5 +1,7 @@
 """Sharing a trip: the owner adds people by email (as a viewer or an
-editor), changes their role or removes them; members can leave.
+editor), changes their role or removes them; members can leave. The owner
+can also turn on a secret view-only link (Run stage 31), rotate it or turn
+it off; `links_router` signs a link's visitor in.
 
 Thin handlers; the rules live in services/sharing.py and the access checks in
 app/dependencies.py (get_owned_trip / get_viewable_trip).
@@ -10,16 +12,20 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import JSONResponse
+from fastapi_users.authentication import Strategy
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import ViewableTrip, get_owned_trip, get_viewable_trip
 from app.models import Trip, TripMember, UserRecord
-from app.schemas import MemberInvite, MemberRead, MemberRoleChange
-from app.services import sharing
-from app.users import current_active_user
+from app.schemas import LinkRead, MemberInvite, MemberRead, MemberRoleChange
+from app.services import share_links, sharing
+from app.users import auth_backend, current_active_user
 
 router = APIRouter(prefix="/trips", tags=["sharing"])
+# No sign-in: the secret is the credential.
+links_router = APIRouter(prefix="/links", tags=["sharing"])
 
 
 def _read(member: TripMember, user: UserRecord) -> MemberRead:
@@ -103,3 +109,57 @@ async def leave_trip(
     if member is not None:
         await sharing.leave(db, member)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---- the secret link (owner only) ----
+
+
+@router.get("/{trip_id}/link", response_model=LinkRead)
+async def get_link(trip: Trip = Depends(get_owned_trip)) -> LinkRead:
+    return LinkRead(enabled=trip.view_code is not None, secret=trip.view_code)
+
+
+@router.post("/{trip_id}/link", response_model=LinkRead)
+async def enable_link(
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> LinkRead:
+    """Turn the link on (already on: the same link)."""
+    return LinkRead(enabled=True, secret=await share_links.enable(db, trip))
+
+
+@router.post("/{trip_id}/link/rotate", response_model=LinkRead)
+async def rotate_link(
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> LinkRead:
+    """A new link. The old one stops working, and anyone signed in through
+    it is signed out on their next request."""
+    return LinkRead(enabled=True, secret=await share_links.rotate(db, trip))
+
+
+@router.delete("/{trip_id}/link", status_code=status.HTTP_204_NO_CONTENT)
+async def disable_link(
+    trip: Trip = Depends(get_owned_trip),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    await share_links.disable(db, trip)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@links_router.post("/{secret}/session")
+async def link_session(
+    secret: str,
+    db: AsyncSession = Depends(get_db),
+    strategy: Strategy = Depends(auth_backend.get_strategy),
+) -> Response:
+    """Sign in as the trip's link guest: /auth/login's answer plus the
+    trip's id (`trip_id`), so the app knows where to go. 404 for any secret
+    that isn't a live trip's current one."""
+    guest = await share_links.guest_for(db, secret)
+    if guest is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    token = await strategy.write_token(guest)
+    return JSONResponse(
+        {"access_token": token, "token_type": "bearer", "trip_id": str(guest.guest_trip_id)}
+    )

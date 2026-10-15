@@ -74,6 +74,8 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     must_change_password: bool = False
     # Whether the app sends their usage to Umami; only an admin changes it.
     analytics_enabled: bool = True
+    # Set for a link guest (Run stage 31): the trip its secret link opens.
+    guest_trip_id: uuid.UUID | None = None
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -276,6 +278,14 @@ class MemberInvite(CamelModel):
 
 class MemberRoleChange(CamelModel):
     role: Literal["editor", "viewer"]
+
+
+class LinkRead(CamelModel):
+    """A trip's secret link (Run stage 31): the app makes the URL,
+    `<its origin>/s/<secret>`."""
+
+    enabled: bool
+    secret: str | None = None
 
 
 class MemberRead(CamelModel):

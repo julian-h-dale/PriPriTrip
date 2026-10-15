@@ -168,12 +168,12 @@ describe("the Weather page", () => {
 });
 
 describe("the drawer's Trip tools", () => {
-  async function openDrawer(path, timeline) {
+  async function openDrawer(path, timeline, user = { email: "u@x.com" }) {
     const { TopBar } = await import("@/shared/components/TopBar");
     const store = configureStore({
       reducer: { auth: authReducer, journal: journalReducer, timeline: timelineReducer, network: networkReducer, error: errorReducer, notification: notificationReducer },
       preloadedState: {
-        auth: { token: fakeToken(USER), user: { email: "u@x.com" }, status: "idle" },
+        auth: { token: fakeToken(USER), user, status: "idle" },
         ...(timeline && { timeline: { ...timelineReducer(undefined, { type: "init" }), ...timeline, tripId: timeline.trip.id } }),
       },
     });
@@ -196,27 +196,36 @@ describe("the drawer's Trip tools", () => {
     expect(within(tools).getByRole("link", { name: "Time zones" })).toHaveAttribute("href", "/trips/trip-1/time");
   });
 
+  it("a link guest (Run stage 31): no Change password, and Sign out says they'll need the link", async () => {
+    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "viewer" } }, {
+      email: "link-1@guest.example.com",
+      guest_trip_id: "trip-1",
+    });
+    expect(within(menu).queryByRole("button", { name: "Change password" })).not.toBeInTheDocument();
+    // The hidden guest account's email is never shown.
+    expect(within(menu).queryByText(/guest\.example\.com/)).not.toBeInTheDocument();
+    expect(within(menu).getByText("Viewing through a shared link")).toBeInTheDocument();
+    expect(within(menu).getByRole("button", { name: /Sign out/ })).toHaveAccessibleDescription(
+      "You’ll need the link again to come back."
+    );
+  });
+
+  it("anyone else still has Change password", async () => {
+    const menu = await openDrawer("/trips/trip-1");
+    expect(within(menu).getByRole("button", { name: "Change password" })).toBeInTheDocument();
+  });
+
   it("counts a tool opened from here", async () => {
     const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
     await userEvent.click(within(menu).getByRole("link", { name: "Packing" }));
     expect(trackEvent).toHaveBeenCalledWith("tool-open", { url: "/trip/timeline", role: "owner", tool: "packing" });
   });
 
-  it("counts Share trip opened", async () => {
-    apiClient.get.mockResolvedValue({ data: [] }); // the Share dialog's members and codes
-    const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
-    await userEvent.click(within(menu).getByRole("button", { name: "Share trip" }));
-    expect(trackEvent).toHaveBeenCalledWith("share-open", { url: "/trip/timeline", role: "owner" });
-  });
-
-  it("lists Currency first, then Weather, Time zones, Packing, Documents, and Share trip for the owner", async () => {
-    apiClient.get.mockResolvedValue({ data: [] }); // the Share dialog's members and codes
+  it("lists Currency first, then Weather, Time zones, Packing and Documents; no Share trip (Run stage 31)", async () => {
     const menu = await openDrawer("/trips/trip-1", { trip: { id: "trip-1", name: "x", role: "owner" } });
     const tools = within(menu).getByRole("region", { name: "Trip tools" });
     const names = [...tools.querySelectorAll("a, button")].map((el) => el.textContent.trim());
-    expect(names).toEqual(["Currency", "Weather", "Time zones", "Packing", "Documents", "Share trip"]);
-    await userEvent.click(within(tools).getByRole("button", { name: "Share trip" }));
-    expect(await screen.findByRole("dialog", { name: "Share trip" })).toBeInTheDocument();
+    expect(names).toEqual(["Currency", "Weather", "Time zones", "Packing", "Documents"]);
   });
 
   it("an editor gets Documents but not Share trip", async () => {

@@ -21,11 +21,11 @@ Rebuilt from `project-template`, from the trip document outward: crawl
 (Phases 0–4: the trip document, import, timeline), walk (editing, time
 zones, photos, the map), then run stages (offline, sharing, the journal and
 photos, several editors, tools). Phases are numbered across the whole
-project; the next one is **104**.
+project; the next one is **108**.
 
 ## Stages
 
-All complete unless marked. Current branch: `trip-settings` (Run 29).
+All complete unless marked. Current branch: `grey-out-past-entries` (Runs 30–31).
 
 | Stage | Phases | What | Plan |
 |---|---|---|---|
@@ -63,6 +63,8 @@ All complete unless marked. Current branch: `trip-settings` (Run 29).
 | Run 27 | 97–98 | Nearby points of interest on an entry's page; the mini map opens the map | [run-27-nearby-points-of-interest.md](docs/plan/run-27-nearby-points-of-interest.md) |
 | Run 28 | 99 | Tapping one of Google's places on the map opens our card, with the Add buttons | [run-28-tap-a-place-on-the-map.md](docs/plan/run-28-tap-a-place-on-the-map.md) |
 | Run 29 | 100–103 | The timeline and map keep their place; trip settings (name, cover, people, export, delete; opens on, distances, nearby radius) | [run-29-trip-settings.md](docs/plan/run-29-trip-settings.md) |
+| Run 30 | 104 | Entries grey out once their time has passed, on their own place's clock | [run-30-grey-out-past-entries.md](docs/plan/run-30-grey-out-past-entries.md) |
+| Run 31 | 105–107 | Today keeps up; Share moves to Trip settings; a secret view-only link for family | [run-31-today-live-share-link.md](docs/plan/run-31-today-live-share-link.md) |
 
 ## Architecture Decisions
 

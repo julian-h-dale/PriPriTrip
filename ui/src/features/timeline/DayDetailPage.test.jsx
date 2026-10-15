@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -199,5 +199,38 @@ describe("DayDetailPage", () => {
     renderDay("2026-05-11");
     expect(await screen.findByText("Trip not found")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to trips" })).toHaveAttribute("href", "/trips");
+  });
+});
+
+describe("what's happened fades (Run stage 30)", () => {
+  afterEach(() => vi.useRealTimers());
+  const faded = () =>
+    within(screen.getByRole("list", { name: /^Plans for/ }))
+      .getAllByRole("listitem")
+      .map((li) => li.dataset.done === "true");
+
+  it("today: by each entry's own time; the untimed walk stays bright", async () => {
+    // May 11, 11:30 in Zurich: landed and off the train; lunch at 12:15 to come.
+    vi.useFakeTimers({ now: new Date("2026-05-11T09:30:00Z"), toFake: ["Date"] });
+    renderDay("2026-05-11");
+    await screen.findByRole("list", { name: /^Plans for/ });
+    expect(faded()).toEqual([true, true, false, false, false, false]);
+    const arrive = screen.getByRole("list", { name: /^Plans for/ }).querySelector("li");
+    expect(arrive.querySelector("div")).toHaveClass("opacity-55");
+    expect(arrive.querySelector("a")).toHaveAttribute("href"); // still opens
+  });
+
+  it("a day that's over fades everything", async () => {
+    vi.useFakeTimers({ now: new Date("2026-05-12T09:30:00Z"), toFake: ["Date"] });
+    renderDay("2026-05-11");
+    await screen.findByRole("list", { name: /^Plans for/ });
+    expect(faded().every(Boolean)).toBe(true);
+  });
+
+  it("a day to come fades nothing", async () => {
+    vi.useFakeTimers({ now: new Date("2026-05-10T09:30:00Z"), toFake: ["Date"] });
+    renderDay("2026-05-13");
+    await screen.findByRole("list", { name: /^Plans for/ });
+    expect(faded().some(Boolean)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -22,7 +22,7 @@ vi.mock("@/shared/services/apiClient", () => ({
 const TRIP = { ...structuredClone(sampleTrip), id: "trip-1", createdAt: "2026-10-02T05:00:00Z" };
 TRIP.stays = TRIP.stays.map((s, i) => ({ ...s, id: `stay-${i}`, confirmationNumber: s.confirmationNumber ?? `CONF-${i}` }));
 
-function renderAt(path) {
+function renderAt(path, { preloaded = false } = {}) {
   const store = configureStore({
     reducer: {
       auth: authReducer,
@@ -32,6 +32,10 @@ function renderAt(path) {
       error: errorReducer,
       notification: notificationReducer,
     },
+    // The trip already loaded, so the page draws on the first render.
+    preloadedState: preloaded
+      ? { timeline: { tripId: "trip-1", trip: TRIP, status: "idle", stale: false, savedAt: null } }
+      : undefined,
   });
   render(
     <Provider store={store}>
@@ -119,6 +123,78 @@ describe("Today tab", () => {
     expect(within(tonight).getByText(TRIP.stays[1].name)).toBeInTheDocument();
     expect(within(tonight).getByText(/^Check-out /)).toHaveTextContent("Check-out Thu, May 14 · 10:00 AM");
     expect(within(tonight).queryByText(/^Check-in /)).toBeNull();
+  });
+});
+
+describe("Today's plan: what's happened fades (Run stage 30)", () => {
+  /** Each row of Today's plan: [its title, whether it's faded]. */
+  const rows = () =>
+    [...within(screen.getByRole("region", { name: "Today’s plan" })).getAllByRole("listitem")].map((li) => [
+      li.querySelector("span.break-words.text-sm")?.textContent,
+      li.dataset.done === "true",
+    ]);
+
+  it("fades by each entry's time", async () => {
+    // May 11, 11:30 in Zurich: landed, off the 10:28 train (arrived 11:28);
+    // lunch at 12:15 still to come. The walk has no time: bright all day.
+    vi.useFakeTimers({ now: new Date("2026-05-11T09:30:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { name: "Today" });
+    expect(rows()).toEqual([
+      [expect.stringMatching(/^Arrive/), true],
+      ["Zürich Airport → Bern", true],
+      ["Lunch at Altes Tramdepot", false],
+      ["Old Town & Zytglogge walk", false],
+      ["Check in · Hotel Goldener Schlüssel", false],
+      ["Dinner at Kornhauskeller", false],
+    ]);
+  });
+
+  it("13:31: lunch (until 13:30) has faded too", async () => {
+    vi.useFakeTimers({ now: new Date("2026-05-11T11:31:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { name: "Today" });
+    expect(rows().map(([, faded]) => faded)).toEqual([true, true, true, false, false, false]);
+  });
+
+  it("the Day 1 preview fades nothing", async () => {
+    vi.useFakeTimers({ now: new Date("2026-04-01T12:00:00Z"), toFake: ["Date"] });
+    renderAt("/trips/trip-1/today");
+    await screen.findByRole("heading", { name: "Day 1 preview" });
+    expect(rows().some(([, faded]) => faded)).toBe(false);
+  });
+});
+
+describe("Today keeps up with the clock (Run stage 31)", () => {
+  it("as the minutes pass: Next up moves on, its countdown runs, and the plan fades", async () => {
+    // May 11, 12:00 in Zurich: lunch (12:15) is next, in 15 min.
+    vi.useFakeTimers({ now: new Date("2026-05-11T10:00:00Z"), toFake: ["Date", "setInterval"] });
+    renderAt("/trips/trip-1/today", { preloaded: true });
+    await act(async () => {});
+    const next = () => screen.getByRole("region", { name: "Next up" });
+    expect(within(next()).getByText("Lunch at Altes Tramdepot")).toBeInTheDocument();
+    expect(next()).toHaveTextContent("in 15 min");
+
+    vi.setSystemTime(new Date("2026-05-11T10:10:00Z"));
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(next()).toHaveTextContent("in 4 min");
+
+    // 12:16: lunch has started, so it's no longer next; check-in at 14:00 is.
+    vi.setSystemTime(new Date("2026-05-11T10:16:00Z"));
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(within(next()).queryByText("Lunch at Altes Tramdepot")).toBeNull();
+    expect(next()).toHaveTextContent(/Hotel Goldener Schlüssel/);
+  });
+
+  it("past midnight, it's about the new day", async () => {
+    // 23:59 in Zurich on May 11.
+    vi.useFakeTimers({ now: new Date("2026-05-11T21:59:00Z"), toFake: ["Date", "setInterval"] });
+    renderAt("/trips/trip-1/today", { preloaded: true });
+    await act(async () => {});
+    expect(screen.getByText(/^Mon, May 11 · Day 2 of 5/)).toBeInTheDocument();
+    vi.setSystemTime(new Date("2026-05-11T22:01:00Z"));
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(screen.getByText(/^Tue, May 12 · Day 3 of 5/)).toBeInTheDocument();
   });
 });
 

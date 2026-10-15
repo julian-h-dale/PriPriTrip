@@ -69,4 +69,47 @@ Run `make pi-backup-install` again after pulling changes to the script.
 Photos still waiting on a phone (not uploaded yet) aren't on the server, so
 they're backed up once uploaded.
 
+## 4. Stopping and starting it
+
+The backup is a systemd **timer** (`pripri-backup.timer`, every 30
+minutes) that starts a one-off **service** (`pripri-backup.service`, a
+single run). Stop the timer and no more runs start. Stop the service too
+if a run is going on right now.
+
+```bash
+# Is it on, and when does it run next?
+systemctl list-timers pripri-backup.timer
+systemctl is-active pripri-backup.service       # "activating" = a run is going on now
+
+# Pause it (until you start it again, or the Pi reboots):
+sudo systemctl stop pripri-backup.timer
+sudo systemctl stop pripri-backup.service       # only if a run is going on now
+
+# Start it again:
+sudo systemctl start pripri-backup.timer
+make pi-backup-run                              # optional: one run now, to check
+
+# Off for good, across reboots too (and back on):
+sudo systemctl disable --now pripri-backup.timer
+sudo systemctl enable --now pripri-backup.timer
+```
+
+A stopped run is safe: each photo is written in full or not at all, and
+the next run picks up where `state.json` says the last one got to.
+
+**Before changing the Pi's clock** (testing at another date,
+[docs/testing-dates-and-time-zones.md](../../docs/testing-dates-and-time-zones.md)):
+1. Pause it first.
+2. Change the clock and test.
+3. Put the clock back, and wait for `timedatectl` to say "System clock
+   synchronized: yes".
+4. Start it again.
+
+With the clock moved, its HTTPS calls to the live app can fail
+(certificates outside their dates), and its schedule follows the fake
+time. The timer catches up on runs missed while it was stopped
+(`Persistent=true`) soon after it starts again. If it ever seems stuck
+waiting after a clock change, `sudo systemctl clean --what=state
+pripri-backup.timer` forgets its last-run time, then start it again.
+
 More on a photo's whole life: [docs/photos.md](../../docs/photos.md).

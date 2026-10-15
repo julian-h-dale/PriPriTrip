@@ -77,11 +77,9 @@ test("top bar: New memory (blue) in place of Share; the drawer's Trip tools; Tod
   await page.getByRole("button", { name: "Open menu" }).click();
   const tools = page.getByRole("region", { name: "Trip tools" });
   await expect(tools.getByRole("link").first()).toHaveText("Currency");
-  await expect(tools.getByRole("button", { name: "Share trip" })).toBeVisible();
+  // Sharing is on Trip settings now (Run stage 31), not in the drawer.
+  await expect(tools.getByRole("button", { name: "Share trip" })).toHaveCount(0);
   await page.screenshot({ path: screenshotPath("05a-drawer-trip-tools") });
-  await tools.getByRole("button", { name: "Share trip" }).click();
-  await expect(page.getByRole("dialog", { name: "Share trip" })).toBeVisible();
-  await page.screenshot({ path: screenshotPath("05b-share-from-drawer") });
 });
 
 test("trip timeline", async ({ page }) => {
@@ -570,10 +568,9 @@ test("sharing: the owner shares, the viewer reads without edit controls", async 
     const owner = await ownerContext.newPage();
     await login(owner);
     await (await tripLink(owner, SAMPLE_TRIP)).click();
-    // Share is in the drawer, after Documents.
-    await owner.getByRole("button", { name: "Open menu" }).click();
-    await owner.getByRole("region", { name: "Trip tools" }).getByRole("button", { name: "Share trip" }).click();
-    const share = owner.getByRole("dialog", { name: "Share trip" });
+    // Who's on the trip: Trip settings → People.
+    await owner.goto(`/trips/${new URL(owner.url()).pathname.split("/")[2]}/settings`);
+    const share = owner.getByRole("region", { name: "People" });
     await expect(share.getByText(SEED_VIEWER.email)).toBeVisible();
     await owner.screenshot({ path: screenshotPath("21-share-dialog"), fullPage: true });
 
@@ -604,10 +601,9 @@ test("sharing: the owner invites someone by email as an editor, and they can edi
     await login(owner);
     await (await tripLink(owner, SAMPLE_TRIP)).click();
     tripId = new URL(owner.url()).pathname.split("/")[2];
-    // Share is in the drawer, after Documents.
-    await owner.getByRole("button", { name: "Open menu" }).click();
-    await owner.getByRole("region", { name: "Trip tools" }).getByRole("button", { name: "Share trip" }).click();
-    const share = owner.getByRole("dialog", { name: "Share trip" });
+    // Who's on the trip: Trip settings → People.
+    await owner.goto(`/trips/${tripId}/settings`);
+    const share = owner.getByRole("region", { name: "People" });
     // An email with no account is refused.
     await share.getByLabel("Email").fill("nobody@example.com");
     await share.getByRole("button", { name: "Invite" }).click();

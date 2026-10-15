@@ -39,7 +39,10 @@ class IsOwner(Exception):
 async def user_by_email(db: AsyncSession, email: str) -> UserRecord | None:
     """The active account with this email, ignoring case and spaces."""
     user = await db.scalar(
-        select(UserRecord).where(func.lower(UserRecord.email) == email.strip().lower())
+        select(UserRecord).where(
+            func.lower(UserRecord.email) == email.strip().lower(),
+            UserRecord.guest_trip_id.is_(None),  # a link guest is never invited
+        )
     )
     return user if user is not None and user.is_active else None
 
@@ -78,7 +81,10 @@ async def list_members(db: AsyncSession, trip_id: uuid.UUID) -> list[tuple[TripM
     result = await db.execute(
         select(TripMember, UserRecord)
         .join(UserRecord, TripMember.user_id == UserRecord.id)
-        .where(TripMember.trip_id == trip_id, active(TripMember))
+        # A link guest has the link's own row on the page, not a member's.
+        .where(
+            TripMember.trip_id == trip_id, active(TripMember), UserRecord.guest_trip_id.is_(None)
+        )
         .order_by(TripMember.created_at)
     )
     return list(result.tuples().all())

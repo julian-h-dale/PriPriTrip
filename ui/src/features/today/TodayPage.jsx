@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { BedDouble, ChevronRight, DoorOpen, Info, Navigation } from "lucide-react";
@@ -13,6 +13,8 @@ import { fetchWeather } from "@/features/weather/weatherSlice";
 import { entryPath, entryPathFor } from "@/features/entry/entries";
 import { ConfirmationNumber } from "@/features/timeline/EntryDetails";
 import { TimelineEntry } from "@/features/timeline/TimelineEntry";
+import { isDone } from "@/features/timeline/entryDone";
+import { useNow } from "@/shared/hooks/useNow";
 import { BottomNavLayout } from "@/shared/components/BottomNavLayout";
 import { Markdown } from "@/shared/components/Markdown";
 import { buttonVariants } from "@/shared/components/ui/buttonVariants";
@@ -173,8 +175,11 @@ function Tonight({ trip, night, date }) {
 }
 
 function TodayView({ trip }) {
-  // "Now" is read once per visit; reopening the tab refreshes it.
-  const [now] = useState(() => new Date());
+  // One clock for the whole tab, moving on each minute (Run stage 31): which
+  // day it's about, Next up and its "in 25 min", and what's faded (Run 30)
+  // all keep up while the page stays open, past midnight too.
+  const clock = useNow(60_000);
+  const now = useMemo(() => new Date(clock), [clock]);
   const rows = useMemo(() => buildTimeline(trip), [trip]);
   const ref = useMemo(() => referenceDay(trip, now), [trip, now]);
   const next = useMemo(() => nextUp(trip, ref, now), [trip, ref, now]);
@@ -219,7 +224,13 @@ function TodayView({ trip }) {
         {row && row.entries.length > 0 ? (
           <ol className="flex flex-col">
             {row.entries.map((entry) => (
-              <TimelineEntry key={entry.key} entry={entry} trip={trip} />
+              <TimelineEntry
+                key={entry.key}
+                entry={entry}
+                trip={trip}
+                // The Day 1 preview (before the trip) has nothing done yet.
+                done={ref.active && isDone(entry, row.date, trip, clock)}
+              />
             ))}
           </ol>
         ) : (

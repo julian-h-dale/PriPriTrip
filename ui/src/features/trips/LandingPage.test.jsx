@@ -18,10 +18,10 @@ vi.mock("@/shared/services/apiClient", () => ({
 
 const summary = (id, startDate, endDate) => ({ id, name: id, startDate, endDate, timezone: "UTC", stayCount: 0, travelCount: 0 });
 
-function renderAt(path, element) {
+function renderAt(path, element, user = { email: "u@x.com", is_superuser: false }) {
   const store = configureStore({
     reducer: { auth: authReducer, trips: tripsReducer, error: errorReducer, notification: notificationReducer },
-    preloadedState: { auth: { token: "t", user: { email: "u@x.com", is_superuser: false }, status: "idle" } },
+    preloadedState: { auth: { token: "t", user, status: "idle" } },
   });
   render(
     <Provider store={store}>
@@ -52,6 +52,12 @@ describe("LandingPage", () => {
   it("a viewer lands on the trip's timeline: they have no Today tab", async () => {
     apiClient.get.mockResolvedValue({ data: [{ ...summary("next", "2099-01-01", "2099-01-05"), role: "viewer" }] });
     renderAt("/", <LandingPage />);
+    expect(await screen.findByText("the trip timeline")).toBeInTheDocument();
+  });
+
+  it("a link guest (Run stage 31) always lands on their trip, even one that's over", async () => {
+    apiClient.get.mockResolvedValue({ data: [{ ...summary("old", "2001-01-01", "2001-01-02"), role: "viewer" }] });
+    renderAt("/", <LandingPage />, { email: "link-1@guest.example.com", guest_trip_id: "old" });
     expect(await screen.findByText("the trip timeline")).toBeInTheDocument();
   });
 

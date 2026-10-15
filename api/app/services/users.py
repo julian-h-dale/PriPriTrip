@@ -44,7 +44,10 @@ def temporary_password() -> str:
 
 
 async def list_users(db: AsyncSession) -> list[UserRecord]:
-    result = await db.execute(select(UserRecord).order_by(UserRecord.email))
+    # Link guests (Run stage 31) aren't people: never listed.
+    result = await db.execute(
+        select(UserRecord).where(UserRecord.guest_trip_id.is_(None)).order_by(UserRecord.email)
+    )
     return list(result.scalars().all())
 
 
